@@ -1,7 +1,6 @@
 #pragma once
 
 #include <cstdint>
-#include <type_trait>
 
 #ifdef MOTION_DEBUG
 

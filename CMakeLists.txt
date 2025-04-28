@@ -64,6 +64,7 @@ set(
 )
 
 add_library(MotionCore STATIC ${MOTION_CORE_HEADERS} ${MOTION_CORE_SOURCES})
+target_precompile_headers(MotionCore PUBLIC ${MOTION_CORE_DIR}/Base/CorePCH.hpp)
 target_include_directories(MotionCore PUBLIC ${MOTION_CORE_INCLUDE_DIR})
 target_link_libraries(
     MotionCore 

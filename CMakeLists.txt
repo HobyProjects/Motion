@@ -49,6 +49,7 @@ set(MOTION_APP_DIR ${CMAKE_CURRENT_SOURCE_DIR}/Src/App)
 set(
     MOTION_CORE_INCLUDE_DIR
         ${MOTION_CORE_DIR}/Base
+        ${MOTION_CORE_DIR}/Event
 )
 
 set(
@@ -56,6 +57,11 @@ set(
         ${MOTION_CORE_DIR}/Base/Base.hpp
         ${MOTION_CORE_DIR}/Base/Asserts.hpp
         ${MOTION_CORE_DIR}/Base/Log.hpp
+
+        ${MOTION_CORE_DIR}/Event/Event.hpp
+        ${MOTION_CORE_DIR}/Event/EventWindow.hpp
+        ${MOTION_CORE_DIR}/Event/EventKeyboard.hpp
+        ${MOTION_CORE_DIR}/Event/EventMouse.hpp
 )
 
 set(

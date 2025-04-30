@@ -42,3 +42,10 @@
 #include "Base.hpp"
 #include "Asserts.hpp"
 #include "Log.hpp"
+
+//Renderer
+#include "Buffers.hpp"
+
+//Renderer - OpenGL
+#include "GL_Buffers.hpp"
+#include "GL_Debug.hpp"

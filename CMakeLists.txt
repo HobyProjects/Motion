@@ -50,6 +50,8 @@ set(
     MOTION_CORE_INCLUDE_DIR
         ${MOTION_CORE_DIR}/Base
         ${MOTION_CORE_DIR}/Event
+        ${MOTION_CORE_DIR}/Renderer
+        ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL
 )
 
 set(
@@ -63,11 +65,21 @@ set(
         ${MOTION_CORE_DIR}/Event/EventWindow.hpp
         ${MOTION_CORE_DIR}/Event/EventKeyboard.hpp
         ${MOTION_CORE_DIR}/Event/EventMouse.hpp
+
+        ${MOTION_CORE_DIR}/Renderer/Buffers.hpp
+
+        ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL/GL_Buffers.hpp
+        ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL/GL_Debug.hpp
 )
 
 set(
     MOTION_CORE_SOURCES
         ${MOTION_CORE_DIR}/Base/Log.cpp
+
+        ${MOTION_CORE_DIR}/Renderer/Buffers.cpp
+
+        ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL/GL_Buffers.cpp
+        ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL/GL_Debug.cpp
 )
 
 add_library(MotionCore STATIC ${MOTION_CORE_HEADERS} ${MOTION_CORE_SOURCES})

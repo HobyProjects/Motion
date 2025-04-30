@@ -44,10 +44,12 @@
 #include "Log.hpp"
 
 //Renderer
+#include "Renderer.hpp"
 #include "Buffers.hpp"
 #include "Shaders.hpp"
 
 //Renderer - OpenGL
+#include "GL_Renderer.hpp"
 #include "GL_Buffers.hpp"
 #include "GL_Debug.hpp"
 #include "GL_Shaders.hpp"

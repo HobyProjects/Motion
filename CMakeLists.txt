@@ -68,10 +68,12 @@ set(
 
         ${MOTION_CORE_DIR}/Renderer/Buffers.hpp
         ${MOTION_CORE_DIR}/Renderer/Shaders.hpp
+        ${MOTION_CORE_DIR}/Renderer/Renderer.hpp
 
         ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL/GL_Buffers.hpp
         ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL/GL_Debug.hpp
         ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL/GL_Shaders.hpp
+        ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL/GL_Renderer.hpp
 )
 
 set(
@@ -80,10 +82,12 @@ set(
 
         ${MOTION_CORE_DIR}/Renderer/Buffers.cpp
         ${MOTION_CORE_DIR}/Renderer/Shaders.cpp
+        ${MOTION_CORE_DIR}/Renderer/Renderer.cpp
 
         ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL/GL_Buffers.cpp
         ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL/GL_Debug.cpp
         ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL/GL_Shaders.cpp
+        ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL/GL_Renderer.cpp
 )
 
 add_library(MotionCore STATIC ${MOTION_CORE_HEADERS} ${MOTION_CORE_SOURCES})

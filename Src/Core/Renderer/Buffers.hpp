@@ -10,6 +10,12 @@
 
 namespace Motion::Core
 {
+    inline constexpr uint32_t SHADER_BUFFER_DEFAULT_SIZE   = 1024;
+    inline constexpr uint32_t SHADER_BUFFER_MAX_SIZE       = 65536; 
+    inline constexpr uint32_t SHADER_BUFFER_MAX_BINDING    = 16; 
+    inline constexpr uint32_t UNIFORM_BUFFER_MAX_BINDING   = 16;
+    inline constexpr uint32_t UNIFORM_BUFFER_MAX_SIZE      = 65536;
+
     enum class BufferComponents : uint32_t
     {
         X       = 1,
@@ -66,6 +72,7 @@ namespace Motion::Core
     };
 
     using BufferID = uint32_t;
+    using BindingPoint = uint32_t;
     using BufferLayoutPtr = std::shared_ptr<BufferLayout>;
 
     class IVertexBuffer
@@ -93,6 +100,42 @@ namespace Motion::Core
             virtual void Unbind() const = 0;
             virtual BufferID GetID() const = 0;
             virtual uint32_t GetElementCount() const = 0;
+    };
+
+    class IShaderBuffer
+    {
+        public:
+            IShaderBuffer() = default;
+            virtual ~IShaderBuffer() = default;
+
+            virtual void Bind() const = 0;
+            virtual void Unbind() const = 0;
+            virtual BufferID GetID() const = 0;
+            
+            virtual void SetBufferData(uint32_t offset, uint32_t size, const glm::mat4& data) = 0;
+            virtual void SetBufferData(uint32_t offset, uint32_t size, const glm::mat3& data) = 0;
+            virtual void SetBufferData(uint32_t offset, uint32_t size, const glm::vec4& data) = 0;
+            virtual void SetBufferData(uint32_t offset, uint32_t size, const glm::vec3& data) = 0;
+            virtual void SetBufferData(uint32_t offset, uint32_t size, const glm::vec2& data) = 0;
+            virtual void SetBufferData(uint32_t offset, uint32_t size, float data) = 0;
+    };
+
+    class IUniformBuffer
+    {
+        public:
+            IUniformBuffer() = default;
+            virtual ~IUniformBuffer() = default;
+
+            virtual void Bind() const = 0;
+            virtual void Unbind() const = 0;
+            virtual BufferID GetID() const = 0;
+            
+            virtual void SetBufferData(uint32_t offset, uint32_t size, const glm::mat4& data) = 0;
+            virtual void SetBufferData(uint32_t offset, uint32_t size, const glm::mat3& data) = 0;
+            virtual void SetBufferData(uint32_t offset, uint32_t size, const glm::vec4& data) = 0;
+            virtual void SetBufferData(uint32_t offset, uint32_t size, const glm::vec3& data) = 0;
+            virtual void SetBufferData(uint32_t offset, uint32_t size, const glm::vec2& data) = 0;
+            virtual void SetBufferData(uint32_t offset, uint32_t size, float data) = 0;
     };
 
     class BuffersBuilder

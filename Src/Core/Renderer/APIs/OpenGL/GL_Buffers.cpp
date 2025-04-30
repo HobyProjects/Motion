@@ -55,4 +55,109 @@ namespace Motion::Core
     {
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_ElementBufferID);
     }
+
+    GL_ShaderBuffer::GL_ShaderBuffer(uint32_t size, BindingPoint binding)
+    {
+        glCreateBuffers(1, &m_ShaderBufferID);
+        glNamedBufferData(m_ShaderBufferID, size, nullptr, GL_DYNAMIC_STORAGE_BIT);
+        m_BindingPoint = binding;
+    }
+
+    GL_ShaderBuffer::~GL_ShaderBuffer()
+    {
+        glDeleteBuffers(1, &m_ShaderBufferID);
+    }
+
+    void GL_ShaderBuffer::Bind() const
+    {
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, m_BindingPoint, m_ShaderBufferID);
+    }
+
+    void GL_ShaderBuffer::Unbind() const
+    {
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, 0);
+    }
+
+    void GL_ShaderBuffer::SetBufferData(uint32_t offset, uint32_t size, const glm::mat4 & data)
+    {
+        glNamedBufferSubData(m_ShaderBufferID, offset, size, glm::value_ptr(data));
+    }
+
+    void GL_ShaderBuffer::SetBufferData(uint32_t offset, uint32_t size, const glm::mat3 & data)
+    {
+        glNamedBufferSubData(m_ShaderBufferID, offset, size, glm::value_ptr(data));
+    }
+
+    void GL_ShaderBuffer::SetBufferData(uint32_t offset, uint32_t size, const glm::vec4 & data)
+    {
+        glNamedBufferSubData(m_ShaderBufferID, offset, size, glm::value_ptr(data));
+    }
+
+    void GL_ShaderBuffer::SetBufferData(uint32_t offset, uint32_t size, const glm::vec3 & data)
+    {
+        glNamedBufferSubData(m_ShaderBufferID, offset, size, glm::value_ptr(data));
+    }
+
+    void GL_ShaderBuffer::SetBufferData(uint32_t offset, uint32_t size, const glm::vec2 & data)
+    {
+        glNamedBufferSubData(m_ShaderBufferID, offset, size, glm::value_ptr(data));
+    }
+
+    void GL_ShaderBuffer::SetBufferData(uint32_t offset, uint32_t size, float data)
+    {
+        glNamedBufferSubData(m_ShaderBufferID, offset, size, &data);
+    }
+
+    GL_UniformBuffer::GL_UniformBuffer(uint32_t size, BindingPoint binding)
+    {
+        glCreateBuffers(1, &m_UniformBufferID);
+        glNamedBufferData(m_UniformBufferID, size, nullptr, GL_DYNAMIC_STORAGE_BIT);
+        m_BindingPoint = binding;
+    }
+
+    GL_UniformBuffer::~GL_UniformBuffer()
+    {
+        glDeleteBuffers(1, &m_UniformBufferID);
+    }
+
+    void GL_UniformBuffer::Bind() const
+    {
+        glBindBufferBase(GL_UNIFORM_BUFFER, m_BindingPoint, m_UniformBufferID);
+    }
+
+    void GL_UniformBuffer::Unbind() const
+    {
+        glBindBufferBase(GL_UNIFORM_BUFFER, 0, 0);
+    }
+
+    void GL_UniformBuffer::SetBufferData(uint32_t offset, uint32_t size, const glm::mat4 & data)
+    {
+        glNamedBufferSubData(m_UniformBufferID, offset, size, glm::value_ptr(data));
+    }
+
+    void GL_UniformBuffer::SetBufferData(uint32_t offset, uint32_t size, const glm::mat3 & data)
+    {
+        glNamedBufferSubData(m_UniformBufferID, offset, size, glm::value_ptr(data));
+    }
+
+    void GL_UniformBuffer::SetBufferData(uint32_t offset, uint32_t size, const glm::vec4 & data)
+    {
+        glNamedBufferSubData(m_UniformBufferID, offset, size, glm::value_ptr(data));
+    }
+
+    void GL_UniformBuffer::SetBufferData(uint32_t offset, uint32_t size, const glm::vec3 & data)
+    {
+        glNamedBufferSubData(m_UniformBufferID, offset, size, glm::value_ptr(data));
+    }
+
+    void GL_UniformBuffer::SetBufferData(uint32_t offset, uint32_t size, const glm::vec2 & data)
+    {
+        glNamedBufferSubData(m_UniformBufferID, offset, size, glm::value_ptr(data));
+    }
+
+    void GL_UniformBuffer::SetBufferData(uint32_t offset, uint32_t size, float data)
+    {
+        glNamedBufferSubData(m_UniformBufferID, offset, size, &data);
+    }
+
 }

@@ -67,6 +67,7 @@ set(
         ${MOTION_CORE_DIR}/Event/EventMouse.hpp
 
         ${MOTION_CORE_DIR}/Renderer/Buffers.hpp
+        ${MOTION_CORE_DIR}/Renderer/Shaders.hpp
 
         ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL/GL_Buffers.hpp
         ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL/GL_Debug.hpp
@@ -77,6 +78,7 @@ set(
         ${MOTION_CORE_DIR}/Base/Log.cpp
 
         ${MOTION_CORE_DIR}/Renderer/Buffers.cpp
+        ${MOTION_CORE_DIR}/Renderer/Shaders.cpp
 
         ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL/GL_Buffers.cpp
         ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL/GL_Debug.cpp

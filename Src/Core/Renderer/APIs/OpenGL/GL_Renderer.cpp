@@ -12,7 +12,7 @@ namespace Motion::Core
 
             glEnable(GL_DEBUG_OUTPUT);
             glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
-            glDebugMessageCallback(GL_DebugMessageCallBack, nullptr);
+            glDebugMessageCallback(GL_MessageCallBack, nullptr);
             glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DEBUG_SEVERITY_NOTIFICATION, 0, nullptr, GL_FALSE);
         
         #endif

@@ -64,7 +64,7 @@ namespace Motion::Core
             static std::shared_ptr<IShader> GetShader(const std::string& name);
 
             static ShaderProgramID CreateShaderProgram();
-            static void AttachShader(ShaderProgramID programID, const std::shared_ptr<IShader>& shader);
+            static void AttachShaderProgram(ShaderID shaderID, ShaderProgramID programID);
             static ShaderID CompileShader(ShaderType shaderType, const std::string& sourceCode);
             static void LinkShaderProgram(ShaderProgramID programID);
             static void ValidateShaderProgram(ShaderProgramID programID);
@@ -93,27 +93,28 @@ namespace Motion::Core
 
             void RemoveShader(const std::string& name)
             {
-                if(auto it = m_Shaders.find(name) != m_Shaders.end())
+                auto it = m_Shaders.find(name);
+                if (it != m_Shaders.end())
                 {
                     m_Shaders.erase(it);
                 }
                 else
                 {
                     MOTION_ASSERT(false, "Shader with name {0} does not exist!", name);
-                    return;
                 }
             }
 
             std::shared_ptr<TShader> GetShader(const std::string& name) const
             {
-                if (auto it = m_Shaders.find(name) != m_Shaders.end())
+                auto it = m_Shaders.find(name);
+                if (it != m_Shaders.end())
                 {
                     return it->second;
                 }
                 else
                 {
                     MOTION_ASSERT(false, "Shader with name {0} does not exist!", name);
-                    return;
+                    return nullptr;
                 }
             }
 

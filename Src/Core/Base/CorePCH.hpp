@@ -45,7 +45,9 @@
 
 //Renderer
 #include "Buffers.hpp"
+#include "Shaders.hpp"
 
 //Renderer - OpenGL
 #include "GL_Buffers.hpp"
 #include "GL_Debug.hpp"
+#include "GL_Shaders.hpp"

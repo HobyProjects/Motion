@@ -71,6 +71,7 @@ set(
 
         ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL/GL_Buffers.hpp
         ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL/GL_Debug.hpp
+        ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL/GL_Shaders.hpp
 )
 
 set(
@@ -82,6 +83,7 @@ set(
 
         ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL/GL_Buffers.cpp
         ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL/GL_Debug.cpp
+        ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL/GL_Shaders.cpp
 )
 
 add_library(MotionCore STATIC ${MOTION_CORE_HEADERS} ${MOTION_CORE_SOURCES})

@@ -57,6 +57,7 @@ set(
         ${MOTION_CORE_DIR}/Base/Base.hpp
         ${MOTION_CORE_DIR}/Base/Asserts.hpp
         ${MOTION_CORE_DIR}/Base/Log.hpp
+        ${MOTION_CORE_DIR}/Base/KeyCodes.hpp
 
         ${MOTION_CORE_DIR}/Event/Event.hpp
         ${MOTION_CORE_DIR}/Event/EventWindow.hpp

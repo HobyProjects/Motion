@@ -27,19 +27,6 @@ namespace Motion::Core
             bool m_FromFile{ false };
     };
 
-    class GL_TextureBuilder
-    {
-        private:
-            GL_TextureBuilder() = default;
-            ~GL_TextureBuilder() = default;
-
-            GL_TextureBuilder(const GL_TextureBuilder&) = delete;
-            GL_TextureBuilder& operator=(const GL_TextureBuilder&) = delete;
-            GL_TextureBuilder(const GL_TextureBuilder&&) = delete;
-            GL_TextureBuilder& operator=(GL_TextureBuilder&&) = delete;
-
-        public:
-            std::shared_ptr<GL_Texture> CreatePlainTexture(uint32_t width, uint32_t height);
-            std::shared_ptr<GL_Texture> CreateTextureFromFile(const std::filesystem::path& filePath, TextureType type, bool flipTexture = true);
-    };
+    std::shared_ptr<GL_Texture> GL_CreatePlainTexture(uint32_t width, uint32_t height);
+    std::shared_ptr<GL_Texture> GL_CreateTextureFromFile(const std::filesystem::path& filePath, TextureType type, bool flipTexture = true);
 }

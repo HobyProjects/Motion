@@ -1,4 +1,5 @@
 #include "CorePCH.hpp"
+#include "Shaders.hpp"
 
 namespace Motion::Core
 {
@@ -6,7 +7,7 @@ namespace Motion::Core
     {
         switch(Renderer::GetAPI())
         {
-            case RenderingAPI::OpenGL:         return GL_ShaderBuilder::CreateShader(name, vertexPath, fragmentPath);
+            case RenderingAPI::OpenGL:         return GL_CreateShader(name, vertexPath, fragmentPath);
             case RenderingAPI::Vulkan:         MOTION_ASSERT(false, "Vulkan is not implemented yet!"); return nullptr; // TODO: Implement Vulkan shader creation
             case RenderingAPI::DirectX:        MOTION_ASSERT(false, "DirectX is not implemented yet!"); return nullptr; // TODO: Implement DirectX shader creation
             default:                           MOTION_ASSERT(false, "Unknown rendering API!"); return nullptr;
@@ -17,7 +18,7 @@ namespace Motion::Core
     {
         switch(Renderer::GetAPI())
         {
-            case RenderingAPI::OpenGL:         GL_ShaderBuilder::DestroyShader(name); break;
+            case RenderingAPI::OpenGL:         GL_DestroyShader(name); break;
             case RenderingAPI::Vulkan:         MOTION_ASSERT(false, "Vulkan is not implemented yet!"); break; // TODO: Implement Vulkan shader destruction
             case RenderingAPI::DirectX:        MOTION_ASSERT(false, "DirectX is not implemented yet!"); break; // TODO: Implement DirectX shader destruction
             default:                           MOTION_ASSERT(false, "Unknown rendering API!"); break;
@@ -28,7 +29,7 @@ namespace Motion::Core
     {
         switch(Renderer::GetAPI())
         {
-            case RenderingAPI::OpenGL:         return GL_ShaderBuilder::GetShader(name);
+            case RenderingAPI::OpenGL:         return GL_GetShader(name);
             case RenderingAPI::Vulkan:         MOTION_ASSERT(false, "Vulkan is not implemented yet!"); return nullptr; // TODO: Implement Vulkan shader retrieval
             case RenderingAPI::DirectX:        MOTION_ASSERT(false, "DirectX is not implemented yet!"); return nullptr; // TODO: Implement DirectX shader retrieval
             default:                           MOTION_ASSERT(false, "Unknown rendering API!"); return nullptr;
@@ -39,7 +40,7 @@ namespace Motion::Core
     {
         switch(Renderer::GetAPI())
         {
-            case RenderingAPI::OpenGL:         GL_ShaderBuilder::DeleteShaderProgram(programID); break;
+            case RenderingAPI::OpenGL:         GL_DeleteShaderProgram(programID); break;
             case RenderingAPI::Vulkan:         MOTION_ASSERT(false, "Vulkan is not implemented yet!"); break; // TODO: Implement Vulkan shader program deletion
             case RenderingAPI::DirectX:        MOTION_ASSERT(false, "DirectX is not implemented yet!"); break; // TODO: Implement DirectX shader program deletion
             default:                           MOTION_ASSERT(false, "Unknown rendering API!"); break;
@@ -50,7 +51,7 @@ namespace Motion::Core
     {
         switch(Renderer::GetAPI())
         {
-            case RenderingAPI::OpenGL:         return GL_ShaderBuilder::CreateShaderProgram();
+            case RenderingAPI::OpenGL:         return GL_CreateShaderProgram();
             case RenderingAPI::Vulkan:         MOTION_ASSERT(false, "Vulkan is not implemented yet!"); return 0; // TODO: Implement Vulkan shader program creation
             case RenderingAPI::DirectX:        MOTION_ASSERT(false, "DirectX is not implemented yet!"); return 0; // TODO: Implement DirectX shader program creation
             default:                           MOTION_ASSERT(false, "Unknown rendering API!"); return 0;
@@ -61,7 +62,7 @@ namespace Motion::Core
     {
         switch(Renderer::GetAPI())
         {
-            case RenderingAPI::OpenGL:         GL_ShaderBuilder::AttachShaderProgram(shaderID, programID); break;
+            case RenderingAPI::OpenGL:         GL_AttachShaderProgram(shaderID, programID); break;
             case RenderingAPI::Vulkan:         MOTION_ASSERT(false, "Vulkan is not implemented yet!"); break; // TODO: Implement Vulkan shader program attachment
             case RenderingAPI::DirectX:        MOTION_ASSERT(false, "DirectX is not implemented yet!"); break; // TODO: Implement DirectX shader program attachment
             default:                           MOTION_ASSERT(false, "Unknown rendering API!"); break;
@@ -72,7 +73,7 @@ namespace Motion::Core
     {
         switch(Renderer::GetAPI())
         {
-            case RenderingAPI::OpenGL:         return GL_ShaderBuilder::CompileShader(shaderType, sourceCode);
+            case RenderingAPI::OpenGL:         return GL_CompileShader(shaderType, sourceCode);
             case RenderingAPI::Vulkan:         MOTION_ASSERT(false, "Vulkan is not implemented yet!"); return 0; // TODO: Implement Vulkan shader compilation
             case RenderingAPI::DirectX:        MOTION_ASSERT(false, "DirectX is not implemented yet!"); return 0; // TODO: Implement DirectX shader compilation
             default:                           MOTION_ASSERT(false, "Unknown rendering API!"); return 0;
@@ -83,9 +84,21 @@ namespace Motion::Core
     {
         switch(Renderer::GetAPI())
         {
-            case RenderingAPI::OpenGL:         GL_ShaderBuilder::LinkShaderProgram(programID); break;
+            case RenderingAPI::OpenGL:         GL_LinkShaderProgram(programID); break;
             case RenderingAPI::Vulkan:         MOTION_ASSERT(false, "Vulkan is not implemented yet!"); break; // TODO: Implement Vulkan shader program linking
             case RenderingAPI::DirectX:        MOTION_ASSERT(false, "DirectX is not implemented yet!"); break; // TODO: Implement DirectX shader program linking
+            default:                           MOTION_ASSERT(false, "Unknown rendering API!"); break;
+        };
+    }
+
+   
+    void ShaderBuilder::ValidateShaderProgram(ShaderProgramID programID)
+    {
+        switch(Renderer::GetAPI())
+        {
+            case RenderingAPI::OpenGL:         GL_ValidateShaderProgram(programID); break;
+            case RenderingAPI::Vulkan:         MOTION_ASSERT(false, "Vulkan is not implemented yet!"); break; // TODO: Implement Vulkan shader program validation
+            case RenderingAPI::DirectX:        MOTION_ASSERT(false, "DirectX is not implemented yet!"); break; // TODO: Implement DirectX shader program validation
             default:                           MOTION_ASSERT(false, "Unknown rendering API!"); break;
         };
     }
@@ -94,7 +107,7 @@ namespace Motion::Core
     {
         switch(Renderer::GetAPI())
         {
-            case RenderingAPI::OpenGL:         return GL_ShaderBuilder::ReadShaderFiles(filePath);
+            case RenderingAPI::OpenGL:         return GL_ReadShaderFiles(filePath);
             case RenderingAPI::Vulkan:         MOTION_ASSERT(false, "Vulkan is not implemented yet!"); return ""; // TODO: Implement Vulkan shader file reading
             case RenderingAPI::DirectX:        MOTION_ASSERT(false, "DirectX is not implemented yet!"); return ""; // TODO: Implement DirectX shader file reading
             default:                           MOTION_ASSERT(false, "Unknown rendering API!"); return "";

@@ -4,9 +4,6 @@
 
 namespace Motion::Core
 {
-    // Forward declarations
-    class GL_ShaderBuilder;
-
     class GL_Shader final : public IShader
     {
         public:
@@ -35,32 +32,17 @@ namespace Motion::Core
             ShaderType m_ShaderType{ ShaderType::None };
             mutable std::unordered_map<std::string, UniformLocation> m_UniformLocations;
             std::string m_Name{ "Default" };
-
-            friend class GL_ShaderBuilder;
     };
 
-    class GL_ShaderBuilder
-    {
-        private:
-            GL_ShaderBuilder() = default;
-            ~GL_ShaderBuilder() = default;
+    std::shared_ptr<GL_Shader> GL_CreateShader(const std::string& name, const std::filesystem::path& vertexPath, const std::filesystem::path& fragmentPath);
+    ShaderID GL_CompileShader(ShaderType shaderType, const std::string& sourceCode);
+    std::string GL_ReadShaderFiles(const std::filesystem::path& filePath);
+    std::shared_ptr<GL_Shader> GL_GetShader(const std::string& name);
+    ShaderProgramID GL_CreateShaderProgram();
 
-            GL_ShaderBuilder(const GL_ShaderBuilder&) = delete;
-            GL_ShaderBuilder& operator=(const GL_ShaderBuilder&) = delete;
-            GL_ShaderBuilder(GL_ShaderBuilder&&) = delete;
-            GL_ShaderBuilder& operator=(GL_ShaderBuilder&&) = delete;
-
-        public:
-            static std::shared_ptr<GL_Shader> CreateShader(const std::string& name, const std::filesystem::path& vertexPath, const std::filesystem::path& fragmentPath);
-            static void DestroyShader(const std::string& name);
-            static std::shared_ptr<GL_Shader> GetShader(const std::string& name);
-
-            static ShaderProgramID CreateShaderProgram();
-            static void AttachShaderProgram(ShaderID shaderID, ShaderProgramID programID);
-            static ShaderID CompileShader(ShaderType shaderType, const std::string& sourceCode);
-            static void LinkShaderProgram(ShaderProgramID programID);
-            static void ValidateShaderProgram(ShaderProgramID programID);
-            static void DeleteShaderProgram(ShaderProgramID programID);
-            static std::string ReadShaderFiles(const std::filesystem::path& filePath);
-    };
+    void GL_AttachShaderProgram(ShaderID shaderID, ShaderProgramID programID);
+    void GL_ValidateShaderProgram(ShaderProgramID programID);
+    void GL_DeleteShaderProgram(ShaderProgramID programID);
+    void GL_LinkShaderProgram(ShaderProgramID programID);
+    void GL_DestroyShader(const std::string& name);
 }

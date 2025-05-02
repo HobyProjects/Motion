@@ -1,5 +1,4 @@
 #include "CorePCH.hpp"
-#include "GL_Texture.hpp"
 
 namespace Motion::Core
 {
@@ -91,6 +90,16 @@ namespace Motion::Core
         glGenerateMipmap(GL_TEXTURE_2D);
 
         return true;
+    }
+
+    std::shared_ptr<GL_Texture> GL_CreatePlainTexture(uint32_t width, uint32_t height)
+    {
+        return std::make_shared<GL_Texture>(width, height);
+    }
+
+    std::shared_ptr<GL_Texture> GL_CreateTextureFromFile(const std::filesystem::path & filePath, TextureType type, bool flipTexture)
+    {
+        return std::make_shared<GL_Texture>(filePath, type, flipTexture);
     }
 }
 

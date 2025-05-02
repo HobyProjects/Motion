@@ -6,31 +6,31 @@ namespace Motion::Core
 {
     static std::shared_ptr<ShaderContainer<GL_Shader>> s_ShaderContainer = std::make_shared<ShaderContainer<GL_Shader>>();
 
-    std::shared_ptr<GL_Shader> GL_ShaderBuilder::CreateShader(const std::string& name, const std::filesystem::path& vertexPath, const std::filesystem::path& fragmentPath)
+    std::shared_ptr<GL_Shader> GL_CreateShader(const std::string& name, const std::filesystem::path& vertexPath, const std::filesystem::path& fragmentPath)
     {
         auto shader = std::make_shared<GL_Shader>(name, vertexPath, fragmentPath);
         s_ShaderContainer->InsertShader(name, shader);
         return shader;
     }
 
-    void ShaderBuilder::DestroyShader(const std::string & name)
+    void GL_DestroyShader(const std::string & name)
     {
         s_ShaderContainer->RemoveShader(name);
     }
 
-    std::shared_ptr<GL_Shader> GL_ShaderBuilder::GetShader(const std::string& name)
+    std::shared_ptr<GL_Shader> GL_GetShader(const std::string& name)
     {
         return s_ShaderContainer->GetShader(name);
     }
 
-    ShaderProgramID GL_ShaderBuilder::CreateShaderProgram()
+    ShaderProgramID GL_CreateShaderProgram()
     {
         ShaderProgramID programID = glCreateProgram();
         MOTION_ASSERT(programID, "Failed to create shader program");
         return programID;
     }
 
-    void GL_ShaderBuilder::AttachShaderProgram(ShaderID shaderID, ShaderProgramID programID)
+    void GL_AttachShaderProgram(ShaderID shaderID, ShaderProgramID programID)
     {
         glAttachShader(programID, shaderID);
     }
@@ -49,7 +49,7 @@ namespace Motion::Core
         }
     }
 
-    ShaderID GL_ShaderBuilder::CompileShader(ShaderType shaderType, const std::string& sourceCode) 
+    ShaderID GL_CompileShader(ShaderType shaderType, const std::string& sourceCode) 
     {
         GLenum glShaderType = GetShaderType(shaderType);
         ShaderID shaderID = glCreateShader(glShaderType);
@@ -61,22 +61,22 @@ namespace Motion::Core
         return shaderID;
     }
 
-    void GL_ShaderBuilder::LinkShaderProgram(ShaderProgramID programID)
+    void GL_LinkShaderProgram(ShaderProgramID programID)
     {
         glLinkProgram(programID);
     }
 
-    void GL_ShaderBuilder::ValidateShaderProgram(ShaderProgramID programID)
+    void GL_ValidateShaderProgram(ShaderProgramID programID)
     {
         glValidateProgram(programID);
     }
 
-    void ShaderBuilder::DeleteShaderProgram(ShaderProgramID programID)
+    void GL_DeleteShaderProgram(ShaderProgramID programID)
     {
         glDeleteProgram(programID);
     }
 
-    std::string GL_ShaderBuilder::ReadShaderFiles(const std::filesystem::path& filePath)
+    std::string GL_ReadShaderFiles(const std::filesystem::path& filePath)
     {
         if(!std::filesystem::exists(filePath))
         {
@@ -102,21 +102,21 @@ namespace Motion::Core
     GL_Shader::GL_Shader(const std::string& name, const std::filesystem::path& vertexPath, const std::filesystem::path& fragmentPath)
     {
         m_Name = name;
-        std::string vertexSource = GL_ShaderBuilder::ReadShaderFiles(vertexPath);
-        std::string fragmentSource = GL_ShaderBuilder::ReadShaderFiles(fragmentPath);
+        std::string vertexSource = GL_ReadShaderFiles(vertexPath);
+        std::string fragmentSource = GL_ReadShaderFiles(fragmentPath);
 
-        m_ProgramID = GL_ShaderBuilder::CreateShaderProgram();
-        ShaderID vertexShader = GL_ShaderBuilder::CompileShader(ShaderType::Vertex, vertexSource);
-        ShaderID fragmentShader = GL_ShaderBuilder::CompileShader(ShaderType::Fragment, fragmentSource);
-        GL_ShaderBuilder::AttachShaderProgram(vertexShader, m_ProgramID);
-        GL_ShaderBuilder::AttachShaderProgram(fragmentShader, m_ProgramID);
-        GL_ShaderBuilder::LinkShaderProgram(m_ProgramID);
-        GL_ShaderBuilder::ValidateShaderProgram(m_ProgramID);
+        m_ProgramID = GL_CreateShaderProgram();
+        ShaderID vertexShader = GL_CompileShader(ShaderType::Vertex, vertexSource);
+        ShaderID fragmentShader = GL_CompileShader(ShaderType::Fragment, fragmentSource);
+        GL_AttachShaderProgram(vertexShader, m_ProgramID);
+        GL_AttachShaderProgram(fragmentShader, m_ProgramID);
+        GL_LinkShaderProgram(m_ProgramID);
+        GL_ValidateShaderProgram(m_ProgramID);
     }
     
     GL_Shader::~GL_Shader()
     {
-        GL_ShaderBuilder::DeleteShaderProgram(m_ProgramID);
+        GL_DeleteShaderProgram(m_ProgramID);
     }
 
     UniformLocation GL_Shader::GetUniformLocation(const std::string& uniformName) const 

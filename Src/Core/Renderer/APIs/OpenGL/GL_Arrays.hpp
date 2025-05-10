@@ -4,11 +4,11 @@
 
 namespace Motion::Core
 {
-    class GLVertexArray : public IVertexArray
+    class GL_VertexArray : public IVertexArray
     {
         public:
-            GLVertexArray();
-            virtual ~GLVertexArray() override;
+            GL_VertexArray();
+            virtual ~GL_VertexArray() override;
 
             virtual void Bind() const override;
             virtual void Unbind() const override;
@@ -25,5 +25,5 @@ namespace Motion::Core
             std::shared_ptr<IElementBuffer> m_IndexBuffer{};
     };
 
-    std::shared_ptr<GLVertexArray> GL_CreateVertexArray();
+    std::shared_ptr<GL_VertexArray> GL_CreateVertexArray();
 }

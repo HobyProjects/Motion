@@ -1,4 +1,5 @@
 #include "CorePCH.hpp"
+#include "GL_Buffers.hpp"
 
 namespace Motion::Core
 {
@@ -158,6 +159,31 @@ namespace Motion::Core
     void GL_UniformBuffer::SetBufferData(uint32_t offset, uint32_t size, float data)
     {
         glNamedBufferSubData(m_UniformBufferID, offset, size, &data);
+    }
+
+    std::shared_ptr<GL_VertexBuffer> GL_CreateVertexBuffer(uint32_t alloca_size)
+    {
+        return std::make_shared<GL_VertexBuffer>(alloca_size);
+    }
+
+    std::shared_ptr<GL_VertexBuffer> GL_CreateVertexBuffer(float * data, uint32_t size)
+    {
+        return std::make_shared<GL_VertexBuffer>(data, size);
+    }
+
+    std::shared_ptr<GL_ElementBuffer> GL_CreateElementBuffer(uint32_t * data, uint32_t size)
+    {
+        return std::make_shared<GL_ElementBuffer>(data, size);
+    }
+
+    std::shared_ptr<GL_ShaderBuffer> GL_CreateShaderBuffer(uint32_t size, BindingPoint binding)
+    {
+        return std::make_shared<GL_ShaderBuffer>(size, binding);
+    }
+
+    std::shared_ptr<GL_UniformBuffer> GL_CreateUniformBuffer(uint32_t size, BindingPoint binding)
+    {
+        return std::make_shared<GL_UniformBuffer>(size, binding);
     }
 
 }

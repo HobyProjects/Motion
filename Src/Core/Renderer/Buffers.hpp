@@ -153,5 +153,7 @@ namespace Motion::Core
             static std::shared_ptr<IVertexBuffer> CreateVertexBuffer(uint32_t alloca_size);
             static std::shared_ptr<IVertexBuffer> CreateVertexBuffer(float* data, uint32_t size);
             static std::shared_ptr<IElementBuffer> CreateElementBuffer(uint32_t* data, uint32_t size);
+            static std::shared_ptr<IShaderBuffer> CreateShaderBuffer(uint32_t size, BindingPoint binding);
+            static std::shared_ptr<IUniformBuffer> CreateUniformBuffer(uint32_t size, BindingPoint binding);
     };
 }

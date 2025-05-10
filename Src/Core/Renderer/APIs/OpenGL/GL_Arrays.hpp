@@ -1,40 +1,29 @@
 #pragma once
 
-#include <memory>
-#include "Buffers.hpp"
+#include "Arrays.hpp"
 
 namespace Motion::Core
 {
-    using RendererID = uint32_t;
-
-    class IVertexArray
+    class GLVertexArray : public IVertexArray
     {
         public:
-            IVertexArray() = default;
-            virtual ~IVertexArray() = default;
+            GLVertexArray();
+            virtual ~GLVertexArray() override;
 
-            virtual void Bind() const = 0;
-            virtual void Unbind() const = 0;
+            virtual void Bind() const override;
+            virtual void Unbind() const override;
 
-            virtual RendererID GetID() const = 0;
-            virtual void EmplaceVertexBuffer(const std::shared_ptr<IVertexBuffer>& vtxBuffer) = 0;
-            virtual void EmplaceIndexBuffer(const std::shared_ptr<IElementBuffer>& idxBuffer) = 0;
-            virtual std::vector<std::shared_ptr<IVertexBuffer>>& GetVertexBuffer() = 0;
-            virtual std::shared_ptr<IElementBuffer>& GetElementBuffer() = 0;
-    };
-
-    class ArrayBuilder
-    {
-        public:
-            ArrayBuilder() = default;
-            virtual ~ArrayBuilder() = default;
-
-            ArrayBuilder(const ArrayBuilder&) = delete;
-            ArrayBuilder& operator=(const ArrayBuilder&) = delete;
-            ArrayBuilder(ArrayBuilder&&) = delete;
-            ArrayBuilder& operator=(ArrayBuilder&&) = delete;
+            virtual RendererID GetID() const override;
+            virtual void EmplaceVertexBuffer(const std::shared_ptr<IVertexBuffer>& vtxBuffer) override;
+            virtual void EmplaceIndexBuffer(const std::shared_ptr<IElementBuffer>& idxBuffer) override;
+            virtual std::vector<std::shared_ptr<IVertexBuffer>>& GetVertexBuffer() override;
+            virtual std::shared_ptr<IElementBuffer>& GetElementBuffer() override;
 
         private:
-            std::shared_ptr<IVertexArray> CreateVertexArray();
+            RendererID m_RendererID{0};
+            std::vector<std::shared_ptr<IVertexBuffer>> m_VertexBuffers{};
+            std::shared_ptr<IElementBuffer> m_IndexBuffer{};
     };
+
+    std::shared_ptr<GLVertexArray> GL_CreateVertexArray();
 }

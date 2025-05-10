@@ -48,6 +48,7 @@
 #include "Buffers.hpp"
 #include "Shaders.hpp"
 #include "Texture.hpp"
+#include "Arrays.hpp"
 
 //Renderer - OpenGL
 #include "GL_Debug.hpp"
@@ -55,3 +56,4 @@
 #include "GL_Buffers.hpp"
 #include "GL_Shaders.hpp"
 #include "GL_Texture.hpp"
+#include "GL_Arrays.hpp"

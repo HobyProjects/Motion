@@ -87,9 +87,34 @@ namespace Motion::Core
             BindingPoint m_BindingPoint{ 0 };
     };
 
+    class GL_FrameBuffer final : public IFrameBuffer
+    {
+        public:
+            GL_FrameBuffer() = default;
+            GL_FrameBuffer(const FrameBufferSpecification& specification);
+            virtual ~GL_FrameBuffer();
+
+            virtual void Bind() const override;
+            virtual void Unbind() const override;
+            virtual void ResizeFrame(uint32_t width, uint32_t Height) override;
+            virtual BufferID GetFrameBufferID() const override { return m_FrameBufferID; }
+            virtual BufferID GetColorAttachment() const override { return m_ColorAttachment; }
+            virtual FrameBufferSpecification& GetFrameSpecification() override { return m_Specification; }
+
+        protected:
+            virtual void CreateFrame() override;
+
+        private:
+            BufferID m_FrameBufferID{ 0 };
+            BufferID m_ColorAttachment{ 0 };
+            BufferID m_DepthAttachment{ 0 };
+            FrameBufferSpecification m_Specification{};
+    };
+
     std::shared_ptr<GL_VertexBuffer> GL_CreateVertexBuffer(uint32_t alloca_size);
     std::shared_ptr<GL_VertexBuffer> GL_CreateVertexBuffer(float* data, uint32_t size);
     std::shared_ptr<GL_ElementBuffer> GL_CreateElementBuffer(uint32_t* data, uint32_t size);
     std::shared_ptr<GL_ShaderBuffer> GL_CreateShaderBuffer(uint32_t size, BindingPoint binding);
     std::shared_ptr<GL_UniformBuffer> GL_CreateUniformBuffer(uint32_t size, BindingPoint binding);
+    std::shared_ptr<GL_FrameBuffer> GL_CreateFrameBuffer(const FrameBufferSpecification& specification);
 }

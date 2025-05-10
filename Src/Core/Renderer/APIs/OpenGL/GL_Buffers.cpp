@@ -161,6 +161,60 @@ namespace Motion::Core
         glNamedBufferSubData(m_UniformBufferID, offset, size, &data);
     }
 
+    GL_FrameBuffer::GL_FrameBuffer(const FrameBufferSpecification& specification) : m_Specification(specification)
+    {
+        CreateFrame();
+    }
+
+    GL_FrameBuffer::~GL_FrameBuffer()
+    {
+        glDeleteFramebuffers(1, &m_FrameBufferID);
+        glDeleteTextures(1, &m_ColorAttachment);
+        glDeleteTextures(1, &m_DepthAttachment);
+    }
+
+    void GL_FrameBuffer::Bind() const
+    {
+        glBindFramebuffer(GL_FRAMEBUFFER, m_FrameBufferID);
+    }
+
+    void GL_FrameBuffer::Unbind() const
+    {
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    }
+
+    void GL_FrameBuffer::ResizeFrame(uint32_t width, uint32_t height)
+    {
+        m_Specification.Width = width;
+        m_Specification.Height = height;
+
+        CreateFrame();
+    }
+
+    void GL_FrameBuffer::CreateFrame()
+    {
+        if (m_FrameBufferID)
+        {
+            glDeleteFramebuffers(1, &m_FrameBufferID);
+            glDeleteTextures(1, &m_ColorAttachment);
+            glDeleteTextures(1, &m_DepthAttachment);
+        }
+
+        glCreateFramebuffers(1, &m_FrameBufferID);
+        glBindFramebuffer(GL_FRAMEBUFFER, m_FrameBufferID);
+
+        glCreateTextures(GL_TEXTURE_2D, 1, &m_ColorAttachment);
+        glTextureStorage2D(m_ColorAttachment, 1, GL_RGBA8, m_Specification.Width, m_Specification.Height);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_ColorAttachment, 0);
+
+        glCreateTextures(GL_TEXTURE_2D, 1, &m_DepthAttachment);
+        glTextureStorage2D(m_DepthAttachment, 1, GL_DEPTH24_STENCIL8, m_Specification.Width, m_Specification.Height);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_TEXTURE_2D, m_DepthAttachment, 0);
+
+        MOTION_ASSERT(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE, "Framebuffer is not complete!");
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    }
+
     std::shared_ptr<GL_VertexBuffer> GL_CreateVertexBuffer(uint32_t alloca_size)
     {
         return std::make_shared<GL_VertexBuffer>(alloca_size);
@@ -184,6 +238,11 @@ namespace Motion::Core
     std::shared_ptr<GL_UniformBuffer> GL_CreateUniformBuffer(uint32_t size, BindingPoint binding)
     {
         return std::make_shared<GL_UniformBuffer>(size, binding);
+    }
+
+    std::shared_ptr<GL_FrameBuffer> GL_CreateFrameBuffer(const FrameBufferSpecification & specification)
+    {
+        return std::make_shared<GL_FrameBuffer>(specification);
     }
 
 }

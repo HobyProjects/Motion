@@ -138,6 +138,31 @@ namespace Motion::Core
             virtual void SetBufferData(uint32_t offset, uint32_t size, float data) = 0;
     };
 
+    struct FrameBufferSpecification
+	{
+		uint32_t Width{ 0 };
+		uint32_t Height{ 0 };
+		bool SwapChainTarget{ false };
+	};
+    
+    class IFrameBuffer
+    {
+        public:
+            IFrameBuffer() = default;
+            virtual ~IFrameBuffer() = default;
+
+            virtual void Bind() const = 0;
+            virtual void Unbind() const = 0;
+
+            virtual void ResizeFrame(uint32_t width, uint32_t height) = 0;
+            virtual uint32_t GetFrameBufferID() const = 0;
+            virtual uint32_t GetColorAttachment() const = 0;
+            virtual FrameBufferSpecification& GetFrameSpecification() = 0;
+
+        protected:
+            virtual void CreateFrame() = 0;
+    };
+
     class BuffersBuilder
     {
         private:
@@ -155,5 +180,6 @@ namespace Motion::Core
             static std::shared_ptr<IElementBuffer> CreateElementBuffer(uint32_t* data, uint32_t size);
             static std::shared_ptr<IShaderBuffer> CreateShaderBuffer(uint32_t size, BindingPoint binding);
             static std::shared_ptr<IUniformBuffer> CreateUniformBuffer(uint32_t size, BindingPoint binding);
+            static std::shared_ptr<IFrameBuffer> CreateFrameBuffer(const FrameBufferSpecification& specification);
     };
 }

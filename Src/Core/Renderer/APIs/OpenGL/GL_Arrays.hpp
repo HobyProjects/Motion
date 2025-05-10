@@ -4,7 +4,7 @@
 
 namespace Motion::Core
 {
-    class GL_VertexArray : public IVertexArray
+    class GL_VertexArray final : public IVertexArray
     {
         public:
             GL_VertexArray();

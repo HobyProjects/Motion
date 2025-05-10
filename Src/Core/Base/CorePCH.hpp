@@ -43,6 +43,12 @@
 #include "Asserts.hpp"
 #include "Log.hpp"
 
+//Events
+#include "Event.hpp"
+#include "EventKeyboard.hpp"
+#include "EventMouse.hpp"
+#include "EventWindow.hpp"
+
 //Renderer
 #include "Renderer.hpp"
 #include "Buffers.hpp"
@@ -57,3 +63,8 @@
 #include "GL_Shaders.hpp"
 #include "GL_Texture.hpp"
 #include "GL_Arrays.hpp"
+#include "GLFW_GL_Context.hpp"
+
+//Screen
+#include "Window.hpp"
+#include "GLFW_Window.hpp"

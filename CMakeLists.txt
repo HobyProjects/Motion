@@ -51,6 +51,7 @@ set(
         ${MOTION_CORE_DIR}/Base
         ${MOTION_CORE_DIR}/Event
         ${MOTION_CORE_DIR}/Renderer
+        ${MOTION_CORE_DIR}/Screen
         ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL
 )
 
@@ -71,6 +72,7 @@ set(
         ${MOTION_CORE_DIR}/Renderer/Renderer.hpp
         ${MOTION_CORE_DIR}/Renderer/Texture.hpp
         ${MOTION_CORE_DIR}/Renderer/Arrays.hpp
+        ${MOTION_CORE_DIR}/Renderer/Cameras.hpp
 
 
         ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL/GL_Buffers.hpp
@@ -79,6 +81,10 @@ set(
         ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL/GL_Renderer.hpp
         ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL/GL_Texture.hpp
         ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL/GL_Arrays.hpp
+        ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL/GLFW_GL_Context.hpp
+
+        ${MOTION_CORE_DIR}/Screen/Window.hpp
+        ${MOTION_CORE_DIR}/Screen/GLFW_Window.hpp
 
 )
 
@@ -98,6 +104,10 @@ set(
         ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL/GL_Renderer.cpp
         ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL/GL_Texture.cpp
         ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL/GL_Arrays.cpp
+        ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL/GLFW_GL_Context.cpp
+
+        ${MOTION_CORE_DIR}/Screen/Window.cpp
+        ${MOTION_CORE_DIR}/Screen/GLFW_Window.cpp
 
 )
 

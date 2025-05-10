@@ -86,5 +86,84 @@ namespace Motion::Core
             bool m_IsEventHandled{false};
     };
 
+    template<typename... Args>
+    class EventRegistry
+    {
+        private:
+            EventRegistry() = default;
+            ~EventRegistry() = default;
+
+            EventRegistry(const EventRegistry&) = delete;
+            EventRegistry& operator=(const EventRegistry&) = delete;
+            EventRegistry(EventRegistry&&) = delete;
+            EventRegistry& operator=(EventRegistry&&) = delete;
+
+        public:
+            using EventRegistryCallbackFunction = std::function<void(Args...)>;
+
+            static EventRegistry& GetInstance()
+            {
+                static EventRegistry instance;
+                return instance;
+            }
+
+            static void Register(EventType eventType, EventRegistryCallbackFunction callback)
+            {
+                auto& instance = GetInstance();
+                auto it = instance.m_EventRegistry.find(eventType);
+                if(it != instance.m_EventRegistry.end())
+                {
+                    it->second = callback;
+                }
+                else
+                {
+                    instance.m_EventRegistry.emplace(eventType, callback);
+                }
+            }
+
+            static void Unregister(EventType eventType)
+            {
+                auto& instance = GetInstance();
+                auto it = instance.m_EventRegistry.find(eventType);
+                if(it != instance.m_EventRegistry.end())
+                {
+                    instance.m_EventRegistry.erase(it);
+                }
+            }
+
+            static void Invoke(EventType eventType, Args... args)
+            {
+                auto& instance = GetInstance();
+                auto it = instance.m_EventRegistry.find(eventType);
+                if(it != instance.m_EventRegistry.end())
+                {
+                    it->second(std::forward<Args>(args)...);
+                }
+            }
+
+            static EventRegistryCallbackFunction Get(EventType eventType)
+            {
+                auto& instance = GetInstance();
+                auto it = instance.m_EventRegistry.find(eventType);
+                if(it != instance.m_EventRegistry.end())
+                {
+                    return it->second;
+                }
+                return nullptr;
+            }
+
+            static void Clear()
+            {
+                auto& instance = GetInstance();
+                instance.m_EventRegistry.clear();
+            }
+
+        private:
+            static inline std::unordered_map<EventType, EventRegistryCallbackFunction> m_EventRegistry;
+    };
+
+
+
+    using ApplicationCallbackFunction = std::function<void(uint32_t, IEvent&)>;
     #define EVENT_CALLBACK(CALLBACK_FUNC) [this](auto&&... args) -> decltype(auto) { return this->CALLBACK_FUNC(std::forward<decltype(args)>(args)...); }
 }

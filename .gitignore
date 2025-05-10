@@ -2,4 +2,5 @@ out
 .vs
 .vscode
 build
+libs/build
 CMakePresets.json

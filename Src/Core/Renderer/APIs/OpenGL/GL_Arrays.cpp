@@ -46,7 +46,7 @@ namespace Motion::Core
                 GL_FLOAT,
                 element.Normalized ? GL_TRUE : GL_FALSE,
                 static_cast<GLsizei>(element.Stride),
-                reinterpret_cast<const void*>(element.Offset)
+                reinterpret_cast<const void*>(static_cast<uintptr_t>(element.Offset))
             );
         }
 

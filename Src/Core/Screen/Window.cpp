@@ -36,6 +36,8 @@ namespace Motion::Core
         if(Renderer::GetAPI() == RenderingAPI::OpenGL && s_BaseAPI == BaseAPIs::GLFW)
         {
             s_ContextService = std::make_shared<GLFW_GL_Context>();
+            if(s_ContextService)
+                return true;
         }
 
         if(Renderer::GetAPI() == RenderingAPI::OpenGL && s_BaseAPI == BaseAPIs::SDL)
@@ -61,6 +63,8 @@ namespace Motion::Core
             MOTION_ASSERT(false, "Vulkan is not supported yet");
             return false;
         }
+
+        return false;
     }
 
     void CoreAPI::Quit()

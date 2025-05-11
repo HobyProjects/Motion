@@ -7,8 +7,8 @@ namespace Motion::Core
         switch(Renderer::GetAPI())
         {
             case RenderingAPI::OpenGL:         return GL_CreatePlainTexture(width, height);
-            case RenderingAPI::Vulkan:         MOTION_ASSERT(false, "Vulkan is not implemented yet!"); return nullptr; // TODO: Implement Vulkan plain texture creation
-            case RenderingAPI::DirectX:        MOTION_ASSERT(false, "DirectX is not implemented yet!"); return nullptr; // TODO: Implement DirectX plain texture creation
+            case RenderingAPI::Vulkan:         MOTION_ASSERT(false, "Vulkan is not implemented yet!"); return nullptr; 
+            case RenderingAPI::DirectX:        MOTION_ASSERT(false, "DirectX is not implemented yet!"); return nullptr; 
             default:                           MOTION_ASSERT(false, "Unknown rendering API!"); return nullptr;
         };
     }
@@ -18,8 +18,8 @@ namespace Motion::Core
         switch(Renderer::GetAPI())
         {
             case RenderingAPI::OpenGL:         return GL_CreateTextureFromFile(filePath, type, flipTexture);
-            case RenderingAPI::Vulkan:         MOTION_ASSERT(false, "Vulkan is not implemented yet!"); return nullptr; // TODO: Implement Vulkan texture creation from file
-            case RenderingAPI::DirectX:        MOTION_ASSERT(false, "DirectX is not implemented yet!"); return nullptr; // TODO: Implement DirectX texture creation from file
+            case RenderingAPI::Vulkan:         MOTION_ASSERT(false, "Vulkan is not implemented yet!"); return nullptr; 
+            case RenderingAPI::DirectX:        MOTION_ASSERT(false, "DirectX is not implemented yet!"); return nullptr; 
             default:                           MOTION_ASSERT(false, "Unknown rendering API!"); return nullptr;
         };
     }

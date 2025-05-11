@@ -8,7 +8,7 @@ namespace Motion::Core
     #elif defined(MOTION_PLATFORM_LINUX)
         // This should be Vulkan but for now we are using OpenGL
         static RenderingAPI s_RenderingAPI = RenderingAPI::OpenGL;
-    else
+    #else
         #error "Unknown platform!"
     #endif
 

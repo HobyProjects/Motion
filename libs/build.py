@@ -237,6 +237,7 @@ if __name__ == "__main__":
         PreCompileLibraries("assimp", "assimp", "build/config/assimp", "build/packages/assimp", ""),
         PreCompileLibraries("imgui", "imgui_docking", "build/config/imgui", "build/packages/imgui", ""),
         PreCompileLibraries("entt", "entt", "build/config/entt", "build/packages/entt", "-DENTT_INCLUDE_HEADERS=ON -DENTT_INCLUDE_NATVIS=ON -DENTT_INSTALL=ON"),
+        PreCompileLibraries("json", "json", "build/config/json", "build/packages/json", ""),
     ]
 
 #============================================================================================================================================

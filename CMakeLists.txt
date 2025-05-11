@@ -24,6 +24,7 @@ find_package(assimp REQUIRED)
 find_package(soil2 REQUIRED)
 find_package(imgui REQUIRED)
 find_package(EnTT REQUIRED)
+find_package(nlohmann_json REQUIRED)
 
 ###############################################################################
 # Platform Specific Configuration
@@ -128,4 +129,5 @@ target_link_libraries(
             assimp::assimp
             soil2::soil2
             imgui::imgui
+            nlohmann_json::nlohmann_json
 )

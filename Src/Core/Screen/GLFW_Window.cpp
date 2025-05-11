@@ -105,6 +105,11 @@ namespace Motion::Core
             glfwSetWindowUserPointer(m_Window, this);
             SetEventsCallBacks();
             RegisterEventsCallBacks();
+
+            if(m_Context != nullptr)
+            {
+                m_Context->Attach(m_Window);
+            }
 		}
 		else
 		{

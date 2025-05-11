@@ -61,6 +61,7 @@ set(
         ${MOTION_CORE_DIR}/Base/Asserts.hpp
         ${MOTION_CORE_DIR}/Base/Log.hpp
         ${MOTION_CORE_DIR}/Base/KeyCodes.hpp
+        ${MOTION_CORE_DIR}/Base/Timer.hpp
 
         ${MOTION_CORE_DIR}/Event/Event.hpp
         ${MOTION_CORE_DIR}/Event/EventWindow.hpp
@@ -72,7 +73,9 @@ set(
         ${MOTION_CORE_DIR}/Renderer/Renderer.hpp
         ${MOTION_CORE_DIR}/Renderer/Texture.hpp
         ${MOTION_CORE_DIR}/Renderer/Arrays.hpp
-        ${MOTION_CORE_DIR}/Renderer/Cameras.hpp
+        ${MOTION_CORE_DIR}/Renderer/Camera.hpp
+        ${MOTION_CORE_DIR}/Renderer/Camera2D.hpp
+        ${MOTION_CORE_DIR}/Renderer/Camera3D.hpp
 
 
         ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL/GL_Buffers.hpp
@@ -97,6 +100,8 @@ set(
         ${MOTION_CORE_DIR}/Renderer/Renderer.cpp
         ${MOTION_CORE_DIR}/Renderer/Texture.cpp
         ${MOTION_CORE_DIR}/Renderer/Arrays.cpp
+        ${MOTION_CORE_DIR}/Renderer/Camera2D.cpp
+        ${MOTION_CORE_DIR}/Renderer/Camera3D.cpp
 
         ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL/GL_Buffers.cpp
         ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL/GL_Debug.cpp

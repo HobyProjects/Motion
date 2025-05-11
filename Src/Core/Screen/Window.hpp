@@ -101,5 +101,42 @@ namespace Motion::Core
             virtual void SetContext(const std::shared_ptr<IContext>& context) = 0;
             virtual std::shared_ptr<IContext> GetContext() const = 0;
     };
+
+    class CoreAPI
+    {
+        private:
+            CoreAPI() = default;
+            ~CoreAPI() = default;
+
+            CoreAPI(const CoreAPI&) = delete;
+            CoreAPI& operator=(const CoreAPI&) = delete;
+            CoreAPI(CoreAPI&&) = delete;
+            CoreAPI& operator=(CoreAPI&&) = delete;
+
+        public:
+            static bool Init();
+            static void Quit();
+
+            static std::shared_ptr<IBaseAPI> GetBaseAPI();
+            static std::shared_ptr<IContext> GetContext();
+    };
+
+    class WindowBuilder
+    {
+        private:
+            WindowBuilder() = default;
+            ~WindowBuilder() = default;
+
+            WindowBuilder(const WindowBuilder&) = delete;
+            WindowBuilder& operator=(const WindowBuilder&) = delete;
+            WindowBuilder(WindowBuilder&&) = delete;
+            WindowBuilder& operator=(WindowBuilder&&) = delete;
+
+        public:
+            static WindowHandle UniqueHandle();
+            static std::shared_ptr<IWindow> Create(const std::string& title);
+            static void Destroy(std::shared_ptr<IWindow>& window);
+            static std::shared_ptr<IWindow> Get(WindowHandle handle);
+    };
     
 }

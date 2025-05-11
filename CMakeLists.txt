@@ -108,7 +108,6 @@ set(
 
         ${MOTION_CORE_DIR}/Screen/Window.cpp
         ${MOTION_CORE_DIR}/Screen/GLFW_Window.cpp
-
 )
 
 add_library(MotionCore STATIC ${MOTION_CORE_HEADERS} ${MOTION_CORE_SOURCES})

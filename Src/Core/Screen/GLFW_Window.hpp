@@ -25,7 +25,7 @@ namespace Motion::Core
     class GLFW_Window final : public IWindow
     {
         public:
-            GLFW_Window(const std::string& title, const std::shared_ptr<IContext> context);
+            GLFW_Window(WindowHandle windowHandle, const std::string& title, const std::shared_ptr<IContext> context);
             virtual ~GLFW_Window();
 
             virtual bool IsActive() const override { return m_Properties.IsActive; }

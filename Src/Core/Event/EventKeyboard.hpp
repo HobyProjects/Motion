@@ -53,7 +53,7 @@ namespace Motion::Core
             EVENT_CLASS_CATEGORY(EventCategory::Keyboard);
 
             T KeyCode() const { return m_KeyCode; }
-            KeyState State() const { return KEY_REPEATED;}
+            KeyState State() const { return KEY_REPEAT;}
 
         private:
             T m_KeyCode{ static_cast<T>(KeyCode::Unknown) };

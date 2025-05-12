@@ -3,7 +3,7 @@
 #include <glm/glm.hpp>
 
 #include "Base.hpp"
-#include "RenderState.hpp"
+#include "DrawCommand.hpp"
 
 namespace Motion::Core
 {

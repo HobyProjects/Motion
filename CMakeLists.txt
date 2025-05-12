@@ -72,7 +72,7 @@ set(
         ${MOTION_CORE_DIR}/Renderer/Buffers.hpp
         ${MOTION_CORE_DIR}/Renderer/Shaders.hpp
         ${MOTION_CORE_DIR}/Renderer/Renderer.hpp
-        ${MOTION_CORE_DIR}/Renderer/RenderState.hpp
+        ${MOTION_CORE_DIR}/Renderer/DrawCommand.hpp
         ${MOTION_CORE_DIR}/Renderer/Texture.hpp
         ${MOTION_CORE_DIR}/Renderer/Arrays.hpp
         ${MOTION_CORE_DIR}/Renderer/Camera.hpp

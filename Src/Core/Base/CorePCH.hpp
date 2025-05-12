@@ -52,6 +52,7 @@
 
 //Renderer
 #include "Renderer.hpp"
+#include "DrawCommand.hpp"
 #include "Buffers.hpp"
 #include "Shaders.hpp"
 #include "Texture.hpp"

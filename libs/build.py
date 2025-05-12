@@ -42,13 +42,13 @@ class Package:
 
 # ========== CMake Preset Generators ==========
 
-def get_base_configure_preset():
+def get_base_configure_preset(generator: str):
     return {
         "name": "common-base",
         "hidden": True,
         "binaryDir": "${sourceDir}/build/config",
         "installDir": "${sourceDir}/build/packages",
-        "generator": "Ninja",
+        "generator": generator,
         "cacheVariables": {
             "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
         }
@@ -71,7 +71,7 @@ def get_os_base_configure_preset(os_name: str, inherits_from: str, build_type: s
         }
     }
 
-def get_os_preset(os: str, inherits: str, arch: str, conf: str):
+def get_os_preset(os: str, inherits: str, arch: str, conf: str, generator: str):
     return {
         "name": f"{os.lower()}-{arch.lower()}-{conf.lower()}",
         "inherits": inherits,
@@ -83,16 +83,16 @@ def get_os_preset(os: str, inherits: str, arch: str, conf: str):
         "cacheVariables": {
             "CMAKE_BUILD_TYPE": conf
         },
-        "generator": "Ninja",
+        "generator": generator,
         "binaryDir": f"${{sourceDir}}/build/config/{os.lower()}-{arch.lower()}-{conf.lower()}"
     }
 
-def generate_presets(dir: str, build_type: str, prefix_path: str):
+def generate_presets(dir: str, build_type: str, generator: str, prefix_path: str):
     configure_presets = []
     build_presets = []
     test_presets = []
 
-    base_configure = get_base_configure_preset()
+    base_configure = get_base_configure_preset(generator)
     base_build = {
         "name": "common-base",
         "hidden": True,
@@ -126,7 +126,7 @@ def generate_presets(dir: str, build_type: str, prefix_path: str):
         for conf in configs:
             for arch in archs:
                 preset_name = f"{os_name.lower()}-{arch.lower()}-{conf.lower()}"
-                conf_preset = get_os_preset(os_name, os_base["name"], arch, conf)
+                conf_preset = get_os_preset(os_name, os_base["name"], arch, conf, generator)
                 configure_presets.append(conf_preset)
 
                 build_presets.append({
@@ -188,6 +188,52 @@ def check_cmake_installed():
         log_error(f"Error checking CMake version: {e}")
         sys.exit(1)
 
+def detect_build_system():
+    log_info("Search for generators...")
+    default_generator = None
+
+    # Check for Ninja
+    try:
+        output = subprocess.call(["ninja", "--version"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        if output == 0:
+            log_success(" -- Generator found: Ninja")
+            default_generator = "Ninja"
+    except FileNotFoundError:
+        pass
+
+    # Check for NMake (MSVC)
+    try:
+        output = subprocess.call(["nmake", "/?"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        if output == 0:
+            log_success(" -- Generator found: NMake Makefiles")
+            default_generator = "NMake Makefiles"
+    except FileNotFoundError:
+        pass
+
+    # Check for Unix Makefiles
+    try:
+        output = subprocess.call(["make", "--version"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        if output == 0:
+            log_success(" -- Generator found: Unix Makefiles")
+            default_generator = "Unix Makefiles"
+    except FileNotFoundError:
+        pass
+
+    # Visual Studio generators from cmake help
+    try:
+        output = subprocess.check_output(["cmake", "--help"], text=True)
+        for line in output.splitlines():
+            if "Visual Studio" in line and "=" in line:
+                # Split at '=' and clean the generator name
+                gen_name = line.split("=")[0].strip().lstrip("* ").strip()
+                log_success(f" -- Generator found: {gen_name}")
+                if line.strip().startswith("*"):
+                    default_generator = gen_name
+    except Exception:
+        pass
+
+    return default_generator
+
 # ========== Main ==========
 if __name__ == "__main__":
     # Check if CMake is installed
@@ -217,8 +263,15 @@ if __name__ == "__main__":
     build_package = args.pkg
     build_system_name = "Windows" if sys.platform == "win32" else "macOS" if sys.platform == "darwin" else "Linux"
 
+    build_generator = detect_build_system()
+    if build_generator == None:
+        log_error("Unable to find generator. Can not produce CMakePresets.json without a generator.")
+        sys.exit(2)
+
+    log_info(f"Using system default generator: {build_generator}")
+
     preset_cache = get_preset_cache_variables(build_system_name, build_type, external_packages)
-    generate_presets("../", build_type, preset_cache)
+    generate_presets("../", build_type, build_generator, preset_cache)
 
     packages_to_build = []
     if build_package:
@@ -240,10 +293,12 @@ if __name__ == "__main__":
             log_success(f"Cleaned build directory for {pkg.name}")
 
         if args.dry_run:
-            log_info(f"Dry-run mode: Would run command: cmake -DCMAKE_BUILD_TYPE=\"{build_type}\" -DCMAKE_SYSTEM_NAME=\"{build_system_name}\" -DCMAKE_PREFIX_PATH=\"{preset_cache}\" -DCMAKE_INSTALL_PREFIX=\"{pkg.prefix_directory}\" {pkg.options} -S \"{pkg.source_directory}\" -B \"{pkg.build_directory}\"")
-            log_info(f"Dry-run mode: Would run command: cmake --build \"{pkg.build_directory}\" --config \"{build_type}\"")
-            log_info(f"Dry-run mode: Would run command: cmake --install \"{pkg.build_directory}\" --config \"{build_type}\" --prefix \"{pkg.prefix_directory}\"")
+            log_info(f"Dry-run mode: cmake -DCMAKE_BUILD_TYPE=\"{build_type}\" -DCMAKE_SYSTEM_NAME=\"{build_system_name}\" -DCMAKE_PREFIX_PATH=\"{preset_cache}\" -DCMAKE_INSTALL_PREFIX=\"{pkg.prefix_directory}\" {pkg.options} -S \"{pkg.source_directory}\" -B \"{pkg.build_directory}\" -G \"{build_generator}\"")
+            log_info(f"Dry-run mode: cmake --build \"{pkg.build_directory}\" --config \"{build_type}\"")
+            log_info(f"Dry-run mode: cmake --install \"{pkg.build_directory}\" --config \"{build_type}\" --prefix \"{pkg.prefix_directory}\"")
         else:
-            cmd(f"cmake -DCMAKE_BUILD_TYPE=\"{build_type}\" -DCMAKE_SYSTEM_NAME=\"{build_system_name}\" -DCMAKE_PREFIX_PATH=\"{preset_cache}\" -DCMAKE_INSTALL_PREFIX=\"{pkg.prefix_directory}\" {pkg.options} -S \"{pkg.source_directory}\" -B \"{pkg.build_directory}\"")
+            cmd(f"cmake -DCMAKE_BUILD_TYPE=\"{build_type}\" -DCMAKE_SYSTEM_NAME=\"{build_system_name}\" -DCMAKE_PREFIX_PATH=\"{preset_cache}\" -DCMAKE_INSTALL_PREFIX=\"{pkg.prefix_directory}\" {pkg.options} -S \"{pkg.source_directory}\" -B \"{pkg.build_directory}\" -G \"{build_generator}\"")
             cmd(f"cmake --build \"{pkg.build_directory}\" --config \"{build_type}\"")
             cmd(f"cmake --install \"{pkg.build_directory}\" --config \"{build_type}\" --prefix \"{pkg.prefix_directory}\"")
+
+    log_success("Build Success!!!")

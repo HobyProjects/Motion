@@ -4,6 +4,8 @@ import os
 import sys
 import json
 import argparse
+import subprocess
+import hashlib
 
 # ========== Color Logging ==========
 class Color:
@@ -23,10 +25,10 @@ def log_command(msg: str): print(f"{Color.BOLD}{Color.CYAN}>> {msg}{Color.RESET}
 # ========== Command Executor ==========
 def cmd(command: str):
     try:
-        log_command(f"Executing command: {command}")     
-        os.system(command)
-    except Exception as e:
-        log_error(str(e))
+        log_command(f"{command}")
+        result = subprocess.run(command, shell=True, check=True, text=True)
+    except subprocess.CalledProcessError as e:
+        log_error(f"Command failed: {e}")
         sys.exit(1)
 
 # ========== Package Definition ==========
@@ -39,58 +41,74 @@ class Package:
         self.options = options
 
 # ========== CMake Preset Generators ==========
+
 def get_base_configure_preset():
     return {
         "name": "common-base",
         "hidden": True,
         "binaryDir": "${sourceDir}/build/config",
-        "installDir": "${sourceDir}/build/packages"
+        "installDir": "${sourceDir}/build/packages",
+        "generator": "Ninja",
+        "cacheVariables": {
+            "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+        }
     }
 
-def get_os_base_configure_preset(os: str, inherits: str, cache_variables: list):
+def get_os_base_configure_preset(os_name: str, inherits_from: str, build_type: str, prefix_path: str):
     return {
-        "name": os.lower() + "-base",
+        "name": os_name.lower() + "-base",
         "hidden": True,
-        "inherits": inherits,
+        "inherits": inherits_from,
         "condition": {
             "type": "equals",
             "lhs": "${hostSystemName}",
-            "rhs": "Darwin" if os == "macOS" else os
+            "rhs": "Darwin" if os_name == "macOS" else os_name
         },
         "cacheVariables": {
-            "CMAKE_BUILD_TYPE": cache_variables[0],
-            "CMAKE_INSTALL_PREFIX": cache_variables[1],
-            "CMAKE_PREFIX_PATH": cache_variables[1]
-        },
-        "vendor": {
-            "microsoft.com/VisualStudioSettings/CMake/1.0": { "hostOS": [os] },
-            "microsoft.com/VisualStudioRemoteSettings/CMake/1.0": {
-                "sourceDir": "$env{HOME}/.vs/$ms{projectDirName}"
-            }
+            "CMAKE_BUILD_TYPE": build_type,
+            "CMAKE_INSTALL_PREFIX": prefix_path,
+            "CMAKE_PREFIX_PATH": prefix_path
         }
     }
 
 def get_os_preset(os: str, inherits: str, arch: str, conf: str):
     return {
-        "name": f"{os.lower()}-{arch}-{conf.lower()}",
+        "name": f"{os.lower()}-{arch.lower()}-{conf.lower()}",
         "inherits": inherits,
         "displayName": f"{arch}-{conf}",
-        "architecture": {"value": arch, "strategy": "external"},
-        "cacheVariables": {"CMAKE_BUILD_TYPE": conf}
+        "architecture": {
+            "value": arch,
+            "strategy": "external"
+        },
+        "cacheVariables": {
+            "CMAKE_BUILD_TYPE": conf
+        },
+        "generator": "Ninja",
+        "binaryDir": f"${{sourceDir}}/build/config/{os.lower()}-{arch.lower()}-{conf.lower()}"
     }
 
-def generate_preset(dir: str, preset_cache_variables: list):
+def generate_presets(dir: str, build_type: str, prefix_path: str):
     configure_presets = []
     build_presets = []
     test_presets = []
 
     base_configure = get_base_configure_preset()
-    base_build = {"name": "common-base", "hidden": True, "jobs": 1, "cleanFirst": False}
+    base_build = {
+        "name": "common-base",
+        "hidden": True,
+        "jobs": os.cpu_count(),  # Dynamically set to available CPU cores
+        "cleanFirst": True
+    }
     base_test = {
         "name": "common-base",
         "hidden": True,
-        "execution": {"noTestsAction": "error", "stopOnFailure": False},
-        "output": {"outputOnFailure": True}
+        "execution": {
+            "noTestsAction": "error",
+            "stopOnFailure": False
+        },
+        "output": {
+            "outputOnFailure": True
+        }
     }
 
     configure_presets.append(base_configure)
@@ -99,37 +117,53 @@ def generate_preset(dir: str, preset_cache_variables: list):
 
     os_names = ["Linux", "Windows", "macOS"]
     configs = ["Debug", "Release"]
+    archs = ["x86_64", "x86"]
 
     for os_name in os_names:
-        os_base = get_os_base_configure_preset(os_name, base_configure["name"], preset_cache_variables)
+        os_base = get_os_base_configure_preset(os_name, base_configure["name"], build_type, prefix_path)
         configure_presets.append(os_base)
 
         for conf in configs:
-            for arch in ["x64", "x86"]:
+            for arch in archs:
+                preset_name = f"{os_name.lower()}-{arch.lower()}-{conf.lower()}"
                 conf_preset = get_os_preset(os_name, os_base["name"], arch, conf)
                 configure_presets.append(conf_preset)
+
                 build_presets.append({
-                    "name": conf_preset["name"],
-                    "inherits": os_base["name"],
-                    "displayName": conf_preset["displayName"],
-                    "configurePreset": conf_preset["name"]
+                    "name": preset_name,
+                    "inherits": base_build["name"],
+                    "configurePreset": preset_name
                 })
+
                 test_presets.append({
-                    "name": conf_preset["name"],
-                    "inherits": os_base["name"],
-                    "displayName": conf_preset["displayName"],
-                    "configurePreset": conf_preset["name"]
+                    "name": preset_name,
+                    "inherits": base_test["name"],
+                    "configurePreset": preset_name
                 })
 
     root_presets = {
         "version": 3,
+        "cmakeMinimumRequired": {
+            "major": 3,
+            "minor": 24,
+            "patch": 0
+        },
         "configurePresets": configure_presets,
         "buildPresets": build_presets,
         "testPresets": test_presets
     }
 
     preset_path = os.path.join(dir, "CMakePresets.json")
+    
+    # Avoid regenerating if the file is unchanged
     if os.path.exists(preset_path):
+        with open(preset_path, "r") as f:
+            existing_data = json.load(f)
+            new_data = json.dumps(root_presets, indent=2)
+            if hashlib.md5(new_data.encode()).hexdigest() == hashlib.md5(json.dumps(existing_data, indent=2).encode()).hexdigest():
+                log_info("CMakePresets.json is already up-to-date, skipping regeneration.")
+                return
+
         os.remove(preset_path)
         log_warn(f"Deleted old CMakePresets.json in {dir}")
 
@@ -142,8 +176,23 @@ def get_preset_cache_variables(platform: str, build_type: str, projlibs: list):
     return ":".join(os.path.abspath(lib.prefix_directory) for lib in projlibs) if platform != "Windows" \
         else ";".join(os.path.abspath(lib.prefix_directory) for lib in projlibs)
 
+def check_cmake_installed():
+    try:
+        # Check if 'cmake' is available in the system's PATH
+        result = subprocess.run(["cmake", "--version"], capture_output=True, text=True, check=True)
+        log_success(f"CMake version: {result.stdout.strip()}")
+    except FileNotFoundError:
+        log_error("CMake is not installed or not found in the system PATH.")
+        sys.exit(1)
+    except subprocess.CalledProcessError as e:
+        log_error(f"Error checking CMake version: {e}")
+        sys.exit(1)
+
 # ========== Main ==========
 if __name__ == "__main__":
+    # Check if CMake is installed
+    check_cmake_installed()
+
     external_packages = [
         Package("glfw", "glfw", "build/config/glfw", "build/packages/glfw", "-DGLFW_BUILD_EXAMPLES=OFF -DGLFW_BUILD_TESTS=OFF -DGLFW_BUILD_DOCS=OFF"),
         Package("spdlog", "spdlog", "build/config/spdlog", "build/packages/spdlog", "-DSPDLOG_BUILD_EXAMPLES=OFF"),
@@ -157,8 +206,10 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Build script for the Motion Engine")
     parser.add_argument("--config", type=str, required=True, choices=["Debug", "Release"])
-    parser.add_argument("--arch", type=str, required=True, choices=["x86", "x64"])
+    parser.add_argument("--arch", type=str, required=True, choices=["x86", "x86_64"])
     parser.add_argument("--pkg", type=str, help="Specific package to build")
+    parser.add_argument("--dry-run", action="store_true", help="Only print the commands without executing them")
+    parser.add_argument("--clean", action="store_true", help="Clean the build directories before building")
     args = parser.parse_args()
 
     build_type = args.config
@@ -167,8 +218,8 @@ if __name__ == "__main__":
     build_system_name = "Windows" if sys.platform == "win32" else "macOS" if sys.platform == "darwin" else "Linux"
 
     preset_cache = get_preset_cache_variables(build_system_name, build_type, external_packages)
+    generate_presets("../", build_type, preset_cache)
 
-    # Pick which packages to build
     packages_to_build = []
     if build_package:
         for pkg in external_packages:
@@ -181,12 +232,18 @@ if __name__ == "__main__":
     else:
         packages_to_build = external_packages
 
-    # Build the packages
     for pkg in packages_to_build:
         log_info(f"Building package: {Color.BOLD}{pkg.name}{Color.RESET}")
-        cmd(f"cmake -DCMAKE_BUILD_TYPE_INIT=\"{build_type}\" -DCMAKE_SYSTEM_NAME=\"{build_system_name}\" -DCMAKE_PREFIX_PATH=\"{preset_cache}\" -DCMAKE_INSTALL_PREFIX=\"{preset_cache}\" {pkg.options} -S \"{pkg.source_directory}\" -B \"{pkg.build_directory}\"")
-        cmd(f"cmake --build \"{pkg.build_directory}\" --config \"{build_type}\"")
-        cmd(f"cmake --install \"{pkg.build_directory}\" --config \"{build_type}\" --prefix \"{pkg.prefix_directory}\"")
+        
+        if args.clean:
+            cmd(f"rm -rf {pkg.build_directory}")
+            log_success(f"Cleaned build directory for {pkg.name}")
 
-    # Generate CMakePresets
-    generate_preset("../", [build_type, preset_cache])
+        if args.dry_run:
+            log_info(f"Dry-run mode: Would run command: cmake -DCMAKE_BUILD_TYPE=\"{build_type}\" -DCMAKE_SYSTEM_NAME=\"{build_system_name}\" -DCMAKE_PREFIX_PATH=\"{preset_cache}\" -DCMAKE_INSTALL_PREFIX=\"{pkg.prefix_directory}\" {pkg.options} -S \"{pkg.source_directory}\" -B \"{pkg.build_directory}\"")
+            log_info(f"Dry-run mode: Would run command: cmake --build \"{pkg.build_directory}\" --config \"{build_type}\"")
+            log_info(f"Dry-run mode: Would run command: cmake --install \"{pkg.build_directory}\" --config \"{build_type}\" --prefix \"{pkg.prefix_directory}\"")
+        else:
+            cmd(f"cmake -DCMAKE_BUILD_TYPE=\"{build_type}\" -DCMAKE_SYSTEM_NAME=\"{build_system_name}\" -DCMAKE_PREFIX_PATH=\"{preset_cache}\" -DCMAKE_INSTALL_PREFIX=\"{pkg.prefix_directory}\" {pkg.options} -S \"{pkg.source_directory}\" -B \"{pkg.build_directory}\"")
+            cmd(f"cmake --build \"{pkg.build_directory}\" --config \"{build_type}\"")
+            cmd(f"cmake --install \"{pkg.build_directory}\" --config \"{build_type}\" --prefix \"{pkg.prefix_directory}\"")

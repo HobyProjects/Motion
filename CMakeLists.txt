@@ -72,6 +72,7 @@ set(
         ${MOTION_CORE_DIR}/Renderer/Buffers.hpp
         ${MOTION_CORE_DIR}/Renderer/Shaders.hpp
         ${MOTION_CORE_DIR}/Renderer/Renderer.hpp
+        ${MOTION_CORE_DIR}/Renderer/RenderState.hpp
         ${MOTION_CORE_DIR}/Renderer/Texture.hpp
         ${MOTION_CORE_DIR}/Renderer/Arrays.hpp
         ${MOTION_CORE_DIR}/Renderer/Camera.hpp
@@ -79,6 +80,7 @@ set(
         ${MOTION_CORE_DIR}/Renderer/Camera3D.hpp
         ${MOTION_CORE_DIR}/Renderer/Model.hpp
         ${MOTION_CORE_DIR}/Renderer/Mesh.hpp
+        ${MOTION_CORE_DIR}/Renderer/Material.hpp
 
 
         ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL/GL_Buffers.hpp
@@ -107,6 +109,7 @@ set(
         ${MOTION_CORE_DIR}/Renderer/Camera3D.cpp
         ${MOTION_CORE_DIR}/Renderer/Model.cpp
         ${MOTION_CORE_DIR}/Renderer/Mesh.cpp
+        ${MOTION_CORE_DIR}/Renderer/Material.cpp
 
         ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL/GL_Buffers.cpp
         ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL/GL_Debug.cpp

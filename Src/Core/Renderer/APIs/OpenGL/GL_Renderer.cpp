@@ -38,7 +38,7 @@ namespace Motion::Core
         glViewport(x, y, width, height);
     }
 
-    void GL_Renderer::Draw(uint32_t indicesCount)
+    void GL_Renderer::DrawIndexed(uint32_t indicesCount)
     {
         glDrawElements(GL_TRIANGLES, indicesCount, GL_UNSIGNED_INT, NULL);
     }

@@ -20,6 +20,8 @@ namespace Motion::Core
             Mesh(float* vertices, uint32_t verticeSize, uint32_t* indices, uint32_t indicesCount, const BufferLayout& layout);
             ~Mesh() = default;
 
+            void Bind() const { m_VertexArray->Bind(); }
+            void Unbind() const { m_VertexArray->Unbind(); }
             uint32_t GetIndicesCount() const { return m_IndicesCount; }
             void Create(float* vertices, uint32_t verticeSize, uint32_t* indices, uint32_t indicesCount, const BufferLayout& layout);
             void Render();

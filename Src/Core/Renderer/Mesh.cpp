@@ -30,8 +30,6 @@ namespace Motion::Core
 
     void Mesh::Render()
     {
-        m_VertexArray->Bind();
-        Renderer::Draw(m_IndicesCount);
-        m_VertexArray->Unbind();
+        // [TODO]: Submit the mesh to the renderer
     }
 }

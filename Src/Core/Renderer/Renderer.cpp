@@ -12,6 +12,8 @@ namespace Motion::Core
         #error "Unknown platform!"
     #endif
 
+    static std::vector<RenderState> s_RenderQueue;
+
     void Renderer::Init()
     {
         switch (s_RenderingAPI)
@@ -112,12 +114,12 @@ namespace Motion::Core
         }
     }
 
-    void Renderer::Draw(uint32_t indicesCount)
+    void Renderer::DrawIndexed(uint32_t indicesCount)
     {
         switch (s_RenderingAPI)
         {
             case RenderingAPI::OpenGL:
-                GL_Renderer::Draw(indicesCount);
+                GL_Renderer::DrawIndexed(indicesCount);
                 break;
             case RenderingAPI::Vulkan:
                 MOTION_ASSERT(false, "Vulkan is not implemented yet!");
@@ -129,5 +131,53 @@ namespace Motion::Core
                 MOTION_ASSERT(false, "Unknown rendering API!");
                 break;
         }
+    }
+
+    void Renderer::Submit(const RenderState& renderSate) 
+    {
+        s_RenderQueue.push_back(renderSate);
+    }
+
+    void Renderer::Flush()
+    {
+        std::sort(s_RenderQueue.begin(), s_RenderQueue.end());
+
+        std::shared_ptr<IShader> currentShader = nullptr;
+        std::shared_ptr<Mesh> currentMesh = nullptr;
+        std::shared_ptr<Material> currentMaterial = nullptr;
+
+        for(const auto& draw : s_RenderQueue)
+        {
+            if(currentShader != draw.shader)
+            {
+                currentShader = draw.shader;
+                currentShader->Bind();
+            }
+
+            if(currentMaterial != draw.material)
+            {
+                currentMaterial = draw.material;
+                //currentMaterial->Bind(); // <-- [TODO]: Uncomment this line when the material system is implemented
+            }
+
+            if(currentMesh != draw.mesh)
+            {
+                currentMesh = draw.mesh;
+                currentMesh->Bind();
+            }
+
+            currentShader->SetUniform("u_ModelMatrix", draw.modelMatrix);
+            DrawIndexed(draw.mesh->GetIndicesCount());
+
+            currentMesh->Unbind();
+            //currentMaterial->Unbind(); // <-- [TODO]: Uncomment this line when the material system is implemented
+            currentShader->Unbind();
+
+            currentMaterial = nullptr;
+            currentMesh = nullptr;
+            currentShader = nullptr;
+        }
+
+        s_RenderQueue.clear();
     }
 }

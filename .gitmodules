@@ -17,9 +17,6 @@
 	path = libs/imgui_docking/imgui
 	url = https://github.com/ocornut/imgui.git
 	branch = docking
-[submodule "libs/json"]
-	path = libs/json
-	url = https://github.com/nlohmann/json.git
 [submodule "libs/fastgltf"]
 	path = libs/fastgltf
 	url = https://github.com/spnda/fastgltf.git

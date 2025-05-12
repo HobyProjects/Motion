@@ -20,7 +20,6 @@ find_package(glfw3 REQUIRED)
 find_package(spdlog REQUIRED)
 find_package(glad REQUIRED)
 find_package(glm REQUIRED)
-find_package(assimp REQUIRED)
 find_package(soil2 REQUIRED)
 find_package(imgui REQUIRED)
 find_package(EnTT REQUIRED)
@@ -133,7 +132,6 @@ target_link_libraries(
             spdlog::spdlog 
             glad::glad 
             glm::glm-header-only
-            assimp::assimp
             soil2::soil2
             imgui::imgui
             nlohmann_json::nlohmann_json

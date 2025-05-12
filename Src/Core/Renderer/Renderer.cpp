@@ -158,7 +158,7 @@ namespace Motion::Core
             if(currentMaterial != draw.material)
             {
                 currentMaterial = draw.material;
-                //currentMaterial->Bind(); // <-- [TODO]: Uncomment this line when the material system is implemented
+                currentMaterial->Bind(); 
             }
 
             if(currentMesh != draw.mesh)

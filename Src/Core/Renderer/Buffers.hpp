@@ -60,7 +60,7 @@ namespace Motion::Core
     {
         public:
             BufferLayout() = default;
-            BufferLayout(std::initializer_list<BufferElements> elements) : m_Elements(elements) {}
+            BufferLayout(std::initializer_list<BufferElements>& elements) : m_Elements(elements) {}
             ~BufferLayout() = default;
 
             const std::vector<BufferElements>& GetElements() const { return m_Elements; }

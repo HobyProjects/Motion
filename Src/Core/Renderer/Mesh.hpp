@@ -14,8 +14,6 @@ namespace Motion::Core
         glm::vec3 Normals;
     };
 
-    class Model; // Forward declaration
-
     class Mesh
     {
         public:
@@ -25,6 +23,8 @@ namespace Motion::Core
             void Bind() const { m_VertexArray->Bind(); }
             void Unbind() const { m_VertexArray->Unbind(); }
             uint32_t GetIndicesCount() const { return m_IndicesCount; }
+            void SetMaterial(const std::shared_ptr<Material>& material) { m_Material = material; }
+            std::shared_ptr<Material> GetMaterial() const { return m_Material; }
 
         private:
             std::shared_ptr<IVertexBuffer> m_VertexBuffer{ nullptr };
@@ -32,7 +32,5 @@ namespace Motion::Core
             std::shared_ptr<IVertexArray> m_VertexArray{ nullptr };
             std::shared_ptr<Material> m_Material{ nullptr };
             uint32_t m_IndicesCount{ 0 };
-
-            friend class Model; // Allow Model to access private members
     };
 }

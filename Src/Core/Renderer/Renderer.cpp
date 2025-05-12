@@ -12,7 +12,8 @@ namespace Motion::Core
         #error "Unknown platform!"
     #endif
 
-    static std::vector<RenderState> s_RenderQueue;
+    static std::vector<DrawCommand> s_RenderQueue;
+    static uint32_t s_DrawCalls = 0;
 
     void Renderer::Init()
     {
@@ -133,9 +134,9 @@ namespace Motion::Core
         }
     }
 
-    void Renderer::Submit(const RenderState& renderSate) 
+    void Renderer::Submit(const DrawCommand& drawCommand) 
     {
-        s_RenderQueue.push_back(renderSate);
+        s_RenderQueue.push_back(drawCommand);
     }
 
     void Renderer::Flush()
@@ -168,16 +169,18 @@ namespace Motion::Core
 
             currentShader->SetUniform("u_ModelMatrix", draw.modelMatrix);
             DrawIndexed(draw.mesh->GetIndicesCount());
-
-            currentMesh->Unbind();
-            //currentMaterial->Unbind(); // <-- [TODO]: Uncomment this line when the material system is implemented
-            currentShader->Unbind();
-
-            currentMaterial = nullptr;
-            currentMesh = nullptr;
-            currentShader = nullptr;
+            s_DrawCalls++;
         }
 
+        currentMaterial = nullptr;
+        currentMesh = nullptr;
+        currentShader = nullptr;
         s_RenderQueue.clear();
+        s_DrawCalls = 0;
+    }
+
+    uint32_t Renderer::GetDrawCalls()
+    {
+        return s_DrawCalls;
     }
 }

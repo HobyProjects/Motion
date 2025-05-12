@@ -13,7 +13,7 @@ namespace Motion::Core
         Shadow
     };
 
-    struct RenderState
+    struct DrawCommand
     {
         std::shared_ptr<IShader> shader;
         std::shared_ptr<Mesh> mesh;
@@ -21,7 +21,7 @@ namespace Motion::Core
         RenderPass renderPass;
         glm::mat4 modelMatrix;
 
-        bool operator<(const RenderState& other) const
+        bool operator<(const DrawCommand& other) const
         {
             return std::tie(shader, mesh, material, renderPass) < std::tie(other.shader, other.mesh, other.material, other.renderPass);
         }

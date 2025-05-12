@@ -190,49 +190,56 @@ def check_cmake_installed():
 
 def detect_build_system():
     log_info("Search for generators...")
-    default_generator = None
+    found_generators = {}
 
-    # Check for Ninja
+    # Prefer Ninja
     try:
-        output = subprocess.call(["ninja", "--version"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        if output == 0:
-            log_success(" -- Generator found: Ninja")
-            default_generator = "Ninja"
-    except FileNotFoundError:
+        subprocess.run(["ninja", "--version"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
+        log_success(" -- Generator found: Ninja")
+        found_generators["Ninja"] = True
+    except Exception:
         pass
 
-    # Check for NMake (MSVC)
+    # Prefer NMake
     try:
-        output = subprocess.call(["nmake", "/?"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        if output == 0:
-            log_success(" -- Generator found: NMake Makefiles")
-            default_generator = "NMake Makefiles"
-    except FileNotFoundError:
+        subprocess.run(["nmake", "/?"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
+        log_success(" -- Generator found: NMake Makefiles")
+        found_generators["NMake Makefiles"] = True
+    except Exception:
         pass
 
-    # Check for Unix Makefiles
+    # Unix Makefiles
     try:
-        output = subprocess.call(["make", "--version"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        if output == 0:
-            log_success(" -- Generator found: Unix Makefiles")
-            default_generator = "Unix Makefiles"
-    except FileNotFoundError:
+        subprocess.run(["make", "--version"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
+        log_success(" -- Generator found: Unix Makefiles")
+        found_generators["Unix Makefiles"] = True
+    except Exception:
         pass
 
-    # Visual Studio generators from cmake help
+    # Visual Studio from cmake help
     try:
         output = subprocess.check_output(["cmake", "--help"], text=True)
         for line in output.splitlines():
             if "Visual Studio" in line and "=" in line:
-                # Split at '=' and clean the generator name
                 gen_name = line.split("=")[0].strip().lstrip("* ").strip()
                 log_success(f" -- Generator found: {gen_name}")
                 if line.strip().startswith("*"):
-                    default_generator = gen_name
+                    found_generators[gen_name] = "default"
     except Exception:
         pass
 
-    return default_generator
+    # Priority list
+    priority = ["Ninja", "NMake Makefiles", "Unix Makefiles"]
+    for g in priority:
+        if g in found_generators:
+            return g
+
+    # Fallback to default if no preferred generator was found
+    for g, val in found_generators.items():
+        if val == "default":
+            return g
+
+    return None
 
 # ========== Main ==========
 if __name__ == "__main__":
@@ -254,24 +261,33 @@ if __name__ == "__main__":
     parser.add_argument("--config", type=str, required=True, choices=["Debug", "Release"])
     parser.add_argument("--arch", type=str, required=True, choices=["x86", "x86_64"])
     parser.add_argument("--pkg", type=str, help="Specific package to build")
-    parser.add_argument("--dry-run", action="store_true", help="Only print the commands without executing them")
-    parser.add_argument("--clean", action="store_true", help="Clean the build directories before building")
+    parser.add_argument("--list", action="store_true", help="List available packages and exit")
+    parser.add_argument("--generate-presets", action="store_true", help="generate CMakePresets.json and exit")
     args = parser.parse_args()
 
+    if args.list:
+        log_info("Available packages:")
+        for pkg in external_packages:
+            log_success(f" -- {pkg.name}")
+        sys.exit(0)
+        
     build_type = args.config
     build_arch = args.arch
     build_package = args.pkg
     build_system_name = "Windows" if sys.platform == "win32" else "macOS" if sys.platform == "darwin" else "Linux"
-
     build_generator = detect_build_system()
+    preset_cache = get_preset_cache_variables(build_system_name, build_type, external_packages)
+
     if build_generator == None:
         log_error("Unable to find generator. Can not produce CMakePresets.json without a generator.")
-        sys.exit(2)
+        sys.exit(1)
+    else:
+        log_info(f"Using system default generator: {build_generator}")
 
-    log_info(f"Using system default generator: {build_generator}")
-
-    preset_cache = get_preset_cache_variables(build_system_name, build_type, external_packages)
-    generate_presets("../", build_type, build_generator, preset_cache)
+    if args.generate_presets:
+        generate_presets("../", build_type, build_generator, preset_cache)
+        log_success("CMakePresets.json generation completed.")
+        sys.exit(0)
 
     packages_to_build = []
     if build_package:
@@ -285,20 +301,10 @@ if __name__ == "__main__":
     else:
         packages_to_build = external_packages
 
-    for pkg in packages_to_build:
+    for pkg in packages_to_build:  
         log_info(f"Building package: {Color.BOLD}{pkg.name}{Color.RESET}")
-        
-        if args.clean:
-            cmd(f"rm -rf {pkg.build_directory}")
-            log_success(f"Cleaned build directory for {pkg.name}")
+        cmd(f"cmake -DCMAKE_BUILD_TYPE=\"{build_type}\" -DCMAKE_SYSTEM_NAME=\"{build_system_name}\" -DCMAKE_PREFIX_PATH=\"{preset_cache}\" -DCMAKE_INSTALL_PREFIX=\"{pkg.prefix_directory}\" {pkg.options} -S \"{pkg.source_directory}\" -B \"{pkg.build_directory}\" -G \"{build_generator}\"")
+        cmd(f"cmake --build \"{pkg.build_directory}\" --config \"{build_type}\"")
+        cmd(f"cmake --install \"{pkg.build_directory}\" --config \"{build_type}\" --prefix \"{pkg.prefix_directory}\"")
 
-        if args.dry_run:
-            log_info(f"Dry-run mode: cmake -DCMAKE_BUILD_TYPE=\"{build_type}\" -DCMAKE_SYSTEM_NAME=\"{build_system_name}\" -DCMAKE_PREFIX_PATH=\"{preset_cache}\" -DCMAKE_INSTALL_PREFIX=\"{pkg.prefix_directory}\" {pkg.options} -S \"{pkg.source_directory}\" -B \"{pkg.build_directory}\" -G \"{build_generator}\"")
-            log_info(f"Dry-run mode: cmake --build \"{pkg.build_directory}\" --config \"{build_type}\"")
-            log_info(f"Dry-run mode: cmake --install \"{pkg.build_directory}\" --config \"{build_type}\" --prefix \"{pkg.prefix_directory}\"")
-        else:
-            cmd(f"cmake -DCMAKE_BUILD_TYPE=\"{build_type}\" -DCMAKE_SYSTEM_NAME=\"{build_system_name}\" -DCMAKE_PREFIX_PATH=\"{preset_cache}\" -DCMAKE_INSTALL_PREFIX=\"{pkg.prefix_directory}\" {pkg.options} -S \"{pkg.source_directory}\" -B \"{pkg.build_directory}\" -G \"{build_generator}\"")
-            cmd(f"cmake --build \"{pkg.build_directory}\" --config \"{build_type}\"")
-            cmd(f"cmake --install \"{pkg.build_directory}\" --config \"{build_type}\" --prefix \"{pkg.prefix_directory}\"")
-
-    log_success("Build Success!!!")
+    log_success("🎉 Build completed successfully! All packages were built.")

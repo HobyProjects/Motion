@@ -229,15 +229,14 @@ if __name__ == "__main__":
     EXTERNAL_LIBRARIES = [
         PreCompileLibraries("glfw", "glfw", "build/config/glfw", "build/packages/glfw", "-DGLFW_BUILD_EXAMPLES=OFF -DGLFW_BUILD_TESTS=OFF -DGLFW_BUILD_DOCS=OFF"),
         PreCompileLibraries("spdlog", "spdlog", "build/config/spdlog", "build/packages/spdlog", "-DSPDLOG_BUILD_EXAMPLES=OFF"),
-        #PreCompileLibraries("SDL", "SDL", "build/config/SDL", "build/packages/SDL", "-DSDL_TEST_LIBRARY=OFF -DSDL_TESTS=OFF -DSDL_EXAMPLES=OFF -DSDL_STATIC=ON"),
         PreCompileLibraries("glad", "glad", "build/config/glad", "build/packages/glad", ""),
         PreCompileLibraries("glm", "glm", "build/config/glm", "build/packages/glm", "-DGLM_BUILD_TESTS=OFF"),
-        #PreCompileLibraries("stb", "stb_image", "build/config/stb", "build/packages/stb", ""),
         PreCompileLibraries("SOIL2", "SOIL2", "build/config/SOIL2", "build/packages/SOIL2", ""),
         PreCompileLibraries("assimp", "assimp", "build/config/assimp", "build/packages/assimp", ""),
         PreCompileLibraries("imgui", "imgui_docking", "build/config/imgui", "build/packages/imgui", ""),
         PreCompileLibraries("entt", "entt", "build/config/entt", "build/packages/entt", "-DENTT_INCLUDE_HEADERS=ON -DENTT_INCLUDE_NATVIS=ON -DENTT_INSTALL=ON"),
         PreCompileLibraries("json", "json", "build/config/json", "build/packages/json", ""),
+        PreCompileLibraries("fastgltf", "fastgltf", "build/config/fastgltf", "build/packages/fastgltf", ""),
     ]
 
 #============================================================================================================================================

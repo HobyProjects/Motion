@@ -23,14 +23,20 @@ namespace Motion::Core
             void Bind() const { m_VertexArray->Bind(); }
             void Unbind() const { m_VertexArray->Unbind(); }
             uint32_t GetIndicesCount() const { return m_IndicesCount; }
-            void SetMaterial(const std::shared_ptr<Material>& material) { m_Material = material; }
-            std::shared_ptr<Material> GetMaterial() const { return m_Material; }
 
         private:
             std::shared_ptr<IVertexBuffer> m_VertexBuffer{ nullptr };
             std::shared_ptr<IElementBuffer> m_ElementBuffer{ nullptr };
             std::shared_ptr<IVertexArray> m_VertexArray{ nullptr };
-            std::shared_ptr<Material> m_Material{ nullptr };
             uint32_t m_IndicesCount{ 0 };
+    };
+
+    struct SubMesh
+    {
+        SubMesh() = default;
+        ~SubMesh() = default;
+        
+        std::shared_ptr<Mesh> Mesh{ nullptr };
+        std::shared_ptr<Material> Material{ nullptr };
     };
 }

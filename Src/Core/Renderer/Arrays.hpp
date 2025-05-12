@@ -25,16 +25,16 @@ namespace Motion::Core
 
     class ArrayBuilder
     {
-        public:
+        private:
             ArrayBuilder() = default;
-            virtual ~ArrayBuilder() = default;
+            ~ArrayBuilder() = default;
 
             ArrayBuilder(const ArrayBuilder&) = delete;
             ArrayBuilder& operator=(const ArrayBuilder&) = delete;
             ArrayBuilder(ArrayBuilder&&) = delete;
             ArrayBuilder& operator=(ArrayBuilder&&) = delete;
 
-        private:
-            std::shared_ptr<IVertexArray> CreateVertexArray();
+        public:
+            static std::shared_ptr<IVertexArray> CreateVertexArray();
     };
 }

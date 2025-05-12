@@ -28,6 +28,7 @@
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
+#include <nlohmann/json.hpp>
 
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/glm.hpp>
@@ -58,6 +59,8 @@
 #include "Camera.hpp"
 #include "Camera2D.hpp"
 #include "Camera3D.hpp"
+#include "Model.hpp"
+#include "Mesh.hpp"
 
 //Renderer - OpenGL
 #include "GL_Debug.hpp"

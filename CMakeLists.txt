@@ -77,6 +77,8 @@ set(
         ${MOTION_CORE_DIR}/Renderer/Camera.hpp
         ${MOTION_CORE_DIR}/Renderer/Camera2D.hpp
         ${MOTION_CORE_DIR}/Renderer/Camera3D.hpp
+        ${MOTION_CORE_DIR}/Renderer/Model.hpp
+        ${MOTION_CORE_DIR}/Renderer/Mesh.hpp
 
 
         ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL/GL_Buffers.hpp
@@ -103,6 +105,8 @@ set(
         ${MOTION_CORE_DIR}/Renderer/Arrays.cpp
         ${MOTION_CORE_DIR}/Renderer/Camera2D.cpp
         ${MOTION_CORE_DIR}/Renderer/Camera3D.cpp
+        ${MOTION_CORE_DIR}/Renderer/Model.cpp
+        ${MOTION_CORE_DIR}/Renderer/Mesh.cpp
 
         ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL/GL_Buffers.cpp
         ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL/GL_Debug.cpp

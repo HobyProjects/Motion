@@ -16,9 +16,17 @@ namespace Motion::Core
             ~Model() = default;
 
             void Render(const glm::mat4& modelTransForm);
-            bool LoadFrom_glTF(const std::filesystem::path& modelPath);
 
         private:
+            struct SubMesh
+            {
+                SubMesh() = default;
+                ~SubMesh() = default;
+                
+                std::shared_ptr<Mesh> Mesh{ nullptr };
+                std::shared_ptr<Material> Material{ nullptr };
+            };
+            
             std::shared_ptr<IShader> Shader{ nullptr };
             std::vector<std::shared_ptr<SubMesh>> SubMeshes{};
             std::string Name{ "" };

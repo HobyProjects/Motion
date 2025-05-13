@@ -20,8 +20,8 @@ namespace Motion::Core
 
         private:
             std::shared_ptr<IShader> m_Shader;
-            std::unordered_map<std::string, float> m_FloatUniforms;
-            std::unordered_map<std::string, glm::vec3> m_Vec3Uniforms;
-            std::unordered_map<std::string, std::shared_ptr<ITexture>> m_Textures;
+            std::unordered_map<std::string, float> m_FloatUniformsMaps;
+            std::unordered_map<std::string, glm::vec3> m_Vec3UniformsMaps;
+            std::unordered_map<std::string, std::shared_ptr<ITexture>> m_TexturesMaps;
     };
 }

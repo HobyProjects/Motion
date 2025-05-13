@@ -30,13 +30,4 @@ namespace Motion::Core
             std::shared_ptr<IVertexArray> m_VertexArray{ nullptr };
             uint32_t m_IndicesCount{ 0 };
     };
-
-    struct SubMesh
-    {
-        SubMesh() = default;
-        ~SubMesh() = default;
-        
-        std::shared_ptr<Mesh> Mesh{ nullptr };
-        std::shared_ptr<Material> Material{ nullptr };
-    };
 }

@@ -23,6 +23,7 @@ find_package(glm REQUIRED)
 find_package(soil2 REQUIRED)
 find_package(imgui REQUIRED)
 find_package(EnTT REQUIRED)
+find_package(Assimp REQUIRED)
 
 ###############################################################################
 # Platform Specific Configuration
@@ -79,6 +80,7 @@ set(
         ${MOTION_CORE_DIR}/Renderer/Model.hpp
         ${MOTION_CORE_DIR}/Renderer/Mesh.hpp
         ${MOTION_CORE_DIR}/Renderer/Material.hpp
+        ${MOTION_CORE_DIR}/Renderer/Importer.hpp
 
 
         ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL/GL_Buffers.hpp
@@ -108,6 +110,7 @@ set(
         ${MOTION_CORE_DIR}/Renderer/Model.cpp
         ${MOTION_CORE_DIR}/Renderer/Mesh.cpp
         ${MOTION_CORE_DIR}/Renderer/Material.cpp
+        ${MOTION_CORE_DIR}/Renderer/Importer.cpp
 
         ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL/GL_Buffers.cpp
         ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL/GL_Debug.cpp
@@ -133,4 +136,5 @@ target_link_libraries(
             glm::glm-header-only
             soil2::soil2
             imgui::imgui
+            assimp::assimp
 )

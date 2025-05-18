@@ -9,12 +9,22 @@ namespace Motion::Core
 
     enum class TextureType
     {
-        DefaultTexture,
-        BaseColorTexture,
         DiffuseTexture,
-        RoughnessOcclusionTexture,
+        AmbientTexture,
+        SpecularTexture,
+        EmissiveTexture,
+        NormalsTexture,
+        ShininessTexture,
+        OpacityTexture,
+
+        BaseColorTexture,
         MetalnessTexture,
-        ElevationTexture
+        DiffuseRoughnessTexture,
+        AmbientOcclusionTexture,
+        EmissiveColorTexture,
+        ClearCoatTexture,
+        SheenTexture,
+        TransmissionTexture
     };
 
     struct TextureSpecification
@@ -51,7 +61,7 @@ namespace Motion::Core
             TextureBuilder& operator=(TextureBuilder&&) = delete;
 
         public:
-            std::shared_ptr<ITexture> CreatePlainTexture(uint32_t width, uint32_t height);
-            std::shared_ptr<ITexture> CreateTextureFromFile(const std::filesystem::path& filePath, TextureType type, bool flipTexture = true);
+            static std::shared_ptr<ITexture> CreatePlainTexture(uint32_t width, uint32_t height);
+            static std::shared_ptr<ITexture> CreateTextureFromFile(const std::filesystem::path& filePath, TextureType type, bool flipTexture = true);
     };
 }

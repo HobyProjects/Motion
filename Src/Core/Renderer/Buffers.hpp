@@ -50,7 +50,6 @@ namespace Motion::Core
         BufferStride Stride{BufferStride::NAN_};
         bool Normalized{false};
 
-        BufferElements() = default;
         BufferElements(const std::string& name, BufferComponents components, BufferStride stride, bool normalized, int32_t offset)
             : Name(name), Components(components), Stride(stride), Normalized(normalized), Offset(offset) {}
         ~BufferElements() = default;
@@ -59,8 +58,7 @@ namespace Motion::Core
     class BufferLayout
     {
         public:
-            BufferLayout() = default;
-            BufferLayout(std::initializer_list<BufferElements>& elements) : m_Elements(elements) {}
+            BufferLayout(const std::initializer_list<BufferElements>& elements) : m_Elements(elements) {}
             ~BufferLayout() = default;
 
             const std::vector<BufferElements>& GetElements() const { return m_Elements; }

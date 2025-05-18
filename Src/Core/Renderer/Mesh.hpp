@@ -7,13 +7,6 @@
 
 namespace Motion::Core
 {
-    struct VertexStructure
-    {
-        glm::vec3 Position;
-        glm::vec2 TexCoords;
-        glm::vec3 Normals;
-    };
-
     class Mesh
     {
         public:
@@ -23,6 +16,14 @@ namespace Motion::Core
             void Bind() const { m_VertexArray->Bind(); }
             void Unbind() const { m_VertexArray->Unbind(); }
             uint32_t GetIndicesCount() const { return m_IndicesCount; }
+        
+        public:
+            struct Vertex
+            {
+                glm::vec3 Position{0.0f, 0.0f, 0.0f};
+                glm::vec2 TexCoords{0.0f, 0.0f};
+                glm::vec3 Normals{0.0f, 0.0f, 0.0f};
+            };
 
         private:
             std::shared_ptr<IVertexBuffer> m_VertexBuffer{ nullptr };

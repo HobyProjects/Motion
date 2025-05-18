@@ -25,6 +25,10 @@
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/sinks/basic_file_sink.h>
 #include <soil2/SOIL2.h>
+#include <assimp/Importer.hpp>
+#include <assimp/scene.h>
+#include <assimp/postprocess.h>
+#include <assimp/material.h>
 
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/glm.hpp>
@@ -58,6 +62,7 @@
 #include "Camera3D.hpp"
 #include "Model.hpp"
 #include "Mesh.hpp"
+#include "Importer.hpp"
 
 //Renderer - OpenGL
 #include "GL_Debug.hpp"

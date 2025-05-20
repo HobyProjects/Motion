@@ -13,6 +13,7 @@ namespace Motion::Core
         glm::vec3 EmissiveColor{0.0f};
         glm::vec3 TransparentColor{0.0f};
         glm::vec3 ReflectiveColor{0.0f};
+        glm::vec3 BaseColor{0.0f};
     };
 
     struct MaterialProperties
@@ -27,7 +28,6 @@ namespace Motion::Core
 
     struct MaterialFactors
     {
-        glm::vec4 BaseColor{0.0f};
         float MetalicFactor{0.0f};
         float RoughnessFactor{0.0f};
         float TransmissionFactor{0.0f};
@@ -58,7 +58,7 @@ namespace Motion::Core
             void SetTexture(const std::string& name, const std::shared_ptr<ITexture>& texture);
 
         private:
-            void DetectShadingMethod();
+            void DetectShadingMethod(); // [TODO]: Implement Me
 
         private:
             std::weak_ptr<IShader> m_Shader;

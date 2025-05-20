@@ -1,1 +1,0 @@
-Vulkan API is not implemented yet!!

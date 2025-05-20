@@ -9,22 +9,26 @@ namespace Motion::Core
 
     enum class TextureType
     {
+        // Legacy Texture Types
         DiffuseTexture,
         AmbientTexture,
         SpecularTexture,
         EmissiveTexture,
-        NormalsTexture,
+        NormalMapsTexture,
+        HeightMaps,
         ShininessTexture,
-        OpacityTexture,
+        OpacityMapsTexture,
+        LightMapsTexture,
 
-        BaseColorTexture,
-        MetalnessTexture,
-        DiffuseRoughnessTexture,
-        AmbientOcclusionTexture,
-        EmissiveColorTexture,
-        ClearCoatTexture,
-        SheenTexture,
-        TransmissionTexture
+        // PBR Texture Type
+        BaseColorMapsTexture,
+        MetallicMapsTexture,
+        RoughnessMapsTexture,
+        AOMapsTexture,
+        EmissiveMapsTexture,
+        ClearCoatMapsTexture,
+        SheenMapsTexture,
+        TransmissionMapsTexture
     };
 
     struct TextureSpecification
@@ -32,7 +36,7 @@ namespace Motion::Core
         uint8_t* TextureData{nullptr};
         int32_t Width{0}, Height{0}, NumberOfChannels{0};
         uint32_t InternalDataFormat{0}, TextureDataFormat{0}, TexID{0};
-        TextureType Type {TextureType::BaseColorTexture};
+        TextureType Type {TextureType::BaseColorMapsTexture};
     };
 
     class ITexture

@@ -58,7 +58,6 @@
 #include "Texture.hpp"
 #include "Arrays.hpp"
 #include "Camera.hpp"
-#include "Camera2D.hpp"
 #include "Camera3D.hpp"
 #include "Model.hpp"
 #include "Mesh.hpp"

@@ -75,7 +75,6 @@ set(
         ${MOTION_CORE_DIR}/Renderer/Texture.hpp
         ${MOTION_CORE_DIR}/Renderer/Arrays.hpp
         ${MOTION_CORE_DIR}/Renderer/Camera.hpp
-        ${MOTION_CORE_DIR}/Renderer/Camera2D.hpp
         ${MOTION_CORE_DIR}/Renderer/Camera3D.hpp
         ${MOTION_CORE_DIR}/Renderer/Model.hpp
         ${MOTION_CORE_DIR}/Renderer/Mesh.hpp
@@ -105,7 +104,6 @@ set(
         ${MOTION_CORE_DIR}/Renderer/Renderer.cpp
         ${MOTION_CORE_DIR}/Renderer/Texture.cpp
         ${MOTION_CORE_DIR}/Renderer/Arrays.cpp
-        ${MOTION_CORE_DIR}/Renderer/Camera2D.cpp
         ${MOTION_CORE_DIR}/Renderer/Camera3D.cpp
         ${MOTION_CORE_DIR}/Renderer/Model.cpp
         ${MOTION_CORE_DIR}/Renderer/Mesh.cpp

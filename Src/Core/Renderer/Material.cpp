@@ -2,12 +2,6 @@
 
 namespace Motion::Core
 {
-    Material::Material(const std::string& shaderName)
-    {
-        m_Shader = ShaderBuilder::GetShader(shaderName);
-        MOTION_ASSERT(m_Shader.expired(), "{0} is not avaliable", shaderName);
-    }
-    
     void Material::SetUniform(const std::string& name, float value) 
     {
         m_FloatUniformsMaps[name] = value;
@@ -30,9 +24,13 @@ namespace Motion::Core
 
     void Material::Bind() 
     {
-        if(!m_Shader.expired())
+        // [TODO]: We are going to get shader using it's name from assets manager (AssetsManager is not implemented yet!)
+        // [TODO]: Assign the shader depending on Shading Method
+        std::weak_ptr<IShader> shader; 
+
+        if(!shader.expired())
         {
-            auto materialShader = m_Shader.lock();
+            auto materialShader = shader.lock();
             for (const auto& [name, val] : m_FloatUniformsMaps)
             materialShader->SetUniform(name, val);
 

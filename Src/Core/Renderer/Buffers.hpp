@@ -58,6 +58,7 @@ namespace Motion::Core
     class BufferLayout
     {
         public:
+            BufferLayout() = default;
             BufferLayout(const std::initializer_list<BufferElements>& elements) : m_Elements(elements) {}
             ~BufferLayout() = default;
 
@@ -66,7 +67,7 @@ namespace Motion::Core
             std::vector<BufferElements>::iterator end() { return m_Elements.end(); }
 
         private:
-            std::vector<BufferElements> m_Elements;
+            std::vector<BufferElements> m_Elements{};
     };
 
     using BufferID = uint32_t;

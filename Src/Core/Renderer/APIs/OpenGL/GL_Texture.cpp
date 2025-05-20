@@ -9,7 +9,7 @@ namespace Motion::Core
             MOTION_ASSERT(false, "Unable to generate texture of size {0}x{1}", width, height);
         }
 
-        m_Specification.Type = TextureType::BaseColorTexture;
+        m_Specification.Type = TextureType::BaseColorMapsTexture;
     }
 
     GL_Texture::GL_Texture(const std::filesystem::path& textureFile, TextureType type, bool flip) 

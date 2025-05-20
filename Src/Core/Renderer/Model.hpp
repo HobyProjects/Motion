@@ -27,8 +27,8 @@ namespace Motion::Core
 
             struct SubMeshMaterial
             {
-                explicit SubMeshMaterial(uint32_t materialIndex, const std::shared_ptr<Material>& material)
-                    : MaterialIndex(materialIndex), Materials(std::move(material)){}
+                explicit SubMeshMaterial(uint32_t materialIndex)
+                    : MaterialIndex(materialIndex), Materials(std::make_shared<Material>()){}
                 ~SubMeshMaterial() = default;
 
                 uint32_t MaterialIndex{0};
@@ -44,7 +44,7 @@ namespace Motion::Core
         private:
             std::shared_ptr<IShader> m_Shader{ nullptr };
             std::vector<std::shared_ptr<SubMesh>> m_SubMeshes{};
-            std::unordered_map<uint32_t, SubMeshMaterial> m_SubMeshMaterialMapping{};
+            std::unordered_map<uint32_t, std::shared_ptr<SubMeshMaterial>> m_SubMeshMaterialMapping{};
             std::string Name{ "" };
 
             friend class Importer;

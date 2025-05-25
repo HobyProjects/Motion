@@ -128,15 +128,15 @@ namespace Motion::Core
             static std::string ReadShaderFiles(const std::filesystem::path& filePath);
     };
 
-    template<typename TShader>
-    requires std::derived_from<TShader, IShader>
+    template<typename T>
+    requires std::derived_from<T, IShader>
     class ShaderContainer
     {
         public:
             ShaderContainer() = default;
             ~ShaderContainer() = default;
 
-            void InsertShader(const std::string& name, const std::shared_ptr<TShader>& shader)
+            void InsertShader(const std::string& name, const std::shared_ptr<T>& shader)
             {
                 if (m_Shaders.find(name) != m_Shaders.end())
                 {
@@ -157,10 +157,11 @@ namespace Motion::Core
                 else
                 {
                     MOTION_ASSERT(false, "Shader with name {0} does not exist!", name);
+                    return;
                 }
             }
 
-            std::shared_ptr<TShader> GetShader(const std::string& name) const
+            std::shared_ptr<T> GetShader(const std::string& name) const
             {
                 auto it = m_Shaders.find(name);
                 if (it != m_Shaders.end())
@@ -180,7 +181,7 @@ namespace Motion::Core
             }
 
         private:
-            std::unordered_map<std::string, std::shared_ptr<TShader>> m_Shaders;
+            std::unordered_map<std::string, std::shared_ptr<T>> m_Shaders;
     };
 }
 

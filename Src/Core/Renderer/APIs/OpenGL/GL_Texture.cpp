@@ -7,6 +7,7 @@ namespace Motion::Core
         if( !GenerateTexture(width, height) )
         {
             MOTION_ASSERT(false, "Unable to generate texture of size {0}x{1}", width, height);
+            return;
         }
 
         m_Specification.Type = TextureType::BaseColorMapsTexture;
@@ -17,6 +18,7 @@ namespace Motion::Core
         if( !LoadTextureFromFile(textureFile, flip) )
         {
             MOTION_ASSERT(false, "Unable to load texture file {0}", textureFile.string());
+            return;
         }
 
         m_Specification.Type = type;

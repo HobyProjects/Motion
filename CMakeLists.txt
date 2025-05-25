@@ -62,6 +62,8 @@ set(
         ${MOTION_CORE_DIR}/Base/Log.hpp
         ${MOTION_CORE_DIR}/Base/KeyCodes.hpp
         ${MOTION_CORE_DIR}/Base/Timer.hpp
+        ${MOTION_CORE_DIR}/Base/UUID.hpp
+        ${MOTION_CORE_DIR}/Base/Asset.hpp
 
         ${MOTION_CORE_DIR}/Event/Event.hpp
         ${MOTION_CORE_DIR}/Event/EventWindow.hpp

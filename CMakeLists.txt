@@ -16,7 +16,7 @@ include(CompilerConfiguration)      # This includes the function to set compiler
 ##############################################################################
 # Compiler Configuration
 ##############################################################################
-SetCompilerConfigurations(20 11)
+SetCompilerConfigurations()
 
 ###############################################################################
 # Dependencies

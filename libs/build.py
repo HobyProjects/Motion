@@ -42,7 +42,37 @@ class Package:
 
 # ========== CMake Preset Generators ==========
 
+import platform
+
 def get_base_configure_preset(generator: str):
+    os_names = ["Linux", "Windows", "macOS", "FreeBSD", "OpenBSD", "NetBSD", "DragonFlyBSD"]
+    archs = ["x86_64", "x86", "AMD64", "arm64", "armhf", "aarch64", "armv7l", "armv6l", "i386", "i686"]
+
+    system_processor = platform.machine()
+    system_name = platform.system()
+    system_version = platform.release()
+    system_processor_architecture = platform.architecture()[0]
+    system_processor_architecture_vendor = platform.processor()
+
+    if system_name not in os_names:
+        log_error(f"Unsupported system name: {system_name}. Supported systems: {', '.join(os_names)}")
+        sys.exit(1)
+
+    if system_processor not in archs:
+        log_error(f"Unsupported processor architecture: {system_processor}. Supported architectures: {', '.join(archs)}")
+        sys.exit(1)
+
+    if system_processor_architecture_vendor == "":
+        log_warn("CMake could not detect the processor architecture vendor. Defaulting to 'unknown'.")
+        system_processor_architecture_vendor = "unknown"
+        
+    if system_processor_architecture == "":
+        log_warn("CMake could not detect the processor architecture. Defaulting to 'unknown'.")
+        system_processor_architecture = "unknown"
+
+    log_info(f"Detected system: {system_name} | {system_version} | ({system_processor} - {system_processor_architecture} - {system_processor_architecture_vendor})")
+    log_info(f"Using generator: {generator}")
+
     return {
         "name": "common-base",
         "hidden": True,
@@ -50,7 +80,27 @@ def get_base_configure_preset(generator: str):
         "installDir": "${sourceDir}/build/packages",
         "generator": generator,
         "cacheVariables": {
-            "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+            "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+            "CMAKE_CXX_STANDARD": "20",
+            "CMAKE_CXX_STANDARD_REQUIRED": "ON",   
+            "CMAKE_CXX_EXTENSIONS": "OFF",
+            "CMAKE_CXX_FLAGS_DEBUG": "-O0 -g",
+            "CMAKE_CXX_FLAGS_RELEASE": "-O3 -DNDEBUG",
+            "CMAKE_CXX_FLAGS_MINSIZEREL": "-Os -DNDEBUG",
+            "CMAKE_CXX_FLAGS_RELWITHDEBINFO": "-O2 -g -DNDEBUG",
+            "CMAKE_C_STANDARD": "17",
+            "CMAKE_C_STANDARD_REQUIRED": "ON",
+            "CMAKE_C_EXTENSIONS": "OFF",
+            "CMAKE_C_FLAGS_DEBUG": "-O0 -g",
+            "CMAKE_C_FLAGS_RELEASE": "-O3 -DNDEBUG",
+            "CMAKE_C_FLAGS_MINSIZEREL": "-Os -DNDEBUG",
+            "CMAKE_C_FLAGS_RELWITHDEBINFO": "-O2 -g -DNDEBUG",
+            "CMAKE_POSITION_INDEPENDENT_CODE": "ON",
+            "CMAKE_SYSTEM_PROCESSOR": system_processor,
+            "CMAKE_SYSTEM_NAME": system_name,
+            "CMAKE_SYSTEM_VERSION": system_version,
+            "CMAKE_SYSTEM_PROCESSOR_ARCHITECTURE": system_processor_architecture,
+            "CMAKE_SYSTEM_PROCESSOR_ARCHITECTURE_VENDOR": system_processor_architecture_vendor,   
         }
     }
 
@@ -67,7 +117,8 @@ def get_os_base_configure_preset(os_name: str, inherits_from: str, build_type: s
         "cacheVariables": {
             "CMAKE_BUILD_TYPE": build_type,
             "CMAKE_INSTALL_PREFIX": prefix_path,
-            "CMAKE_PREFIX_PATH": prefix_path
+            "CMAKE_PREFIX_PATH": prefix_path,
+            "CMAKE_SYSTEM_NAME": os_name,
         }
     }
 
@@ -115,9 +166,9 @@ def generate_presets(dir: str, build_type: str, generator: str, prefix_path: str
     build_presets.append(base_build)
     test_presets.append(base_test)
 
-    os_names = ["Linux", "Windows", "macOS"]
-    configs = ["Debug", "Release"]
-    archs = ["x86_64", "x86"]
+    os_names = ["Linux", "Windows", "macOS", "FreeBSD", "OpenBSD", "NetBSD", "DragonFlyBSD"]
+    configs = ["Debug", "Release", "RelWithDebInfo", "MinSizeRel"]
+    archs = ["x86_64", "x86", "arm64", "armhf", "aarch64", "armv7l", "armv6l", "i386", "i686"]
 
     for os_name in os_names:
         os_base = get_os_base_configure_preset(os_name, base_configure["name"], build_type, prefix_path)

@@ -2,10 +2,19 @@
 
 #include <cstdint>
 
-#ifdef MOTION_DEBUG
+#ifdef MOTION_BUILD_DEBUG
 
 #if defined(MOTION_PLATFORM_WINDOWS)
+
+#ifdef MOTION_COMPILER_MSVC
 #define MOTION_DEBUGBREAK() __debugbreak()
+#elif defined(MOTION_COMPILER_GCC) || defined(MOTION_COMPILER_CLANG)
+#include <csignal>
+#define MOTION_DEBUGBREAK() raise(SIGTRAP)
+#else
+#include <signal.h>
+#define MOTION_DEBUGBREAK() raise(SIGTRAP)	
+#endif
 
 #elif defined(MOTION_PLATFORM_LINUX)
 

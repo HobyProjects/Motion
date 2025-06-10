@@ -2,50 +2,46 @@ cmake_minimum_required(VERSION 3.24)
 project(Motion VERSION 1.0.0 LANGUAGES C CXX)
 
 ##############################################################################
-# Compiler Configuration
+# CMake Configuration
 ##############################################################################
-set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
-set(CMAKE_C_STANDARD 17)
-set(CMAKE_C_STANDARD_REQUIRED ON)
-set(CMAKE_C_EXTENSIONS OFF)
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
+
+include(PlatformConfiguration)      # This includes the function to configure platform-specific settings
+include(CompilerConfiguration)      # This includes the function to set compiler configurations
+
+
+##############################################################################
+# Compiler Configuration
+##############################################################################
+SetCompilerConfigurations(20 11)
 
 ###############################################################################
 # Dependencies
 ###############################################################################
-find_package(glfw3 REQUIRED)
-find_package(spdlog REQUIRED)
-find_package(glad REQUIRED)
-find_package(glm REQUIRED)
-find_package(soil2 REQUIRED)
-find_package(imgui REQUIRED)
-find_package(EnTT REQUIRED)
-find_package(Assimp REQUIRED)
+find_package(glfw3 CONFIG REQUIRED)
+find_package(spdlog CONFIG REQUIRED)
+find_package(glad CONFIG REQUIRED)
+find_package(glm CONFIG REQUIRED)
+find_package(soil2 CONFIG REQUIRED)
+find_package(imgui CONFIG REQUIRED)
+find_package(EnTT CONFIG REQUIRED)
+find_package(Assimp CONFIG REQUIRED)
 
 ###############################################################################
 # Platform Specific Configuration
 ###############################################################################
-if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-    add_compile_definitions(MOTION_PLATFORM_WINDOWS)
-elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    add_compile_definitions(MOTION_PLATFORM_LINUX)
-endif()
+ConfigurePlatform() 
 
-if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    add_compile_definitions(MOTION_DEBUG)
-else()
-    add_compile_definitions(MOTION_RELEASE)
-endif()
-
-set(MOTION_CORE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/Src/Core)
-set(MOTION_APP_DIR ${CMAKE_CURRENT_SOURCE_DIR}/Src/App)
 
 ###############################################################################
 # Motion Engine - Core Library
 ###############################################################################
+set(MOTION_CORE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/Src/Core)
+set(MOTION_APP_DIR ${CMAKE_CURRENT_SOURCE_DIR}/Src/App)
+
 set(
     MOTION_CORE_INCLUDE_DIR
         ${MOTION_CORE_DIR}/Base

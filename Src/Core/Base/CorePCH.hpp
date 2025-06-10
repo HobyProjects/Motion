@@ -17,6 +17,7 @@
 #include <bitset>
 #include <future>
 #include <thread>
+#include <regex>
 
 //external
 #define GLFW_INCLUDE_NONE
@@ -43,6 +44,8 @@
 #include "Base.hpp"
 #include "Asserts.hpp"
 #include "Log.hpp"
+#include "Asset.hpp"
+#include "AssetManager.hpp"
 
 //Events
 #include "Event.hpp"

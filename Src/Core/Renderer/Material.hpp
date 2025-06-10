@@ -2,6 +2,7 @@
 
 #include "Shaders.hpp"
 #include "Texture.hpp"
+#include "Asset.hpp"
 
 namespace Motion::Core
 {
@@ -40,14 +41,15 @@ namespace Motion::Core
     };
 
 
-    class Material
+    class Material final : public AssetBase<IAsset>
     {
         public:
             enum class ShadingMethod { Phong, PBR };
 
         public:
-            Material() = default;
-            ~Material() = default;
+            Material(const std::string& name, const std::string& materialFile):
+                AssetBase<IAsset>(name, AssetType::Material, materialFile){}
+            virtual ~Material() = default;
 
             void Bind();
             void Unbind();
@@ -61,7 +63,6 @@ namespace Motion::Core
             void DetectShadingMethod(); // [TODO]: Implement Me
 
         private:
-            std::weak_ptr<IShader> m_Shader;
             std::unordered_map<std::string, float> m_FloatUniformsMaps;
             std::unordered_map<std::string, glm::vec3> m_Vec3UniformsMaps;
             std::unordered_map<std::string, glm::vec4> m_Vec4UniformsMaps;

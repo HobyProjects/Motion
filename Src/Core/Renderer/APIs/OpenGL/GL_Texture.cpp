@@ -2,7 +2,8 @@
 
 namespace Motion::Core
 {
-    GL_Texture::GL_Texture(uint32_t width, uint32_t height) 
+    GL_Texture::GL_Texture(const std::string& name, uint32_t width, uint32_t height):
+        AssetBase<ITexture>(name, AssetType::Texture, "PlainTexture") 
     {
         if( !GenerateTexture(width, height) )
         {
@@ -11,9 +12,11 @@ namespace Motion::Core
         }
 
         m_Specification.Type = TextureType::BaseColorMapsTexture;
+        m_MetaData.IsLoaded = true;
     }
 
-    GL_Texture::GL_Texture(const std::filesystem::path& textureFile, TextureType type, bool flip) 
+    GL_Texture::GL_Texture(const std::string& name, const std::filesystem::path& textureFile, TextureType type, bool flip):
+        AssetBase<ITexture>(name, AssetType::Texture, textureFile.string())
     {
         if( !LoadTextureFromFile(textureFile, flip) )
         {
@@ -22,6 +25,7 @@ namespace Motion::Core
         }
 
         m_Specification.Type = type;
+        m_MetaData.IsLoaded = true;
     }
 
     GL_Texture::~GL_Texture() 
@@ -64,7 +68,12 @@ namespace Motion::Core
 
         m_FromFile = true;
         if( m_Specification.TextureData )
+        {
+            m_MetaData.AssetName = textureFile.filename().string();
+            m_MetaData.FilePath = textureFile.string();
+            m_MetaData.IsLoaded = true;
             return true;
+        }
 
         return false;
     }
@@ -92,16 +101,6 @@ namespace Motion::Core
         glGenerateMipmap(GL_TEXTURE_2D);
 
         return true;
-    }
-
-    std::shared_ptr<GL_Texture> GL_CreatePlainTexture(uint32_t width, uint32_t height)
-    {
-        return std::make_shared<GL_Texture>(width, height);
-    }
-
-    std::shared_ptr<GL_Texture> GL_CreateTextureFromFile(const std::filesystem::path & filePath, TextureType type, bool flipTexture)
-    {
-        return std::make_shared<GL_Texture>(filePath, type, flipTexture);
     }
 }
 

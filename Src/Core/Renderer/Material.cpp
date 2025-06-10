@@ -26,7 +26,7 @@ namespace Motion::Core
     {
         // [TODO]: We are going to get shader using it's name from assets manager (AssetsManager is not implemented yet!)
         // [TODO]: Assign the shader depending on Shading Method
-        std::weak_ptr<IShader> shader; 
+        std::weak_ptr<IShader> shader; // = AssetsManager::GetShader(m_ShaderName);
 
         if(!shader.expired())
         {

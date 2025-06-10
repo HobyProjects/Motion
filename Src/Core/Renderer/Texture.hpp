@@ -2,6 +2,7 @@
 
 #include <filesystem>
 #include <memory>
+#include "Asset.hpp"
 
 namespace Motion::Core
 {
@@ -39,7 +40,7 @@ namespace Motion::Core
         TextureType Type {TextureType::BaseColorMapsTexture};
     };
 
-    class ITexture
+    class ITexture : public IAsset
     {
         public:
             ITexture() = default;
@@ -51,21 +52,5 @@ namespace Motion::Core
 
             virtual TextureID GetID() const = 0;
             virtual TextureSpecification GetSpecification() const = 0;
-    };
-
-    class TextureBuilder
-    {
-        private:
-            TextureBuilder() = default;
-            ~TextureBuilder() = default;
-
-            TextureBuilder(const TextureBuilder&) = delete;
-            TextureBuilder& operator=(const TextureBuilder&) = delete;
-            TextureBuilder(const TextureBuilder&&) = delete;
-            TextureBuilder& operator=(TextureBuilder&&) = delete;
-
-        public:
-            static std::shared_ptr<ITexture> CreatePlainTexture(uint32_t width, uint32_t height);
-            static std::shared_ptr<ITexture> CreateTextureFromFile(const std::filesystem::path& filePath, TextureType type, bool flipTexture = true);
     };
 }

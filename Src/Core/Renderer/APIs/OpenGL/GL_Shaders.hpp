@@ -1,14 +1,15 @@
 #pragma once
 
 #include "Shaders.hpp"
+#include "Asset.hpp"
 
 namespace Motion::Core
 {
-    class GL_Shader final : public IShader
+    class GL_Shader final : public AssetBase<IShader>
     {
         public:
-            GL_Shader(const std::string& name, const std::filesystem::path& vertexPath, const std::filesystem::path& fragmentPath);
-            virtual ~GL_Shader() override;
+            GL_Shader(const std::string& name, const std::unordered_map<ShaderType, std::string>& shaderSources, const std::filesystem::path& sourceFile);
+            virtual ~GL_Shader();
 
             virtual void Bind() const override;
             virtual void Unbind() const override;
@@ -34,15 +35,24 @@ namespace Motion::Core
             std::string m_Name{ "Default" };
     };
 
-    std::shared_ptr<GL_Shader> GL_CreateShader(const std::string& name, const std::filesystem::path& vertexPath, const std::filesystem::path& fragmentPath);
-    ShaderID GL_CompileShader(ShaderType shaderType, const std::string& sourceCode);
-    std::string GL_ReadShaderFiles(const std::filesystem::path& filePath);
-    std::shared_ptr<GL_Shader> GL_GetShader(const std::string& name);
-    ShaderProgramID GL_CreateShaderProgram();
+    class GL_ShaderCompiler
+    {
+        private:
+            GL_ShaderCompiler() = default;
+            ~GL_ShaderCompiler() = default;
 
-    void GL_AttachShaderProgram(ShaderID shaderID, ShaderProgramID programID);
-    void GL_ValidateShaderProgram(ShaderProgramID programID);
-    void GL_DeleteShaderProgram(ShaderProgramID programID);
-    void GL_LinkShaderProgram(ShaderProgramID programID);
-    void GL_DestroyShader(const std::string& name);
+            GL_ShaderCompiler(const GL_ShaderCompiler&) = delete;
+            GL_ShaderCompiler& operator=(const GL_ShaderCompiler&) = delete;
+            GL_ShaderCompiler(GL_ShaderCompiler&&) = delete;
+            GL_ShaderCompiler& operator=(GL_ShaderCompiler&&) = delete;
+
+        public:
+            static ShaderProgramID CreateShaderProgram();
+            static void AttachShaderProgram(ShaderID shaderID, ShaderProgramID programID);
+            static ShaderID CompileShader(ShaderType shaderType, const std::string& sourceCode);
+            static void LinkShaderProgram(ShaderProgramID programID);
+            static void ValidateShaderProgram(ShaderProgramID programID);
+            static void DeleteShaderProgram(ShaderProgramID programID);
+            static std::string ReadShaderFiles(const std::filesystem::path& filePath);
+    };
 }

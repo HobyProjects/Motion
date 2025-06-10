@@ -64,6 +64,7 @@ set(
         ${MOTION_CORE_DIR}/Base/Timer.hpp
         ${MOTION_CORE_DIR}/Base/UUID.hpp
         ${MOTION_CORE_DIR}/Base/Asset.hpp
+        ${MOTION_CORE_DIR}/Base/AssetManager.hpp
 
         ${MOTION_CORE_DIR}/Event/Event.hpp
         ${MOTION_CORE_DIR}/Event/EventWindow.hpp
@@ -100,6 +101,7 @@ set(
 set(
     MOTION_CORE_SOURCES
         ${MOTION_CORE_DIR}/Base/Log.cpp
+        ${MOTION_CORE_DIR}/Base/AssetManager.cpp
 
         ${MOTION_CORE_DIR}/Renderer/Buffers.cpp
         ${MOTION_CORE_DIR}/Renderer/Shaders.cpp

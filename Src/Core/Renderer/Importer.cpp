@@ -1,31 +1,34 @@
 #include "CorePCH.hpp"
 
-static constexpr const char* MATKEY_BASECOLOR_FACTOR = "$baseColorFactor";
-static constexpr const char* MATKEY_EMISSIVE_FACTOR = "$emissiveFactor";
-static constexpr const char* MATKEY_METALLIC_FACTOR = "$mat.metallicFactor";
-static constexpr const char* MATKEY_ROUGHNESS_FACTOR = "$mat.roughnessFactor";
-static constexpr const char* MATKEY_SPECULAR_FACTOR = "$mat.specularFactor";
-static constexpr const char* MATKEY_GLOSSINESS_FACTOR = "$mat.glossinessFactor";
-static constexpr const char* MATKEY_CLEARCOAT_FACTOR = "$mat.clearcoat.factor";
 static constexpr const char* MATKEY_CLEARCOAT_ROUGHNESS_FACTOR = "$mat.clearcoat.roughnessFactor";
-static constexpr const char* MATKEY_SHEEN_FACTOR = "$clr.sheen.factor";
-static constexpr const char* MATKEY_SHEEN_ROUGHNESS_FACTOR = "$mat.sheen.roughnessFactor";
-static constexpr const char* MATKEY_TRANSMISSION_FACTOR = "$mat.transmission.factor";
-static constexpr const char* MATKEY_VOLUME_ATTENUATION_DISTANCE = "$mat.volume.attenuationDistance";
-static constexpr const char* MATKEY_VOLUME_ATTENUATION_COLOR = "$mat.volume.attenuationColor";
-static constexpr const char* MATKEY_VOLUME_THICKNESS_FACTOR = "$mat.volume.thicknessFactor";
 static constexpr const char* MATKEY_IOR = "$mat.ior";
-static constexpr const char* MATKEY_EMISSIVE_INTENSITY = "$mat.emissiveIntensity";
-static constexpr const char* MATKEY_OCCLUSION_STRENGTH = "$mat.occlusionStrength";
-static constexpr const char* MATKEY_ANISOTROPY_FACTOR = "$mat.anisotropyFactor";
-static constexpr const char* MATKEY_ANISOTROPY_ROTATION = "$mat.anisotropyRotation";
+static constexpr const char* MATKEY_SHEEN_ROUGHNESS_FACTOR = "$mat.sheen.roughnessFactor";
 static constexpr const char* MATKEY_AMBIENT_OCCLUISION_FACTOR = "$mat.occlusionStrength";
-
 
 namespace Motion::Core
 {
-    std::shared_ptr<Model> Importer::ImportModel(const std::string& shaderName, const std::filesystem::path& path) 
+    std::shared_ptr<Model> Importer::ImportModel(const std::string& modelName, const std::filesystem::path& path) 
     {
+        std::shared_ptr<Model> modelPtr = std::make_shared<Model>(modelName, path);
+        modelPtr->Name = modelName;
+
+        Assimp::Importer importer;
+		const aiScene* scene = importer.ReadFile(path.string(), aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_GenSmoothNormals | aiProcess_JoinIdenticalVertices);
+        if(!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode) 
+        {
+            MOTION_CORE_ERROR("Assimp Importer Error: {0}", importer.GetErrorString());
+            return nullptr;
+        }
+        else
+        {
+            MOTION_CORE_INFO("Assimp Importer: Model {0} loaded successfully from {1}", modelName, path.string());
+            modelPtr->m_MetaData.IsLoaded = true;
+            LoadNode(modelPtr, scene->mRootNode, scene);
+            LoadMaterials(modelPtr, scene);
+            modelPtr->m_MetaData.IsLoaded = true;
+            return modelPtr;
+        }
+
         return nullptr;
     }
 
@@ -40,7 +43,7 @@ namespace Motion::Core
                 if(property.data[0] != '*') 
                 {
                     MOTION_CORE_INFO("Loading Texture in {0} ", property.C_Str());
-                    std::shared_ptr<ITexture> texture = TextureBuilder::CreateTextureFromFile(property.C_Str(), textureType);
+                    std::shared_ptr<ITexture> texture; //= TextureBuilder::CreateTextureFromFile(property.C_Str(), textureType); //[FIXME]: Use the asset manager
                     if(texture != nullptr)
                     {
                         MOTION_CORE_INFO("Loading success!");
@@ -149,7 +152,7 @@ namespace Motion::Core
         //Extracting Materials 
         for(auto& mesh : modelPtr->m_SubMeshes)
         {
-            MOTION_CORE_INFO("Extracting Model SubMesh {{0}} Materials", mesh->MeshIndex);
+            MOTION_CORE_INFO("Extracting Model SubMesh {0} Materials", mesh->MeshIndex);
             aiMaterial* currentMaterial = scene->mMaterials[mesh->MaterialIndex];
 
             aiString property;
@@ -159,7 +162,7 @@ namespace Motion::Core
                 continue;
             }
 
-            std::shared_ptr<Model::SubMeshMaterial> subMeshMaterials = std::make_shared<Model::SubMeshMaterial>(mesh->MaterialIndex);
+            std::shared_ptr<Model::SubMeshMaterial> subMeshMaterials = std::make_shared<Model::SubMeshMaterial>(mesh->MaterialIndex, std::format("SubMesh {0} Material {1} - {2} ", mesh->MeshIndex, mesh->MaterialIndex, property.C_Str()), property.C_Str());
 
             // Suface Colors
             subMeshMaterials->Materials->SetUniform(UniformCache::AmbientColor, LoadMaterialVec3Data(currentMaterial, AI_MATKEY_COLOR_AMBIENT));

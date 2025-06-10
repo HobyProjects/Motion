@@ -79,7 +79,7 @@ namespace Motion::Core
 
     };
 
-    class IShader
+    class IShader : public IAsset
     {
         public:
             IShader() = default;
@@ -103,22 +103,18 @@ namespace Motion::Core
             virtual void SetUniform(const std::string& uniformName, const glm::mat4& value) = 0;
     };
 
-    class ShaderBuilder
+    class ShaderCompiler
     {
         private:
-            ShaderBuilder() = default;
-            ~ShaderBuilder() = default;
+            ShaderCompiler() = default;
+            ~ShaderCompiler() = default;
 
-            ShaderBuilder(const ShaderBuilder&) = delete;
-            ShaderBuilder& operator=(const ShaderBuilder&) = delete;
-            ShaderBuilder(ShaderBuilder&&) = delete;
-            ShaderBuilder& operator=(ShaderBuilder&&) = delete;
+            ShaderCompiler(const ShaderCompiler&) = delete;
+            ShaderCompiler& operator=(const ShaderCompiler&) = delete;
+            ShaderCompiler(ShaderCompiler&&) = delete;
+            ShaderCompiler& operator=(ShaderCompiler&&) = delete;
 
         public:
-            static std::shared_ptr<IShader> CreateShader(const std::string& name, const std::filesystem::path& vertexPath, const std::filesystem::path& fragmentPath);
-            static void DestroyShader(const std::string& name);
-            static std::shared_ptr<IShader> GetShader(const std::string& name);
-
             static ShaderProgramID CreateShaderProgram();
             static void AttachShaderProgram(ShaderID shaderID, ShaderProgramID programID);
             static ShaderID CompileShader(ShaderType shaderType, const std::string& sourceCode);
@@ -126,62 +122,6 @@ namespace Motion::Core
             static void ValidateShaderProgram(ShaderProgramID programID);
             static void DeleteShaderProgram(ShaderProgramID programID);
             static std::string ReadShaderFiles(const std::filesystem::path& filePath);
-    };
-
-    template<typename T>
-    requires std::derived_from<T, IShader>
-    class ShaderContainer
-    {
-        public:
-            ShaderContainer() = default;
-            ~ShaderContainer() = default;
-
-            void InsertShader(const std::string& name, const std::shared_ptr<T>& shader)
-            {
-                if (m_Shaders.find(name) != m_Shaders.end())
-                {
-                    MOTION_ASSERT(false, "Shader with name {0} already exists!", name);
-                    return;
-                }
-                
-                m_Shaders[name] = shader;
-            }
-
-            void RemoveShader(const std::string& name)
-            {
-                auto it = m_Shaders.find(name);
-                if (it != m_Shaders.end())
-                {
-                    m_Shaders.erase(it);
-                }
-                else
-                {
-                    MOTION_ASSERT(false, "Shader with name {0} does not exist!", name);
-                    return;
-                }
-            }
-
-            std::shared_ptr<T> GetShader(const std::string& name) const
-            {
-                auto it = m_Shaders.find(name);
-                if (it != m_Shaders.end())
-                {
-                    return it->second;
-                }
-                else
-                {
-                    MOTION_ASSERT(false, "Shader with name {0} does not exist!", name);
-                    return nullptr;
-                }
-            }
-
-            void Clear()
-            {
-                m_Shaders.clear();
-            }
-
-        private:
-            std::unordered_map<std::string, std::shared_ptr<T>> m_Shaders;
     };
 }
 

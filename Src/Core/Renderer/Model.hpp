@@ -6,12 +6,13 @@
 #include <filesystem>
 
 #include "Mesh.hpp"
+#include "Asset.hpp"
 
 namespace Motion::Core
 {
     class Importer;
 
-    class Model
+    class Model final : public AssetBase<IAsset>
     {
         public:
             struct SubMesh
@@ -27,8 +28,8 @@ namespace Motion::Core
 
             struct SubMeshMaterial
             {
-                explicit SubMeshMaterial(uint32_t materialIndex)
-                    : MaterialIndex(materialIndex), Materials(std::make_shared<Material>()){}
+                explicit SubMeshMaterial(uint32_t materialIndex, const std::string& name, const std::string& materialFile)
+                    : MaterialIndex(materialIndex), Materials(std::make_shared<Material>(name, materialFile)){}
                 ~SubMeshMaterial() = default;
 
                 uint32_t MaterialIndex{0};
@@ -36,13 +37,13 @@ namespace Motion::Core
             };
 
         public:
-            Model(const std::string& modelName, const std::string& shaderName);
-            ~Model() = default;
+            Model(const std::string& name, const std::filesystem::path& modelFile):
+                AssetBase<IAsset>(name, AssetType::Model, modelFile.string()){}
+            virtual ~Model() = default;
 
             void Render(const glm::mat4& modelTransForm);
 
         private:
-            std::shared_ptr<IShader> m_Shader{ nullptr };
             std::vector<std::shared_ptr<SubMesh>> m_SubMeshes{};
             std::unordered_map<uint32_t, std::shared_ptr<SubMeshMaterial>> m_SubMeshMaterialMapping{};
             std::string Name{ "" };

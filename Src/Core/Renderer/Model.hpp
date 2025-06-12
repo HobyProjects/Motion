@@ -10,7 +10,7 @@
 
 namespace Motion::Core
 {
-    class Importer;
+    class Importer; // forward declaration
 
     class Model final : public AssetBase<IAsset>
     {

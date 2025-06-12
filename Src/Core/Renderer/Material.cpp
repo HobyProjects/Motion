@@ -1,4 +1,5 @@
 #include "CorePCH.hpp"
+#include "Material.hpp"
 
 namespace Motion::Core
 {
@@ -22,17 +23,53 @@ namespace Motion::Core
         m_TexturesMaps[name] = std::move(texture);
     }
 
+    Material::ShadingMethod Material::DetectShadingMethod()
+    {
+        glm::vec3 baseColor = GetVec3Uniform(UniformCache::BaseColor);
+        float metallicFactor = GetFloatUniform(UniformCache::MetallicFactor);
+        float roughnessFactor = GetFloatUniform(UniformCache::RoughnessFactor);
+
+        bool usesPBR = baseColor != glm::vec3(1.0f) || metallicFactor > 0.0f || roughnessFactor < 1.0f ||
+                   m_TexturesMaps.contains(UniformCache::BaseColorMapsTexture) ||
+                   m_TexturesMaps.contains(UniformCache::MetallicMapsTexture);
+
+        if(usesPBR)
+            return ShadingMethod::PBR;
+
+        glm::vec3 diffuseColor = GetVec3Uniform(UniformCache::DiffuseColor);
+        glm::vec3 specularColor = GetVec3Uniform(UniformCache::SpecularColor);
+        float shininess = GetFloatUniform(UniformCache::Shininess);
+
+        bool usesLegacy = diffuseColor != glm::vec3(0.0f) || specularColor != glm::vec3(0.0f) || shininess > 0.0f ||
+                    m_TexturesMaps.contains(UniformCache::DiffuseTexture) ||
+                    m_TexturesMaps.contains(UniformCache::SpecularTexture);
+
+        if(usesLegacy)
+            return ShadingMethod::Phong;
+
+        if (GetVec3Uniform(UniformCache::EmissiveColor) != glm::vec3(0.0f))
+            return ShadingMethod::Unlit;
+
+        return ShadingMethod::PBR;
+    }
+
     void Material::Bind() 
     {
-        // [TODO]: We are going to get shader using it's name from assets manager (AssetsManager is not implemented yet!)
-        // [TODO]: Assign the shader depending on Shading Method
-        std::weak_ptr<IShader> shader; // = AssetsManager::GetShader(m_ShaderName);
+        ShadingMethod shadingMethod = DetectShadingMethod();
+        std::weak_ptr<IShader> shader; 
+
+        if(shadingMethod == ShadingMethod::PBR)
+            shader = AssetManager::GetShader("PBRShader");
+        else if(shadingMethod == ShadingMethod::Phong)
+            shader = AssetManager::GetShader("PhongShader");
+        else if(shadingMethod == ShadingMethod::Unlit)
+            shader = AssetManager::GetShader("UnlitShader");
 
         if(!shader.expired())
         {
             auto materialShader = shader.lock();
             for (const auto& [name, val] : m_FloatUniformsMaps)
-            materialShader->SetUniform(name, val);
+                materialShader->SetUniform(name, val);
 
             for (const auto& [name, val] : m_Vec3UniformsMaps)
                 materialShader->SetUniform(name, val);
@@ -44,7 +81,7 @@ namespace Motion::Core
             for (const auto& [name, tex] : m_TexturesMaps) 
             {
                 tex->Bind(slot);
-                materialShader->SetUniform(name, slot);
+                materialShader->SetUniform(name, static_cast<float>(slot));
                 ++slot;
             }
         }

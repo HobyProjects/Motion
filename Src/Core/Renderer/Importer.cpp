@@ -43,7 +43,7 @@ namespace Motion::Core
                 if(property.data[0] != '*') 
                 {
                     MOTION_CORE_INFO("Loading Texture in {0} ", property.C_Str());
-                    std::shared_ptr<ITexture> texture; //= TextureBuilder::CreateTextureFromFile(property.C_Str(), textureType); //[FIXME]: Use the asset manager
+                    std::shared_ptr<ITexture> texture = AssetManager::CreateTextureFromFile(property.C_Str(), std::filesystem::path(property.C_Str()), textureType);
                     if(texture != nullptr)
                     {
                         MOTION_CORE_INFO("Loading success!");

@@ -10,26 +10,32 @@
 
 namespace Motion::Core
 {
-    class AssetFactory
-    {
-        public:
-            static std::shared_ptr<IShader> CreateShader(const std::string& name, const std::string& filePath);
-            static std::shared_ptr<ITexture> CreateTxture(const std::string& name, const std::string& filePath);
-    };
-
     class AssetManager
     {
-        public:
+        private:
             AssetManager() = default;
             ~AssetManager() = default;
 
-            std::shared_ptr<IShader> CreateShader(const std::string& name, const std::filesystem::path& shaderFile);
-            std::shared_ptr<ITexture> CreateTextureFromFile(const std::string& name, const std::filesystem::path& textureFile, bool flipOnLoading = true);
-            std::shared_ptr<ITexture> CreatePlainTexture(const std::string& name, uint32_t width, uint32_t height);
-            std::shared_ptr<Model> LoadModel(const std::string& name, std::filesystem::path& modelFile);
+            AssetManager(const AssetManager&) = delete;
+            AssetManager& operator=(const AssetManager&) = delete;
 
-        private:
-            std::unordered_map<UUID, std::shared_ptr<IAsset>> m_AssetRegistry{};
-            std::unordered_map<std::string, UUID> m_AssetNameUUIDMap{};
+        public:
+            static std::shared_ptr<IShader> CreateShader(const std::string& name, const std::filesystem::path& shaderFile);
+            static std::shared_ptr<ITexture> CreateTextureFromFile(const std::string& name, const std::filesystem::path& textureFile, TextureType type, bool flipOnLoading = true);
+            static std::shared_ptr<ITexture> CreatePlainTexture(const std::string& name, uint32_t width, uint32_t height);
+            static std::shared_ptr<Model> LoadModel(const std::string& name, std::filesystem::path& modelFile);
+
+            static std::shared_ptr<IAsset> GetAsset(const UUID& uuid);
+            static std::shared_ptr<IAsset> GetAsset(const std::string& name);
+
+            static std::shared_ptr<IShader> GetShader(const UUID& uuid);
+            static std::shared_ptr<ITexture> GetTexture(const UUID& uuid);
+            static std::shared_ptr<Model> GetModel(const UUID& uuid);
+
+            static std::shared_ptr<IShader> GetShader(const std::string& name);
+            static std::shared_ptr<ITexture> GetTexture(const std::string& name);
+            static std::shared_ptr<Model> GetModel(const std::string& name);
+
+            static void Clear();
     };
 }

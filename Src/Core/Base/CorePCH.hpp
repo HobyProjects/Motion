@@ -46,6 +46,8 @@
 #include "Log.hpp"
 #include "Asset.hpp"
 #include "AssetManager.hpp"
+#include "UUID.hpp"
+#include "MaterialManager.hpp"
 
 //Events
 #include "Event.hpp"

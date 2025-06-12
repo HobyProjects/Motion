@@ -18,8 +18,6 @@ namespace Motion::Core
 
             virtual TextureID GetID() const override { return m_Specification.TexID; }
             virtual TextureSpecification GetSpecification() const override { return m_Specification; }
-            virtual const AssetMetaData& GetMetaData() const override { return m_MetaData; }
-            virtual AssetType GetType() const override { return AssetType::Texture; }
 
         private:
             bool LoadTextureFromFile(const std::filesystem::path& textureFile, bool flip = true);
@@ -27,7 +25,6 @@ namespace Motion::Core
 
         private:
             TextureSpecification m_Specification;
-            AssetMetaData m_MetaData;
             bool m_FromFile{ false };
     };
 }

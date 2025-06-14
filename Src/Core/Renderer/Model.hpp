@@ -38,7 +38,9 @@ namespace Motion::Core
 
         public:
             Model(const std::string& name, const std::filesystem::path& modelFile):
-                AssetBase<IAsset>(name, AssetType::Model, modelFile.string()){}
+                AssetBase<IAsset>(UniqueIdentity::GetUniqueID(), name, AssetType::Model, modelFile.string()){}
+            Model(UUID uuid, const std::string& name, const std::filesystem::path& modelFile):
+                AssetBase<IAsset>(uuid, name, AssetType::Model, modelFile.string()){}
             virtual ~Model() = default;
 
             void Render(const glm::mat4& modelTransForm);

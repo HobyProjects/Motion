@@ -48,7 +48,9 @@ namespace Motion::Core
 
         public:
             Material(const std::string& name, const std::string& materialFile):
-                AssetBase<IAsset>(name, AssetType::Material, materialFile){}
+                AssetBase<IAsset>(UniqueIdentity::GetUniqueID(), name, AssetType::Material, materialFile){}
+            Material(UUID uuid, const std::string& name, ShadingMethod shadingMethod, const std::string& materialFile):
+                AssetBase<IAsset>(uuid, name, AssetType::Material, materialFile), m_Shading(shadingMethod){}
             virtual ~Material() = default;
 
             void Bind();
@@ -63,6 +65,12 @@ namespace Motion::Core
             glm::vec3 GetVec3Uniform(const std::string& name) const { return m_Vec3UniformsMaps.at(name); }
             glm::vec4 GetVec4Uniform(const std::string& name) const { return m_Vec4UniformsMaps.at(name); }
             std::shared_ptr<ITexture> GetTexture(const std::string& name) const { return m_TexturesMaps.at(name); }
+            ShadingMethod GetShadingMethod() const { return m_Shading; }
+
+            std::unordered_map<std::string, float> GetFloatUniforms() const { return m_FloatUniformsMaps; }
+            std::unordered_map<std::string, glm::vec3> GetVec3Uniforms() const { return m_Vec3UniformsMaps; }
+            std::unordered_map<std::string, glm::vec4> GetVec4Uniforms() const { return m_Vec4UniformsMaps; }
+            std::unordered_map<std::string, std::shared_ptr<ITexture>> GetTextures() const { return m_TexturesMaps; }
 
         private:
             ShadingMethod DetectShadingMethod(); 

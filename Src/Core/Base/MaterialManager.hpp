@@ -21,7 +21,7 @@ namespace Motion::Core
             MaterialManager& operator=(MaterialManager&&) = delete;
 
         public:
-            static std::shared_ptr<Material> Rgister(const std::string& name);
+            static void Rgister(const std::string& name, const std::shared_ptr<Material>& material);
             static std::shared_ptr<Material> Get(const UUID& id);
             static std::shared_ptr<Material> Get(const std::string& name);
             static bool HasMaterial(const std::string& name);

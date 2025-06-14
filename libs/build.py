@@ -305,7 +305,8 @@ if __name__ == "__main__":
         Package("SOIL2", "SOIL2", "build/config/SOIL2", "build/packages/SOIL2", ""),
         Package("imgui", "imgui_docking", "build/config/imgui", "build/packages/imgui", ""),
         Package("entt", "entt", "build/config/entt", "build/packages/entt", "-DENTT_INCLUDE_HEADERS=ON -DENTT_INCLUDE_NATVIS=ON -DENTT_INSTALL=ON"),
-        Package("assimp", "assimp", "build/config/assimp", "build/packages/assimp", "-DASSIMP_BUILD_TESTS=OFF")
+        Package("assimp", "assimp", "build/config/assimp", "build/packages/assimp", "-DASSIMP_BUILD_TESTS=OFF"),
+        Package("yaml-cpp", "yaml-cpp", "build/config/yaml-cpp", "build/packages/yaml-cpp", "-DYAML_BUILD_SHARED_LIBS=OFF")
     ]
 
     parser = argparse.ArgumentParser(description="Build script for the Motion Engine")

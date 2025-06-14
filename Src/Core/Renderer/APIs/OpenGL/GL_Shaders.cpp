@@ -80,7 +80,24 @@ namespace Motion::Core
     }
 
     GL_Shader::GL_Shader(const std::string& name, const std::unordered_map<ShaderType, std::string>& shaderSources, const std::filesystem::path& sourceFile):
-        AssetBase<IShader>(name, AssetType::Shader, sourceFile.string())
+        AssetBase<IShader>(UniqueIdentity::GetUniqueID(), name, AssetType::Shader, sourceFile.string())
+    {
+        m_Name = name;
+        m_ProgramID = GL_ShaderCompiler::CreateShaderProgram();
+
+        for(const auto& [type, source] : shaderSources)
+        {
+            ShaderID compiledShaderID = GL_ShaderCompiler::CompileShader(type, source);
+            GL_ShaderCompiler::AttachShaderProgram(compiledShaderID, m_ProgramID);
+        }
+
+        GL_ShaderCompiler::LinkShaderProgram(m_ProgramID);
+        GL_ShaderCompiler::ValidateShaderProgram(m_ProgramID);
+        m_MetaData.IsLoaded = true;
+    }
+
+    GL_Shader::GL_Shader(UUID uuid, const std::string& name, const std::unordered_map<ShaderType, std::string>& shaderSources, const std::filesystem::path& sourceFile):
+        AssetBase<IShader>(uuid, name, AssetType::Shader, sourceFile.string())
     {
         m_Name = name;
         m_ProgramID = GL_ShaderCompiler::CreateShaderProgram();

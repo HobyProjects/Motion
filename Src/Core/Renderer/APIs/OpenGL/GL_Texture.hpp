@@ -9,7 +9,9 @@ namespace Motion::Core
     {
         public:
             GL_Texture(const std::string& name, uint32_t width, uint32_t height);
+            GL_Texture(UUID uuid, const std::string& name, uint32_t width, uint32_t height);
             GL_Texture(const std::string& name, const std::filesystem::path& textureFile, TextureType type, bool flip = true);
+            GL_Texture(UUID uuid, const std::string& name, const std::filesystem::path& textureFile, TextureType type, bool flip = true);
             virtual ~GL_Texture();
 
             virtual void Bind() const override;

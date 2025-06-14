@@ -45,9 +45,10 @@
 #include "Asserts.hpp"
 #include "Log.hpp"
 #include "Asset.hpp"
-#include "AssetManager.hpp"
 #include "UUID.hpp"
+#include "AssetManager.hpp"
 #include "MaterialManager.hpp"
+#include "MaterialSerializer.hpp"
 
 //Events
 #include "Event.hpp"
@@ -67,6 +68,7 @@
 #include "Model.hpp"
 #include "Mesh.hpp"
 #include "Importer.hpp"
+#include "Material.hpp"
 
 //Renderer - OpenGL
 #include "GL_Debug.hpp"

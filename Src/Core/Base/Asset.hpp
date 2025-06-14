@@ -15,7 +15,7 @@ namespace Motion::Core
 
     struct AssetMetaData
     {
-        UUID AssetUUID{UniqueIdentity::GetUniqueID()};
+        UUID AssetUUID{0};
         std::string AssetName{"Unnamed Asset"};
         AssetType Type = AssetType::None;
         std::string FilePath{"Unknown"};
@@ -36,8 +36,9 @@ namespace Motion::Core
     class AssetBase : public T
     {
         public:
-            AssetBase(const std::string& name, AssetType type, const std::string& filePath)
+            AssetBase(UUID uuid, const std::string& name, AssetType type, const std::string& filePath)
             {
+                m_MetaData.AssetUUID = uuid;
                 m_MetaData.AssetName = name;
                 m_MetaData.Type = type;
                 m_MetaData.FilePath = filePath;

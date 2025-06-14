@@ -29,6 +29,7 @@ find_package(soil2 CONFIG REQUIRED)
 find_package(imgui CONFIG REQUIRED)
 find_package(EnTT CONFIG REQUIRED)
 find_package(Assimp CONFIG REQUIRED)
+find_package(yaml-cpp CONFIG REQUIRED)
 
 ###############################################################################
 # Platform Specific Configuration
@@ -62,6 +63,7 @@ set(
         ${MOTION_CORE_DIR}/Base/Asset.hpp
         ${MOTION_CORE_DIR}/Base/AssetManager.hpp
         ${MOTION_CORE_DIR}/Base/MaterialManager.hpp
+        ${MOTION_CORE_DIR}/Base/MaterialSerializer.hpp
 
         ${MOTION_CORE_DIR}/Event/Event.hpp
         ${MOTION_CORE_DIR}/Event/EventWindow.hpp
@@ -100,6 +102,8 @@ set(
         ${MOTION_CORE_DIR}/Base/Log.cpp
         ${MOTION_CORE_DIR}/Base/AssetManager.cpp
         ${MOTION_CORE_DIR}/Base/MaterialManager.cpp
+        ${MOTION_CORE_DIR}/Base/MaterialSerializer.cpp
+
 
         ${MOTION_CORE_DIR}/Renderer/Buffers.cpp
         ${MOTION_CORE_DIR}/Renderer/Shaders.cpp
@@ -137,4 +141,5 @@ target_link_libraries(
             soil2::soil2
             imgui::imgui
             assimp::assimp
+            yaml-cpp::yaml-cpp
 )

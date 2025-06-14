@@ -3,7 +3,20 @@
 namespace Motion::Core
 {
     GL_Texture::GL_Texture(const std::string& name, uint32_t width, uint32_t height):
-        AssetBase<ITexture>(name, AssetType::Texture, "PlainTexture") 
+        AssetBase<ITexture>(UniqueIdentity::GetUniqueID(), name, AssetType::Texture, "PlainTexture") 
+    {
+        if( !GenerateTexture(width, height) )
+        {
+            MOTION_ASSERT(false, "Unable to generate texture of size {0}x{1}", width, height);
+            return;
+        }
+
+        m_Specification.Type = TextureType::BaseColorMapsTexture;
+        m_MetaData.IsLoaded = true;
+    }
+
+    GL_Texture::GL_Texture(UUID uuid, const std::string& name, uint32_t width, uint32_t height):
+        AssetBase<ITexture>(uuid, name, AssetType::Texture, "PlainTexture") 
     {
         if( !GenerateTexture(width, height) )
         {
@@ -16,7 +29,20 @@ namespace Motion::Core
     }
 
     GL_Texture::GL_Texture(const std::string& name, const std::filesystem::path& textureFile, TextureType type, bool flip):
-        AssetBase<ITexture>(name, AssetType::Texture, textureFile.string())
+        AssetBase<ITexture>(UniqueIdentity::GetUniqueID(), name, AssetType::Texture, textureFile.string())
+    {
+        if( !LoadTextureFromFile(textureFile, flip) )
+        {
+            MOTION_ASSERT(false, "Unable to load texture file {0}", textureFile.string());
+            return;
+        }
+
+        m_Specification.Type = type;
+        m_MetaData.IsLoaded = true;
+    }
+
+    GL_Texture::GL_Texture(UUID uuid, const std::string& name, const std::filesystem::path& textureFile, TextureType type, bool flip):
+        AssetBase<ITexture>(uuid, name, AssetType::Texture, textureFile.string())
     {
         if( !LoadTextureFromFile(textureFile, flip) )
         {

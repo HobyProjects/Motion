@@ -1,4 +1,5 @@
 #include "CorePCH.hpp"
+#include "Importer.hpp"
 
 static constexpr const char* MATKEY_CLEARCOAT_ROUGHNESS_FACTOR = "$mat.clearcoat.roughnessFactor";
 static constexpr const char* MATKEY_IOR = "$mat.ior";
@@ -31,6 +32,32 @@ namespace Motion::Core
 
         return nullptr;
     }
+
+    
+    std::shared_ptr<Model> Importer::ImportModel(UUID uuid, const std::string & modelName, const std::filesystem::path & path)
+    {
+        std::shared_ptr<Model> modelPtr = std::make_shared<Model>(uuid, modelName, path);
+        modelPtr->Name = modelName;
+
+        Assimp::Importer importer;
+		const aiScene* scene = importer.ReadFile(path.string(), aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_GenSmoothNormals | aiProcess_JoinIdenticalVertices);
+        if(!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode) 
+        {
+            MOTION_CORE_ERROR("Assimp Importer Error: {0}", importer.GetErrorString());
+            return nullptr;
+        }
+        else
+        {
+            MOTION_CORE_INFO("Assimp Importer: Model {0} loaded successfully from {1}", modelName, path.string());
+            modelPtr->m_MetaData.IsLoaded = true;
+            LoadNode(modelPtr, scene->mRootNode, scene);
+            LoadMaterials(modelPtr, scene);
+            modelPtr->m_MetaData.IsLoaded = true;
+            return modelPtr;
+        }
+
+        return nullptr;
+    } 
 
     static std::shared_ptr<ITexture> LoadTextures(aiTextureType aiTexType, aiMaterial* aiMaterial, TextureType textureType)
     {
@@ -90,7 +117,6 @@ namespace Motion::Core
     void Importer::LoadMesh(const std::shared_ptr<Model>& modelPtr, aiMesh* mesh, const aiScene* scene)
     {
         static uint32_t meshIndex = 0;
-
         std::vector<float> vertices;
         std::vector<uint32_t> indices;
 
@@ -158,7 +184,7 @@ namespace Motion::Core
             aiString property;
             if(currentMaterial->Get(AI_MATKEY_NAME, property) != AI_SUCCESS)
             {
-                MOTION_CORE_WARN("Material without a name is not handled");
+                MOTION_CORE_WARN("Material without a name is not handled >> SKIPPING {0}", mesh->MaterialIndex);
                 continue;
             }
 

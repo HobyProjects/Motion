@@ -108,10 +108,8 @@ set(
         ${MOTION_CORE_DIR}/Renderer/Buffers.cpp
         ${MOTION_CORE_DIR}/Renderer/Shaders.cpp
         ${MOTION_CORE_DIR}/Renderer/Renderer.cpp
-        ${MOTION_CORE_DIR}/Renderer/Texture.cpp
         ${MOTION_CORE_DIR}/Renderer/Arrays.cpp
         ${MOTION_CORE_DIR}/Renderer/Camera3D.cpp
-        ${MOTION_CORE_DIR}/Renderer/Model.cpp
         ${MOTION_CORE_DIR}/Renderer/Mesh.cpp
         ${MOTION_CORE_DIR}/Renderer/Material.cpp
         ${MOTION_CORE_DIR}/Renderer/Importer.cpp

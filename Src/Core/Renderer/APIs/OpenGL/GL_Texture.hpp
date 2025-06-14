@@ -20,6 +20,7 @@ namespace Motion::Core
 
             virtual TextureID GetID() const override { return m_Specification.TexID; }
             virtual TextureSpecification GetSpecification() const override { return m_Specification; }
+            virtual bool IsFromFile() const override { return m_FromFile; }
 
         private:
             bool LoadTextureFromFile(const std::filesystem::path& textureFile, bool flip = true);

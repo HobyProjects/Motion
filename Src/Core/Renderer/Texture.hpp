@@ -52,5 +52,6 @@ namespace Motion::Core
 
             virtual TextureID GetID() const = 0;
             virtual TextureSpecification GetSpecification() const = 0;
+            virtual bool IsFromFile() const = 0;
     };
 }

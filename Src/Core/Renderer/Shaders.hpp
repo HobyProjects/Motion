@@ -25,6 +25,11 @@ namespace Motion::Core
 
     struct UniformCache
     {
+        //Model 
+        static constexpr const char* ModelMatrix = "u_ModelMatrix";
+        static constexpr const char* CameraMatrix = "u_CameraMatrix";
+
+
         // Surface Colors
         static constexpr const char* AmbientColor = "u_AmbientColor";
         static constexpr const char* DiffuseColor = "u_DiffuseColor";

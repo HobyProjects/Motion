@@ -44,7 +44,7 @@ namespace Motion::Core
     class Material final : public AssetBase<IAsset>
     {
         public:
-            enum class ShadingMethod { Phong, PBR, Unlit };
+            enum class ShadingMethod { Phong, PBR, Unlit, Unknown };
 
         public:
             Material(const std::string& name, const std::string& materialFile):
@@ -54,6 +54,7 @@ namespace Motion::Core
             virtual ~Material() = default;
 
             void Bind();
+            void Bind(const std::shared_ptr<IShader>& shader);
             void Unbind();
 
             void SetUniform(const std::string& name, float value);
@@ -65,7 +66,7 @@ namespace Motion::Core
             glm::vec3 GetVec3Uniform(const std::string& name) const { return m_Vec3UniformsMaps.at(name); }
             glm::vec4 GetVec4Uniform(const std::string& name) const { return m_Vec4UniformsMaps.at(name); }
             std::shared_ptr<ITexture> GetTexture(const std::string& name) const { return m_TexturesMaps.at(name); }
-            ShadingMethod GetShadingMethod() const { return m_Shading; }
+            ShadingMethod GetShadingMethod();
 
             std::unordered_map<std::string, float> GetFloatUniforms() const { return m_FloatUniformsMaps; }
             std::unordered_map<std::string, glm::vec3> GetVec3Uniforms() const { return m_Vec3UniformsMaps; }
@@ -80,6 +81,6 @@ namespace Motion::Core
             std::unordered_map<std::string, glm::vec3> m_Vec3UniformsMaps;
             std::unordered_map<std::string, glm::vec4> m_Vec4UniformsMaps;
             std::unordered_map<std::string, std::shared_ptr<ITexture>> m_TexturesMaps;
-            ShadingMethod m_Shading{ShadingMethod::PBR};
+            ShadingMethod m_Shading{ShadingMethod::Unknown};
     };
 }

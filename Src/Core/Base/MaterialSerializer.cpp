@@ -83,7 +83,10 @@ namespace Motion::Core
             case 0: return Material::ShadingMethod::Phong;
             case 1: return Material::ShadingMethod::PBR;
             case 2: return Material::ShadingMethod::Unlit;
+            default: return Material::ShadingMethod::Unknown;
         };
+
+        return Material::ShadingMethod::Unknown;
     }
 
     static TextureType GetTextureType(uint32_t textureType)
@@ -108,7 +111,10 @@ namespace Motion::Core
             case 14: return TextureType::ClearCoatMapsTexture; 
             case 15: return TextureType::SheenMapsTexture; 
             case 16: return TextureType::TransmissionMapsTexture; 
+            default: return TextureType::UnknownTextureType;
         }
+
+        return TextureType::UnknownTextureType;
     }
 
     std::shared_ptr<Material> MaterialSerializer::Deserialize(const std::filesystem::path& filePath)

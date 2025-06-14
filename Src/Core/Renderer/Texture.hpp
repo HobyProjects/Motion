@@ -29,7 +29,8 @@ namespace Motion::Core
         EmissiveMapsTexture,
         ClearCoatMapsTexture,
         SheenMapsTexture,
-        TransmissionMapsTexture
+        TransmissionMapsTexture,
+        UnknownTextureType,
     };
 
     struct TextureSpecification

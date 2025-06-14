@@ -23,6 +23,11 @@ namespace Motion::Core
         m_TexturesMaps[name] = std::move(texture);
     }
 
+    Material::ShadingMethod Material::GetShadingMethod()
+    {
+        return DetectShadingMethod();
+    }
+
     Material::ShadingMethod Material::DetectShadingMethod()
     {
         glm::vec3 baseColor = GetVec3Uniform(UniformCache::BaseColor);
@@ -68,6 +73,32 @@ namespace Motion::Core
         if(!shader.expired())
         {
             auto materialShader = shader.lock();
+            for (const auto& [name, val] : m_FloatUniformsMaps)
+                materialShader->SetUniform(name, val);
+
+            for (const auto& [name, val] : m_Vec3UniformsMaps)
+                materialShader->SetUniform(name, val);
+
+            for (const auto& [name, val] : m_Vec4UniformsMaps)
+                materialShader->SetUniform(name, val);
+
+            uint32_t slot = 0;
+            for (const auto& [name, tex] : m_TexturesMaps) 
+            {
+                tex->Bind(slot);
+                materialShader->SetUniform(name, static_cast<float>(slot));
+                ++slot;
+            }
+        }
+    }
+
+    void Material::Bind(const std::shared_ptr<IShader>& shader)
+    {
+        std::weak_ptr<IShader> matShader = shader;
+
+        if(!matShader.expired())
+        {
+            auto materialShader = matShader.lock();
             for (const auto& [name, val] : m_FloatUniformsMaps)
                 materialShader->SetUniform(name, val);
 

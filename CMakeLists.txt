@@ -107,8 +107,6 @@ set(
         ${MOTION_CORE_DIR}/Base/MaterialSerializer.cpp
         ${MOTION_CORE_DIR}/Base/LayersManager.cpp
 
-
-
         ${MOTION_CORE_DIR}/Renderer/Buffers.cpp
         ${MOTION_CORE_DIR}/Renderer/Shaders.cpp
         ${MOTION_CORE_DIR}/Renderer/Renderer.cpp
@@ -117,6 +115,8 @@ set(
         ${MOTION_CORE_DIR}/Renderer/Mesh.cpp
         ${MOTION_CORE_DIR}/Renderer/Material.cpp
         ${MOTION_CORE_DIR}/Renderer/Importer.cpp
+        ${MOTION_CORE_DIR}/Renderer/Model.cpp
+
 
         ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL/GL_Buffers.cpp
         ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL/GL_Debug.cpp

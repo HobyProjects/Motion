@@ -158,7 +158,7 @@ namespace Motion::Core
             if(currentMaterial != draw.material)
             {
                 currentMaterial = draw.material;
-                currentMaterial->Bind(); 
+                currentMaterial->Bind(currentShader); 
             }
 
             if(currentMesh != draw.mesh)
@@ -167,7 +167,7 @@ namespace Motion::Core
                 currentMesh->Bind();
             }
 
-            currentShader->SetUniform("u_ModelMatrix", draw.modelMatrix);
+            currentShader->SetUniform(UniformCache::ModelMatrix, draw.modelMatrix);
             DrawIndexed(draw.mesh->GetIndicesCount());
             s_DrawCalls++;
         }

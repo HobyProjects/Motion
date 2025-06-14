@@ -49,6 +49,8 @@
 #include "AssetManager.hpp"
 #include "MaterialManager.hpp"
 #include "MaterialSerializer.hpp"
+#include "Layer.hpp"
+#include "LayersManager.hpp"
 
 //Events
 #include "Event.hpp"

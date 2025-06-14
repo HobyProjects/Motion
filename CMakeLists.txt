@@ -61,6 +61,8 @@ set(
         ${MOTION_CORE_DIR}/Base/Timer.hpp
         ${MOTION_CORE_DIR}/Base/UUID.hpp
         ${MOTION_CORE_DIR}/Base/Asset.hpp
+        ${MOTION_CORE_DIR}/Base/Layer.hpp
+        ${MOTION_CORE_DIR}/Base/LayersManager.hpp
         ${MOTION_CORE_DIR}/Base/AssetManager.hpp
         ${MOTION_CORE_DIR}/Base/MaterialManager.hpp
         ${MOTION_CORE_DIR}/Base/MaterialSerializer.hpp
@@ -103,6 +105,8 @@ set(
         ${MOTION_CORE_DIR}/Base/AssetManager.cpp
         ${MOTION_CORE_DIR}/Base/MaterialManager.cpp
         ${MOTION_CORE_DIR}/Base/MaterialSerializer.cpp
+        ${MOTION_CORE_DIR}/Base/LayersManager.cpp
+
 
 
         ${MOTION_CORE_DIR}/Renderer/Buffers.cpp

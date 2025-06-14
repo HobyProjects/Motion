@@ -71,6 +71,8 @@ set(
         ${MOTION_CORE_DIR}/Event/EventWindow.hpp
         ${MOTION_CORE_DIR}/Event/EventKeyboard.hpp
         ${MOTION_CORE_DIR}/Event/EventMouse.hpp
+        ${MOTION_CORE_DIR}/Event/InputsHandler.hpp
+        ${MOTION_CORE_DIR}/Event/GLFW_InputsHandler.hpp
 
         ${MOTION_CORE_DIR}/Renderer/Buffers.hpp
         ${MOTION_CORE_DIR}/Renderer/Shaders.hpp
@@ -117,6 +119,8 @@ set(
         ${MOTION_CORE_DIR}/Renderer/Importer.cpp
         ${MOTION_CORE_DIR}/Renderer/Model.cpp
 
+        ${MOTION_CORE_DIR}/Event/InputsHandler.cpp
+        ${MOTION_CORE_DIR}/Event/GLFW_InputsHandler.cpp
 
         ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL/GL_Buffers.cpp
         ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL/GL_Debug.cpp

@@ -136,4 +136,110 @@ namespace Motion::Core
 			style.Colors [ImGuiCol_WindowBg].w = 1.0f;
 		}
     }
+
+    void UI::CustomControl::DragControllerVec3(const char* label, glm::vec3& values, float resetValue, float columnWidth) 
+    {
+        ImGui::PushID(label);
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, { 0.0f, 0.0f });
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, { 0.0f, 0.0f });
+        ImGuiTabBarFlags flags = ImGuiTableFlags_NoHostExtendX | ImGuiTableFlags_NoPadInnerX | ImGuiTableFlags_SizingFixedFit;
+        ImGui::BeginTable("vec3Dragfloats", 4, flags);
+
+        // Set up columns
+        ImGui::TableSetupColumn("0", ImGuiTableColumnFlags_WidthFixed, 100.0f); // Fixed width column
+        ImGui::TableSetupColumn("1", ImGuiTableColumnFlags_NoHeaderWidth);
+        ImGui::TableSetupColumn("2", ImGuiTableColumnFlags_NoHeaderWidth);
+        ImGui::TableSetupColumn("3", ImGuiTableColumnFlags_NoHeaderWidth);
+
+        float buffer [3] = { values.x, values.y, values.z };
+        const char* component[] = { "X", "Y", "Z" };
+
+        ImGui::PushStyleVar(ImGuiTableColumnFlags_WidthFixed, 100.0f);
+        ImGui::TableNextColumn();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text(label);
+        ImGui::PopStyleVar();
+
+        for( uint32_t i = 0; i < 3; i++ )
+        {
+            switch( i )
+            {
+                case 0:
+                {
+                    ImGui::TableNextColumn();
+                    ImGui::TableSetColumnIndex(1);
+                    ImGui::PushStyleColor(ImGuiCol_Button, { 0.8f, 0.1f, 0.15f, 1.0f });
+                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, { 0.9f, 0.2f, 0.2f,  1.0f });
+                    ImGui::PushStyleColor(ImGuiCol_ButtonActive, { 0.8f, 0.1f, 0.15f, 1.0f });
+                    if( ImGui::Button(component [0], { 25.0f, 28.0f }) )
+                    {
+                        values [0] = resetValue;
+                    }
+                    ImGui::PopStyleColor(3);
+                    ImGui::SameLine();
+                    ImGui::SetNextItemWidth(80.0f);
+                    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, { 0.0f, 5.0f });
+                    if( ImGui::DragFloat("##X", &buffer [0], 0.1f) )
+                    {
+                        values [0] = buffer [0];
+                    }
+                    ImGui::PopStyleVar();
+                    break;
+                }
+                case 1:
+                {
+                    ImGui::TableNextColumn();
+                    ImGui::TableSetColumnIndex(2);
+                    ImGui::PushStyleColor(ImGuiCol_Button, { 0.2f, 0.7f, 0.3f, 1.0f });
+                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, { 0.3f, 0.8f, 0.4f, 1.0f });
+                    ImGui::PushStyleColor(ImGuiCol_ButtonActive, { 0.2f, 0.7f, 0.3f, 1.0f });
+                    if( ImGui::Button(component [1], { 25.0f, 28.0f }) )
+                    {
+                        values [1] = resetValue;
+                    }
+                    ImGui::PopStyleColor(3);
+                    ImGui::SameLine();
+                    ImGui::SetNextItemWidth(80.0f);
+                    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, { 0.0f, 5.0f });
+                    if( ImGui::DragFloat("##Y", &buffer [1], 0.1f) )
+                    {
+                        values [1] = buffer [1];
+                    }
+                    ImGui::PopStyleVar();
+                    break;
+                }
+                case 2:
+                {
+                    ImGui::TableNextColumn();
+                    ImGui::TableSetColumnIndex(3);
+                    ImGui::PushStyleColor(ImGuiCol_Button, { 0.1f,  0.25f, 0.8f, 1.0f });
+                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, { 0.2f,  0.35f, 0.2f, 1.0f });
+                    ImGui::PushStyleColor(ImGuiCol_ButtonActive, { 0.15f, 0.25f, 0.8f, 1.0f });
+                    if( ImGui::Button(component [2], { 25.0f, 28.0f }) )
+                    {
+                        values [2] = resetValue;
+                    }
+
+                    ImGui::PopStyleColor(3);
+                    ImGui::SameLine();
+                    ImGui::SetNextItemWidth(80.0f);
+                    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, { 0.0f, 5.0f });
+                    if( ImGui::DragFloat("##Z", &buffer [2], 0.1f) )
+                    {
+                        values [2] = buffer [2];
+                    }
+                    ImGui::PopStyleVar();
+                    break;
+                }
+                default:
+                {
+                    break;
+                }
+            };
+        }
+
+        ImGui::EndTable();
+        ImGui::PopStyleVar(2);
+        ImGui::PopID();
+    }
 }

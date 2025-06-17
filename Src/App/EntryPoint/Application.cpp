@@ -25,6 +25,10 @@ namespace Motion::App
         while(m_Window->IsActive())
         {
             m_Window->PollEvents();
+
+            Motion::Core::Renderer::Clear();
+            Motion::Core::Renderer::ClearColor({ 255.0f, 0.0f, 0.0f, 255.0f });
+
             m_Window->SwapBuffers();
         }
     }

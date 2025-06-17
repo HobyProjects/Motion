@@ -6,6 +6,7 @@ import json
 import argparse
 import subprocess
 import hashlib
+import platform
 
 # ========== Color Logging ==========
 class Color:
@@ -42,8 +43,6 @@ class Package:
 
 # ========== CMake Preset Generators ==========
 
-import platform
-
 def get_base_configure_preset(generator: str):
     os_names = ["Linux", "Windows", "macOS", "FreeBSD", "OpenBSD", "NetBSD", "DragonFlyBSD"]
     archs = ["x86_64", "x86", "AMD64", "arm64", "armhf", "aarch64", "armv7l", "armv6l", "i386", "i686"]
@@ -73,34 +72,137 @@ def get_base_configure_preset(generator: str):
     log_info(f"Detected system: {system_name} | {system_version} | ({system_processor} - {system_processor_architecture} - {system_processor_architecture_vendor})")
     log_info(f"Using generator: {generator}")
 
+    # Clang flags,
+        # -g:                   Produce debugging information
+        # -O3:                  Optimize as much as possible while remaning standards compliant
+        # -O0:                  Disable optimizations
+        # -std:                 Determine the language standard.
+        # -Wall:                Enables all the warnings about constructions that some users consider questionable
+        # -Wcast-qual:          Warn whenever a pointer is cast so as to remove a type qualifier from the target type
+        # -Werror:              Make all warnings into errors
+        # -Weffc++:             Warn about violations of some guidelines from Scott Meyers' Effective C++ (Note 2016-07-13: Currently removed because it warns about some things that are perfectly safe)
+        # -Wextra:              Enables some extra warning flags that are not enabled by -Wall
+        # -Wfloat-equal:        Warn if floating-point values are used in equality comparisons.
+        # -Wformat:             Check calls to printf and scanf, etc.
+        # -Winline:             Warn if a function that is declared as inline cannot be inlined
+        # -Wold-style-cast:     Warn on C-style casts
+        # -Wpedantic:           Issue all the warnings demanded by strict ISO C and ISO C++
+        # -Wshadow:             Warn whenever a local variable or type declaration shadows another variable, parameter, type, or class member
+        # -Wsign-conversion:    Warn for implicit conversions that may change the sign of an integer value
+        # -Wswitch-default:     Warn whenever a switch statement does not have a default case.
+        # -Wno-unknown-pragmas: (2016-07-13) Temporarily added to disable warnings about #pragma unused
+
+    # GNU flags,
+        # -g:                   Produce debugging information
+        # -O3:                  Optimize as much as possible while remaning standards compliant
+        # -Og:                  Enable optimizations that don't interfere with debugging
+        # -std:                 Determine the language standard.
+        # -Wall:                Enables all the warnings about constructions that some users consider questionable
+        # -Wcast-qual:          Warn whenever a pointer is cast so as to remove a type qualifier from the target type
+        # -Werror:              Make all warnings into errors
+        # -Weffc++:             Warn about violations of some guidelines from Scott Meyers' Effective C++ (Note 2016-07-13: Currently removed because it warns about some things that are perfectly safe)
+        # -Wextra:              Enables some extra warning flags that are not enabled by -Wall
+        # -Wfloat-equal:        Warn if floating-point values are used in equality comparisons.
+        # -Wformat:             Check calls to printf and scanf, etc.
+        # -Winline:             Warn if a function that is declared as inline cannot be inlined
+        # -Wold-style-cast:     Warn on C-style casts
+        # -Wpedantic:           Issue all the warnings demanded by strict ISO C and ISO C++
+        # -Wshadow:             Warn whenever a local variable or type declaration shadows another variable, parameter, type, or class member
+        # -Wsign-conversion:    Warn for implicit conversions that may change the sign of an integer value
+        # -Wswitch-default:     Warn whenever a switch statement does not have a default case.
+        # -Wno-unknown-pragmas: (2016-07-13) Temporarily added to disable warnings about #pragma unused
+
+    # MSVC flags,
+        # /EHsc: Specifies the model of exception handling.
+        # /GL:   Enables whole program optimization.
+        # /Gm:   Enable minimal rebuilds; conflicts with /MP
+        # /GS:   Buffers security check.
+        # /MD:   Creates a multithreaded DLL using MSVCRT.lib.
+        # /MDd:  Creates a debug multithreaded DLL using MSVCRTD.lib.
+        # /MP:   Multiprocess compilation
+        # /O2:   Creates fast code.
+        # /Od:   Disables optimization.
+        # /Oi:   Generates intrinsic functions.
+        # /RTC1: Enables run-time error checking.
+        # /sdl:  Enables additional (Windows-specific) security features and warnings.
+        # /W4:   Sets which warning level to output.
+        # /wd:   Disable warning
+        # /Zi:   Generates complete debugging information.
+
+    CMAKE_CCXX_FLAGS_DEBUG = str()
+    CMAKE_CCXX_FLAGS_RELEASE = str()
+    CMAKE_CCXX_FLAGS_MINSIZEREL = str()
+    CMAKE_CCXX_FLAGS_RELWITHDEBINFO = str()
+
+    if generator == "MinGW Makefiles":
+        CMAKE_CCXX_FLAGS_DEBUG = "-g -O0"
+        CMAKE_CCXX_FLAGS_RELEASE = "-O3"
+        CMAKE_CCXX_FLAGS_MINSIZEREL = "-Os"
+        CMAKE_CCXX_FLAGS_RELWITHDEBINFO = "-O2 -g"
+    elif generator == "Unix Makefiles":
+        CMAKE_CCXX_FLAGS_DEBUG = "-g -O0"
+        CMAKE_CCXX_FLAGS_RELEASE = "-O3"
+        CMAKE_CCXX_FLAGS_MINSIZEREL = "-Os"
+        CMAKE_CCXX_FLAGS_RELWITHDEBINFO = "-O2 -g"
+    elif generator == "Ninja":
+        CMAKE_CCXX_FLAGS_DEBUG = "-g -O0"
+        CMAKE_CCXX_FLAGS_RELEASE = "-O3"
+        CMAKE_CCXX_FLAGS_MINSIZEREL = "-Os"
+        CMAKE_CCXX_FLAGS_RELWITHDEBINFO = "-O2 -g"
+    elif generator == "NMake Makefiles":
+        CMAKE_CCXX_FLAGS_DEBUG = "/g /O0"
+        CMAKE_CCXX_FLAGS_RELEASE = "/O3"
+        CMAKE_CCXX_FLAGS_MINSIZEREL = "/Os"
+        CMAKE_CCXX_FLAGS_RELWITHDEBINFO = "/O2 /g"
+    elif generator == "Visual Studio 16 2019":
+        CMAKE_CCXX_FLAGS_DEBUG = "/Zi /Ob0 /Od /RTC1"
+        CMAKE_CCXX_FLAGS_RELEASE = "/O2"
+        CMAKE_CCXX_FLAGS_MINSIZEREL = "/O1"
+        CMAKE_CCXX_FLAGS_RELWITHDEBINFO = "/O2 /Zi"
+    elif generator == "Visual Studio 17 2022":
+        CMAKE_CCXX_FLAGS_DEBUG = "/Zi /Ob0 /Od /RTC1"
+        CMAKE_CCXX_FLAGS_RELEASE = "/O2"
+        CMAKE_CCXX_FLAGS_MINSIZEREL = "/O1"
+        CMAKE_CCXX_FLAGS_RELWITHDEBINFO = "/O2 /Zi"
+    elif generator == "Visual Studio 18 2022":
+        CMAKE_CCXX_FLAGS_DEBUG = "/Zi /Ob0 /Od /RTC1"
+        CMAKE_CCXX_FLAGS_RELEASE = "/O2"
+        CMAKE_CCXX_FLAGS_MINSIZEREL = "/O1"
+        CMAKE_CCXX_FLAGS_RELWITHDEBINFO = "/O2 /Zi"
+    else:
+        raise Exception(f"Unknown generator: {generator}")
+
     return {
         "name": "common-base",
         "hidden": True,
-        "binaryDir": "${sourceDir}/build/config",
-        "installDir": "${sourceDir}/build/packages",
+        "binaryDir": "${sourceDir}/build/",
+        "installDir": "${sourceDir}/build/install/",
         "generator": generator,
         "cacheVariables": {
-            "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+
             "CMAKE_CXX_STANDARD": "20",
             "CMAKE_CXX_STANDARD_REQUIRED": "ON",   
             "CMAKE_CXX_EXTENSIONS": "OFF",
-            "CMAKE_CXX_FLAGS_DEBUG": "-O0 -g",
-            "CMAKE_CXX_FLAGS_RELEASE": "-O3 -DNDEBUG",
-            "CMAKE_CXX_FLAGS_MINSIZEREL": "-Os -DNDEBUG",
-            "CMAKE_CXX_FLAGS_RELWITHDEBINFO": "-O2 -g -DNDEBUG",
+            "CMAKE_CXX_FLAGS_DEBUG": CMAKE_CCXX_FLAGS_DEBUG,
+            "CMAKE_CXX_FLAGS_RELEASE": CMAKE_CCXX_FLAGS_RELEASE,
+            "CMAKE_CXX_FLAGS_MINSIZEREL": CMAKE_CCXX_FLAGS_MINSIZEREL,
+            "CMAKE_CXX_FLAGS_RELWITHDEBINFO": CMAKE_CCXX_FLAGS_RELWITHDEBINFO,
+            
             "CMAKE_C_STANDARD": "17",
             "CMAKE_C_STANDARD_REQUIRED": "ON",
             "CMAKE_C_EXTENSIONS": "OFF",
-            "CMAKE_C_FLAGS_DEBUG": "-O0 -g",
-            "CMAKE_C_FLAGS_RELEASE": "-O3 -DNDEBUG",
-            "CMAKE_C_FLAGS_MINSIZEREL": "-Os -DNDEBUG",
-            "CMAKE_C_FLAGS_RELWITHDEBINFO": "-O2 -g -DNDEBUG",
+            "CMAKE_C_FLAGS_DEBUG": CMAKE_CCXX_FLAGS_DEBUG,
+            "CMAKE_C_FLAGS_RELEASE": CMAKE_CCXX_FLAGS_RELEASE,
+            "CMAKE_C_FLAGS_MINSIZEREL": CMAKE_CCXX_FLAGS_MINSIZEREL,
+            "CMAKE_C_FLAGS_RELWITHDEBINFO": CMAKE_CCXX_FLAGS_RELWITHDEBINFO,
+
+            "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
             "CMAKE_POSITION_INDEPENDENT_CODE": "ON",
             "CMAKE_SYSTEM_PROCESSOR": system_processor,
             "CMAKE_SYSTEM_NAME": system_name,
             "CMAKE_SYSTEM_VERSION": system_version,
             "CMAKE_SYSTEM_PROCESSOR_ARCHITECTURE": system_processor_architecture,
-            "CMAKE_SYSTEM_PROCESSOR_ARCHITECTURE_VENDOR": system_processor_architecture_vendor,   
+            "CMAKE_SYSTEM_PROCESSOR_ARCHITECTURE_VENDOR": system_processor_architecture_vendor,               
         }
     }
 
@@ -135,7 +237,7 @@ def get_os_preset(os: str, inherits: str, arch: str, conf: str, generator: str):
             "CMAKE_BUILD_TYPE": conf
         },
         "generator": generator,
-        "binaryDir": f"${{sourceDir}}/build/config/{os.lower()}-{arch.lower()}-{conf.lower()}"
+        "binaryDir": f"${{sourceDir}}/build/{os.lower()}-{arch.lower()}-{conf.lower()}"
     }
 
 def generate_presets(dir: str, build_type: str, generator: str, prefix_path: str):

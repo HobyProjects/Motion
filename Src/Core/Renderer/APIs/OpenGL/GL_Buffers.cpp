@@ -57,6 +57,11 @@ namespace Motion::Core
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_ElementBufferID);
     }
 
+    void GL_ElementBuffer::Unbind() const
+    {
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+    }
+
     GL_ShaderBuffer::GL_ShaderBuffer(uint32_t size, BindingPoint binding)
     {
         glCreateBuffers(1, &m_ShaderBufferID);

@@ -104,7 +104,7 @@ namespace Motion::Core
             virtual bool IsVSyncEnabled() const = 0;
             virtual WindowHandle GetHandle() const = 0;
             virtual NativeWindow GetNativeWindow() const = 0;
-            virtual WindowProperties GetProperties() const = 0;
+            virtual WindowProperties& GetProperties() = 0;
             virtual void PollEvents() = 0;
             virtual void SwapBuffers() = 0;
             virtual void SetEventsCallbackFunc(const ApplicationCallbackFunction&) = 0;

@@ -77,18 +77,21 @@ namespace Motion::Core
                 m_Event(eventRef), m_WinHandle(windowHandle){}
             ~EventHandler() = default;
 
-            template<typename WinHandle, typename TEvent>
-            bool Dispatch(const std::function<bool(WinHandle, TEvent)>& callBackFun)
+            template<typename TEvent>
+            bool Dispatch(const std::function<bool(uint32_t, TEvent&)>& callBackFun)
             {
-                static_assert(std::is_base_of_v<TEvent, IEvent>, "TEvent must be a base class of IEvent");
+                static_assert(std::is_base_of_v<IEvent, TEvent>, "TEvent must be a subclass of IEvent!");
                 if(m_Event.Type() == TEvent::StaticType())
                 {
                     m_IsEventHandled |= callBackFun(m_WinHandle, static_cast<TEvent&>(m_Event));
                     return m_IsEventHandled;
                 }
+
+                return false;
             }
 
             bool IsHandled() const { return m_IsEventHandled; }
+            uint32_t GetWindowHandle() const { return m_WinHandle; }
 
         private:
             IEvent& m_Event;
@@ -171,7 +174,6 @@ namespace Motion::Core
         private:
             static inline std::unordered_map<EventType, EventRegistryCallbackFunction> m_EventRegistry;
     };
-
 
 
     using ApplicationCallbackFunction = std::function<void(uint32_t, IEvent&)>;

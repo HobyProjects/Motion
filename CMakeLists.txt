@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 3.24)
 project(Motion VERSION 1.0.0 LANGUAGES C CXX)
 
+set(MOTION_CORE_LIBRARY MotionCore)
+set(MOTION_APP_EXECUTABLE MotionEngine)
+
 ##############################################################################
 # CMake Configuration
 ##############################################################################
@@ -41,7 +44,6 @@ ConfigurePlatform()
 # Motion Engine - Core Library
 ###############################################################################
 set(MOTION_CORE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/Src/Core)
-set(MOTION_APP_DIR ${CMAKE_CURRENT_SOURCE_DIR}/Src/App)
 
 set(
     MOTION_CORE_INCLUDE_DIR
@@ -139,11 +141,11 @@ set(
         ${MOTION_CORE_DIR}/UI/UI.cpp
 )
 
-add_library(MotionCore STATIC ${MOTION_CORE_HEADERS} ${MOTION_CORE_SOURCES})
-target_precompile_headers(MotionCore PUBLIC ${MOTION_CORE_DIR}/Base/CorePCH.hpp)
-target_include_directories(MotionCore PUBLIC ${MOTION_CORE_INCLUDE_DIR})
+add_library(${MOTION_CORE_LIBRARY} STATIC ${MOTION_CORE_HEADERS} ${MOTION_CORE_SOURCES})
+target_precompile_headers(${MOTION_CORE_LIBRARY} PUBLIC ${MOTION_CORE_DIR}/Base/CorePCH.hpp)
+target_include_directories(${MOTION_CORE_LIBRARY} PUBLIC ${MOTION_CORE_INCLUDE_DIR})
 target_link_libraries(
-    MotionCore 
+    ${MOTION_CORE_LIBRARY} 
         PUBLIC 
             glfw 
             spdlog::spdlog 
@@ -154,3 +156,29 @@ target_link_libraries(
             assimp::assimp
             yaml-cpp::yaml-cpp
 )
+
+###############################################################################
+# Motion Engine - Application
+###############################################################################
+set(MOTION_APP_DIR ${CMAKE_CURRENT_SOURCE_DIR}/Src/App)
+
+set(
+    MTION_APP_INCLUDE_DIR
+        ${MOTION_APP_DIR}/EntryPoint
+        ${MOTION_APP_DIR}/Layers
+)
+
+set(
+    MOTION_APP_HEADERS
+        ${MOTION_APP_DIR}/EntryPoint/Application.hpp
+)
+
+set(
+    MOTION_APP_SOURCES
+        ${MOTION_APP_DIR}/EntryPoint/MotionEngine.cpp
+        ${MOTION_APP_DIR}/EntryPoint/Application.cpp
+)
+
+add_executable(${MOTION_APP_EXECUTABLE} ${MOTION_APP_HEADERS} ${MOTION_APP_SOURCES})
+target_include_directories(${MOTION_APP_EXECUTABLE} PUBLIC ${MTION_APP_INCLUDE_DIR} ${MOTION_CORE_INCLUDE_DIR})
+target_link_libraries(${MOTION_APP_EXECUTABLE} PUBLIC ${MOTION_CORE_LIBRARY})

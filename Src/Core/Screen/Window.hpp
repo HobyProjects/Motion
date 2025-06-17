@@ -131,16 +131,16 @@ namespace Motion::Core
             static std::shared_ptr<IContext> GetContext();
     };
 
-    class WindowBuilder
+    class WindowManager
     {
         private:
-            WindowBuilder() = default;
-            ~WindowBuilder() = default;
+            WindowManager() = default;
+            ~WindowManager() = default;
 
-            WindowBuilder(const WindowBuilder&) = delete;
-            WindowBuilder& operator=(const WindowBuilder&) = delete;
-            WindowBuilder(WindowBuilder&&) = delete;
-            WindowBuilder& operator=(WindowBuilder&&) = delete;
+            WindowManager(const WindowManager&) = delete;
+            WindowManager& operator=(const WindowManager&) = delete;
+            WindowManager(WindowManager&&) = delete;
+            WindowManager& operator=(WindowManager&&) = delete;
 
         public:
             static WindowHandle UniqueHandle();

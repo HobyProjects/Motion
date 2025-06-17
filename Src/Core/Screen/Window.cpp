@@ -89,13 +89,13 @@ namespace Motion::Core
         return s_ContextService;
     }
 
-    WindowHandle WindowBuilder::UniqueHandle()
+    WindowHandle WindowManager::UniqueHandle()
     {
         static WindowHandle s_Handle = 0;
         return s_Handle++;
     }
 
-    std::shared_ptr<IWindow> WindowBuilder::Create(const std::string& title)
+    std::shared_ptr<IWindow> WindowManager::Create(const std::string& title)
     {
         WindowHandle uniqueHandle = UniqueHandle();
         switch(s_BaseAPI)
@@ -124,7 +124,7 @@ namespace Motion::Core
         }
     }
 
-    void WindowBuilder::Destroy(std::shared_ptr<IWindow>& window)
+    void WindowManager::Destroy(std::shared_ptr<IWindow>& window)
     {
         if(window)
         {
@@ -137,7 +137,7 @@ namespace Motion::Core
         }
     }
 
-    std::shared_ptr<IWindow> WindowBuilder::Get(WindowHandle handle)
+    std::shared_ptr<IWindow> WindowManager::Get(WindowHandle handle)
     {
         auto it = s_WindowMap.find(handle);
         if(it != s_WindowMap.end())

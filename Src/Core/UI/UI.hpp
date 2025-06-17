@@ -1,10 +1,5 @@
 #pragma once
 
-#include <imgui/imgui.h>
-#include <imgui/imgui_impl_opengl3.h>
-#include <imgui/imgui_impl_glfw.h>
-#include <imgui/imgui_internal.h>
-
 #include "Window.hpp"
 
 namespace Motion::Core
@@ -15,6 +10,10 @@ namespace Motion::Core
             UI() = default;
             ~UI() = default;
 
+            UI(const UI&) = delete;
+            UI& operator=(const UI&) = delete;
+            UI(UI&&) = delete;
+            UI& operator=(UI&&) = delete;
 
         public:
             static void Init(WindowHandle whnd);

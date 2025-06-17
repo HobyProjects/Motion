@@ -49,6 +49,7 @@ set(
         ${MOTION_CORE_DIR}/Event
         ${MOTION_CORE_DIR}/Renderer
         ${MOTION_CORE_DIR}/Screen
+        ${MOTION_CORE_DIR}/UI
         ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL
 )
 
@@ -99,6 +100,8 @@ set(
         ${MOTION_CORE_DIR}/Screen/Window.hpp
         ${MOTION_CORE_DIR}/Screen/GLFW_Window.hpp
 
+        ${MOTION_CORE_DIR}/UI/UI.hpp
+
 )
 
 set(
@@ -132,6 +135,8 @@ set(
 
         ${MOTION_CORE_DIR}/Screen/Window.cpp
         ${MOTION_CORE_DIR}/Screen/GLFW_Window.cpp
+
+        ${MOTION_CORE_DIR}/UI/UI.cpp
 )
 
 add_library(MotionCore STATIC ${MOTION_CORE_HEADERS} ${MOTION_CORE_SOURCES})

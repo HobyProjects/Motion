@@ -12,7 +12,7 @@ namespace Motion::Core
     using ShaderProgramID   = uint32_t;
     using UniformLocation   = uint32_t;
 
-    enum class ShaderType
+    enum class ShaderType : uint32_t
     {
         None = 0,
         Vertex,
@@ -22,6 +22,11 @@ namespace Motion::Core
         TessellationControl,
         TessellationEvaluation
     };
+
+    inline uint32_t operator|(ShaderType a, ShaderType b) { return static_cast<uint32_t>(a) | static_cast<uint32_t>(b); }
+    inline uint32_t operator&(ShaderType a, ShaderType b) { return static_cast<uint32_t>(a) & static_cast<uint32_t>(b); }
+    inline uint32_t operator^(ShaderType a, ShaderType b) { return static_cast<uint32_t>(a) ^ static_cast<uint32_t>(b); }
+    inline uint32_t operator~(ShaderType a) { return ~static_cast<uint32_t>(a); }
 
     struct UniformCache
     {

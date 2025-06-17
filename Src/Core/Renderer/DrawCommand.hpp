@@ -6,12 +6,17 @@
 
 namespace Motion::Core
 {
-    enum class RenderPass 
+    enum class RenderPass : uint32_t
     {
-        Opaque,
+        Opaque = 0,
         Transparent,
         Shadow
     };
+
+    inline uint32_t operator|(RenderPass a, RenderPass b) { return static_cast<uint32_t>(a) | static_cast<uint32_t>(b); }
+    inline uint32_t operator&(RenderPass a, RenderPass b) { return static_cast<uint32_t>(a) & static_cast<uint32_t>(b); }
+    inline uint32_t operator^(RenderPass a, RenderPass b) { return static_cast<uint32_t>(a) ^ static_cast<uint32_t>(b); }
+    inline uint32_t operator~(RenderPass a) { return ~static_cast<uint32_t>(a); }
 
     struct DrawCommand
     {

@@ -39,6 +39,10 @@
 #include <glm/gtx/vector_angle.hpp>
 #include <glm/gtx/string_cast.hpp>
 
+#include <imgui/imgui.h>
+#include <imgui/imgui_impl_opengl3.h>
+#include <imgui/imgui_impl_glfw.h>
+#include <imgui/imgui_internal.h>
 
 //Base
 #include "Base.hpp"
@@ -86,3 +90,6 @@
 //Screen
 #include "Window.hpp"
 #include "GLFW_Window.hpp"
+
+//UI
+#include "UI.hpp"

@@ -8,10 +8,10 @@ namespace Motion::Core
 {
     using TextureID = uint32_t;
 
-    enum class TextureType
+    enum class TextureType : uint32_t
     {
         // Legacy Texture Types
-        DiffuseTexture,
+        DiffuseTexture = 0,
         AmbientTexture,
         SpecularTexture,
         EmissiveTexture,
@@ -32,6 +32,11 @@ namespace Motion::Core
         TransmissionMapsTexture,
         UnknownTextureType,
     };
+
+    inline uint32_t operator|(TextureType a, TextureType b) { return static_cast<uint32_t>(a) | static_cast<uint32_t>(b); }
+    inline uint32_t operator&(TextureType a, TextureType b) { return static_cast<uint32_t>(a) & static_cast<uint32_t>(b); }
+    inline uint32_t operator^(TextureType a, TextureType b) { return static_cast<uint32_t>(a) ^ static_cast<uint32_t>(b); }
+    inline uint32_t operator~(TextureType a) { return ~static_cast<uint32_t>(a); }
 
     struct TextureSpecification
     {

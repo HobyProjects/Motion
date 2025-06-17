@@ -22,6 +22,11 @@ namespace Motion::Core
         Normal = Bits<3>::value
     };
 
+    inline uint32_t operator|(WindowState a, WindowState b) { return static_cast<uint32_t>(a) | static_cast<uint32_t>(b); }
+    inline uint32_t operator&(WindowState a, WindowState b) { return static_cast<uint32_t>(a) & static_cast<uint32_t>(b); }
+    inline uint32_t operator^(WindowState a, WindowState b) { return static_cast<uint32_t>(a) ^ static_cast<uint32_t>(b); }
+    inline uint32_t operator~(WindowState a) { return ~static_cast<uint32_t>(a); }
+
     struct WindowColorBit
     {
         uint32_t RedBit{ 0 }, GreenBit{ 0 }, BlueBit{ 0 }, AlphaBit{ 0 };
@@ -56,6 +61,11 @@ namespace Motion::Core
         SDL = Bits<2>::value,
         Win32 = Bits<3>::value
     };
+
+    inline uint32_t operator|(BaseAPIs a, BaseAPIs b) { return static_cast<uint32_t>(a) | static_cast<uint32_t>(b); }
+    inline uint32_t operator&(BaseAPIs a, BaseAPIs b) { return static_cast<uint32_t>(a) & static_cast<uint32_t>(b); }
+    inline uint32_t operator^(BaseAPIs a, BaseAPIs b) { return static_cast<uint32_t>(a) ^ static_cast<uint32_t>(b); }
+    inline uint32_t operator~(BaseAPIs a) { return ~static_cast<uint32_t>(a); }
 
     class IBaseAPI
     {

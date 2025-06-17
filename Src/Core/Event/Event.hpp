@@ -17,6 +17,11 @@ namespace Motion::Core
         Unknown = Bits<4>::value
     };
 
+    inline uint32_t operator|(EventCategory a, EventCategory b) { return static_cast<uint32_t>(a) | static_cast<uint32_t>(b); }
+    inline uint32_t operator&(EventCategory a, EventCategory b) { return static_cast<uint32_t>(a) & static_cast<uint32_t>(b); }
+    inline uint32_t operator^(EventCategory a, EventCategory b) { return static_cast<uint32_t>(a) ^ static_cast<uint32_t>(b); }
+    inline uint32_t operator~(EventCategory a) { return ~static_cast<uint32_t>(a); }
+
     enum class EventType : uint32_t
     {
         WindowClose = Bits<0>::value,
@@ -40,6 +45,11 @@ namespace Motion::Core
         MouseCursorWindowEnter = Bits<16>::value,
         MouseCursorWindowLeave = Bits<17>::value
     };
+
+    inline uint32_t operator|(EventType a, EventType b) { return static_cast<uint32_t>(a) | static_cast<uint32_t>(b); }
+    inline uint32_t operator&(EventType a, EventType b) { return static_cast<uint32_t>(a) & static_cast<uint32_t>(b); }
+    inline uint32_t operator^(EventType a, EventType b) { return static_cast<uint32_t>(a) ^ static_cast<uint32_t>(b); }
+    inline uint32_t operator~(EventType a) { return ~static_cast<uint32_t>(a); }
 
     #define EVENT_CLASS_TYPE(EVENT_TYPE) static EventType StaticType() { return EVENT_TYPE; }\
         virtual EventType Type() const override { return StaticType(); }\

@@ -33,6 +33,11 @@ namespace Motion::App
         }
     }
 
+    void Application::PushLayer(const std::shared_ptr<Motion::Core::Layer>& layer)
+    {
+
+    }
+
     void Application::OnEvent(Motion::Core::WindowHandle handle, Motion::Core::IEvent& e)
     {
         Motion::Core::EventHandler handler(handle, e);

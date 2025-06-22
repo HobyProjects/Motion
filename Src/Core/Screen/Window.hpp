@@ -58,8 +58,7 @@ namespace Motion::Core
     enum class BaseAPIs : uint32_t
     {
         GLFW = Bits<1>::value,
-        SDL = Bits<2>::value,
-        Win32 = Bits<3>::value
+        Win32 = Bits<2>::value
     };
 
     inline uint32_t operator|(BaseAPIs a, BaseAPIs b) { return static_cast<uint32_t>(a) | static_cast<uint32_t>(b); }

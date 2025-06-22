@@ -22,7 +22,6 @@ namespace Motion::Core
         switch(s_BaseAPI)
         {
             case BaseAPIs::GLFW:  s_BaseAPIService = std::make_shared<GLFW_BaseAPI>(); break;
-            case BaseAPIs::SDL:   MOTION_ASSERT(false, "SDL is not supported yet"); break;
             case BaseAPIs::Win32: MOTION_ASSERT(false, "Win32 is not supported yet"); break;
             default: MOTION_ASSERT(false, "Unknown Base API"); break;
         };
@@ -40,24 +39,12 @@ namespace Motion::Core
                 return true;
         }
 
-        if(Renderer::GetAPI() == RenderingAPI::OpenGL && s_BaseAPI == BaseAPIs::SDL)
-        {
-            MOTION_ASSERT(false, "SDL is not supported yet");
-            return false;
-        }
-
         if(Renderer::GetAPI() == RenderingAPI::OpenGL && s_BaseAPI == BaseAPIs::Win32)
         {
             MOTION_ASSERT(false, "Win32 is not supported yet");
             return false;
         }
 
-        if(Renderer::GetAPI() == RenderingAPI::Vulkan && s_BaseAPI == BaseAPIs::SDL)
-        {
-            MOTION_ASSERT(false, "SDL is not supported yet");
-            return false;
-        }
-        
         if(Renderer::GetAPI() == RenderingAPI::Vulkan && s_BaseAPI == BaseAPIs::GLFW)
         {
             MOTION_ASSERT(false, "Vulkan is not supported yet");
@@ -105,11 +92,6 @@ namespace Motion::Core
                 auto window = std::make_shared<GLFW_Window>(uniqueHandle, title, s_ContextService);
                 s_WindowMap[uniqueHandle] = window;
                 return window;
-            }
-            case BaseAPIs::SDL:
-            {
-                MOTION_ASSERT(false, "SDL is not supported yet");
-                return nullptr;
             }
             case BaseAPIs::Win32:
             {

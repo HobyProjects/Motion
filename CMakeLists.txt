@@ -52,6 +52,7 @@ set(
         ${MOTION_CORE_DIR}/Renderer
         ${MOTION_CORE_DIR}/Screen
         ${MOTION_CORE_DIR}/UI
+        ${MOTION_CORE_DIR}/ECS
         ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL
 )
 
@@ -104,6 +105,9 @@ set(
 
         ${MOTION_CORE_DIR}/UI/UI.hpp
 
+        ${MOTION_CORE_DIR}/ECS/Entity.hpp
+        ${MOTION_CORE_DIR}/ECS/Components.hpp
+
 )
 
 set(
@@ -139,6 +143,8 @@ set(
         ${MOTION_CORE_DIR}/Screen/GLFW_Window.cpp
 
         ${MOTION_CORE_DIR}/UI/UI.cpp
+
+        ${MOTION_CORE_DIR}/ECS/Entity.cpp
 )
 
 add_library(${MOTION_CORE_LIBRARY} STATIC ${MOTION_CORE_HEADERS} ${MOTION_CORE_SOURCES})
@@ -155,6 +161,7 @@ target_link_libraries(
             imgui::imgui
             assimp::assimp
             yaml-cpp::yaml-cpp
+            EnTT::EnTT
 )
 
 ###############################################################################

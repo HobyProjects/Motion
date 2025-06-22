@@ -93,3 +93,7 @@
 
 //UI
 #include "UI.hpp"
+
+//ECS
+#include "Entity.hpp"
+#include "Components.hpp"

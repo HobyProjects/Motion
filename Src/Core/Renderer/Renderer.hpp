@@ -20,11 +20,6 @@ namespace Motion::Core
     inline uint32_t operator^(RenderingAPI a, RenderingAPI b) { return static_cast<uint32_t>(a) ^ static_cast<uint32_t>(b); }
     inline uint32_t operator~(RenderingAPI a) { return ~static_cast<uint32_t>(a); }
 
-    inline uint32_t operator|(BaseAPIs a, RenderingAPI b) { return static_cast<uint32_t>(a) | static_cast<uint32_t>(b); }
-    inline uint32_t operator&(BaseAPIs a, RenderingAPI b) { return static_cast<uint32_t>(a) & static_cast<uint32_t>(b); }
-    inline uint32_t operator^(BaseAPIs a, RenderingAPI b) { return static_cast<uint32_t>(a) ^ static_cast<uint32_t>(b); }
-    inline uint32_t operator~(BaseAPIs a) { return ~static_cast<uint32_t>(a); }
-
     class Renderer
     {
         private:

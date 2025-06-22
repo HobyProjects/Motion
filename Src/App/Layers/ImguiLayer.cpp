@@ -21,8 +21,14 @@ namespace Motion::App
         if( m_AllowEvents )
         {
             ImGuiIO& io = ImGui::GetIO();
-            e.Equals(Motion::Core::EventCategory::Keyboard) & io.WantCaptureKeyboard;
-            e.Equals(Motion::Core::EventCategory::Mouse) & io.WantCaptureMouse;
+            if (e.Equals(Motion::Core::EventCategory::Keyboard) && !io.WantCaptureKeyboard)
+            {
+                io.WantCaptureKeyboard = true;
+            }
+            if (e.Equals(Motion::Core::EventCategory::Mouse) && !io.WantCaptureMouse)
+            {
+                io.WantCaptureMouse = true;
+            }
         }
     }
 
@@ -36,7 +42,6 @@ namespace Motion::App
             ImGui::NewFrame();
         }
 
-        //[TODO] : Add support for SDL
         //[TODO] : Add support for Win32
     }
 

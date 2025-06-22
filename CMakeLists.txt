@@ -171,12 +171,14 @@ set(
 set(
     MOTION_APP_HEADERS
         ${MOTION_APP_DIR}/EntryPoint/Application.hpp
+        ${MOTION_APP_DIR}/Layers/ImGuiLayer.hpp
 )
 
 set(
     MOTION_APP_SOURCES
         ${MOTION_APP_DIR}/EntryPoint/MotionEngine.cpp
         ${MOTION_APP_DIR}/EntryPoint/Application.cpp
+        ${MOTION_APP_DIR}/Layers/ImGuiLayer.cpp
 )
 
 add_executable(${MOTION_APP_EXECUTABLE} ${MOTION_APP_HEADERS} ${MOTION_APP_SOURCES})

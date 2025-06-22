@@ -35,7 +35,14 @@ namespace Motion::App
 
     void Application::PushLayer(const std::shared_ptr<Motion::Core::Layer>& layer)
     {
+        layer->OnAttach();
+        m_LayersManager->PushLayer(layer);
+    }
 
+    void Application::PushOverlay(const std::shared_ptr<Motion::Core::Layer>& layer)
+    {
+        layer->OnAttach();
+        m_LayersManager->PushOverlay(layer);
     }
 
     void Application::OnEvent(Motion::Core::WindowHandle handle, Motion::Core::IEvent& e)

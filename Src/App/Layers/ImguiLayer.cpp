@@ -35,7 +35,7 @@ namespace Motion::App
 
     void ImGuiLayer::Begin()
     {
-        if(Motion::Core::CoreAPI::GetBaseAPI()->API() & Motion::Core::BaseAPIs::GLFW && 
+        if(Motion::Core::CoreAPI::API() & Motion::Core::BaseAPIs::GLFW && 
             Motion::Core::Renderer::GetAPI() & Motion::Core::RenderingAPI::OpenGL)
         {
             ImGui_ImplOpenGL3_NewFrame();
@@ -56,7 +56,7 @@ namespace Motion::App
             io.DisplaySize = ImVec2(static_cast<float>(windowPtr->GetProperties().Width), static_cast<float>(windowPtr->GetProperties().Height));
         }
 
-        if(Motion::Core::CoreAPI::GetBaseAPI()->API() & Motion::Core::BaseAPIs::GLFW && 
+        if(Motion::Core::CoreAPI::API() & Motion::Core::BaseAPIs::GLFW && 
             Motion::Core::Renderer::GetAPI() & Motion::Core::RenderingAPI::OpenGL)
         {
             ImGui::EndFrame();

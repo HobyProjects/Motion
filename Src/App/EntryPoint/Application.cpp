@@ -43,7 +43,7 @@ namespace Motion::App
 
                 for(auto& layer : *m_LayersManager)
                 {
-                    layer->OnUpdate(deltaTime);
+                    layer->OnUpdate(m_Window->GetHandle(), deltaTime);
                 }
             }
 
@@ -51,7 +51,7 @@ namespace Motion::App
 
             for(auto& layer : *m_LayersManager)
             {
-                layer->OnUIRender();
+                layer->OnUIRender(m_Window->GetHandle());
             }
 
             m_ImGuiLayer->End();

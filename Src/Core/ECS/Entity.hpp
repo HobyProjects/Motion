@@ -51,6 +51,7 @@ namespace Motion::Core
                     return EntityBuilder::Registry.emplace<T>(m_EntityHandle, std::forward<Args>(args)...);
 
                 MOTION_ASSERT(false, "Entity already been destroyed");
+                return EntityBuilder::ENULL;
             }
 
             template<typename T>

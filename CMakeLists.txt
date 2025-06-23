@@ -173,12 +173,14 @@ set(
     MTION_APP_INCLUDE_DIR
         ${MOTION_APP_DIR}/EntryPoint
         ${MOTION_APP_DIR}/Layers
+        ${MOTION_APP_DIR}/Camera
 )
 
 set(
     MOTION_APP_HEADERS
         ${MOTION_APP_DIR}/EntryPoint/Application.hpp
         ${MOTION_APP_DIR}/Layers/ImGuiLayer.hpp
+        ${MOTION_APP_DIR}/Camera/MainCamera.hpp
 )
 
 set(
@@ -186,6 +188,7 @@ set(
         ${MOTION_APP_DIR}/EntryPoint/MotionEngine.cpp
         ${MOTION_APP_DIR}/EntryPoint/Application.cpp
         ${MOTION_APP_DIR}/Layers/ImGuiLayer.cpp
+        ${MOTION_APP_DIR}/Camera/MainCamera.cpp
 )
 
 add_executable(${MOTION_APP_EXECUTABLE} ${MOTION_APP_HEADERS} ${MOTION_APP_SOURCES})

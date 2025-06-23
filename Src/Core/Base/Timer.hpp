@@ -42,6 +42,8 @@ namespace Motion::Core
                     case BaseAPIs::Win32:
                         MOTION_ASSERT(false, "Win32 is not supported yet") return static_cast<T>(0);
                 }
+
+                return static_cast<T>(0);
             }
 
             static T GetSystemTicksSeconds()
@@ -53,6 +55,8 @@ namespace Motion::Core
                     case BaseAPIs::Win32:
                         MOTION_ASSERT(false, "Win32 is not supported yet") return static_cast<T>(0);
                 }
+
+                return static_cast<T>(0);
             }
 
             static T GetSystemTicksMilliseconds()
@@ -64,6 +68,8 @@ namespace Motion::Core
                     case BaseAPIs::Win32:
                         MOTION_ASSERT(false, "Win32 is not supported yet") return static_cast<T>(0);
                 }
+
+                return static_cast<T>(0);
             }
     };
 }

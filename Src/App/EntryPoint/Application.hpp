@@ -4,6 +4,9 @@
 #include "Window.hpp"
 #include "Layer.hpp"
 #include "LayersManager.hpp"
+#include "Timer.hpp"
+
+#include "ImguiLayer.hpp"
 
 namespace Motion::App
 {
@@ -26,5 +29,11 @@ namespace Motion::App
         private:
             std::shared_ptr<Motion::Core::IWindow> m_Window{nullptr};
             std::shared_ptr<Motion::Core::LayersManager> m_LayersManager{nullptr};
+
+            // Application Layers
+            std::shared_ptr<ImGuiLayer> m_ImGuiLayer{nullptr};
+
+            // Frame constant
+            float m_LastFrameTime{0.0f};
     };
 }

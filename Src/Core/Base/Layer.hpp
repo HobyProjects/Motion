@@ -18,6 +18,7 @@ namespace Motion::Core
             virtual void OnDetach(){}
             virtual void OnUpdate(Timer deltaTime){}
             virtual void OnEvent(WindowHandle handle, IEvent& e){}
+            virtual void OnUIRender(){}
 
             const std::string& GetName() const { return m_LayerName; }
         

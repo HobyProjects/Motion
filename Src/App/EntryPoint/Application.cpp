@@ -9,13 +9,18 @@ namespace Motion::App
         m_Window = Motion::Core::WindowManager::Create("Motion Engine");
         m_Window->SetEventsCallbackFunc(EVENT_CALLBACK(OnEvent));
         Motion::Core::Renderer::Init();
+        Motion::Core::UI::Init(m_Window->GetHandle());
 
         m_LayersManager = std::make_shared<Motion::Core::LayersManager>();
+        m_ImGuiLayer = std::make_shared<ImGuiLayer>(m_Window->GetHandle(), ImGuiColorScheme::Dark);
+
+        PushOverlay(m_ImGuiLayer);
     }
 
     Application::~Application()
     {
         Motion::Core::Renderer::Quit();
+        Motion::Core::UI::Quit();
         Motion::Core::WindowManager::Destroy(m_Window);
         Motion::Core::CoreAPI::Quit();
     }
@@ -25,10 +30,31 @@ namespace Motion::App
         while(m_Window->IsActive())
         {
             m_Window->PollEvents();
-
             Motion::Core::Renderer::Clear();
             Motion::Core::Renderer::ClearColor({ 255.0f, 0.0f, 0.0f, 255.0f });
 
+            if(m_Window->GetProperties().State != Motion::Core::WindowState::Minimized)
+            {
+                float currentTime{0.0f};
+                currentTime = Motion::Core::SystemTimer<float>::GetSystemTicks();
+
+                Motion::Core::Timer deltaTime = currentTime - m_LastFrameTime;
+                m_LastFrameTime = currentTime;
+
+                for(auto& layer : *m_LayersManager)
+                {
+                    layer->OnUpdate(deltaTime);
+                }
+            }
+
+            m_ImGuiLayer->Begin();
+
+            for(auto& layer : *m_LayersManager)
+            {
+                layer->OnUIRender();
+            }
+
+            m_ImGuiLayer->End();
             m_Window->SwapBuffers();
         }
     }
@@ -50,6 +76,14 @@ namespace Motion::App
         Motion::Core::EventHandler handler(handle, e);
         handler.Dispatch<Motion::Core::EventWindowClose>(EVENT_CALLBACK(OnWindowClose));
         handler.Dispatch<Motion::Core::EventWindowResize<uint32_t>>(EVENT_CALLBACK(OnWindowResize));
+
+        for( std::vector<std::shared_ptr<Motion::Core::Layer>>::reverse_iterator it = m_LayersManager->rbegin(); it != m_LayersManager->rend(); ++it )
+		{
+			if( handler.IsHandled() )
+				break;
+
+			( *it )->OnEvent(handle, e);
+		}
     }
 
     bool Application::OnWindowClose(Motion::Core::WindowHandle handle, Motion::Core::EventWindowClose& e)

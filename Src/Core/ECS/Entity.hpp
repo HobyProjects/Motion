@@ -50,7 +50,7 @@ namespace Motion::Core
                 if( m_IsAlive )
                     return EntityBuilder::Registry.emplace<T>(m_EntityHandle, std::forward<Args>(args)...);
 
-                TE_ASSERT(false, "Entity already been destroyed");
+                MOTION_ASSERT(false, "Entity already been destroyed");
             }
 
             template<typename T>

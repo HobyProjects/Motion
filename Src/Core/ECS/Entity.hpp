@@ -51,6 +51,10 @@ namespace Motion::Core
                     return EntityBuilder::Registry.emplace<T>(m_EntityHandle, std::forward<Args>(args)...);
 
                 MOTION_ASSERT(false, "Entity already been destroyed");
+
+                // To satisfy the compiler, throw or return a reference to a static dummy object
+                static T dummy{};
+                return dummy;
             }
 
             template<typename T>
@@ -61,6 +65,10 @@ namespace Motion::Core
                     return EntityBuilder::Registry.get<T>(m_EntityHandle);
 
                 MOTION_ASSERT(false, "Entity already been destroyed");
+
+                // To satisfy the compiler, throw or return a reference to a static dummy object
+                static T dummy{};
+                return dummy;
             }
 
             template<typename T>

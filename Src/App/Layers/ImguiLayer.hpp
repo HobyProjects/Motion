@@ -29,7 +29,7 @@ namespace Motion::App
             void UseColorScheme(ImGuiColorScheme colorScheme);
 
         private:
-            Motion::Core::WindowHandle m_Window{0};
+            Motion::Core::WindowHandle m_WindowHandle{0};
             ImGuiColorScheme m_ColorScheme{ ImGuiColorScheme::Dark };
             bool m_AllowEvents{ false };
     };

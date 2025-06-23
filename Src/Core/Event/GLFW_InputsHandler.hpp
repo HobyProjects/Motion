@@ -17,8 +17,8 @@ namespace Motion::Core
             GLFW3_InputsHandler& operator=(GLFW3_InputsHandler&&) = delete;
 
         public:
-            static KeyState GetKeyState(WindowHandle whnd, KeyCode key);
-            static MouseButtonState GetMouseButtonState(WindowHandle whnd, MouseButton button);
-            static glm::vec2 GetCurrentMousePosition(WindowHandle whnd);
+            static KeyState KeyState(WindowHandle whnd, KeyCode key);
+            static MouseButtonState MouseButtonState(WindowHandle whnd, MouseButton button);
+            static glm::vec2 CurrentMousePosition(WindowHandle whnd);
     };
 }

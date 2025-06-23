@@ -1,9 +1,10 @@
+#include "CorePCH.hpp"
 #include "ImguiLayer.hpp"
 
 namespace Motion::App
 {
     ImGuiLayer::ImGuiLayer(Motion::Core::WindowHandle handle, ImGuiColorScheme colorScheme) 
-        : m_Window(handle), m_ColorScheme(colorScheme), Motion::Core::Layer("ImGuiLayer") {}
+        : m_WindowHandle(handle), m_ColorScheme(colorScheme), Motion::Core::Layer("ImGuiLayer") {}
 
     void ImGuiLayer::OnAttach()
     {
@@ -48,7 +49,7 @@ namespace Motion::App
     void ImGuiLayer::End()
     {
         ImGuiIO& io = ImGui::GetIO();
-        std::weak_ptr<Motion::Core::IWindow> window = Motion::Core::WindowManager::Get(m_Window);
+        std::weak_ptr<Motion::Core::IWindow> window = Motion::Core::WindowManager::Get(m_WindowHandle);
         if(!window.expired())
         {
             auto windowPtr = window.lock();

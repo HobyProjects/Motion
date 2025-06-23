@@ -1,9 +1,8 @@
 #include "CorePCH.hpp"
-#include "GLFW_InputsHandler.hpp"
 
 namespace Motion::Core
 {
-    KeyState GLFW3_InputsHandler::GetKeyState(WindowHandle whnd, KeyCode key)
+    KeyState GLFW3_InputsHandler::KeyState(WindowHandle whnd, KeyCode key)
     {
         std::weak_ptr<IWindow> window = WindowManager::Get(whnd);
         if(!window.expired())
@@ -25,7 +24,7 @@ namespace Motion::Core
         return KeyState::KEY_NONE;
     }
 
-    MouseButtonState GLFW3_InputsHandler::GetMouseButtonState(WindowHandle whnd, MouseButton button)
+    MouseButtonState GLFW3_InputsHandler::MouseButtonState(WindowHandle whnd, MouseButton button)
     {
         std::weak_ptr<IWindow> window = WindowManager::Get(whnd);
         if(!window.expired())
@@ -45,7 +44,7 @@ namespace Motion::Core
         return MouseButtonState::MOUSE_BUTTON_NONE;
     }
 
-    glm::vec2 GLFW3_InputsHandler::GetCurrentMousePosition(WindowHandle whnd)
+    glm::vec2 GLFW3_InputsHandler::CurrentMousePosition(WindowHandle whnd)
     {
         std::weak_ptr<IWindow> window = WindowManager::Get(whnd);
         if(!window.expired())

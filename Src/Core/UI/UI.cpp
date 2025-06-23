@@ -15,17 +15,46 @@ namespace Motion::Core
             io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
             io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
 
-            if(Renderer::GetAPI() & RenderingAPI::OpenGL)
+            switch(CoreAPI::GetBaseAPI()->API())
             {
-                ImGui_ImplGlfw_InitForOpenGL((GLFWwindow*) windowPtr->GetNativeWindow(), true);
-                ImGui_ImplOpenGL3_Init("#version 460 core");                
+                case BaseAPIs::GLFW:
+                {
+                    switch(Renderer::GetAPI())
+                    {
+                        case RenderingAPI::OpenGL:
+                        {
+                            ImGui_ImplGlfw_InitForOpenGL((GLFWwindow*)windowPtr->GetNativeWindow(), true);
+                            ImGui_ImplOpenGL3_Init("#version 460 core");
+                            break;
+                        }
+                        case RenderingAPI::Vulkan:
+                        {
+                            MOTION_ASSERT(false, "Vulkan is not implemented yet!");
+                            break;
+                        }
+                        case RenderingAPI::DirectX:
+                        {
+                            MOTION_ASSERT(false, "DirectX is not implemented yet!");
+                            break;
+                        }
+                        default:
+                        {
+                            MOTION_ASSERT(false, "Unknown rendering API!");
+                            break;
+                        }
+                    }
+                }
+                case BaseAPIs::Win32:
+                {
+                    MOTION_ASSERT(false, "Win32 is not implemented yet!");
+                    break;
+                }
+                default:
+                {
+                    MOTION_ASSERT(false, "Unknown base API!");
+                    break;
+                }
             }
-
-            if(Renderer::GetAPI() & RenderingAPI::Vulkan)
-                MOTION_ASSERT(false, "Vulkan is not implemented yet!");
-            
-            if(Renderer::GetAPI() & RenderingAPI::DirectX)
-                MOTION_ASSERT(false, "DirectX is not implemented yet!");
 
             UseColorDark();
             MOTION_CORE_INFO("IMGUI initialized successfully. IMGUI VERSION: {0}", IMGUI_VERSION);
@@ -38,19 +67,21 @@ namespace Motion::Core
 
     void UI::Quit()
     {
-        if(Renderer::GetAPI() & RenderingAPI::OpenGL)
-            ImGui_ImplOpenGL3_Shutdown();
-            
+        switch(Renderer::GetAPI())
+        {
+            case RenderingAPI::OpenGL:      ImGui_ImplOpenGL3_Shutdown(); break;
+            case RenderingAPI::Vulkan:      MOTION_ASSERT(false, "Vulkan is not implemented yet!"); break;
+            case RenderingAPI::DirectX:     MOTION_ASSERT(false, "DirectX is not implemented yet!"); break;
+            default:                        MOTION_ASSERT(false, "Unknown rendering API!"); break;
+        };
 
-        if(Renderer::GetAPI() & RenderingAPI::Vulkan)
-            MOTION_ASSERT(false, "Vulkan is not implemented yet!");
-        
+        switch(CoreAPI::GetBaseAPI()->API())
+        {
+            case BaseAPIs::GLFW:        ImGui_ImplGlfw_Shutdown(); break;
+            case BaseAPIs::Win32:       MOTION_ASSERT(false, "Win32 is not implemented yet!"); break;
+            default:                    MOTION_ASSERT(false, "Unknown base API!"); break;
+        };
 
-        if(Renderer::GetAPI() & RenderingAPI::DirectX)
-            MOTION_ASSERT(false, "DirectX is not implemented yet!");
-        
-
-        ImGui_ImplGlfw_Shutdown();
         ImGui::DestroyContext();
     }
 

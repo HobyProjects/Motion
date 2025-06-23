@@ -91,6 +91,7 @@ namespace Motion::Core
             {
                 auto window = std::make_shared<GLFW_Window>(uniqueHandle, title, s_ContextService);
                 s_WindowMap[uniqueHandle] = window;
+                MOTION_CORE_INFO("Window created with handle {0}", uniqueHandle);
                 return window;
             }
             case BaseAPIs::Win32:
@@ -126,6 +127,8 @@ namespace Motion::Core
         {
             return it->second;
         }
+
+        MOTION_CORE_WARN("Window with handle {0} does not exist", handle);
         return nullptr;
     }
 }

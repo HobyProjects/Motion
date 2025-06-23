@@ -9,6 +9,7 @@ namespace Motion::Core
             return false;
         }
 
+        MOTION_CORE_INFO("GLFW initialized successfully. VERSION: {0}", glfwGetVersionString());
         m_Initialized = true;
         return true;
     }
@@ -90,7 +91,6 @@ namespace Motion::Core
 		m_Window = glfwCreateWindow(m_Properties.Width, m_Properties.Height, m_Properties.Title.c_str(), nullptr, nullptr);
 		if( m_Window != nullptr )
 		{
-			MOTION_CORE_INFO("GLFW window created successfully");
 			glfwSetWindowSizeLimits(m_Window, m_Properties.MinWidth, m_Properties.MinHeight, GLFW_DONT_CARE, GLFW_DONT_CARE);
 			glfwGetFramebufferSize(m_Window, &m_Properties.PixelWidth, &m_Properties.PixelHeight);
 

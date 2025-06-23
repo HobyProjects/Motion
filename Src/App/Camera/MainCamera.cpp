@@ -1,7 +1,5 @@
+#include "CorePCH.hpp"
 #include "MainCamera.hpp"
-#include "InputsHandler.hpp"
-
-using namespace Motion::Core;
 
 namespace Motion::App
 {

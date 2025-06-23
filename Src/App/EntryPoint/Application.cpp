@@ -1,5 +1,5 @@
+#include "CorePCH.hpp"
 #include "Application.hpp"
-#include "Renderer.hpp"
 
 namespace Motion::App
 {
@@ -19,8 +19,8 @@ namespace Motion::App
 
     Application::~Application()
     {
-        Motion::Core::Renderer::Quit();
         Motion::Core::UI::Quit();
+        Motion::Core::Renderer::Quit();
         Motion::Core::WindowManager::Destroy(m_Window);
         Motion::Core::CoreAPI::Quit();
     }

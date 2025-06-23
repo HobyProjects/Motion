@@ -4,48 +4,48 @@ namespace Motion::Core
 {
     #ifdef MOTION_PLATFORM_WINDOWS 
 
-        //static BaseAPIs s_BaseAPI = BaseAPIs::Win32;
-        static BaseAPIs s_BaseAPI = BaseAPIs::GLFW;
+        //static BaseAPIs s_PlatformBaseAPI = BaseAPIs::Win32;
+        static BaseAPIs s_PlatformBaseAPI = BaseAPIs::GLFW;
 
     #elif defined(MOTION_PLATFORM_LINUX)
 
-        static BaseAPIs s_BaseAPI = BaseAPIs::GLFW;
+        static BaseAPIs s_PlatformBaseAPI = BaseAPIs::GLFW;
 
     #endif
 
-    static std::shared_ptr<IBaseAPI> s_BaseAPIService = nullptr;
+    static std::shared_ptr<IPlatformBaseAPI> s_PlatformBaseAPIService = nullptr;
     static std::shared_ptr<IContext> s_ContextService = nullptr;
-    static std::unordered_map<WindowHandle, std::shared_ptr<IWindow>> s_WindowMap;
+    static std::unordered_map<WindowHandle, std::shared_ptr<IWindow>> s_WindowManagementService;
 
     bool CoreAPI::Init()
     {
-        switch(s_BaseAPI)
+        switch(s_PlatformBaseAPI)
         {
-            case BaseAPIs::GLFW:  s_BaseAPIService = std::make_shared<GLFW_BaseAPI>(); break;
+            case BaseAPIs::GLFW:  s_PlatformBaseAPIService = std::make_shared<GLFW_BaseAPI>(); break;
             case BaseAPIs::Win32: MOTION_ASSERT(false, "Win32 is not supported yet"); break;
             default: MOTION_ASSERT(false, "Unknown Base API"); break;
         };
 
-        if(!s_BaseAPIService->Init())
+        if(!s_PlatformBaseAPIService->Init())
         {
             MOTION_ASSERT(false, "Failed to initialize Base API");
             return false;
         }
 
-        if(Renderer::GetAPI() == RenderingAPI::OpenGL && s_BaseAPI == BaseAPIs::GLFW)
+        if(Renderer::GetAPI() == RenderingAPI::OpenGL && s_PlatformBaseAPI == BaseAPIs::GLFW)
         {
             s_ContextService = std::make_shared<GLFW_GL_Context>();
             if(s_ContextService)
                 return true;
         }
 
-        if(Renderer::GetAPI() == RenderingAPI::OpenGL && s_BaseAPI == BaseAPIs::Win32)
+        if(Renderer::GetAPI() == RenderingAPI::OpenGL && s_PlatformBaseAPI == BaseAPIs::Win32)
         {
             MOTION_ASSERT(false, "Win32 is not supported yet");
             return false;
         }
 
-        if(Renderer::GetAPI() == RenderingAPI::Vulkan && s_BaseAPI == BaseAPIs::GLFW)
+        if(Renderer::GetAPI() == RenderingAPI::Vulkan && s_PlatformBaseAPI == BaseAPIs::GLFW)
         {
             MOTION_ASSERT(false, "Vulkan is not supported yet");
             return false;
@@ -56,19 +56,24 @@ namespace Motion::Core
 
     void CoreAPI::Quit()
     {
-        if(s_BaseAPIService)
+        if(s_PlatformBaseAPIService)
         {
-            s_BaseAPIService->Quit();
-            s_BaseAPIService.reset();
+            s_PlatformBaseAPIService->Quit();
+            s_PlatformBaseAPIService.reset();
             
             s_ContextService->Detach();
             s_ContextService.reset();
         }
     }
 
-    std::shared_ptr<IBaseAPI> CoreAPI::GetBaseAPI()
+    BaseAPIs CoreAPI::API()
     {
-        return s_BaseAPIService;
+        return s_PlatformBaseAPI;
+    }
+
+    std::shared_ptr<IPlatformBaseAPI> CoreAPI::GetBaseAPI()
+    {
+        return s_PlatformBaseAPIService;
     }
 
     std::shared_ptr<IContext> CoreAPI::GetContext()
@@ -85,12 +90,12 @@ namespace Motion::Core
     std::shared_ptr<IWindow> WindowManager::Create(const std::string& title)
     {
         WindowHandle uniqueHandle = UniqueHandle();
-        switch(s_BaseAPI)
+        switch(s_PlatformBaseAPI)
         {
             case BaseAPIs::GLFW:
             {
                 auto window = std::make_shared<GLFW_Window>(uniqueHandle, title, s_ContextService);
-                s_WindowMap[uniqueHandle] = window;
+                s_WindowManagementService[uniqueHandle] = window;
                 MOTION_CORE_INFO("Window created with handle {0}", uniqueHandle);
                 return window;
             }
@@ -111,10 +116,10 @@ namespace Motion::Core
     {
         if(window)
         {
-            auto it = s_WindowMap.find(window->GetHandle());
-            if(it != s_WindowMap.end())
+            auto it = s_WindowManagementService.find(window->GetHandle());
+            if(it != s_WindowManagementService.end())
             {
-                s_WindowMap.erase(it);
+                s_WindowManagementService.erase(it);
             }
             window.reset();
         }
@@ -122,8 +127,8 @@ namespace Motion::Core
 
     std::shared_ptr<IWindow> WindowManager::Get(WindowHandle handle)
     {
-        auto it = s_WindowMap.find(handle);
-        if(it != s_WindowMap.end())
+        auto it = s_WindowManagementService.find(handle);
+        if(it != s_WindowManagementService.end())
         {
             return it->second;
         }

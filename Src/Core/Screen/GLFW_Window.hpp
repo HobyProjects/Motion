@@ -7,7 +7,7 @@
 
 namespace Motion::Core
 {
-    class GLFW_BaseAPI final : public IBaseAPI
+    class GLFW_BaseAPI final : public IPlatformBaseAPI
     {
         public:
             GLFW_BaseAPI() = default;

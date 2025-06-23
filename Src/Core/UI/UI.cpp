@@ -15,7 +15,7 @@ namespace Motion::Core
             io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
             io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
 
-            switch(CoreAPI::GetBaseAPI()->API())
+            switch(CoreAPI::API())
             {
                 case BaseAPIs::GLFW:
                 {
@@ -43,6 +43,8 @@ namespace Motion::Core
                             break;
                         }
                     }
+                    
+                    break;
                 }
                 case BaseAPIs::Win32:
                 {
@@ -75,7 +77,7 @@ namespace Motion::Core
             default:                        MOTION_ASSERT(false, "Unknown rendering API!"); break;
         };
 
-        switch(CoreAPI::GetBaseAPI()->API())
+        switch(CoreAPI::API())
         {
             case BaseAPIs::GLFW:        ImGui_ImplGlfw_Shutdown(); break;
             case BaseAPIs::Win32:       MOTION_ASSERT(false, "Win32 is not implemented yet!"); break;

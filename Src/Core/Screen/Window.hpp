@@ -70,11 +70,11 @@ namespace Motion::Core
     inline uint32_t operator&(BaseAPIs a, RenderingAPI b) { return static_cast<uint32_t>(a) & static_cast<uint32_t>(b); }
     inline uint32_t operator^(BaseAPIs a, RenderingAPI b) { return static_cast<uint32_t>(a) ^ static_cast<uint32_t>(b); }
 
-    class IBaseAPI
+    class IPlatformBaseAPI
     {
         public:
-            IBaseAPI() = default;
-            virtual ~IBaseAPI() = default;
+            IPlatformBaseAPI() = default;
+            virtual ~IPlatformBaseAPI() = default;
 
             virtual bool Init() = 0;
             virtual void Quit() = 0;
@@ -130,7 +130,8 @@ namespace Motion::Core
             static bool Init();
             static void Quit();
 
-            static std::shared_ptr<IBaseAPI> GetBaseAPI();
+            static BaseAPIs API();
+            static std::shared_ptr<IPlatformBaseAPI> GetBaseAPI();
             static std::shared_ptr<IContext> GetContext();
     };
 

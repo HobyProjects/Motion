@@ -53,6 +53,9 @@ set(
         ${MOTION_CORE_DIR}/Screen
         ${MOTION_CORE_DIR}/UI
         ${MOTION_CORE_DIR}/ECS
+        ${MOTION_CORE_DIR}/Material
+        ${MOTION_CORE_DIR}/Assets
+        ${MOTION_CORE_DIR}/Layer
         ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL
 )
 
@@ -64,12 +67,15 @@ set(
         ${MOTION_CORE_DIR}/Base/KeyCodes.hpp
         ${MOTION_CORE_DIR}/Base/Timer.hpp
         ${MOTION_CORE_DIR}/Base/UUID.hpp
-        ${MOTION_CORE_DIR}/Base/Asset.hpp
-        ${MOTION_CORE_DIR}/Base/Layer.hpp
-        ${MOTION_CORE_DIR}/Base/LayersManager.hpp
-        ${MOTION_CORE_DIR}/Base/AssetManager.hpp
-        ${MOTION_CORE_DIR}/Base/MaterialManager.hpp
-        ${MOTION_CORE_DIR}/Base/MaterialSerializer.hpp
+
+        ${MOTION_CORE_DIR}/Layer/Layer.hpp
+        ${MOTION_CORE_DIR}/Layer/LayersManager.hpp
+
+        ${MOTION_CORE_DIR}/Assets/Asset.hpp
+        ${MOTION_CORE_DIR}/Assets/AssetManager.hpp
+
+        ${MOTION_CORE_DIR}/Material/MaterialManager.hpp
+        ${MOTION_CORE_DIR}/Material/MaterialSerializer.hpp
 
         ${MOTION_CORE_DIR}/Event/Event.hpp
         ${MOTION_CORE_DIR}/Event/EventWindow.hpp
@@ -113,10 +119,10 @@ set(
 set(
     MOTION_CORE_SOURCES
         ${MOTION_CORE_DIR}/Base/Log.cpp
-        ${MOTION_CORE_DIR}/Base/AssetManager.cpp
-        ${MOTION_CORE_DIR}/Base/MaterialManager.cpp
-        ${MOTION_CORE_DIR}/Base/MaterialSerializer.cpp
-        ${MOTION_CORE_DIR}/Base/LayersManager.cpp
+        ${MOTION_CORE_DIR}/Assets/AssetManager.cpp
+        ${MOTION_CORE_DIR}/Material/MaterialManager.cpp
+        ${MOTION_CORE_DIR}/Material/MaterialSerializer.cpp
+        ${MOTION_CORE_DIR}/Layer/LayersManager.cpp
 
         ${MOTION_CORE_DIR}/Renderer/Buffers.cpp
         ${MOTION_CORE_DIR}/Renderer/Shaders.cpp

@@ -2,7 +2,7 @@
 
 namespace Motion::Core
 {
-    void Model::Render(const glm::mat4& transform)
+    void Model::Render(const glm::mat4& transform, const glm::mat4& cameraMatrix)
     {
         for(const auto& subMesh : m_SubMeshes)
         {
@@ -20,11 +20,12 @@ namespace Motion::Core
                 case Material::ShadingMethod::Unlit: shader = AssetManager::GetShader("UnlitShader"); break;
             };
 
-            drawCommand.shader = shader;
-            drawCommand.mesh = subMesh->MeshPtr;
-            drawCommand.material = material;
-            drawCommand.renderPass = RenderPass::Opaque;
-            drawCommand.modelMatrix = transform;
+            drawCommand.Shader = shader;
+            drawCommand.SubMesh = subMesh->MeshPtr;
+            drawCommand.MeshMaterial = material;
+            drawCommand.RendererPasses = RenderPass::Opaque;
+            drawCommand.ModelTransform = transform;
+            drawCommand.CameraMatrix = cameraMatrix;
 
             Renderer::Submit(drawCommand);
         }

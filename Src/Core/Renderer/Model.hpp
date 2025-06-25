@@ -43,7 +43,7 @@ namespace Motion::Core
                 AssetBase<IAsset>(uuid, name, AssetType::Model, modelFile.string()){}
             virtual ~Model() = default;
 
-            void Render(const glm::mat4& modelTransForm);
+            void Render(const glm::mat4& modelTransForm, const glm::mat4& cameraMatrix);
 
         private:
             std::vector<std::shared_ptr<SubMesh>> m_SubMeshes{};

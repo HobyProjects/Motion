@@ -149,26 +149,27 @@ namespace Motion::Core
 
         for(const auto& draw : s_RenderQueue)
         {
-            if(currentShader != draw.shader)
+            if(currentShader != draw.Shader)
             {
-                currentShader = draw.shader;
+                currentShader = draw.Shader;
                 currentShader->Bind();
             }
 
-            if(currentMaterial != draw.material)
+            if(currentMaterial != draw.MeshMaterial)
             {
-                currentMaterial = draw.material;
+                currentMaterial = draw.MeshMaterial;
                 currentMaterial->Bind(currentShader); 
             }
 
-            if(currentMesh != draw.mesh)
+            if(currentMesh != draw.SubMesh)
             {
-                currentMesh = draw.mesh;
+                currentMesh = draw.SubMesh;
                 currentMesh->Bind();
             }
 
-            currentShader->SetUniform(UniformCache::ModelMatrix, draw.modelMatrix);
-            DrawIndexed(draw.mesh->GetIndicesCount());
+            currentShader->SetUniform(UniformCache::CameraMatrix, draw.CameraMatrix);
+            currentShader->SetUniform(UniformCache::ModelMatrix, draw.ModelTransform);
+            DrawIndexed(draw.SubMesh->GetIndicesCount());
             s_DrawCalls++;
         }
 

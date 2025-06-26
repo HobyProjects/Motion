@@ -8,10 +8,11 @@
 #include "Base.hpp"
 #include "Event.hpp"
 #include "Renderer.hpp"
+#include "UUID.hpp"
 
 namespace Motion::Core
 {
-    using WindowHandle = uint32_t;
+    using WindowHandle = UUID;
     using NativeWindow = void*;
 
     enum class WindowState : uint32_t

@@ -81,15 +81,9 @@ namespace Motion::Core
         return s_ContextService;
     }
 
-    WindowHandle WindowManager::UniqueHandle()
-    {
-        static WindowHandle s_Handle = 0;
-        return s_Handle++;
-    }
-
     std::shared_ptr<IWindow> WindowManager::Create(const std::string& title)
     {
-        WindowHandle uniqueHandle = UniqueHandle();
+        WindowHandle uniqueHandle = UniqueIdentity::GetUniqueID();
         switch(s_PlatformBaseAPI)
         {
             case BaseAPIs::GLFW:

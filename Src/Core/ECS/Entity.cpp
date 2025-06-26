@@ -10,6 +10,7 @@ namespace Motion::Core
 		Entity entity{ Registry.create() };
 		auto& tag = entity.AddComponent<TagComponent>(name);
 		tag.Tag = name.empty() ? "unnamed" : name;
+		entity.AddComponent<TransformComponent>();
 		return entity;
 	}
 

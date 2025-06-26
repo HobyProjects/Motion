@@ -4,6 +4,7 @@
 #include <glm/glm.hpp>
 
 #include "UUID.hpp"
+#include "Model.hpp"
 
 namespace Motion::Core
 {

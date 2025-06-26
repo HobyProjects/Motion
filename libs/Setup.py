@@ -129,7 +129,7 @@ def check_cmake():
         result = subprocess.run(["cmake", "--version"], capture_output=True, text=True, check=True)
         Logger.success(f"CMake version: {result.stdout.strip()}")
     except FileNotFoundError:
-        Logger.error("CMake not found in PATH.")
+        Logger.error("CMake not found in PATH.  Make sure you have CMake installed and in your PATH variable set.")
         sys.exit(1)
 
 def detect_generator():

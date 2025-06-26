@@ -176,6 +176,6 @@ namespace Motion::Core
     };
 
 
-    using ApplicationCallbackFunction = std::function<void(uint32_t, IEvent&)>;
+    using ApplicationCallbackFunction = std::function<void(uint64_t, IEvent&)>;
     #define EVENT_CALLBACK(CALLBACK_FUNC) [this](auto&&... args) -> decltype(auto) { return this->CALLBACK_FUNC(std::forward<decltype(args)>(args)...); }
 }

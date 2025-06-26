@@ -19,7 +19,7 @@ namespace Motion::App
             SceneRenderer& operator=(SceneRenderer&&) = delete;
 
         public:
-            static void BeginScene(const std::shared_ptr<MainCamera>& camera);
+            static void BeginScene(const glm::mat4& cameraMatrix);
             static void SubmitModel(const std::shared_ptr<Motion::Core::Model>& model, const glm::mat4& transform);
             static void EndScene();
             static void Flush();

@@ -5,17 +5,17 @@ namespace Motion::App
 {
     struct DrawCalls
     {
-        std::shared_ptr<Motion::Core::Model> model;
-        glm::mat4 transform;
+        std::shared_ptr<Motion::Core::Model> Model{nullptr};
+        glm::mat4 Transform;
     };
 
-    static std::weak_ptr<MainCamera> s_CurrentCamera;
+    static glm::mat4 s_CurrentCameraMatrix;
     static std::vector<DrawCalls> s_DrawCalls;
 
 
-    void SceneRenderer::BeginScene(const std::shared_ptr<MainCamera>& camera)
+    void SceneRenderer::BeginScene(const glm::mat4& cameraMatrix)
     {
-        s_CurrentCamera = camera;
+        s_CurrentCameraMatrix = cameraMatrix;
         s_DrawCalls.clear();
     }
 
@@ -30,17 +30,13 @@ namespace Motion::App
     }
 
     void SceneRenderer::Flush()
-    {
-        if(!s_CurrentCamera.expired())
+    {     
+        for(const auto& drawCall : s_DrawCalls)
         {
-            auto camera = s_CurrentCamera.lock();
-            for(const auto& drawCall : s_DrawCalls)
-            {
-                drawCall.model->Render(drawCall.transform, camera->GetCameraMatrix());
-            }
-
-            s_DrawCalls.clear();
+            drawCall.Model->Render(drawCall.Transform, s_CurrentCameraMatrix);
         }
+
+        s_DrawCalls.clear();
     }
 
 }

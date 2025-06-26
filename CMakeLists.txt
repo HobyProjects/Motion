@@ -50,10 +50,11 @@ set(
         ${MOTION_CORE_DIR}/Base
         ${MOTION_CORE_DIR}/Event
         ${MOTION_CORE_DIR}/Renderer
-        ${MOTION_CORE_DIR}/Screen
+        ${MOTION_CORE_DIR}/Window
         ${MOTION_CORE_DIR}/UI
         ${MOTION_CORE_DIR}/ECS
         ${MOTION_CORE_DIR}/Material
+        ${MOTION_CORE_DIR}/Model
         ${MOTION_CORE_DIR}/Assets
         ${MOTION_CORE_DIR}/Layer
         ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL
@@ -74,16 +75,13 @@ set(
         ${MOTION_CORE_DIR}/Assets/Asset.hpp
         ${MOTION_CORE_DIR}/Assets/AssetManager.hpp
 
-        ${MOTION_CORE_DIR}/Material/MaterialManager.hpp
-        ${MOTION_CORE_DIR}/Material/MaterialSerializer.hpp
-
         ${MOTION_CORE_DIR}/Event/Event.hpp
         ${MOTION_CORE_DIR}/Event/EventWindow.hpp
         ${MOTION_CORE_DIR}/Event/EventKeyboard.hpp
         ${MOTION_CORE_DIR}/Event/EventMouse.hpp
         ${MOTION_CORE_DIR}/Event/InputsHandler.hpp
         ${MOTION_CORE_DIR}/Event/GLFW_InputsHandler.hpp
-
+        
         ${MOTION_CORE_DIR}/Renderer/Buffers.hpp
         ${MOTION_CORE_DIR}/Renderer/Shaders.hpp
         ${MOTION_CORE_DIR}/Renderer/Renderer.hpp
@@ -92,11 +90,14 @@ set(
         ${MOTION_CORE_DIR}/Renderer/Arrays.hpp
         ${MOTION_CORE_DIR}/Renderer/Camera.hpp
         ${MOTION_CORE_DIR}/Renderer/Camera3D.hpp
-        ${MOTION_CORE_DIR}/Renderer/Model.hpp
-        ${MOTION_CORE_DIR}/Renderer/Mesh.hpp
-        ${MOTION_CORE_DIR}/Renderer/Material.hpp
-        ${MOTION_CORE_DIR}/Renderer/Importer.hpp
 
+        ${MOTION_CORE_DIR}/Model/Model.hpp
+        ${MOTION_CORE_DIR}/Model/Mesh.hpp
+        ${MOTION_CORE_DIR}/Model/Importer.hpp
+        
+        ${MOTION_CORE_DIR}/Material/Material.hpp
+        ${MOTION_CORE_DIR}/Material/MaterialManager.hpp
+        ${MOTION_CORE_DIR}/Material/MaterialSerializer.hpp
 
         ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL/GL_Buffers.hpp
         ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL/GL_Debug.hpp
@@ -106,11 +107,11 @@ set(
         ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL/GL_Arrays.hpp
         ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL/GLFW_GL_Context.hpp
 
-        ${MOTION_CORE_DIR}/Screen/Window.hpp
-        ${MOTION_CORE_DIR}/Screen/GLFW_Window.hpp
+        ${MOTION_CORE_DIR}/Window/Window.hpp
+        ${MOTION_CORE_DIR}/Window/GLFW_Window.hpp
 
         ${MOTION_CORE_DIR}/UI/UI.hpp
-
+        
         ${MOTION_CORE_DIR}/ECS/Entity.hpp
         ${MOTION_CORE_DIR}/ECS/Components.hpp
 
@@ -120,19 +121,21 @@ set(
     MOTION_CORE_SOURCES
         ${MOTION_CORE_DIR}/Base/Log.cpp
         ${MOTION_CORE_DIR}/Assets/AssetManager.cpp
-        ${MOTION_CORE_DIR}/Material/MaterialManager.cpp
-        ${MOTION_CORE_DIR}/Material/MaterialSerializer.cpp
         ${MOTION_CORE_DIR}/Layer/LayersManager.cpp
-
+        
         ${MOTION_CORE_DIR}/Renderer/Buffers.cpp
         ${MOTION_CORE_DIR}/Renderer/Shaders.cpp
         ${MOTION_CORE_DIR}/Renderer/Renderer.cpp
         ${MOTION_CORE_DIR}/Renderer/Arrays.cpp
         ${MOTION_CORE_DIR}/Renderer/Camera3D.cpp
-        ${MOTION_CORE_DIR}/Renderer/Mesh.cpp
-        ${MOTION_CORE_DIR}/Renderer/Material.cpp
-        ${MOTION_CORE_DIR}/Renderer/Importer.cpp
-        ${MOTION_CORE_DIR}/Renderer/Model.cpp
+
+        ${MOTION_CORE_DIR}/Model/Mesh.cpp
+        ${MOTION_CORE_DIR}/Model/Importer.cpp
+        ${MOTION_CORE_DIR}/Model/Model.cpp
+        
+        ${MOTION_CORE_DIR}/Material/Material.cpp
+        ${MOTION_CORE_DIR}/Material/MaterialManager.cpp
+        ${MOTION_CORE_DIR}/Material/MaterialSerializer.cpp
 
         ${MOTION_CORE_DIR}/Event/InputsHandler.cpp
         ${MOTION_CORE_DIR}/Event/GLFW_InputsHandler.cpp
@@ -145,11 +148,10 @@ set(
         ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL/GL_Arrays.cpp
         ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL/GLFW_GL_Context.cpp
 
-        ${MOTION_CORE_DIR}/Screen/Window.cpp
-        ${MOTION_CORE_DIR}/Screen/GLFW_Window.cpp
+        ${MOTION_CORE_DIR}/Window/Window.cpp
+        ${MOTION_CORE_DIR}/Window/GLFW_Window.cpp
 
         ${MOTION_CORE_DIR}/UI/UI.cpp
-
         ${MOTION_CORE_DIR}/ECS/Entity.cpp
 )
 

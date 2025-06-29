@@ -189,6 +189,7 @@ set(
     MOTION_APP_HEADERS
         ${MOTION_APP_DIR}/EntryPoint/Application.hpp
         ${MOTION_APP_DIR}/Layers/ImGuiLayer.hpp
+        ${MOTION_APP_DIR}/Layers/EditorLayer.hpp
         ${MOTION_APP_DIR}/Camera/MainCamera.hpp
         ${MOTION_APP_DIR}/Scene/Scene.hpp
         ${MOTION_APP_DIR}/Scene/SceneRenderer.hpp
@@ -199,6 +200,7 @@ set(
         ${MOTION_APP_DIR}/EntryPoint/MotionEngine.cpp
         ${MOTION_APP_DIR}/EntryPoint/Application.cpp
         ${MOTION_APP_DIR}/Layers/ImGuiLayer.cpp
+        ${MOTION_APP_DIR}/Layers/EditorLayer.cpp
         ${MOTION_APP_DIR}/Camera/MainCamera.cpp
         ${MOTION_APP_DIR}/Scene/Scene.cpp
         ${MOTION_APP_DIR}/Scene/SceneRenderer.cpp

@@ -43,7 +43,14 @@ namespace Motion::Core
                 AssetBase<IAsset>(uuid, name, AssetType::Model, modelFile.string()){}
             virtual ~Model() = default;
 
+            
+            std::vector<std::shared_ptr<SubMesh>>::iterator begin() { return m_SubMeshes.begin(); }
+            std::vector<std::shared_ptr<SubMesh>>::iterator end() { return m_SubMeshes.end(); }
+            std::vector<std::shared_ptr<SubMesh>>::const_iterator begin() const { return m_SubMeshes.begin(); }
+            std::vector<std::shared_ptr<SubMesh>>::const_iterator end() const { return m_SubMeshes.end(); }
+            
             void Render(const glm::mat4& modelTransForm, const glm::mat4& cameraMatrix);
+            std::shared_ptr<SubMeshMaterial> GetSubMeshMaterial(uint32_t subMeshIndex) const;
 
         private:
             std::vector<std::shared_ptr<SubMesh>> m_SubMeshes{};

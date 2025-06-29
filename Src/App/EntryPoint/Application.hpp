@@ -7,6 +7,7 @@
 #include "Timer.hpp"
 
 #include "ImguiLayer.hpp"
+#include "EditorLayer.hpp"
 
 namespace Motion::App
 {
@@ -32,6 +33,7 @@ namespace Motion::App
 
             // Application Layers
             std::shared_ptr<ImGuiLayer> m_ImGuiLayer{nullptr};
+            std::shared_ptr<EditorLayer> m_EditorLayer{nullptr};
 
             // Frame constant
             float m_LastFrameTime{0.0f};

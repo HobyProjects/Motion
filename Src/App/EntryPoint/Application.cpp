@@ -13,8 +13,10 @@ namespace Motion::App
 
         m_LayersManager = std::make_shared<Motion::Core::LayersManager>();
         m_ImGuiLayer = std::make_shared<ImGuiLayer>(m_Window->GetHandle(), ImGuiColorScheme::Dark);
+        m_EditorLayer = std::make_shared<EditorLayer>(m_Window->GetHandle(), m_ImGuiLayer);
 
         PushOverlay(m_ImGuiLayer);
+        PushLayer(m_EditorLayer);
     }
 
     Application::~Application()
@@ -30,8 +32,6 @@ namespace Motion::App
         while(m_Window->IsActive())
         {
             m_Window->PollEvents();
-            Motion::Core::Renderer::Clear();
-            Motion::Core::Renderer::ClearColor({ 255.0f, 0.0f, 0.0f, 255.0f });
 
             if(m_Window->GetProperties().State != Motion::Core::WindowState::Minimized)
             {

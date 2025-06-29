@@ -45,6 +45,15 @@ namespace Motion::Core
         }
     };
 
+    struct MeshComponent
+    {
+        std::string Name{ "unamed" };
+        std::shared_ptr<Model> Object{ nullptr };
+
+        MeshComponent() = default;
+        ~MeshComponent() = default;
+    };
+
     struct DirectionalLightComponent 
     {
         glm::vec3 Direction{ -0.2f, -1.0f, -0.3f };

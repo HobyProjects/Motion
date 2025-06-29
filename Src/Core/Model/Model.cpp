@@ -1,4 +1,5 @@
 #include "CorePCH.hpp"
+#include "Model.hpp"
 
 namespace Motion::Core
 {
@@ -30,4 +31,17 @@ namespace Motion::Core
             Renderer::Submit(drawCommand);
         }
     }
+
+    std::shared_ptr<Model::SubMeshMaterial> Motion::Core::Model::GetSubMeshMaterial(uint32_t subMeshIndex) const
+    {
+        auto it = m_SubMeshMaterialMapping.find(subMeshIndex);
+        if(it != m_SubMeshMaterialMapping.end())
+        {
+            return it->second;
+        }
+        
+        return nullptr;
+    }
 }
+
+

@@ -246,7 +246,7 @@ def generate_presets(dir_path: str, build_type: str, generator: str, packages: l
         system = platform.system()
         if system == "Windows":
             return {
-                "DEBUG": "/Zi /Ob0 /Od /RTC1",
+                "DEBUG": "/Zi /Ob0 /Od",
                 "RELEASE": "/O2",
                 "RELWITHDEBINFO": "/O2 /Zi",
                 "MINSIZEREL": "/O1"
@@ -587,15 +587,15 @@ def main():
     check_cmake()
 
     packages = [
-        Package("glfw", "glfw", "build/config/glfw", "build/packages/glfw", "-DGLFW_BUILD_EXAMPLES=OFF -DGLFW_BUILD_TESTS=OFF -DGLFW_BUILD_DOCS=OFF"),
-        Package("spdlog", "spdlog", "build/config/spdlog", "build/packages/spdlog", "-DSPDLOG_BUILD_EXAMPLES=OFF"),
-        Package("glad", "glad", "build/config/glad", "build/packages/glad", ""),
-        Package("glm", "glm", "build/config/glm", "build/packages/glm", "-DGLM_BUILD_TESTS=OFF"),
-        Package("SOIL2", "SOIL2", "build/config/SOIL2", "build/packages/SOIL2", ""),
-        Package("imgui", "imgui_docking", "build/config/imgui", "build/packages/imgui", ""),
-        Package("entt", "entt", "build/config/entt", "build/packages/entt", "-DENTT_INCLUDE_HEADERS=ON -DENTT_INCLUDE_NATVIS=ON -DENTT_INSTALL=ON"),
-        Package("assimp", "assimp", "build/config/assimp", "build/packages/assimp", "-DASSIMP_BUILD_TESTS=OFF"),
-        Package("yaml-cpp", "yaml-cpp", "build/config/yaml-cpp", "build/packages/yaml-cpp", "-DYAML_BUILD_SHARED_LIBS=OFF")
+        Package("glfw", "libs/glfw", "libs/build/config/glfw", "libs/build/packages/glfw", "-DGLFW_BUILD_EXAMPLES=OFF -DGLFW_BUILD_TESTS=OFF -DGLFW_BUILD_DOCS=OFF"),
+        Package("spdlog", "libs/spdlog", "libs/build/config/spdlog", "libs/build/packages/spdlog", "-DSPDLOG_BUILD_EXAMPLES=OFF"),
+        Package("glad", "libs/glad", "libs/build/config/glad", "libs/build/packages/glad", ""),
+        Package("glm", "libs/glm", "libs/build/config/glm", "libs/build/packages/glm", "-DGLM_BUILD_TESTS=OFF"),
+        Package("SOIL2", "libs/SOIL2", "libs/build/config/SOIL2", "libs/build/packages/SOIL2", ""),
+        Package("imgui", "libs/imgui_docking", "libs/build/config/imgui", "libs/build/packages/imgui", ""),
+        Package("entt", "libs/entt", "libs/build/config/entt", "build/packages/entt", "-DENTT_INCLUDE_HEADERS=ON -DENTT_INCLUDE_NATVIS=ON -DENTT_INSTALL=ON"),
+        Package("assimp", "libs/assimp", "libs/build/config/assimp", "libs/build/packages/assimp", "-DASSIMP_BUILD_TESTS=OFF"),
+        Package("yaml-cpp", "libs/yaml-cpp", "libs/build/config/yaml-cpp", "libs/build/packages/yaml-cpp", "-DYAML_BUILD_SHARED_LIBS=OFF")
     ]
 
     parser = argparse.ArgumentParser(description="Motion Engine Build Script")
@@ -605,11 +605,14 @@ def main():
     parser.add_argument("--presets", action="store_true", help="Generate CMakePresets.json and exit")
     args = parser.parse_args()
 
-    Logger.info("Motion Engine Build Script v1.0.0")
+    Logger.info("==========================================")
+    Logger.info("     Motion Engine Build Script v1.0.0    ")
+    Logger.info("==========================================")
     Logger.info(f"Build Configuration: {args.config}")
     Logger.info(f"Build Architecture: {args.arch}")
     Logger.info(f"Build Packages : {', '.join([pkg.name for pkg in packages])}")
     Logger.info(f"System Name: {platform.system()}")
+    Logger.info("==========================================")
 
     generator = detect_generator()
     if not generator:
@@ -619,7 +622,7 @@ def main():
     Logger.info(f"Using generator: {generator}")
 
     if args.presets:
-        generate_presets("../", args.config, generator, packages)
+        generate_presets(".", args.config, generator, packages)
         Logger.success("Presets generated.")
         sys.exit(0)
 

@@ -22,11 +22,12 @@ namespace Motion::Core
 
     struct TransformComponent
     {
+        UUID ID{0};
         glm::vec3 Translation{ 0.0f, 0.0f, 0.0f };
         glm::vec3 Rotation{ 0.0f, 0.0f, 0.0f };
         glm::vec3 Scale{ 1.0f, 1.0f, 1.0f };
 
-        TransformComponent() = default;
+        TransformComponent(): ID(UniqueIdentity::GetUniqueID()) {};
         ~TransformComponent() = default;
 
         glm::mat4 GetTransform() const
@@ -47,32 +48,42 @@ namespace Motion::Core
 
     struct MeshComponent
     {
+        UUID ID{0};
         std::string Name{ "unamed" };
         std::shared_ptr<Model> Object{ nullptr };
 
-        MeshComponent() = default;
+        MeshComponent(): ID(UniqueIdentity::GetUniqueID()) {};
         ~MeshComponent() = default;
     };
 
     struct DirectionalLightComponent 
     {
+        UUID ID{0};
         glm::vec3 Direction{ -0.2f, -1.0f, -0.3f };
         glm::vec3 Color{ 1.0f };
         float Intensity = 1.0f;
         bool CastShadows = true;
+
+        DirectionalLightComponent() : ID(UniqueIdentity::GetUniqueID()) {};
+        ~DirectionalLightComponent() = default;
     };
 
     struct PointLightComponent 
     {
+        UUID ID{0};
         glm::vec3 Position{0.0f};
         glm::vec3 Color{1.0f};
         float Intensity = 1.0f;
         float Radius = 10.0f;
         float Falloff = 1.0f;
+
+        PointLightComponent() : ID(UniqueIdentity::GetUniqueID()) {};
+        ~PointLightComponent() = default;
     };
 
     struct SpotLightComponent 
     {
+        UUID ID{0};
         glm::vec3 Position{0.0f};
         glm::vec3 Direction{0.0f, -1.0f, 0.0f};
         glm::vec3 Color{1.0f};
@@ -80,5 +91,8 @@ namespace Motion::Core
         float InnerCutoff = 12.5f; // degrees
         float OuterCutoff = 17.5f;
         float Range = 15.0f;
+
+        SpotLightComponent() : ID(UniqueIdentity::GetUniqueID()) {};
+        ~SpotLightComponent() = default;
     };
 }

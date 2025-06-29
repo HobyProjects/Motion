@@ -170,7 +170,7 @@ namespace Motion::Core
 		}
     }
 
-    void UI::CustomControl::DragControllerVec3(const char* label, glm::vec3& values, float resetValue, float columnWidth) 
+    void UI::CustomControl::DragControllerVec3(const char* label, glm::vec3& values, float resetValue) 
     {
         ImGui::PushID(label);
         ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, { 0.0f, 0.0f });

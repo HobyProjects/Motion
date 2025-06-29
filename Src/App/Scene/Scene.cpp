@@ -20,12 +20,12 @@ namespace Motion::App
 
     void Scene::OnEvent(Motion::Core::WindowHandle handle, Motion::Core::IEvent& e)
     {
-
+        m_MainCamera->OnEvents(handle, e);
     }
 
     void Scene::OnUIRenders(Motion::Core::WindowHandle handle)
     {
-
+        RenderEntities();
     }
 
     void Scene::OnViewportSizeChanges(float width, float height)
@@ -35,7 +35,7 @@ namespace Motion::App
 
     void Scene::RenderScene()
     {
-        /*SceneRenderer::BeginScene(m_MainCamera->GetCameraMatrix());
+        SceneRenderer::BeginScene(m_MainCamera->GetCameraMatrix());
 
         for (auto& entity : m_Entities)
         {
@@ -48,7 +48,104 @@ namespace Motion::App
         }
 
         SceneRenderer::EndScene();
-        SceneRenderer::Flush(); */
+        SceneRenderer::Flush();
+    }
+
+    void Scene::RenderEntities()
+    {
+        ImGui::Begin("Scene Entities");
+
+        if( ImGui::BeginPopupContextWindow(0, ImGuiPopupFlags_MouseButtonRight | ImGuiPopupFlags_NoOpenOverItems) )
+		{
+			if( ImGui::MenuItem("Import Model") )
+			{
+                // AssetManager::ImportModelFromFile();
+			}
+
+			ImGui::EndPopup();
+		}
+
+		if( ImGui::IsMouseDown(ImGuiMouseButton_Left) && ImGui::IsWindowHovered() )
+		{
+			m_SelectedEntity = Motion::Core::EntityBuilder::ENULL;
+		}
+
+        for( uint32_t i = 0; i < m_Entities.size(); i++ )
+		{
+			std::shared_ptr<Motion::Core::Entity> entity = m_Entities[i];
+			auto& tag = entity->GetComponent<Motion::Core::TagComponent>();
+			ImGuiTreeNodeFlags flags = ( ( m_SelectedEntity == entity ) ? ImGuiTreeNodeFlags_Selected : 0 ) | ImGuiTreeNodeFlags_OpenOnArrow;
+			flags |= ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_FramePadding;
+
+			bool Opend = ImGui::TreeNodeEx((void*)tag.ID, flags, tag.Tag.c_str());
+			if( ImGui::IsItemClicked() )
+			{
+				m_SelectedEntity = entity;
+			}
+
+			if( Opend )
+			{
+				ImGui::TreePop();
+			}
+		}
+
+        ImGui::Begin("Properties");
+		if( m_SelectedEntity )
+		{
+			RenderComponents(m_SelectedEntity);
+		}
+		ImGui::End();
+
+        ImGui::End();
+    }
+
+    template<typename T, typename UIFunc>
+    static void DrawComponentControls(const std::string& name, const std::shared_ptr<Motion::Core::Entity>& entity, UIFunc uiFunc)
+    {
+        static const ImGuiTreeNodeFlags treeNodeFlags = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_AllowItemOverlap | ImGuiTreeNodeFlags_FramePadding;
+
+        if( entity->HasComponent<T>() )
+        {
+            auto& component = entity->GetComponent<T>();
+            bool open = ImGui::TreeNodeEx(( void* )component.ID, treeNodeFlags, name.c_str());
+
+            if( open )
+            {
+                uiFunc(component);
+                ImGui::TreePop();
+            }
+        }
+    }
+
+    void Scene::RenderComponents(const std::shared_ptr<Motion::Core::Entity>& entity)
+    {
+        if( entity->HasComponent<Motion::Core::TagComponent>() )
+		{
+			auto& tag = entity->GetComponent<Motion::Core::TagComponent>();
+
+			char buffer [256];
+			memset(buffer, 0, sizeof(buffer));
+			strcpy_s(buffer, sizeof(buffer), tag.Tag.c_str());
+
+			if( ImGui::InputText("Tag", buffer, sizeof(buffer)) )
+			{
+				tag.Tag = std::string(buffer);
+			}
+		}
+
+        DrawComponentControls<Motion::Core::TransformComponent>("Transform", entity, [](auto& component)
+		{
+			ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, { 10.0f, 0.0f });
+
+			Motion::Core::UI::CustomControl::DragControllerVec3("Translation", component.Translation, 0.0f);
+			Motion::Core::UI::CustomControl::DragControllerVec3("Rotation", component.Rotation, 0.0f);
+			Motion::Core::UI::CustomControl::DragControllerVec3("Scale", component.Scale, 1.0f);
+
+			ImGui::PopStyleVar();
+		});
+
+
+        //[TODO]: Other components can be added here
     }
 
     void Viewport::Update(const Motion::Core::FrameBufferSpecification & spec)

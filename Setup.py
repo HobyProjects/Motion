@@ -196,7 +196,6 @@ def generate_presets(dir_path: str, build_type: str, generator: str, packages: l
     - The appropriate architecture (x64, x86)
     - The appropriate CMAKE_PREFIX_PATH, CMAKE_INSTALL_PREFIX, and CMAKE_FIND_ROOT_PATH
     - The appropriate CMAKE_CXX_FLAGS and CMAKE_C_FLAGS
-    - The appropriate CMAKE_VERBOSE_MAKEFILE and CMAKE_SUPPRESS_REGENERATION
 
     The generated file is written to the current working directory and is named
     "CMakePresets.json". If the file already exists, it is overwritten only if the
@@ -334,11 +333,8 @@ def generate_presets(dir_path: str, build_type: str, generator: str, packages: l
             "CMAKE_SYSTEM_PROCESSOR_ARCHITECTURE_VENDOR": system_vendor,
 
             # Common Flags
-            "CMAKE_VERBOSE_MAKEFILE": "ON",
             "BUILD_SHARED_LIBS": "OFF",
-            "CMAKE_SUPPRESS_REGENERATION": "ON",
-            "CMAKE_COLOR_MAKEFILE": "ON",
-            "CMAKE_BUILD_TYPE_INIT": build_type
+            "CMAKE_BUILD_TYPE": build_type
         }
 
     configure_presets = [

@@ -10,9 +10,9 @@ namespace Motion::Core
 {
     enum class RenderingAPI : uint32_t
     {
-        OpenGL = 0,
-        Vulkan,
-        DirectX
+        OpenGL = Bits<1>::value,
+        Vulkan = Bits<2>::value,
+        DirectX = Bits<3>::value
     };
 
     inline uint32_t operator|(RenderingAPI a, RenderingAPI b) { return static_cast<uint32_t>(a) | static_cast<uint32_t>(b); }

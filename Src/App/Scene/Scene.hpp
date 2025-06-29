@@ -39,9 +39,12 @@ namespace Motion::App
 
         private:
             void RenderScene();
+            void RenderEntities();
+            void RenderComponents(const std::shared_ptr<Motion::Core::Entity>& entity);
 
         private:
             std::shared_ptr<MainCamera> m_MainCamera{nullptr};
             std::vector<std::shared_ptr<Motion::Core::Entity>> m_Entities{};
+            std::shared_ptr<Motion::Core::Entity> m_SelectedEntity{ Motion::Core::EntityBuilder::ENULL };
     };
 }

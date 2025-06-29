@@ -10,16 +10,16 @@ namespace Motion::Core
     class EntityBuilder
     {
         public:
-            static Entity CreateEntity(const std::string& name);
-            static void DestroyEntity(Entity entity);
-            static Entity Empty();
+            static std::shared_ptr<Entity> CreateEntity(const std::string& name);
+            static void DestroyEntity(const std::shared_ptr<Entity>& entity);
+            static std::shared_ptr<Entity> Empty();
 
         private:
             EntityBuilder() = default;
             ~EntityBuilder() = default;
 
         public:
-            static Entity ENULL;
+            static std::shared_ptr<Entity> ENULL;
 
         private:
             static entt::registry Registry;
@@ -91,6 +91,11 @@ namespace Motion::Core
             bool IsAlive() const
             {
                 return m_IsAlive;
+            }
+
+            entt::entity GetHandle() const
+            {
+                return m_EntityHandle;
             }
 
             void CreateNewHandle(const std::string& name)

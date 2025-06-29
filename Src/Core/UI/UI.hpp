@@ -31,7 +31,7 @@ namespace Motion::Core
                     CustomControl& operator=(CustomControl&&) = delete;
 
                 public:
-                    static void DragControllerVec3(const char* label, glm::vec3& values, float resetValue, float columnWidth);
+                    static void DragControllerVec3(const char* label, glm::vec3& values, float resetValue);
             };
 
 

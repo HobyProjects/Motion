@@ -11,6 +11,7 @@ namespace Motion::Core
         private:
             GLFW3_InputsHandler() = default;
             ~GLFW3_InputsHandler() = default;
+            
             GLFW3_InputsHandler(GLFW3_InputsHandler const&) = delete;
             GLFW3_InputsHandler& operator=(GLFW3_InputsHandler const&) = delete;
             GLFW3_InputsHandler(GLFW3_InputsHandler&&) = delete;

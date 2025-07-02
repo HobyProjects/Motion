@@ -91,6 +91,7 @@ set(
         ${MOTION_CORE_DIR}/Renderer/Arrays.hpp
         ${MOTION_CORE_DIR}/Renderer/Camera.hpp
         ${MOTION_CORE_DIR}/Renderer/Camera3D.hpp
+        ${MOTION_CORE_DIR}/Renderer/Thumbnail.hpp
 
         ${MOTION_CORE_DIR}/Model/Model.hpp
         ${MOTION_CORE_DIR}/Model/Mesh.hpp
@@ -130,6 +131,7 @@ set(
         ${MOTION_CORE_DIR}/Renderer/Renderer.cpp
         ${MOTION_CORE_DIR}/Renderer/Arrays.cpp
         ${MOTION_CORE_DIR}/Renderer/Camera3D.cpp
+        ${MOTION_CORE_DIR}/Renderer/Thumbnail.cpp
 
         ${MOTION_CORE_DIR}/Model/Mesh.cpp
         ${MOTION_CORE_DIR}/Model/Importer.cpp

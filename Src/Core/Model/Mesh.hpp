@@ -16,6 +16,11 @@ namespace Motion::Core
             void Bind() const { m_VertexArray->Bind(); }
             void Unbind() const { m_VertexArray->Unbind(); }
             uint32_t GetIndicesCount() const { return m_IndicesCount; }
+
+        public:
+            static std::shared_ptr<Mesh> CreatePlane(float width, float height, uint32_t widthSegments = 1, uint32_t heightSegments = 1);
+            static std::shared_ptr<Mesh> CreateCube(float width, float height, float depth);
+            static std::shared_ptr<Mesh> CreateSphere(uint32_t sectorCount, uint32_t stackCount);
         
         public:
             struct Vertex

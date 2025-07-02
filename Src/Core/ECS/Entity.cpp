@@ -17,6 +17,7 @@ namespace Motion::Core
 	{
 		auto handle = entity->GetHandle();
 		Registry.destroy(handle);
+		entity->Destroy();
 	}
 
 	std::shared_ptr<Entity> EntityBuilder::Empty()

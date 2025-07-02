@@ -32,6 +32,31 @@ namespace Motion::Core
         }
     }
 
+    void Model::InsertMaterial(const std::shared_ptr<Material>& material)
+    {
+        if(!m_SubMeshMaterialMapping.empty())
+        {
+            std::weak_ptr<SubMeshMaterial> subMeshMaterial = m_SubMeshMaterialMapping.end()->second;
+            if(!subMeshMaterial.expired())
+            {
+                auto subMeshMat = subMeshMaterial.lock();
+                std::shared_ptr<SubMeshMaterial> newSubMeshMaterial = std::make_shared<SubMeshMaterial>();
+                newSubMeshMaterial->MaterialIndex = subMeshMat->MaterialIndex + 1;
+                newSubMeshMaterial->Materials = material;
+                newSubMeshMaterial->ParentModel = this;
+                m_SubMeshMaterialMapping[newSubMeshMaterial->MaterialIndex + 1] = newSubMeshMaterial;
+            }        
+        }
+        else
+        {
+            std::shared_ptr<SubMeshMaterial> newSubMeshMaterial = std::make_shared<SubMeshMaterial>();
+            newSubMeshMaterial->MaterialIndex = 0;
+            newSubMeshMaterial->Materials = material;
+            newSubMeshMaterial->ParentModel = this;
+            m_SubMeshMaterialMapping[0] = newSubMeshMaterial;
+        }
+    }
+
     std::shared_ptr<Model::SubMeshMaterial> Motion::Core::Model::GetSubMeshMaterial(uint32_t subMeshIndex) const
     {
         auto it = m_SubMeshMaterialMapping.find(subMeshIndex);

@@ -139,6 +139,17 @@ namespace Motion::Core
         s_RenderQueue.push_back(drawCommand);
     }
 
+    void Renderer::BeginFrame()
+    {
+        s_RenderQueue.clear();
+        s_DrawCalls = 0;
+    }
+
+    void Renderer::EndFrame()
+    {
+        Flush();
+    }
+
     void Renderer::Flush()
     {
         std::sort(s_RenderQueue.begin(), s_RenderQueue.end());
@@ -176,8 +187,6 @@ namespace Motion::Core
         currentMaterial = nullptr;
         currentMesh = nullptr;
         currentShader = nullptr;
-        s_RenderQueue.clear();
-        s_DrawCalls = 0;
     }
 
     uint32_t Renderer::GetDrawCalls()

@@ -41,10 +41,15 @@ namespace Motion::App
                 Motion::Core::Timer deltaTime = currentTime - m_LastFrameTime;
                 m_LastFrameTime = currentTime;
 
+
+                Motion::Core::Renderer::BeginFrame();
+
                 for(auto& layer : *m_LayersManager)
                 {
                     layer->OnUpdate(m_Window->GetHandle(), deltaTime);
                 }
+                
+                Motion::Core::Renderer::EndFrame();
             }
 
             m_ImGuiLayer->Begin();

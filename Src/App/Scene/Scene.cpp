@@ -15,6 +15,7 @@ namespace Motion::App
 
     void Scene::OnUpdate(Motion::Core::WindowHandle handle, Motion::Core::Timer deltaTime)
     {
+        m_MainCamera->OnUpdate(handle, deltaTime);
         RenderScene(handle);
     }
 

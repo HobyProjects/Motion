@@ -17,23 +17,28 @@ namespace Motion::Core
         public:
             struct SubMesh
             {
-                explicit SubMesh(uint32_t meshIndex, uint32_t materialIndex, const std::shared_ptr<Mesh>& mesh)
+                SubMesh() = default;
+                SubMesh(uint32_t meshIndex, uint32_t materialIndex, const std::shared_ptr<Mesh>& mesh)
                     : MeshIndex(meshIndex), MaterialIndex(materialIndex), MeshPtr(std::move(mesh)){}
                 ~SubMesh() = default;
             
                 uint32_t MeshIndex{0};
                 uint32_t MaterialIndex{0};
                 std::shared_ptr<Mesh> MeshPtr{nullptr};
+                Model* ParentModel{nullptr};
             };
 
             struct SubMeshMaterial
             {
-                explicit SubMeshMaterial(uint32_t materialIndex, const std::string& name, const std::string& materialFile)
-                    : MaterialIndex(materialIndex), Materials(std::make_shared<Material>(name, materialFile)){}
+                SubMeshMaterial() = default;
+                SubMeshMaterial(uint32_t materialIndex, uint32_t meshIndex, const std::string& name, const std::string& materialFile)
+                    : MaterialIndex(materialIndex), MeshIndex(meshIndex), Materials(std::make_shared<Material>(name, materialFile)){}
                 ~SubMeshMaterial() = default;
 
                 uint32_t MaterialIndex{0};
+                uint32_t MeshIndex{0};
                 std::shared_ptr<Material> Materials{nullptr};
+                Model* ParentModel{nullptr};
             };
 
         public:
@@ -50,11 +55,13 @@ namespace Motion::Core
             std::vector<std::shared_ptr<SubMesh>>::const_iterator end() const { return m_SubMeshes.end(); }
             
             void Render(const glm::mat4& modelTransForm, const glm::mat4& cameraMatrix);
+            void InsertMaterial(const std::shared_ptr<Material>& material);
             std::shared_ptr<SubMeshMaterial> GetSubMeshMaterial(uint32_t subMeshIndex) const;
 
+
         private:
-            std::vector<std::shared_ptr<SubMesh>> m_SubMeshes{};
-            std::unordered_map<uint32_t, std::shared_ptr<SubMeshMaterial>> m_SubMeshMaterialMapping{};
+            std::vector<std::shared_ptr<SubMesh>> m_SubMeshes;
+            std::unordered_map<uint32_t, std::shared_ptr<SubMeshMaterial>> m_SubMeshMaterialMapping;
             std::string Name{ "" };
 
             friend class Importer;

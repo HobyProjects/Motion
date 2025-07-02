@@ -30,58 +30,72 @@ namespace Motion::Core
 
     struct UniformCache
     {
-        //Model 
-        static constexpr const char* ModelMatrix = "u_ModelMatrix";
-        static constexpr const char* CameraMatrix = "u_CameraMatrix";
+        //Model
+        struct ModelUniforms
+        {
+            static constexpr const char* ModelMatrix = "u_ModelMatrix";
+            static constexpr const char* CameraMatrix = "u_CameraMatrix";
+        };
 
         // Surface Colors
-        static constexpr const char* AmbientColor = "u_AmbientColor";
-        static constexpr const char* DiffuseColor = "u_DiffuseColor";
-        static constexpr const char* SpecularColor = "u_SpecularColor";
-        static constexpr const char* EmissiveColor = "u_EmissiveColor";
-        static constexpr const char* TransparentColor = "u_TransparentColor";
-        static constexpr const char* ReflectiveColor = "u_ReflectiveColor";
+        struct SurfaceColorsUniforms
+        {
+            static constexpr const char* AmbientColor = "u_AmbientColor";
+            static constexpr const char* DiffuseColor = "u_DiffuseColor";
+            static constexpr const char* SpecularColor = "u_SpecularColor";
+            static constexpr const char* EmissiveColor = "u_EmissiveColor";
+            static constexpr const char* TransparentColor = "u_TransparentColor";
+            static constexpr const char* ReflectiveColor = "u_ReflectiveColor";
+        };
 
-        // Material Properties
-        static constexpr const char* Shininess = "u_Shininess";
-        static constexpr const char* ShininessStrenght = "u_ShininessStrenght";
-        static constexpr const char* Opacity = "u_Opacity";
-        static constexpr const char* IndexOfRefraction = "u_RefractionIndex";
-        static constexpr const char* BumpScaling = "u_BumpScaling";
-        static constexpr const char* Reflectivity = "u_Reflectivity";
+        struct MaterialPropertiesUniforms
+        {
+            static constexpr const char* Shininess = "u_Shininess";
+            static constexpr const char* ShininessStrength = "u_ShininessStrength";
+            static constexpr const char* Opacity = "u_Opacity";
+            static constexpr const char* IndexOfRefraction = "u_IndexOfRefraction";
+            static constexpr const char* BumpScaling = "u_BumpScaling";
+            static constexpr const char* Reflectivity = "u_Reflectivity";
+        };
 
-        // Material Factors
-        static constexpr const char* BaseColor = "u_BaseColor";
-        static constexpr const char* MetallicFactor = "u_MetallicFactor";
-        static constexpr const char* RoughnessFactor = "u_RoughnessFactor";
-        static constexpr const char* TransmissionFactor = "u_TransmissionFactor";
-        static constexpr const char* ClearCoatFactor = "u_ClearCoatFactor";
-        static constexpr const char* ClearCoatRoughnessFactor = "u_ClearCoatRoughnessFactor";
-        static constexpr const char* SheenFactor = "u_SheenFactor";
-        static constexpr const char* SheenRoughnessFactor = "u_SheenRoughnessFactor";
-        static constexpr const char* AmbientOcclusionFactor = "u_AmbientOcclusion";
+        struct MaterialFactorsUniforms
+        {
+            static constexpr const char* BaseColor = "u_BaseColor";
+            static constexpr const char* MetallicFactor = "u_MetallicFactor";
+            static constexpr const char* RoughnessFactor = "u_RoughnessFactor";
+            static constexpr const char* TransmissionFactor = "u_TransmissionFactor";
+            static constexpr const char* ClearCoatFactor = "u_ClearCoatFactor";
+            static constexpr const char* ClearCoatRoughnessFactor = "u_ClearCoatRoughnessFactor";
+            static constexpr const char* SheenFactor = "u_SheenFactor";
+            static constexpr const char* SheenRoughnessFactor = "u_SheenRoughnessFactor";
+            static constexpr const char* AmbientOcclusionFactor = "u_AmbientOcclusion";
+            static constexpr const char* IndexOfRefraction = "u_IndexOfRefraction";
+        };
 
+        struct LegacyTextureUniforms
+        {
+            static constexpr const char* DiffuseTexture = "u_DiffuseTexture";
+            static constexpr const char* AmbientTexture = "u_AmbientTexture";
+            static constexpr const char* SpecularTexture = "u_SpecularTexture";
+            static constexpr const char* EmissiveTexture = "u_EmissiveTexture";
+            static constexpr const char* NormalMapsTexture = "u_NormalMapsTexture";
+            static constexpr const char* HightMapsTexture = "u_HightMapsTexture";
+            static constexpr const char* ShininessTexture = "u_ShininessTexture";
+            static constexpr const char* OpacityMapsTexture = "u_OpacityTexture";
+            static constexpr const char* LightMapsTexture = "u_LightTexture";
+        };
 
-        // Texture Type (Legacy)
-        static constexpr const char* DiffuseTexture = "u_DiffuseTexture";
-        static constexpr const char* AmbientTexture = "u_AmbientTexture";
-        static constexpr const char* SpecularTexture = "u_SpecularTexture";
-        static constexpr const char* EmissiveTexture = "u_EmissiveTexture";
-        static constexpr const char* NormalMapsTexture = "u_NormalMapsTexture";
-        static constexpr const char* HightMapsTexture = "u_HightMapsTexture";
-        static constexpr const char* ShininessTexture = "u_ShininessTexture";
-        static constexpr const char* OpacityMapsTexture = "u_OpacityTexture";
-        static constexpr const char* LightMapsTexture = "u_LightTexture";
-
-        // Texture Type (PBR)
-        static constexpr const char* BaseColorMapsTexture = "u_BaseColorMapsTexture";
-        static constexpr const char* MetallicMapsTexture = "u_MetalnessMapsTexture";
-        static constexpr const char* RoughnessMapsTexture = "u_RoughnessMapsTexture";
-        static constexpr const char* AOMapTexture = "u_AmbientOcclusionMapsTexture";
-        static constexpr const char* EmissiveMapsTexture = "u_EmissiveMapsTexture";
-        static constexpr const char* ClearCoatMapsTexture = "u_ClearCoatMapsTexture";
-        static constexpr const char* SheenMapsTexture = "u_SheenMapsTexture";
-        static constexpr const char* TransmissionMapsTexture = "u_TransmissionMapsTexture";
+        struct PBRTextureUniforms
+        {
+            static constexpr const char* BaseColorTexture = "u_BaseColorTexture";
+            static constexpr const char* MetallicTexture = "u_MetallicTexture";
+            static constexpr const char* RoughnessTexture = "u_RoughnessTexture";
+            static constexpr const char* AOMapTexture = "u_AmbientOcclusionTexture";
+            static constexpr const char* EmissiveTexture = "u_EmissiveTexture";
+            static constexpr const char* ClearCoatTexture = "u_ClearCoatTexture";
+            static constexpr const char* SheenTexture = "u_SheenTexture";
+            static constexpr const char* TransmissionTexture = "u_TransmissionTexture";
+        };
 
         UniformCache() = default;
         ~UniformCache() = default;

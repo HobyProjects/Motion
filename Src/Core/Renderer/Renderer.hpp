@@ -39,6 +39,8 @@ namespace Motion::Core
             static void SetViewport(int32_t x, int32_t y, int32_t width, int32_t height);
             static void Submit(const DrawCommand& drawCommand);
             static void Flush();
+            static void BeginFrame();
+            static void EndFrame();
             static uint32_t GetDrawCalls();
 
         private:

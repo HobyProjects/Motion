@@ -48,13 +48,20 @@
 #include "Base.hpp"
 #include "Asserts.hpp"
 #include "Log.hpp"
-#include "Asset.hpp"
 #include "UUID.hpp"
-#include "AssetManager.hpp"
-#include "MaterialManager.hpp"
-#include "MaterialSerializer.hpp"
+
+//Layers
 #include "Layer.hpp"
 #include "LayersManager.hpp"
+
+// Assets
+#include "Asset.hpp"
+#include "AssetManager.hpp"
+
+//Material
+#include "Material.hpp"
+#include "MaterialManager.hpp"
+#include "MaterialSerializer.hpp"
 
 //Events
 #include "Event.hpp"
@@ -76,7 +83,7 @@
 #include "Model.hpp"
 #include "Mesh.hpp"
 #include "Importer.hpp"
-#include "Material.hpp"
+#include "Thumbnail.hpp"
 
 //Renderer - OpenGL
 #include "GL_Debug.hpp"
@@ -87,7 +94,7 @@
 #include "GL_Arrays.hpp"
 #include "GLFW_GL_Context.hpp"
 
-//Screen
+//Window
 #include "Window.hpp"
 #include "GLFW_Window.hpp"
 

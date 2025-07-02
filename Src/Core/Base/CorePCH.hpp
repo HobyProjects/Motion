@@ -97,3 +97,6 @@
 //ECS
 #include "Entity.hpp"
 #include "Components.hpp"
+
+//Platform
+#include "DialogBoxes.hpp"

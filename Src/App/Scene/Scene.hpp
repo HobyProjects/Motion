@@ -38,9 +38,9 @@ namespace Motion::App
             void OnViewportSizeChanges(float width, float height);
 
         private:
-            void RenderScene();
-            void RenderEntities();
-            void RenderComponents(const std::shared_ptr<Motion::Core::Entity>& entity);
+            void RenderScene(Motion::Core::WindowHandle handle);
+            void RenderEntities(Motion::Core::WindowHandle handle);
+            void RenderComponents(Motion::Core::WindowHandle handle, const std::shared_ptr<Motion::Core::Entity>& entity);
 
         private:
             std::shared_ptr<MainCamera> m_MainCamera{nullptr};

@@ -10,8 +10,6 @@ namespace Motion::Core
 		std::shared_ptr<Entity> entity = std::make_shared<Entity>(Registry.create());
 		auto& tag = entity->AddComponent<TagComponent>(name);
 		tag.Tag = name.empty() ? "unnamed" : name;
-		entity->AddComponent<TransformComponent>();
-		entity->AddComponent<MeshComponent>();
 		return entity;
 	}
 

@@ -15,7 +15,7 @@ namespace Motion::App
 
     void Scene::OnUpdate(Motion::Core::WindowHandle handle, Motion::Core::Timer deltaTime)
     {
-        RenderScene();
+        RenderScene(handle);
     }
 
     void Scene::OnEvent(Motion::Core::WindowHandle handle, Motion::Core::IEvent& e)
@@ -25,7 +25,7 @@ namespace Motion::App
 
     void Scene::OnUIRenders(Motion::Core::WindowHandle handle)
     {
-        RenderEntities();
+        RenderEntities(handle);
     }
 
     void Scene::OnViewportSizeChanges(float width, float height)
@@ -33,7 +33,7 @@ namespace Motion::App
         m_MainCamera->SetAspectRatio(width, height);
     }
 
-    void Scene::RenderScene()
+    void Scene::RenderScene(Motion::Core::WindowHandle handle)
     {
         SceneRenderer::BeginScene(m_MainCamera->GetCameraMatrix());
 
@@ -43,7 +43,7 @@ namespace Motion::App
             {
                 auto& mesh = entity->GetComponent<Motion::Core::MeshComponent>();
                 auto& transform = entity->GetComponent<Motion::Core::TransformComponent>();
-                SceneRenderer::SubmitModel(mesh.Object, transform.GetTransform());
+                SceneRenderer::SubmitModel(mesh.Mesh, transform.GetTransform());
             }
         }
 
@@ -51,7 +51,7 @@ namespace Motion::App
         SceneRenderer::Flush();
     }
 
-    void Scene::RenderEntities()
+    void Scene::RenderEntities(Motion::Core::WindowHandle handle)
     {
         ImGui::Begin("Scene Entities");
 
@@ -59,7 +59,31 @@ namespace Motion::App
 		{
 			if( ImGui::MenuItem("Import Model") )
 			{
-                // AssetManager::ImportModelFromFile();
+                std::weak_ptr<Motion::Core::IWindow> window = Motion::Core::WindowManager::Get(handle);
+                if( !window.expired() )
+                {
+                    auto windowPtr = window.lock();
+                    std::filesystem::path filePath = Motion::Core::DialogBoxes::OpenFileDialog(
+                        windowPtr->GetNativeWindow(), "Import Model",
+                        "Model Files (*.fbx;*.obj;*.gltf;*.glb)\0*.fbx;*.obj;*.gltf;*.glb\0All Files (*.*)\0*.*\0");
+
+                    if( !filePath.empty() )
+                    {
+                        std::shared_ptr<Motion::Core::Model> model = Motion::Core::AssetManager::LoadModel(filePath.filename().string(), filePath);
+                        if( model )
+                        {
+                            std::shared_ptr<Motion::Core::Entity> entity = Motion::Core::EntityBuilder::CreateEntity(filePath.filename().string());
+                            entity->AddComponent<Motion::Core::TransformComponent>();
+                            entity->AddComponent<Motion::Core::MeshComponent>(filePath.filename().string(), model);
+                            m_Entities.push_back(entity);
+                            m_SelectedEntity = entity;
+                        }
+                        else
+                        {
+                            MOTION_ERROR("Failed to load model from file: {}", filePath.string());
+                        }
+                    }
+                }
 			}
 
 			ImGui::EndPopup();
@@ -90,9 +114,9 @@ namespace Motion::App
 		}
 
         ImGui::Begin("Properties");
-		if( m_SelectedEntity )
+		if( m_SelectedEntity && m_SelectedEntity != Motion::Core::EntityBuilder::ENULL )
 		{
-			RenderComponents(m_SelectedEntity);
+			RenderComponents(handle, m_SelectedEntity);
 		}
 		ImGui::End();
 
@@ -117,7 +141,7 @@ namespace Motion::App
         }
     }
 
-    void Scene::RenderComponents(const std::shared_ptr<Motion::Core::Entity>& entity)
+    void Scene::RenderComponents(Motion::Core::WindowHandle handle, const std::shared_ptr<Motion::Core::Entity>& entity)
     {
         if( entity->HasComponent<Motion::Core::TagComponent>() )
 		{

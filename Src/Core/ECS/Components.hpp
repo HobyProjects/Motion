@@ -50,9 +50,11 @@ namespace Motion::Core
     {
         UUID ID{0};
         std::string Name{ "unamed" };
-        std::shared_ptr<Model> Object{ nullptr };
+        std::shared_ptr<Model> Mesh{ nullptr };
 
         MeshComponent(): ID(UniqueIdentity::GetUniqueID()) {};
+        MeshComponent(const std::string& name, const std::shared_ptr<Model>& mesh)
+            : Name(name), Mesh(mesh) { ID = UniqueIdentity::GetUniqueID(); }
         ~MeshComponent() = default;
     };
 

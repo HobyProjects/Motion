@@ -146,4 +146,26 @@ namespace Motion::Core
 
         m_FrameBuffer->Unbind();
     }
+
+    ImTextureID ThumbnailCache::GetOrGenerateForMesh(UUID id, const std::shared_ptr<Model::SubMesh>& mesh) {
+        auto& entry = m_Cache[id];
+
+        if (!entry.MeshThumb)
+            entry.MeshThumb = std::make_unique<ModelThumbnail>("mesh", m_ThumbWidth, m_ThumbHeight, mesh);
+
+        return (ImTextureID)(intptr_t)entry.MeshThumb->GetColorAttachment();
+    }
+
+    ImTextureID ThumbnailCache::GetOrGenerateForMaterial(UUID id, const std::shared_ptr<Model::SubMeshMaterial>& material) {
+        auto& entry = m_Cache[id];
+
+        if (!entry.MaterialThumb)
+            entry.MaterialThumb = std::make_unique<MaterialThumbnail>("material", m_ThumbWidth, m_ThumbHeight, material);
+
+        return (ImTextureID)(intptr_t)entry.MaterialThumb->GetColorAttachment();
+    }
+
+    void ThumbnailCache::Invalidate(UUID id) {
+        m_Cache.erase(id);
+    }
 }

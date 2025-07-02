@@ -57,6 +57,7 @@ set(
         ${MOTION_CORE_DIR}/Model
         ${MOTION_CORE_DIR}/Assets
         ${MOTION_CORE_DIR}/Layer
+        ${MOTION_CORE_DIR}/Platform
         ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL
 )
 
@@ -111,6 +112,7 @@ set(
         ${MOTION_CORE_DIR}/Window/GLFW_Window.hpp
 
         ${MOTION_CORE_DIR}/UI/UI.hpp
+        ${MOTION_CORE_DIR}/Platform/DialogBoxes.hpp
         
         ${MOTION_CORE_DIR}/ECS/Entity.hpp
         ${MOTION_CORE_DIR}/ECS/Components.hpp
@@ -152,6 +154,7 @@ set(
         ${MOTION_CORE_DIR}/Window/GLFW_Window.cpp
 
         ${MOTION_CORE_DIR}/UI/UI.cpp
+        ${MOTION_CORE_DIR}/Platform/DialogBoxes.cpp
         ${MOTION_CORE_DIR}/ECS/Entity.cpp
 )
 

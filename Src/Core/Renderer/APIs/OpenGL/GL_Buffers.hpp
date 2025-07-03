@@ -101,13 +101,27 @@ namespace Motion::Core
             virtual BufferID GetColorAttachment() const override { return m_ColorAttachment; }
             virtual FrameBufferSpecification& GetFrameSpecification() override { return m_Specification; }
 
+            virtual bool IsMSAA() const override { return m_Specification.Samples > 1; }
+            virtual BufferID GetResolvedFBO() const override { return m_ResolvedFBOID; }
+            virtual BufferID GetResolvedColorAttachment() const override { return m_ResolvedColorAttachment; }
+            virtual void Resolve() override;
+
         protected:
             virtual void CreateFrame() override;
+
+        private:
+            void DeleteFrameBuffers();
 
         private:
             BufferID m_FrameBufferID{ 0 };
             BufferID m_ColorAttachment{ 0 };
             BufferID m_DepthAttachment{ 0 };
+
+            // For MSAA resolve
+            BufferID m_ResolvedFBOID{ 0 };
+            BufferID m_ResolvedColorAttachment{ 0 };
+            BufferID m_ResolvedDepthAttachment{ 0 };
+
             FrameBufferSpecification m_Specification{};
     };
 

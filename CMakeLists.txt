@@ -58,7 +58,6 @@ set(
         ${MOTION_CORE_DIR}/Assets
         ${MOTION_CORE_DIR}/Layer
         ${MOTION_CORE_DIR}/Platform
-        ${MOTION_CORE_DIR}/Graphics
         ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL
 )
 
@@ -93,7 +92,8 @@ set(
         ${MOTION_CORE_DIR}/Renderer/Camera.hpp
         ${MOTION_CORE_DIR}/Renderer/Camera3D.hpp
         ${MOTION_CORE_DIR}/Renderer/Thumbnail.hpp
-
+        ${MOTION_CORE_DIR}/Renderer/GraphicSettings.hpp
+        
         ${MOTION_CORE_DIR}/Model/Model.hpp
         ${MOTION_CORE_DIR}/Model/Mesh.hpp
         ${MOTION_CORE_DIR}/Model/Importer.hpp
@@ -101,7 +101,7 @@ set(
         ${MOTION_CORE_DIR}/Material/Material.hpp
         ${MOTION_CORE_DIR}/Material/MaterialManager.hpp
         ${MOTION_CORE_DIR}/Material/MaterialSerializer.hpp
-
+        
         ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL/GL_Buffers.hpp
         ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL/GL_Debug.hpp
         ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL/GL_Shaders.hpp
@@ -109,7 +109,8 @@ set(
         ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL/GL_Texture.hpp
         ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL/GL_Arrays.hpp
         ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL/GLFW_GL_Context.hpp
-
+        ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL/GLFW_GL_GraphicSettings.hpp
+        
         ${MOTION_CORE_DIR}/Window/Window.hpp
         ${MOTION_CORE_DIR}/Window/GLFW_Window.hpp
 
@@ -118,9 +119,6 @@ set(
         
         ${MOTION_CORE_DIR}/ECS/Entity.hpp
         ${MOTION_CORE_DIR}/ECS/Components.hpp
-
-        ${MOTION_CORE_DIR}/Graphics/GraphicSettings.hpp
-        ${MOTION_CORE_DIR}/Graphics/GLFW_GraphicSettings.hpp
 
 
 )
@@ -137,7 +135,8 @@ set(
         ${MOTION_CORE_DIR}/Renderer/Arrays.cpp
         ${MOTION_CORE_DIR}/Renderer/Camera3D.cpp
         ${MOTION_CORE_DIR}/Renderer/Thumbnail.cpp
-
+        ${MOTION_CORE_DIR}/Renderer/GraphicSettings.cpp
+        
         ${MOTION_CORE_DIR}/Model/Mesh.cpp
         ${MOTION_CORE_DIR}/Model/Importer.cpp
         ${MOTION_CORE_DIR}/Model/Model.cpp
@@ -145,10 +144,10 @@ set(
         ${MOTION_CORE_DIR}/Material/Material.cpp
         ${MOTION_CORE_DIR}/Material/MaterialManager.cpp
         ${MOTION_CORE_DIR}/Material/MaterialSerializer.cpp
-
+        
         ${MOTION_CORE_DIR}/Event/InputsHandler.cpp
         ${MOTION_CORE_DIR}/Event/GLFW_InputsHandler.cpp
-
+        
         ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL/GL_Buffers.cpp
         ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL/GL_Debug.cpp
         ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL/GL_Shaders.cpp
@@ -156,6 +155,7 @@ set(
         ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL/GL_Texture.cpp
         ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL/GL_Arrays.cpp
         ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL/GLFW_GL_Context.cpp
+        ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL/GLFW_GL_GraphicSettings.cpp
 
         ${MOTION_CORE_DIR}/Window/Window.cpp
         ${MOTION_CORE_DIR}/Window/GLFW_Window.cpp
@@ -164,8 +164,7 @@ set(
         ${MOTION_CORE_DIR}/Platform/DialogBoxes.cpp
         ${MOTION_CORE_DIR}/ECS/Entity.cpp
 
-        ${MOTION_CORE_DIR}/Graphics/GraphicSettings.cpp
-        ${MOTION_CORE_DIR}/Graphics/GLFW_GraphicSettings.cpp
+
 )
 
 add_library(${MOTION_CORE_LIBRARY} STATIC ${MOTION_CORE_HEADERS} ${MOTION_CORE_SOURCES})

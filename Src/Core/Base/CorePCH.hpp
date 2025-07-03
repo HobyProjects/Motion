@@ -110,4 +110,4 @@
 
 //Graphics
 #include "GraphicSettings.hpp"
-#include "GLFW_GraphicSettings.hpp"
+#include "GLFW_GL_GraphicSettings.hpp"

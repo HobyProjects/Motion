@@ -18,6 +18,14 @@ namespace Motion::App
         m_Viewport.FrameSpec.Height = static_cast<uint32_t>(m_ViewportHeight);
         m_Viewport.Size = { m_ViewportWidth, m_ViewportHeight };
 
+        if(!s_Window.expired())
+        {
+            auto window = s_Window.lock();
+            Motion::Core::GraphicSettings& graphicSettings = window->GetGraphicSettings();
+            Motion::Core::GraphicSettings::AntiAliasingLevel aaLevel = graphicSettings.AntiAliasing;
+            m_Viewport.FrameSpec.Samples = static_cast<uint32_t>(aaLevel);
+        }
+
         m_Framebuffer = Motion::Core::BuffersBuilder::CreateFrameBuffer(m_Viewport.FrameSpec);
         m_Scene = std::make_shared<Scene>(glm::vec2(m_ViewportWidth, m_ViewportHeight));
     }
@@ -70,7 +78,16 @@ namespace Motion::App
                 m_ViewportHeight = viewportPanelSize.y;
             }
 
-            ImGui::Image((ImTextureID) m_Framebuffer->GetColorAttachment(), viewportPanelSize, { 0, 1 }, { 1, 0 });
+            if( m_Framebuffer->IsMSAA() )
+            {
+                m_Framebuffer->Resolve();
+                ImGui::Image((ImTextureID) m_Framebuffer->GetResolvedColorAttachment(), viewportPanelSize, { 0, 1 }, { 1, 0 });
+            }
+            else
+            {
+                ImGui::Image((ImTextureID) m_Framebuffer->GetColorAttachment(), viewportPanelSize, { 0, 1 }, { 1, 0 });
+            }
+
         }
         ImGui::End();
         ImGui::PopStyleVar();

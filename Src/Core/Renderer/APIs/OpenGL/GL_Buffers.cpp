@@ -196,28 +196,88 @@ namespace Motion::Core
         CreateFrame();
     }
 
+    void GL_FrameBuffer::Resolve()
+    {
+        if (!IsMSAA()) return;
+
+        glBindFramebuffer(GL_READ_FRAMEBUFFER, m_FrameBufferID);
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, m_ResolvedFBOID);
+        glBlitFramebuffer(
+            0, 0, m_Specification.Width, m_Specification.Height,
+            0, 0, m_Specification.Width, m_Specification.Height,
+            GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT, GL_NEAREST
+        );
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    }
+
     void GL_FrameBuffer::CreateFrame()
     {
-        if (m_FrameBufferID)
-        {
-            glDeleteFramebuffers(1, &m_FrameBufferID);
-            glDeleteTextures(1, &m_ColorAttachment);
-            glDeleteTextures(1, &m_DepthAttachment);
-        }
+        DeleteFrameBuffers();
 
+        bool useMSAA = m_Specification.Samples > 1;
+
+        // --- Main FBO ---
         glCreateFramebuffers(1, &m_FrameBufferID);
         glBindFramebuffer(GL_FRAMEBUFFER, m_FrameBufferID);
 
-        glCreateTextures(GL_TEXTURE_2D, 1, &m_ColorAttachment);
-        glTextureStorage2D(m_ColorAttachment, 1, GL_RGBA8, m_Specification.Width, m_Specification.Height);
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_ColorAttachment, 0);
+        // --- Color Attachment ---
+        if (useMSAA) {
+            glCreateTextures(GL_TEXTURE_2D_MULTISAMPLE, 1, &m_ColorAttachment);
+            glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, m_ColorAttachment);
+            glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, m_Specification.Samples, GL_RGBA8, m_Specification.Width, m_Specification.Height, GL_TRUE);
+            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D_MULTISAMPLE, m_ColorAttachment, 0);
+        } else {
+            glCreateTextures(GL_TEXTURE_2D, 1, &m_ColorAttachment);
+            glTextureStorage2D(m_ColorAttachment, 1, GL_RGBA8, m_Specification.Width, m_Specification.Height);
+            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_ColorAttachment, 0);
+        }
 
-        glCreateTextures(GL_TEXTURE_2D, 1, &m_DepthAttachment);
-        glTextureStorage2D(m_DepthAttachment, 1, GL_DEPTH24_STENCIL8, m_Specification.Width, m_Specification.Height);
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_TEXTURE_2D, m_DepthAttachment, 0);
+        // --- Depth Attachment ---
+        if (useMSAA) {
+            glCreateTextures(GL_TEXTURE_2D_MULTISAMPLE, 1, &m_DepthAttachment);
+            glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, m_DepthAttachment);
+            glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, m_Specification.Samples, GL_DEPTH24_STENCIL8, m_Specification.Width, m_Specification.Height, GL_TRUE);
+            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_TEXTURE_2D_MULTISAMPLE, m_DepthAttachment, 0);
+        } else {
+            glCreateTextures(GL_TEXTURE_2D, 1, &m_DepthAttachment);
+            glTextureStorage2D(m_DepthAttachment, 1, GL_DEPTH24_STENCIL8, m_Specification.Width, m_Specification.Height);
+            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_TEXTURE_2D, m_DepthAttachment, 0);
+        }
 
         MOTION_ASSERT(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE, "Framebuffer is not complete!");
+
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+        // --- Resolved (single-sample) FBO for MSAA ---
+        if (useMSAA) {
+            glCreateFramebuffers(1, &m_ResolvedFBOID);
+            glBindFramebuffer(GL_FRAMEBUFFER, m_ResolvedFBOID);
+
+            glCreateTextures(GL_TEXTURE_2D, 1, &m_ResolvedColorAttachment);
+            glTextureStorage2D(m_ResolvedColorAttachment, 1, GL_RGBA8, m_Specification.Width, m_Specification.Height);
+            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_ResolvedColorAttachment, 0);
+
+            glCreateTextures(GL_TEXTURE_2D, 1, &m_ResolvedDepthAttachment);
+            glTextureStorage2D(m_ResolvedDepthAttachment, 1, GL_DEPTH24_STENCIL8, m_Specification.Width, m_Specification.Height);
+            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_TEXTURE_2D, m_ResolvedDepthAttachment, 0);
+
+            MOTION_ASSERT(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE, "Resolved FBO is not complete!");
+
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        }
+    }
+
+    void GL_FrameBuffer::DeleteFrameBuffers()
+    {
+        if (m_FrameBufferID) glDeleteFramebuffers(1, &m_FrameBufferID);
+        if (m_ColorAttachment) glDeleteTextures(1, &m_ColorAttachment);
+        if (m_DepthAttachment) glDeleteTextures(1, &m_DepthAttachment);
+        if (m_ResolvedFBOID) glDeleteFramebuffers(1, &m_ResolvedFBOID);
+        if (m_ResolvedColorAttachment) glDeleteTextures(1, &m_ResolvedColorAttachment);
+        if (m_ResolvedDepthAttachment) glDeleteTextures(1, &m_ResolvedDepthAttachment);
+
+        m_FrameBufferID = m_ColorAttachment = m_DepthAttachment = 0;
+        m_ResolvedFBOID = m_ResolvedColorAttachment = m_ResolvedDepthAttachment = 0;
     }
 
     std::shared_ptr<GL_VertexBuffer> GL_CreateVertexBuffer(uint32_t alloca_size)

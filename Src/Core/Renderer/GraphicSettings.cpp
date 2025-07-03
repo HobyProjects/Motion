@@ -1,14 +1,15 @@
 #include "CorePCH.hpp"
+#include "GraphicSettings.hpp"
 
 namespace Motion::Core
 {
-    static GraphicSettings::AAType ParseAAType(const std::string& aaType)
+    static GraphicSettings::AntiAliasingLevel ParseAAType(const std::string& aaType)
     {
-        if (aaType == "None") return GraphicSettings::AAType::None;
-        if (aaType == "MSAAx2") return GraphicSettings::AAType::MSAAx2;
-        if (aaType == "MSAAx4") return GraphicSettings::AAType::MSAAx4;
-        if (aaType == "MSAAx8") return GraphicSettings::AAType::MSAAx8;
-        return GraphicSettings::AAType::MSAAx4; // Default
+        if (aaType == "None") return GraphicSettings::AntiAliasingLevel::None;
+        if (aaType == "MSAAx2") return GraphicSettings::AntiAliasingLevel::MSAAx2;
+        if (aaType == "MSAAx4") return GraphicSettings::AntiAliasingLevel::MSAAx4;
+        if (aaType == "MSAAx8") return GraphicSettings::AntiAliasingLevel::MSAAx8;
+        return GraphicSettings::AntiAliasingLevel::MSAAx4; // Default
     }
 
     static GraphicSettings::ScalingMode ParseScaling(const std::string& scaling)
@@ -30,14 +31,14 @@ namespace Motion::Core
         return GraphicSettings::QualityPreset::High; // Default
     }
 
-    static std::string ToString(GraphicSettings::AAType aaType)
+    static std::string ToString(GraphicSettings::AntiAliasingLevel aaType)
     {
         switch (aaType)
         {
-            case GraphicSettings::AAType::None: return "None";
-            case GraphicSettings::AAType::MSAAx2: return "MSAAx2";
-            case GraphicSettings::AAType::MSAAx4: return "MSAAx4";
-            case GraphicSettings::AAType::MSAAx8: return "MSAAx8";
+            case GraphicSettings::AntiAliasingLevel::None: return "None";
+            case GraphicSettings::AntiAliasingLevel::MSAAx2: return "MSAAx2";
+            case GraphicSettings::AntiAliasingLevel::MSAAx4: return "MSAAx4";
+            case GraphicSettings::AntiAliasingLevel::MSAAx8: return "MSAAx8";
             default: return "MSAAx4"; // Default
         }
     }
@@ -69,11 +70,6 @@ namespace Motion::Core
 
     void Serialize(const GraphicSettings& settings, const std::filesystem::path& filePath)
     {
-        if (!std::filesystem::exists(filePath.parent_path()))
-        {
-            std::filesystem::create_directories(filePath.parent_path());
-        }
-
         YAML::Emitter out;
         out << YAML::BeginMap;
         out << YAML::Key << "AntiAliasing" << YAML::Value << ToString(settings.AntiAliasing);
@@ -106,6 +102,7 @@ namespace Motion::Core
         if (!std::filesystem::exists(filePath))
         {
             MOTION_CORE_CRITICAL("Graphic settings file does not exist: {}", filePath.string());
+            settings.IsLooksGood = false;
             return settings; // Return default settings if file does not exist
         }
 
@@ -125,8 +122,110 @@ namespace Motion::Core
         catch (const YAML::Exception& e)
         {
             MOTION_CORE_ERROR("Failed to parse graphic settings file: {}. Error: {}", filePath.string(), e.what());
+            settings.IsLooksGood = false;
+            return settings; // Return default settings if parsing fails
         }
 
+        settings.IsLooksGood = true;
         return settings;
     }
+
+    std::shared_ptr<IGraphic> GraphicFactory::CreateGraphic(const GraphicSettings& settings)
+    {
+        switch(CoreAPI::API())
+        {
+            case BaseAPIs::GLFW:
+            {
+                switch(Renderer::GetAPI())
+                {
+                    case RenderingAPI::OpenGL:
+                    {
+                        auto graphic = std::make_shared<GLFW_GL_GraphicSettings>();
+                        if(!settings.IsLooksGood)
+                        {
+                            graphic->GetSystemPreferredSettings();
+                            MOTION_CORE_WARN("Graphic settings are not valid, using system preferred settings.");
+                            return graphic;
+                        }
+                        else
+                        {
+                            MOTION_CORE_INFO("Using provided graphic settings.");
+                            graphic->UseSettings(settings);
+                            return graphic;
+                        }
+                    }
+                    case RenderingAPI::Vulkan:
+                    {
+                        MOTION_ASSERT(false, "Vulkan rendering API is not supported yet.");
+                        return nullptr;
+                    }
+                    case RenderingAPI::DirectX:
+                    {
+                        MOTION_ASSERT(false, "DirectX rendering API is not supported yet.");
+                        return nullptr;
+                    }
+                    default:
+                    {
+                        MOTION_ASSERT(false, "Unknown rendering API.");
+                        return nullptr;
+                    }
+                }
+            }
+            case BaseAPIs::Win32:
+            {
+                MOTION_ASSERT(false, "Win32 is not supported yet.");
+                return nullptr;
+            }
+            default:
+            {
+                MOTION_ASSERT(false, "Unknown base API.");
+                return nullptr;
+            }
+        }
+    }
+    std::shared_ptr<IGraphic> GraphicFactory::CreateGraphic()
+    {
+                switch(CoreAPI::API())
+        {
+            case BaseAPIs::GLFW:
+            {
+                switch(Renderer::GetAPI())
+                {
+                    case RenderingAPI::OpenGL:
+                    {
+                        auto graphic = std::make_shared<GLFW_GL_GraphicSettings>();
+                        MOTION_CORE_INFO("Creating graphic settings with system preferred settings.");
+                        graphic->GetSystemPreferredSettings();
+                        return graphic;
+                    }
+                    case RenderingAPI::Vulkan:
+                    {
+                        MOTION_ASSERT(false, "Vulkan rendering API is not supported yet.");
+                        return nullptr;
+                    }
+                    case RenderingAPI::DirectX:
+                    {
+                        MOTION_ASSERT(false, "DirectX rendering API is not supported yet.");
+                        return nullptr;
+                    }
+                    default:
+                    {
+                        MOTION_ASSERT(false, "Unknown rendering API.");
+                        return nullptr;
+                    }
+                }
+            }
+            case BaseAPIs::Win32:
+            {
+                MOTION_ASSERT(false, "Win32 is not supported yet.");
+                return nullptr;
+            }
+            default:
+            {
+                MOTION_ASSERT(false, "Unknown base API.");
+                return nullptr;
+            }
+        }
+    }
 }
+

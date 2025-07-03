@@ -6,20 +6,21 @@ namespace Motion::Core
 {
     struct GraphicSettings
     {
-        enum class AAType { None, MSAAx2, MSAAx4, MSAAx8 };
+        enum class AntiAliasingLevel : uint32_t { None = 1, MSAAx2 = 2, MSAAx4 = 4, MSAAx8 = 8 };
         enum class ScalingMode { None, DLSS, FSR2, Bicubic };
         enum class QualityPreset { Low, Medium, High, Ultra, Auto };
 
-        AAType AntiAliasing{AAType::MSAAx4};
+        AntiAliasingLevel AntiAliasing{AntiAliasingLevel::MSAAx4};
         ScalingMode Upscaling{ScalingMode::None};
-        uint32_t AnisotropicLevel{4};
+        QualityPreset Preset{QualityPreset::High};
         bool Bloom{true};
         bool SSAO{true};
         bool AmbientOcclusion{true};
         bool DepthOfField{false};
         bool MotionBlur{false};
+        uint32_t AnisotropicLevel{4};
 
-        QualityPreset Preset{QualityPreset::High};
+        bool IsLooksGood{false};
 
         GraphicSettings() = default;
         ~GraphicSettings() = default;
@@ -31,10 +32,16 @@ namespace Motion::Core
             IGraphic() = default;
             virtual ~IGraphic() = default;
 
-            virtual void ApplySettings(WindowHandle window) = 0;
-            virtual void UsePreset(GraphicSettings::QualityPreset preset) = 0;
-            virtual void AutoDetect() = 0;
+            virtual void UseSettings(const GraphicSettings& settings) = 0;
+            virtual void GetSystemPreferredSettings() = 0;
             virtual GraphicSettings& GetSettings() = 0;
+    };
+
+    class GraphicFactory
+    {
+        public:
+            static std::shared_ptr<IGraphic> CreateGraphic(const GraphicSettings& settings);
+            static std::shared_ptr<IGraphic> CreateGraphic();
     };
 
     class GraphicSettingSerializer

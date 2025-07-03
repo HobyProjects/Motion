@@ -142,6 +142,7 @@ namespace Motion::Core
 		uint32_t Width{ 0 };
 		uint32_t Height{ 0 };
 		bool SwapChainTarget{ false };
+        uint32_t Samples{ 1 };
 	};
     
     class IFrameBuffer
@@ -154,9 +155,14 @@ namespace Motion::Core
             virtual void Unbind() const = 0;
 
             virtual void ResizeFrame(uint32_t width, uint32_t height) = 0;
-            virtual uint32_t GetFrameBufferID() const = 0;
-            virtual uint32_t GetColorAttachment() const = 0;
+            virtual BufferID GetFrameBufferID() const = 0;
+            virtual BufferID GetColorAttachment() const = 0;
             virtual FrameBufferSpecification& GetFrameSpecification() = 0;
+
+            virtual bool IsMSAA() const = 0;
+            virtual BufferID GetResolvedFBO() const = 0;
+            virtual BufferID GetResolvedColorAttachment() const = 0;
+            virtual void Resolve() = 0;
 
         protected:
             virtual void CreateFrame() = 0;

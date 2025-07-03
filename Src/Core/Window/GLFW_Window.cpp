@@ -65,7 +65,7 @@ namespace Motion::Core
         m_Properties.Title = title;
         m_Properties.Handle = windowHandle;
 
-        if( Renderer::GetAPI() == RenderingAPI::OpenGL)
+        if( Renderer::GetAPI() & RenderingAPI::OpenGL)
 		{
 			glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
 			glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
@@ -74,7 +74,7 @@ namespace Motion::Core
 			glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE);
 			glfwWindowHint(GLFW_DOUBLEBUFFER, GLFW_TRUE);
 
-			#if defined(TE_DEBUG)
+			#if defined(MOTION_BUILD_DEBUG)
 				glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
 			#endif
 		}
@@ -101,6 +101,8 @@ namespace Motion::Core
 			m_Properties.IsFocused = glfwGetWindowAttrib(m_Window, GLFW_FOCUSED);
 			m_Properties.IsVSyncEnabled = true;
 
+            m_Graphic = GraphicFactory::CreateGraphic(GraphicSettingSerializer::Deserialize("Settings/GraphicSettings.yaml"));
+
             glfwSetWindowUserPointer(m_Window, this);
             SetEventsCallBacks();
             RegisterEventsCallBacks();
@@ -121,6 +123,8 @@ namespace Motion::Core
 
     GLFW_Window::~GLFW_Window()
     {
+        GraphicSettingSerializer::Serialize(m_Graphic->GetSettings(), "Settings/GraphicSettings.yaml");
+        
         if( m_Window != nullptr )
         {
             glfwDestroyWindow(m_Window);

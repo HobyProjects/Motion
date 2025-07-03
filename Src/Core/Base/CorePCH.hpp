@@ -107,3 +107,7 @@
 
 //Platform
 #include "DialogBoxes.hpp"
+
+//Graphics
+#include "GraphicSettings.hpp"
+#include "GLFW_GraphicSettings.hpp"

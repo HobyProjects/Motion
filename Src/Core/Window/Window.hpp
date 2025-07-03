@@ -9,6 +9,7 @@
 #include "Event.hpp"
 #include "Renderer.hpp"
 #include "UUID.hpp"
+#include "GraphicSettings.hpp"
 
 namespace Motion::Core
 {
@@ -109,6 +110,7 @@ namespace Motion::Core
             virtual WindowHandle GetHandle() const = 0;
             virtual NativeWindow GetNativeWindow() const = 0;
             virtual WindowProperties& GetProperties() = 0;
+            virtual GraphicSettings& GetGraphicSettings() = 0;
             virtual void PollEvents() = 0;
             virtual void SwapBuffers() = 0;
             virtual void SetEventsCallbackFunc(const ApplicationCallbackFunction&) = 0;

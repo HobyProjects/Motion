@@ -58,6 +58,7 @@ set(
         ${MOTION_CORE_DIR}/Assets
         ${MOTION_CORE_DIR}/Layer
         ${MOTION_CORE_DIR}/Platform
+        ${MOTION_CORE_DIR}/Graphics
         ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL
 )
 
@@ -118,6 +119,10 @@ set(
         ${MOTION_CORE_DIR}/ECS/Entity.hpp
         ${MOTION_CORE_DIR}/ECS/Components.hpp
 
+        ${MOTION_CORE_DIR}/Graphics/GraphicSettings.hpp
+        ${MOTION_CORE_DIR}/Graphics/GLFW_GraphicSettings.hpp
+
+
 )
 
 set(
@@ -158,6 +163,9 @@ set(
         ${MOTION_CORE_DIR}/UI/UI.cpp
         ${MOTION_CORE_DIR}/Platform/DialogBoxes.cpp
         ${MOTION_CORE_DIR}/ECS/Entity.cpp
+
+        ${MOTION_CORE_DIR}/Graphics/GraphicSettings.cpp
+        ${MOTION_CORE_DIR}/Graphics/GLFW_GraphicSettings.cpp
 )
 
 add_library(${MOTION_CORE_LIBRARY} STATIC ${MOTION_CORE_HEADERS} ${MOTION_CORE_SOURCES})

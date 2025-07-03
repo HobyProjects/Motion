@@ -35,7 +35,7 @@ namespace Motion::Core
             
             virtual NativeWindow GetNativeWindow() const override { return m_Window; }
             virtual WindowProperties& GetProperties() override { return m_Properties; }
-            virtual GraphicSettings& GetGraphicSettings() override;
+            virtual GraphicSettings& GetGraphicSettings() override { return m_Graphic->GetSettings(); }
             virtual void PollEvents() override;
             virtual void SwapBuffers() override;
             virtual void SetEventsCallbackFunc(const ApplicationCallbackFunction&) override;

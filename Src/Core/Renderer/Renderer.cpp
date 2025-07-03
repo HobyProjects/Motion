@@ -178,8 +178,8 @@ namespace Motion::Core
                 currentMesh->Bind();
             }
 
-            currentShader->SetUniform(UniformCache::CameraMatrix, draw.CameraMatrix);
-            currentShader->SetUniform(UniformCache::ModelMatrix, draw.ModelTransform);
+            currentShader->SetUniform(UniformCache::ModelUniforms::CameraMatrix, draw.CameraMatrix);
+            currentShader->SetUniform(UniformCache::ModelUniforms::ModelMatrix, draw.ModelTransform);
             DrawIndexed(draw.SubMesh->GetIndicesCount());
             s_DrawCalls++;
         }

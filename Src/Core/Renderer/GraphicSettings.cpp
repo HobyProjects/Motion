@@ -68,7 +68,7 @@ namespace Motion::Core
         }
     }
 
-    void Serialize(const GraphicSettings& settings, const std::filesystem::path& filePath)
+    void GraphicSettingSerializer::Serialize(const GraphicSettings& settings, const std::filesystem::path& filePath)
     {
         YAML::Emitter out;
         out << YAML::BeginMap;
@@ -96,7 +96,7 @@ namespace Motion::Core
         }
     }
 
-    GraphicSettings Deserialize(const std::filesystem::path& filePath)
+    GraphicSettings GraphicSettingSerializer::Deserialize(const std::filesystem::path& filePath)
     {
         GraphicSettings settings;
         if (!std::filesystem::exists(filePath))

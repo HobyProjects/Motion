@@ -30,29 +30,29 @@ namespace Motion::Core
 
     Material::ShadingMethod Material::DetectShadingMethod()
     {
-        glm::vec3 baseColor = GetVec3Uniform(UniformCache::BaseColor);
-        float metallicFactor = GetFloatUniform(UniformCache::MetallicFactor);
-        float roughnessFactor = GetFloatUniform(UniformCache::RoughnessFactor);
+        glm::vec3 baseColor = GetVec3Uniform(UniformCache::MaterialFactorsUniforms::BaseColor);
+        float metallicFactor = GetFloatUniform(UniformCache::MaterialFactorsUniforms::MetallicFactor);
+        float roughnessFactor = GetFloatUniform(UniformCache::MaterialFactorsUniforms::RoughnessFactor);
 
         bool usesPBR = baseColor != glm::vec3(1.0f) || metallicFactor > 0.0f || roughnessFactor < 1.0f ||
-                   m_TexturesMaps.contains(UniformCache::BaseColorMapsTexture) ||
-                   m_TexturesMaps.contains(UniformCache::MetallicMapsTexture);
+                   m_TexturesMaps.contains(UniformCache::PBRTextureUniforms::BaseColorTexture) ||
+                   m_TexturesMaps.contains(UniformCache::PBRTextureUniforms::MetallicTexture);
 
         if(usesPBR)
             return ShadingMethod::PBR;
 
-        glm::vec3 diffuseColor = GetVec3Uniform(UniformCache::DiffuseColor);
-        glm::vec3 specularColor = GetVec3Uniform(UniformCache::SpecularColor);
-        float shininess = GetFloatUniform(UniformCache::Shininess);
+        glm::vec3 diffuseColor = GetVec3Uniform(UniformCache::SurfaceColorsUniforms::DiffuseColor);
+        glm::vec3 specularColor = GetVec3Uniform(UniformCache::SurfaceColorsUniforms::SpecularColor);
+        float shininess = GetFloatUniform(UniformCache::MaterialPropertiesUniforms::Shininess);
 
         bool usesLegacy = diffuseColor != glm::vec3(0.0f) || specularColor != glm::vec3(0.0f) || shininess > 0.0f ||
-                    m_TexturesMaps.contains(UniformCache::DiffuseTexture) ||
-                    m_TexturesMaps.contains(UniformCache::SpecularTexture);
+                    m_TexturesMaps.contains(UniformCache::LegacyTextureUniforms::DiffuseTexture) ||
+                    m_TexturesMaps.contains(UniformCache::LegacyTextureUniforms::SpecularTexture);
 
         if(usesLegacy)
             return ShadingMethod::Phong;
 
-        if (GetVec3Uniform(UniformCache::EmissiveColor) != glm::vec3(0.0f))
+        if (GetVec3Uniform(UniformCache::SurfaceColorsUniforms::EmissiveColor) != glm::vec3(0.0f))
             return ShadingMethod::Unlit;
 
         return ShadingMethod::PBR;

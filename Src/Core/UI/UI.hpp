@@ -43,6 +43,13 @@ namespace Motion::Core
             static void UseColorLight();
     };
 
+    /**
+     * Converts a KeyCode to an ImGuiKey.
+     *
+     * @param key The KeyCode to convert.
+     *
+     * @return The corresponding ImGuiKey.
+     */
     inline ImGuiKey GetImGuiKeyCode(KeyCode key)
     {
         switch( key )

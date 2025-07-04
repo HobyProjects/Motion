@@ -2,6 +2,20 @@
 
 namespace Motion::Core
 {
+    /**
+     * @brief Initializes the IMGUI library and sets up the rendering backend.
+     *
+     * @param[in] whnd The window handle to associate the IMGUI context with.
+     *
+     * @details This function will first check if the window handle is valid and if the window exists.
+     * If the window exists, it will create the IMGUI context and associate it with the window.
+     * Then it will initialize the IMGUI backend according to the specified API and renderer.
+     * Finally, it will set up the color scheme and viewport settings according to the renderer and API.
+     *
+     * @warning If the window handle is invalid or the window does not exist, this function will assert.
+     * @warning If the specified API or renderer is not supported, this function will assert.
+     * @warning If the IMGUI context fails to initialize, this function will assert.
+     */
     void UI::Init(WindowHandle whnd)
     {
         std::weak_ptr<IWindow> window = WindowManager::Get(whnd);
@@ -67,6 +81,15 @@ namespace Motion::Core
         return;
     }
 
+    /**
+     * @brief Shuts down the IMGUI library and destroys the context.
+     *
+     * @details This function will first shut down the IMGUI backend according to the specified API and renderer.
+     * Then it will destroy the IMGUI context.
+     *
+     * @warning If the specified API or renderer is not supported, this function will assert.
+     * @warning If the IMGUI context fails to destroy, this function will assert.
+     */
     void UI::Quit()
     {
         switch(Renderer::GetAPI())
@@ -87,6 +110,13 @@ namespace Motion::Core
         ImGui::DestroyContext();
     }
 
+    /**
+     * @brief Changes the IMGUI colors to a dark theme.
+     *
+     * @details This function sets the colors of the IMGUI context to a dark theme. This is done by
+     * modifying the colors of the ImGuiStyle structure. The colors are set to a dark theme, which is
+     * a dark blue-gray color scheme.
+     */
     void UI::UseColorDark()
     {
         auto& colors = ImGui::GetStyle().Colors;
@@ -120,6 +150,13 @@ namespace Motion::Core
 		colors [ImGuiCol_TitleBgCollapsed] = ImVec4{ 0.15f, 0.1505f, 0.151f, 1.0f };
     }
 
+    /**
+     * @brief Changes the IMGUI colors to a light theme.
+     *
+     * @details This function sets the colors of the IMGUI context to a light theme. It modifies the
+     * colors of the ImGuiStyle structure to a light color scheme and adjusts style properties such as
+     * alpha and frame rounding. It also includes additional settings for when viewports are enabled.
+     */
     void UI::UseColorLight()
     {
         ImGui::StyleColorsLight();
@@ -170,6 +207,19 @@ namespace Motion::Core
 		}
     }
 
+    /**
+     * @brief Custom control for dragging and reseting a glm::vec3.
+     *
+     * @details This function creates a custom control for dragging and reseting a glm::vec3. It is a table with 4 columns.
+     * The first column is the label of the control, the second column is the reset button, the third column is the X axis, the fourth column is the Y axis, and the fifth column is the Z axis.
+     * The reset button is colored according to the axis it is associated with and will reset the respective axis to the specified reset value when clicked.
+     * The axis drag controls are also colored according to the axis they are associated with. They will update the respective axis of the glm::vec3 when dragged.
+     * The drag controls are also width-limited and will not expand beyond the specified width.
+     *
+     * @param label The label of the custom control.
+     * @param values The glm::vec3 to be edited.
+     * @param resetValue The value to which the glm::vec3 should be reset when the reset button is clicked.
+     */
     void UI::CustomControl::DragControllerVec3(const char* label, glm::vec3& values, float resetValue) 
     {
         ImGui::PushID(label);

@@ -17,6 +17,21 @@ namespace Motion::Core
     static std::shared_ptr<IContext> s_ContextService = nullptr;
     static std::unordered_map<WindowHandle, std::shared_ptr<IWindow>> s_WindowManagementService;
 
+    /**
+     * Initializes the CoreAPI by setting up the platform base API service and context service.
+     * 
+     * @return true if initialization is successful; false otherwise.
+     * 
+     * This function first determines the platform base API to use based on the current platform
+     * and sets up the corresponding platform base API service. It asserts if an unsupported or
+     * unknown base API is encountered. After initializing the platform base API service,
+     * it sets up the context service based on the rendering API and platform base API. 
+     * Currently, only the combination of OpenGL and GLFW is supported.
+     * 
+     * Assertions are triggered for unsupported combinations like Win32 platform base API and
+     * Vulkan rendering API.
+     */
+
     bool CoreAPI::Init()
     {
         switch(s_PlatformBaseAPI)
@@ -54,6 +69,13 @@ namespace Motion::Core
         return false;
     }
 
+    /**
+     * Shutdown the Core API.
+     *
+     * This function is idempotent and should be called once before the program exits.
+     *
+     * @note This function is NOT thread-safe and should not be called from multiple threads.
+     */
     void CoreAPI::Quit()
     {
         if(s_PlatformBaseAPIService)
@@ -66,16 +88,43 @@ namespace Motion::Core
         }
     }
 
+    /**
+     * Returns the platform base API used by the Core API.
+     * 
+     * @return The platform base API used by the Core API.
+     * 
+     * This function is thread-safe. It simply returns the value of the static member variable.
+     * Note that this function does not create a copy of the platform base API instance.
+     */
     BaseAPIs CoreAPI::API()
     {
         return s_PlatformBaseAPI;
     }
+
+    /**
+     * Retrieves the platform base API service used by the Core API.
+     *
+     * @return A shared pointer to the platform base API service.
+     *
+     * This function provides access to the platform base API service currently in use.
+     * It returns a shared pointer to the IPlatformBaseAPI instance, allowing for further
+     * interaction with the platform-specific implementation details.
+     */
 
     std::shared_ptr<IPlatformBaseAPI> CoreAPI::GetBaseAPI()
     {
         return s_PlatformBaseAPIService;
     }
 
+    /**
+     * Retrieves the context service used by the Core API.
+     *
+     * @return A shared pointer to the context service.
+     *
+     * This function provides access to the context service currently in use.
+     * It returns a shared pointer to the IContext instance, allowing for further
+     * interaction with the context-specific implementation details.
+     */
     std::shared_ptr<IContext> CoreAPI::GetContext()
     {
         return s_ContextService;
@@ -106,6 +155,17 @@ namespace Motion::Core
         }
     }
 
+    /**
+     * Destroys the specified window and removes it from the window management service.
+     *
+     * @param window A shared pointer to the window to be destroyed.
+     *
+     * This function checks if the provided window is not null. If it exists, it retrieves the
+     * window handle and searches for it in the window management service map. If the window
+     * is found, it is removed from the map. Finally, the shared pointer to the window is reset,
+     * effectively destroying the window instance.
+     */
+
     void WindowManager::Destroy(std::shared_ptr<IWindow>& window)
     {
         if(window)
@@ -119,6 +179,13 @@ namespace Motion::Core
         }
     }
 
+    /**
+     * Retrieves a shared pointer to the window with the specified handle.
+     *
+     * @param handle The handle of the window to be retrieved.
+     *
+     * @return A shared pointer to the window with the specified handle, or nullptr if the window is not found.
+     */
     std::shared_ptr<IWindow> WindowManager::Get(WindowHandle handle)
     {
         if(s_WindowManagementService.contains(handle))

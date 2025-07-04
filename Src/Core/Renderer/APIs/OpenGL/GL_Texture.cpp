@@ -1,4 +1,5 @@
 #include "CorePCH.hpp"
+#include "GL_Texture.hpp"
 
 namespace Motion::Core
 {
@@ -83,6 +84,19 @@ namespace Motion::Core
     void GL_Texture::Unbind() const 
     {
         glBindTexture(GL_TEXTURE_2D, 0);
+    }
+
+    void GL_Texture::SetGlobalAnisotropy(uint32_t level) const
+    {
+        TextureSpecification::GlobalAnisotropyLevel = level;
+        if (GL_EXT_texture_filter_anisotropic) 
+        {
+            float maxAniso = 0.0f;
+            glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &maxAniso);
+            float targetAniso = std::min((float) TextureSpecification::GlobalAnisotropyLevel, maxAniso);
+            glBindTexture(GL_TEXTURE_2D, m_Specification.TexID);
+            glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, targetAniso);
+        }
     }
 
     bool GL_Texture::LoadTextureFromFile(const std::filesystem::path& textureFile, bool flip) 

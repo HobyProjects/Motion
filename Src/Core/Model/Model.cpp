@@ -16,9 +16,9 @@ namespace Motion::Core
             
             switch(shadingMethod)
             {
-                case Material::ShadingMethod::PBR: shader = AssetManager::GetShader("PBRShader"); break;
-                case Material::ShadingMethod::Phong: shader = AssetManager::GetShader("PhongShader"); break;
-                case Material::ShadingMethod::Unlit: shader = AssetManager::GetShader("UnlitShader"); break;
+                case Material::ShadingMethod::PBR: shader = ShaderManager::GetShader("PBRShader"); break;
+                case Material::ShadingMethod::Phong: shader = ShaderManager::GetShader("PhongShader"); break;
+                case Material::ShadingMethod::Unlit: shader = ShaderManager::GetShader("UnlitShader"); break;
             };
 
             drawCommand.Shader = shader;
@@ -65,6 +65,41 @@ namespace Motion::Core
             return it->second;
         }
         
+        return nullptr;
+    }
+
+    static std::unordered_map<UUID, std::shared_ptr<Model>> s_ModelRegistry{};
+    
+    void ModelsManager::InsertModel(const UUID& uuid, const std::shared_ptr<Model>& model)
+    {
+        if (s_ModelRegistry.find(uuid) != s_ModelRegistry.end())
+        {
+            MOTION_CORE_WARN("Model with UUID {0} already exists!", uuid);
+            return;
+        }
+        s_ModelRegistry[uuid] = model;
+    }
+
+    std::shared_ptr<Model> ModelsManager::GetModel(const UUID& uuid)
+    {
+        if (s_ModelRegistry.find(uuid) == s_ModelRegistry.end())
+        {
+            MOTION_CORE_ERROR("Model with UUID {0} does not exist!", uuid);
+            return nullptr;
+        }
+        return s_ModelRegistry[uuid];
+    }
+
+    std::shared_ptr<Model> ModelsManager::GetModel(const std::string& name)
+    {
+        for (const auto& [uuid, model] : s_ModelRegistry)
+        {
+            if (model->GetMetaData().AssetName == name)
+            {
+                return model;
+            }
+        }
+        MOTION_CORE_ERROR("Model with name {0} does not exist!", name);
         return nullptr;
     }
 }

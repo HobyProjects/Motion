@@ -26,7 +26,7 @@ namespace Motion::App
             m_Viewport.FrameSpec.Samples = static_cast<uint32_t>(aaLevel);
         }
 
-        m_Framebuffer = Motion::Core::BuffersBuilder::CreateFrameBuffer(m_Viewport.FrameSpec);
+        m_Framebuffer = Motion::Core::BufferFactory::CreateFrameBuffer(m_Viewport.FrameSpec);
         m_Scene = std::make_shared<Scene>(glm::vec2(m_ViewportWidth, m_ViewportHeight));
     }
 

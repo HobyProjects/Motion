@@ -44,6 +44,8 @@ namespace Motion::Core
         int32_t Width{0}, Height{0}, NumberOfChannels{0};
         uint32_t InternalDataFormat{0}, TextureDataFormat{0}, TexID{0};
         TextureType Type {TextureType::BaseColorMapsTexture};
+
+        static uint32_t GlobalAnisotropyLevel; 
     };
 
     class ITexture : public IAsset
@@ -59,5 +61,25 @@ namespace Motion::Core
             virtual TextureID GetID() const = 0;
             virtual TextureSpecification GetSpecification() const = 0;
             virtual bool IsFromFile() const = 0;
+
+            virtual void SetGlobalAnisotropy(uint32_t level) const = 0;
+            virtual uint32_t GetGlobalAnisotropy() const  = 0;
+    };
+
+    class TextureManager
+    {
+        private:
+            TextureManager() = default;
+            ~TextureManager() = default;
+
+            TextureManager(const TextureManager&) = delete;
+            TextureManager& operator=(const TextureManager&) = delete;
+            TextureManager(TextureManager&&) = delete;
+            TextureManager& operator=(TextureManager&&) = delete;
+
+        public:
+            static void InsertTexture(const UUID& uuid, const std::shared_ptr<ITexture>& texture);
+            static std::shared_ptr<ITexture> GetTexture(const UUID& uuid);
+            static std::shared_ptr<ITexture> GetTexture(const std::string& name);
     };
 }

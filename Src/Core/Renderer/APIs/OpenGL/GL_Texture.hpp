@@ -22,6 +22,9 @@ namespace Motion::Core
             virtual TextureSpecification GetSpecification() const override { return m_Specification; }
             virtual bool IsFromFile() const override { return m_FromFile; }
 
+            virtual void SetGlobalAnisotropy(uint32_t level) const override;
+            virtual uint32_t GetGlobalAnisotropy() const override { return TextureSpecification::GlobalAnisotropyLevel; }
+
         private:
             bool LoadTextureFromFile(const std::filesystem::path& textureFile, bool flip = true);
             bool GenerateTexture(uint32_t width, uint32_t height);

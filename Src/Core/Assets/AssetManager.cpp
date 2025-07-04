@@ -35,7 +35,7 @@ namespace Motion::Core
                     return nullptr;
                 }
 
-                std::string source = ShaderCompiler::ReadShaderFiles(shaderFile);
+                std::string source = ShaderFactory::ReadShaderFiles(shaderFile);
                 if (source.empty())
                     return nullptr;
 
@@ -68,23 +68,12 @@ namespace Motion::Core
                 s_AssetRegistry[shaderAsset->GetMetaData().AssetUUID] = shaderAsset;
                 MOTION_CORE_INFO("Shader created: {0} from file {1}", name, shaderFile.string());
 
+                ShaderManager::InsertShader(shaderAsset->GetMetaData().AssetUUID, shaderAsset);
                 return shaderAsset;
             }
-            case RenderingAPI::Vulkan:
-            {
-                MOTION_ASSERT(false, "Vulkan is not implemented yet!");
-                return nullptr;
-            }
-            case RenderingAPI::DirectX:
-            {
-                MOTION_ASSERT(false, "DirectX is not implemented yet!");
-                return nullptr;
-            }
-            default:
-            {
-                MOTION_ASSERT(false, "Unknown rendering API!");
-                return nullptr;
-            }
+            case RenderingAPI::Vulkan:      MOTION_ASSERT(false, "Vulkan is not implemented yet!"); return nullptr;
+            case RenderingAPI::DirectX:     MOTION_ASSERT(false, "DirectX is not implemented yet!"); return nullptr;
+            default:                        MOTION_ASSERT(false, "Unknown rendering API!"); return nullptr;
         }
     }
 
@@ -106,7 +95,7 @@ namespace Motion::Core
                     return nullptr;
                 }
 
-                std::string source = ShaderCompiler::ReadShaderFiles(shaderFile);
+                std::string source = ShaderFactory::ReadShaderFiles(shaderFile);
                 if (source.empty())
                     return nullptr;
 
@@ -139,23 +128,13 @@ namespace Motion::Core
                 s_AssetRegistry[shaderAsset->GetMetaData().AssetUUID] = shaderAsset;
                 MOTION_CORE_INFO("Shader created: {0} from file {1}", name, shaderFile.string());
 
+                ShaderManager::InsertShader(shaderAsset->GetMetaData().AssetUUID, shaderAsset);
                 return shaderAsset;
             }
-            case RenderingAPI::Vulkan:
-            {
-                MOTION_ASSERT(false, "Vulkan is not implemented yet!");
-                return nullptr;
-            }
-            case RenderingAPI::DirectX:
-            {
-                MOTION_ASSERT(false, "DirectX is not implemented yet!");
-                return nullptr;
-            }
-            default:
-            {
-                MOTION_ASSERT(false, "Unknown rendering API!");
-                return nullptr;
-            }
+
+            case RenderingAPI::Vulkan:      MOTION_ASSERT(false, "Vulkan is not implemented yet!"); return nullptr;
+            case RenderingAPI::DirectX:     MOTION_ASSERT(false, "DirectX is not implemented yet!"); return nullptr;
+            default:                        MOTION_ASSERT(false, "Unknown rendering API!"); return nullptr;
         }
     }
 
@@ -186,6 +165,7 @@ namespace Motion::Core
 
                 return textureAsset;
             }
+
             case RenderingAPI::Vulkan:         MOTION_ASSERT(false, "Vulkan is not implemented yet!"); return nullptr; 
             case RenderingAPI::DirectX:        MOTION_ASSERT(false, "DirectX is not implemented yet!"); return nullptr; 
             default:                           MOTION_ASSERT(false, "Unknown rendering API!"); return nullptr;
@@ -248,6 +228,7 @@ namespace Motion::Core
                     return nullptr;
                 }
 
+                TextureManager::InsertTexture(textureAsset->GetMetaData().AssetUUID, textureAsset);
                 return textureAsset;
             }
             case RenderingAPI::Vulkan:         MOTION_ASSERT(false, "Vulkan is not implemented yet!"); return nullptr; 
@@ -280,6 +261,7 @@ namespace Motion::Core
                     return nullptr;
                 }
 
+                TextureManager::InsertTexture(textureAsset->GetMetaData().AssetUUID, textureAsset);
                 return textureAsset;
             }
             case RenderingAPI::Vulkan:         MOTION_ASSERT(false, "Vulkan is not implemented yet!"); return nullptr; 
@@ -300,6 +282,7 @@ namespace Motion::Core
         if(modelAsset)
         {
             s_AssetRegistry[modelAsset->GetMetaData().AssetUUID] = modelAsset;
+            ModelsManager::InsertModel(modelAsset->GetMetaData().AssetUUID, modelAsset);
             MOTION_CORE_INFO("Model created: {0}", name);
             return modelAsset;
         }
@@ -322,6 +305,7 @@ namespace Motion::Core
         if(modelAsset)
         {
             s_AssetRegistry[modelAsset->GetMetaData().AssetUUID] = modelAsset;
+            ModelsManager::InsertModel(modelAsset->GetMetaData().AssetUUID, modelAsset);
             MOTION_CORE_INFO("Model created: {0}", name);
             return modelAsset;
         }

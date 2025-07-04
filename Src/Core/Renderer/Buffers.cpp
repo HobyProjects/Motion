@@ -3,7 +3,7 @@
 
 namespace Motion::Core
 {
-    std::shared_ptr<IVertexBuffer> BuffersBuilder::CreateVertexBuffer(uint32_t alloca_size)
+    std::shared_ptr<IVertexBuffer> BufferFactory::CreateVertexBuffer(uint32_t alloca_size)
     {
         switch(Renderer::GetAPI())
         {
@@ -14,7 +14,7 @@ namespace Motion::Core
         };
     }
 
-    std::shared_ptr<IVertexBuffer> BuffersBuilder::CreateVertexBuffer(float * data, uint32_t size)
+    std::shared_ptr<IVertexBuffer> BufferFactory::CreateVertexBuffer(float * data, uint32_t size)
     {
         switch(Renderer::GetAPI())
         {
@@ -25,7 +25,7 @@ namespace Motion::Core
         };
     }
 
-    std::shared_ptr<IElementBuffer> BuffersBuilder::CreateElementBuffer(uint32_t * data, uint32_t size)
+    std::shared_ptr<IElementBuffer> BufferFactory::CreateElementBuffer(uint32_t * data, uint32_t size)
     {
         switch(Renderer::GetAPI())
         {
@@ -36,7 +36,7 @@ namespace Motion::Core
         };
     }
 
-    std::shared_ptr<IShaderBuffer> BuffersBuilder::CreateShaderBuffer(uint32_t size, BindingPoint binding)
+    std::shared_ptr<IShaderBuffer> BufferFactory::CreateShaderBuffer(uint32_t size, BindingPoint binding)
     {
         switch(Renderer::GetAPI())
         {
@@ -47,7 +47,7 @@ namespace Motion::Core
         };
     }
 
-    std::shared_ptr<IUniformBuffer> BuffersBuilder::CreateUniformBuffer(uint32_t size, BindingPoint binding)
+    std::shared_ptr<IUniformBuffer> BufferFactory::CreateUniformBuffer(uint32_t size, BindingPoint binding)
     {
         switch(Renderer::GetAPI())
         {
@@ -58,7 +58,7 @@ namespace Motion::Core
         };
     }
 
-    std::shared_ptr<IFrameBuffer> BuffersBuilder::CreateFrameBuffer(const FrameBufferSpecification & specification)
+    std::shared_ptr<IFrameBuffer> BufferFactory::CreateFrameBuffer(const FrameBufferSpecification & specification)
     {
         switch(Renderer::GetAPI())
         {

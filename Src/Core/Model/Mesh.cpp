@@ -8,11 +8,11 @@ namespace Motion::Core
     
     Mesh::Mesh(float* vertices, uint32_t verticeSize, uint32_t* indices, uint32_t indicesCount, const BufferLayout& layout)
     {
-        m_VertexBuffer = BuffersBuilder::CreateVertexBuffer(vertices, verticeSize);
+        m_VertexBuffer = BufferFactory::CreateVertexBuffer(vertices, verticeSize);
         m_VertexBuffer->SetLayout(layout);
 
-        m_ElementBuffer = BuffersBuilder::CreateElementBuffer(indices, indicesCount);
-        m_VertexArray = ArrayBuilder::CreateVertexArray();
+        m_ElementBuffer = BufferFactory::CreateElementBuffer(indices, indicesCount);
+        m_VertexArray = ArrayFactory::CreateVertexArray();
 
         m_VertexArray->EmplaceVertexBuffer(m_VertexBuffer);
         m_VertexArray->EmplaceIndexBuffer(m_ElementBuffer);

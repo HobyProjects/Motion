@@ -23,16 +23,16 @@ namespace Motion::Core
             virtual std::shared_ptr<IElementBuffer>& GetElementBuffer() = 0;
     };
 
-    class ArrayBuilder
+    class ArrayFactory
     {
         private:
-            ArrayBuilder() = default;
-            ~ArrayBuilder() = default;
+            ArrayFactory() = default;
+            ~ArrayFactory() = default;
 
-            ArrayBuilder(const ArrayBuilder&) = delete;
-            ArrayBuilder& operator=(const ArrayBuilder&) = delete;
-            ArrayBuilder(ArrayBuilder&&) = delete;
-            ArrayBuilder& operator=(ArrayBuilder&&) = delete;
+            ArrayFactory(const ArrayFactory&) = delete;
+            ArrayFactory& operator=(const ArrayFactory&) = delete;
+            ArrayFactory(ArrayFactory&&) = delete;
+            ArrayFactory& operator=(ArrayFactory&&) = delete;
 
         public:
             static std::shared_ptr<IVertexArray> CreateVertexArray();

@@ -10,7 +10,7 @@ namespace Motion::Core
         spec.Height = height;
         spec.SwapChainTarget = false;
 
-        m_FrameBuffer = BuffersBuilder::CreateFrameBuffer(spec);
+        m_FrameBuffer = BufferFactory::CreateFrameBuffer(spec);
 
         m_Camera.ViewportWidth = static_cast<float>(width);
         m_Camera.ViewportHeight = static_cast<float>(height);
@@ -97,7 +97,7 @@ namespace Motion::Core
         spec.Height = height;
         spec.SwapChainTarget = false;
 
-        m_FrameBuffer = BuffersBuilder::CreateFrameBuffer(spec);
+        m_FrameBuffer = BufferFactory::CreateFrameBuffer(spec);
         m_Material = material;
 
         m_Camera.ViewportWidth = static_cast<float>(width);

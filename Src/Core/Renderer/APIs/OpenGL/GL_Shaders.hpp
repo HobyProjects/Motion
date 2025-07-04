@@ -36,16 +36,16 @@ namespace Motion::Core
             std::string m_Name{ "Default" };
     };
 
-    class GL_ShaderCompiler
+    class GL_ShaderFactory
     {
         private:
-            GL_ShaderCompiler() = default;
-            ~GL_ShaderCompiler() = default;
+            GL_ShaderFactory() = default;
+            ~GL_ShaderFactory() = default;
 
-            GL_ShaderCompiler(const GL_ShaderCompiler&) = delete;
-            GL_ShaderCompiler& operator=(const GL_ShaderCompiler&) = delete;
-            GL_ShaderCompiler(GL_ShaderCompiler&&) = delete;
-            GL_ShaderCompiler& operator=(GL_ShaderCompiler&&) = delete;
+            GL_ShaderFactory(const GL_ShaderFactory&) = delete;
+            GL_ShaderFactory& operator=(const GL_ShaderFactory&) = delete;
+            GL_ShaderFactory(GL_ShaderFactory&&) = delete;
+            GL_ShaderFactory& operator=(GL_ShaderFactory&&) = delete;
 
         public:
             static ShaderProgramID CreateShaderProgram();

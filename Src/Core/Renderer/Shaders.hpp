@@ -128,16 +128,16 @@ namespace Motion::Core
             virtual void SetUniform(const std::string& uniformName, const glm::mat4& value) = 0;
     };
 
-    class ShaderCompiler
+    class ShaderFactory
     {
         private:
-            ShaderCompiler() = default;
-            ~ShaderCompiler() = default;
+            ShaderFactory() = default;
+            ~ShaderFactory() = default;
 
-            ShaderCompiler(const ShaderCompiler&) = delete;
-            ShaderCompiler& operator=(const ShaderCompiler&) = delete;
-            ShaderCompiler(ShaderCompiler&&) = delete;
-            ShaderCompiler& operator=(ShaderCompiler&&) = delete;
+            ShaderFactory(const ShaderFactory&) = delete;
+            ShaderFactory& operator=(const ShaderFactory&) = delete;
+            ShaderFactory(ShaderFactory&&) = delete;
+            ShaderFactory& operator=(ShaderFactory&&) = delete;
 
         public:
             static ShaderProgramID CreateShaderProgram();
@@ -147,6 +147,23 @@ namespace Motion::Core
             static void ValidateShaderProgram(ShaderProgramID programID);
             static void DeleteShaderProgram(ShaderProgramID programID);
             static std::string ReadShaderFiles(const std::filesystem::path& filePath);
+    };
+
+    class ShaderManager
+    {
+        private:
+            ShaderManager() = default;
+            ~ShaderManager() = default;
+
+            ShaderManager(const ShaderManager&) = delete;
+            ShaderManager& operator=(const ShaderManager&) = delete;
+            ShaderManager(ShaderManager&&) = delete;
+            ShaderManager& operator=(ShaderManager&&) = delete;
+
+        public:
+            static void InsertShader(const UUID& uuid, const std::shared_ptr<IShader>& shader);
+            static std::shared_ptr<IShader> GetShader(const UUID& uuid);
+            static std::shared_ptr<IShader> GetShader(const std::string& name);
     };
 }
 

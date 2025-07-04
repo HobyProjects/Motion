@@ -168,16 +168,16 @@ namespace Motion::Core
             virtual void CreateFrame() = 0;
     };
 
-    class BuffersBuilder
+    class BufferFactory
     {
         private:
-            BuffersBuilder() = default;
-            ~BuffersBuilder() = default;
+            BufferFactory() = default;
+            ~BufferFactory() = default;
 
-            BuffersBuilder(const BuffersBuilder&) = delete;
-            BuffersBuilder& operator=(const BuffersBuilder&) = delete;
-            BuffersBuilder(BuffersBuilder&&) = delete;
-            BuffersBuilder& operator=(BuffersBuilder&&) = delete;
+            BufferFactory(const BufferFactory&) = delete;
+            BufferFactory& operator=(const BufferFactory&) = delete;
+            BufferFactory(BufferFactory&&) = delete;
+            BufferFactory& operator=(BufferFactory&&) = delete;
 
         public:
             static std::shared_ptr<IVertexBuffer> CreateVertexBuffer(uint32_t alloca_size);

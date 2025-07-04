@@ -3,7 +3,7 @@
 
 namespace Motion::Core
 {
-    std::shared_ptr<IVertexArray> ArrayBuilder::CreateVertexArray()
+    std::shared_ptr<IVertexArray> ArrayFactory::CreateVertexArray()
     {
         switch(Renderer::GetAPI())
         {

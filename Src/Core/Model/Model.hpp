@@ -66,4 +66,21 @@ namespace Motion::Core
 
             friend class Importer;
     };
+
+    class ModelsManager
+    {
+        private:
+            ModelsManager() = default;
+            ~ModelsManager() = default;
+
+            ModelsManager(const ModelsManager&) = delete;
+            ModelsManager& operator=(const ModelsManager&) = delete;
+            ModelsManager(ModelsManager&&) = delete;
+            ModelsManager& operator=(ModelsManager&&) = delete;
+
+        public:
+            static void InsertModel(const UUID& uuid, const std::shared_ptr<Model>& model);
+            static std::shared_ptr<Model> GetModel(const UUID& uuid);
+            static std::shared_ptr<Model> GetModel(const std::string& name);
+    };
 }

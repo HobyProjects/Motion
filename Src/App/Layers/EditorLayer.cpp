@@ -49,6 +49,7 @@ namespace Motion::App
 
         Motion::Core::Renderer::ClearColor({ 0.243, 0.243, 0.243, 1.0f });
         Motion::Core::Renderer::Clear();
+        
         m_Scene->OnUpdate(handle, deltaTime);
 
         m_Framebuffer->Unbind();

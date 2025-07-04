@@ -90,7 +90,7 @@ namespace Motion::Core
             {
                 auto window = std::make_shared<GLFW_Window>(uniqueHandle, title, s_ContextService);
                 s_WindowManagementService[uniqueHandle] = window;
-                MOTION_CORE_INFO("Window created with handle {0}", uniqueHandle);
+                MOTION_CORE_INFO("Window created with handle {:X}", uniqueHandle);
                 return window;
             }
             case BaseAPIs::Win32:
@@ -121,13 +121,12 @@ namespace Motion::Core
 
     std::shared_ptr<IWindow> WindowManager::Get(WindowHandle handle)
     {
-        auto it = s_WindowManagementService.find(handle);
-        if(it != s_WindowManagementService.end())
+        if(s_WindowManagementService.contains(handle))
         {
-            return it->second;
+            return s_WindowManagementService[handle];
         }
 
-        MOTION_CORE_WARN("Window with handle {0} does not exist", handle);
+        MOTION_CORE_ERROR("Window with handle {:X} not found", handle);
         return nullptr;
     }
 }

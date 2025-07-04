@@ -20,7 +20,7 @@ namespace Motion::Core
             return KeyState::KEY_NONE;
         }
 
-        MOTION_CORE_CRITICAL("Input handling from destroyed window.");
+        MOTION_CORE_CRITICAL("Input handling from destroyed window. HANDLE: {:X}", whnd);
         return KeyState::KEY_NONE;
     }
 
@@ -40,7 +40,7 @@ namespace Motion::Core
             return MouseButtonState::MOUSE_BUTTON_NONE;
         }
 
-        MOTION_CORE_CRITICAL("Input handling from destroyed window.");
+        MOTION_CORE_CRITICAL("Input handling from destroyed window. HANDLE: {:X}", whnd);
         return MouseButtonState::MOUSE_BUTTON_NONE;
     }
 
@@ -55,7 +55,7 @@ namespace Motion::Core
             return glm::vec2(static_cast<float>( posX ), static_cast<float>( posY ));
         }
 
-        MOTION_CORE_CRITICAL("Input handling from destroyed window.");
+        MOTION_CORE_CRITICAL("Input handling from destroyed window. HANDLE: {:X}", whnd);
         return glm::vec2(0.0f, 0.0f);
     }
 }

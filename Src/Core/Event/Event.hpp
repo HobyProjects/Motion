@@ -5,6 +5,7 @@
 #include <type_traits>
 
 #include "Base.hpp"
+#include "UUID.hpp"
 
 namespace Motion::Core
 {
@@ -73,12 +74,12 @@ namespace Motion::Core
     class EventHandler
     {
         public:
-            EventHandler(uint32_t windowHandle, IEvent& eventRef):
+            EventHandler(UUID windowHandle, IEvent& eventRef):
                 m_Event(eventRef), m_WinHandle(windowHandle){}
             ~EventHandler() = default;
 
             template<typename TEvent>
-            bool Dispatch(const std::function<bool(uint32_t, TEvent&)>& callBackFun)
+            bool Dispatch(const std::function<bool(UUID, TEvent&)>& callBackFun)
             {
                 static_assert(std::is_base_of_v<IEvent, TEvent>, "TEvent must be a subclass of IEvent!");
                 if(m_Event.Type() == TEvent::StaticType())
@@ -91,11 +92,11 @@ namespace Motion::Core
             }
 
             bool IsHandled() const { return m_IsEventHandled; }
-            uint32_t GetWindowHandle() const { return m_WinHandle; }
+            UUID GetWindowHandle() const { return m_WinHandle; }
 
         private:
             IEvent& m_Event;
-            uint32_t m_WinHandle{0};
+            UUID m_WinHandle{0};
             bool m_IsEventHandled{false};
     };
 

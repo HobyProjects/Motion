@@ -81,5 +81,6 @@ namespace Motion::Core
             static void InsertTexture(const UUID& uuid, const std::shared_ptr<ITexture>& texture);
             static std::shared_ptr<ITexture> GetTexture(const UUID& uuid);
             static std::shared_ptr<ITexture> GetTexture(const std::string& name);
+            static std::unordered_map<UUID, std::shared_ptr<ITexture>>::const_iterator GetTextures();
     };
 }

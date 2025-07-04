@@ -1,4 +1,5 @@
 #include "CorePCH.hpp"
+#include "Shaders.hpp"
 
 namespace Motion::Core
 {
@@ -115,4 +116,10 @@ namespace Motion::Core
         }
         return nullptr;
     }
+    
+    std::unordered_map<UUID,std::shared_ptr<IShader>>::const_iterator ShaderManager::GetShaders()
+    {
+        return s_ShaderRegistry.cbegin();
+    }
 }
+

@@ -164,6 +164,7 @@ namespace Motion::Core
             static void InsertShader(const UUID& uuid, const std::shared_ptr<IShader>& shader);
             static std::shared_ptr<IShader> GetShader(const UUID& uuid);
             static std::shared_ptr<IShader> GetShader(const std::string& name);
+            static std::unordered_map<UUID, std::shared_ptr<IShader>>::const_iterator GetShaders();
     };
 }
 

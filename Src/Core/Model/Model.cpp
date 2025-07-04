@@ -102,6 +102,11 @@ namespace Motion::Core
         MOTION_CORE_ERROR("Model with name {0} does not exist!", name);
         return nullptr;
     }
+    
+    std::unordered_map<UUID,std::shared_ptr<Model>>::const_iterator ModelsManager::GetModels()
+    {
+        return s_ModelRegistry.cbegin();
+    }
 }
 
 

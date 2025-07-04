@@ -82,5 +82,6 @@ namespace Motion::Core
             static void InsertModel(const UUID& uuid, const std::shared_ptr<Model>& model);
             static std::shared_ptr<Model> GetModel(const UUID& uuid);
             static std::shared_ptr<Model> GetModel(const std::string& name);
+            static std::unordered_map<UUID, std::shared_ptr<Model>>::const_iterator GetModels();
     };
 }

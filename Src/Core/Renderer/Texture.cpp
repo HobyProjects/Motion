@@ -1,4 +1,5 @@
 #include "CorePCH.hpp"
+#include "Texture.hpp"
 
 namespace Motion::Core
 {
@@ -37,4 +38,10 @@ namespace Motion::Core
         MOTION_CORE_ERROR("Texture with name {0} does not exist!", name);
         return nullptr;
     }
+
+    std::unordered_map<UUID,std::shared_ptr<ITexture>>::const_iterator TextureManager::GetTextures()
+    {
+        return s_TextureRegistry.cbegin();
+    }
 }
+

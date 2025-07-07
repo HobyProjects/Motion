@@ -4,7 +4,9 @@
 namespace Motion::Core
 {
     uint32_t TextureSpecification::GlobalAnisotropyLevel = 1; // Default anisotropy level
+
     static std::unordered_map<UUID, std::shared_ptr<ITexture>> s_TextureRegistry{};
+    static std::unordered_map<UUID, std::shared_ptr<IFrameTexture>> s_FrameTextureRegistry{};
 
     void TextureManager::InsertTexture(const UUID& uuid, const std::shared_ptr<ITexture>& texture)
     {
@@ -13,7 +15,19 @@ namespace Motion::Core
             MOTION_CORE_WARN("Texture with UUID {0} already exists!", uuid);
             return;
         }
+
         s_TextureRegistry[uuid] = texture;
+    }
+
+    void TextureManager::InsertFrameTexture(const UUID & uuid, const std::shared_ptr<IFrameTexture>& texture)
+    {
+        if (s_FrameTextureRegistry.find(uuid) != s_FrameTextureRegistry.end())
+        {
+            MOTION_CORE_WARN("FrameTexture with UUID {0} already exists!", uuid);
+            return;
+        }
+
+        s_FrameTextureRegistry[uuid] = texture;
     }
 
     std::shared_ptr<ITexture> TextureManager::GetTexture(const UUID& uuid)
@@ -23,6 +37,7 @@ namespace Motion::Core
             MOTION_CORE_ERROR("Texture with UUID {0} does not exist!", uuid);
             return nullptr;
         }
+
         return s_TextureRegistry[uuid];
     }
 
@@ -39,9 +54,39 @@ namespace Motion::Core
         return nullptr;
     }
 
+    std::shared_ptr<IFrameTexture> TextureManager::GetFrameTexture(const UUID& uuid)
+    {
+        if (s_FrameTextureRegistry.find(uuid) == s_FrameTextureRegistry.end())
+        {
+            MOTION_CORE_ERROR("FrameTexture with UUID {0} does not exist!", uuid);
+            return nullptr;
+        }
+
+        return s_FrameTextureRegistry[uuid];
+    }
+
+    std::shared_ptr<IFrameTexture> TextureManager::GetFrameTexture(const std::string& name)
+    {
+        for (const auto& [uuid, texture] : s_FrameTextureRegistry)
+        {
+            if (texture->GetMetaData().AssetName == name)
+            {
+                return texture;
+            }
+        }
+
+        MOTION_CORE_ERROR("FrameTexture with name {0} does not exist!", name);
+        return nullptr;
+    }
+
     std::unordered_map<UUID,std::shared_ptr<ITexture>>::const_iterator TextureManager::GetTextures()
     {
         return s_TextureRegistry.cbegin();
+    }
+
+    std::unordered_map<UUID, std::shared_ptr<IFrameTexture>>::const_iterator TextureManager::GetFrameTextures()
+    {
+        return s_FrameTextureRegistry.cbegin();
     }
 }
 

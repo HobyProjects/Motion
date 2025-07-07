@@ -21,6 +21,7 @@ namespace Motion::Core
             static std::shared_ptr<Mesh> CreatePlane(float width, float height, uint32_t widthSegments = 1, uint32_t heightSegments = 1);
             static std::shared_ptr<Mesh> CreateCube(float width, float height, float depth);
             static std::shared_ptr<Mesh> CreateSphere(uint32_t sectorCount, uint32_t stackCount);
+            static std::shared_ptr<Mesh> CreateQuad(uint32_t width, uint32_t height);
         
         public:
             struct Vertex

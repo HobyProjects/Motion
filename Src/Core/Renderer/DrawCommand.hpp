@@ -10,6 +10,7 @@ namespace Motion::Core
     {
         Opaque = 0,
         Transparent,
+        PostProcessing,
         Shadow
     };
 
@@ -20,12 +21,13 @@ namespace Motion::Core
 
     struct DrawCommand
     {
-        std::shared_ptr<IShader> Shader;
-        std::shared_ptr<Mesh> SubMesh;
-        std::shared_ptr<Material> MeshMaterial;
-        RenderPass RendererPasses;
-        glm::mat4 ModelTransform;
-        glm::mat4 CameraMatrix;
+        std::shared_ptr<IShader> Shader{nullptr};
+        std::shared_ptr<Mesh> SubMesh{nullptr};
+        std::shared_ptr<Material> MeshMaterial{nullptr};
+        std::shared_ptr<IFrameTexture> FrameTexture{nullptr};
+        RenderPass RendererPasses{RenderPass::Opaque};
+        glm::mat4 ModelTransform{1.0f};
+        glm::mat4 CameraMatrix{1.0f};
 
         bool operator<(const DrawCommand& other) const
         {

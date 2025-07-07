@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Mesh.hpp"
 #include "Buffers.hpp"
 
 namespace Motion::Core
@@ -94,8 +95,8 @@ namespace Motion::Core
             GL_FrameBuffer(const FrameBufferSpecification& specification);
             virtual ~GL_FrameBuffer();
 
-            virtual void Bind() const override;
-            virtual void Unbind() const override;
+            virtual void Bind() override;
+            virtual void Unbind() override;
             virtual void ResizeFrame(uint32_t width, uint32_t Height) override;
             virtual BufferID GetFrameBufferID() const override { return m_FrameBufferID; }
             virtual BufferID GetColorAttachment() const override { return m_ColorAttachment; }
@@ -105,6 +106,7 @@ namespace Motion::Core
             virtual BufferID GetResolvedFBO() const override { return m_ResolvedFBOID; }
             virtual BufferID GetResolvedColorAttachment() const override { return m_ResolvedColorAttachment; }
             virtual void Resolve() override;
+            virtual void Render(const std::shared_ptr<IFrameTexture>& frameTexture) override;
 
         protected:
             virtual void CreateFrame() override;
@@ -123,6 +125,7 @@ namespace Motion::Core
             BufferID m_ResolvedDepthAttachment{ 0 };
 
             FrameBufferSpecification m_Specification{};
+            std::shared_ptr<Mesh> m_PostProcessingQuad{ nullptr };
     };
 
     std::shared_ptr<GL_VertexBuffer> GL_CreateVertexBuffer(uint32_t alloca_size);

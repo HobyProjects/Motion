@@ -142,5 +142,40 @@ namespace Motion::Core
 
         return true;
     }
+    GL_FrameTexture::GL_FrameTexture(UUID uuid, const std::string & name, TextureID texID, FrameBufferSpecification & spec):
+        AssetBase<IFrameTexture>(uuid, name, AssetType::Texture, "FrameTexture"), m_TextureID(texID), m_Specification(spec)
+    {
+    }
+
+    GL_FrameTexture::GL_FrameTexture(const std::string & name, TextureID texID, FrameBufferSpecification & spec) :
+        AssetBase<IFrameTexture>(UniqueIdentity::GetUniqueID(), name, AssetType::Texture, "FrameTexture"), m_TextureID(texID), m_Specification(spec)
+    {
+    }
+
+    void GL_FrameTexture::Bind()
+    {
+        MOTION_ASSERT(m_TextureID, "Texture is not loaded");
+
+        if(m_Specification.Samples > 1)
+        {
+            glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, m_TextureID);
+        }
+        else
+        {
+            glBindTexture(GL_TEXTURE_2D, m_TextureID);
+        }
+    }
+
+    void GL_FrameTexture::Unbind()
+    {
+        if (m_Specification.Samples > 1)
+        {
+            glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, 0);
+        }
+        else
+        {
+            glBindTexture(GL_TEXTURE_2D, 0);
+        }
+    }
 }
 

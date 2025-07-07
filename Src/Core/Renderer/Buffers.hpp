@@ -7,6 +7,7 @@
 #include <memory>
 
 #include "Base.hpp"
+#include "Texture.hpp"
 
 namespace Motion::Core
 {
@@ -141,8 +142,8 @@ namespace Motion::Core
 	{
 		uint32_t Width{ 0 };
 		uint32_t Height{ 0 };
-		bool SwapChainTarget{ false };
         uint32_t Samples{ 1 };
+		bool SwapChainTarget{ false };
 	};
     
     class IFrameBuffer
@@ -151,8 +152,8 @@ namespace Motion::Core
             IFrameBuffer() = default;
             virtual ~IFrameBuffer() = default;
 
-            virtual void Bind() const = 0;
-            virtual void Unbind() const = 0;
+            virtual void Bind() = 0;
+            virtual void Unbind() = 0;
 
             virtual void ResizeFrame(uint32_t width, uint32_t height) = 0;
             virtual BufferID GetFrameBufferID() const = 0;
@@ -163,6 +164,7 @@ namespace Motion::Core
             virtual BufferID GetResolvedFBO() const = 0;
             virtual BufferID GetResolvedColorAttachment() const = 0;
             virtual void Resolve() = 0;
+            virtual void Render(const std::shared_ptr<IFrameTexture>& frameTexture) = 0;
 
         protected:
             virtual void CreateFrame() = 0;

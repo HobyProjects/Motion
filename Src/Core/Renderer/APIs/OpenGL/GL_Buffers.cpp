@@ -168,6 +168,7 @@ namespace Motion::Core
 
     GL_FrameBuffer::GL_FrameBuffer(const FrameBufferSpecification& specification) : m_Specification(specification)
     {
+        m_PostProcessingQuad = Mesh::CreateQuad(m_Specification.Width, m_Specification.Height);
         CreateFrame();
     }
 
@@ -178,14 +179,15 @@ namespace Motion::Core
         glDeleteTextures(1, &m_DepthAttachment);
     }
 
-    void GL_FrameBuffer::Bind() const
+    void GL_FrameBuffer::Bind()
     {
         glBindFramebuffer(GL_FRAMEBUFFER, m_FrameBufferID);
     }
 
-    void GL_FrameBuffer::Unbind() const
+    void GL_FrameBuffer::Unbind()
     {
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        Resolve();
     }
 
     void GL_FrameBuffer::ResizeFrame(uint32_t width, uint32_t height)
@@ -210,10 +212,22 @@ namespace Motion::Core
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
     }
 
+    void GL_FrameBuffer::Render(const std::shared_ptr<IFrameTexture>& frameTexture)
+    {
+        DrawCommand drawCommand;
+        drawCommand.Shader = ShaderManager::GetShader("PostProcessing");
+        drawCommand.SubMesh = m_PostProcessingQuad;
+        drawCommand.MeshMaterial = nullptr;
+        drawCommand.FrameTexture = frameTexture;
+        drawCommand.RendererPasses = RenderPass::PostProcessing;
+        drawCommand.ModelTransform = glm::mat4(1.0f);
+        drawCommand.CameraMatrix = glm::mat4(1.0f);
+        Renderer::Submit(drawCommand);
+    }
+
     void GL_FrameBuffer::CreateFrame()
     {
         DeleteFrameBuffers();
-
         bool useMSAA = m_Specification.Samples > 1;
 
         // --- Main FBO ---
@@ -245,7 +259,6 @@ namespace Motion::Core
         }
 
         MOTION_ASSERT(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE, "Framebuffer is not complete!");
-
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
         // --- Resolved (single-sample) FBO for MSAA ---
@@ -278,6 +291,10 @@ namespace Motion::Core
 
         m_FrameBufferID = m_ColorAttachment = m_DepthAttachment = 0;
         m_ResolvedFBOID = m_ResolvedColorAttachment = m_ResolvedDepthAttachment = 0;
+
+        m_PostProcessingQuad.reset();
+        m_PostProcessingQuad = nullptr;
+        m_PostProcessingQuad = Mesh::CreateQuad(m_Specification.Width, m_Specification.Height);
     }
 
     std::shared_ptr<GL_VertexBuffer> GL_CreateVertexBuffer(uint32_t alloca_size)

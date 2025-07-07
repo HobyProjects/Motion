@@ -1,10 +1,9 @@
 #include "CorePCH.hpp"
+#include "Mesh.hpp"
 
 namespace Motion::Core
 {
-    static std::shared_ptr<Mesh> s_SphereMesh = nullptr;
-    static std::shared_ptr<Mesh> s_CubeMesh = nullptr;
-    static std::shared_ptr<Mesh> s_PlaneMesh = nullptr;
+    static std::vector<std::shared_ptr<Mesh>> s_Meshes{};
     
     Mesh::Mesh(float* vertices, uint32_t verticeSize, uint32_t* indices, uint32_t indicesCount, const BufferLayout& layout)
     {
@@ -21,9 +20,6 @@ namespace Motion::Core
 
     std::shared_ptr<Mesh> Mesh::CreatePlane(float width, float height, uint32_t widthSegments, uint32_t heightSegments)
     {
-        if (s_PlaneMesh)
-            return s_PlaneMesh;
-
         std::vector<float> vertices;
         std::vector<uint32_t> indices;
 
@@ -73,8 +69,10 @@ namespace Motion::Core
             { "a_Normal", BufferComponents::XYZ, BufferStride::F3, false, 12 },
             { "a_TexCoord", BufferComponents::UV, BufferStride::F2, false, 24 }
         };
-
-        return s_PlaneMesh = std::make_shared<Mesh>(vertices.data(), static_cast<uint32_t>(vertices.size() * sizeof(float)), indices.data(), static_cast<uint32_t>(indices.size()), layout);
+        
+        auto planeMesh = std::make_shared<Mesh>(vertices.data(), static_cast<uint32_t>(vertices.size() * sizeof(float)), indices.data(), static_cast<uint32_t>(indices.size()), layout);
+        s_Meshes.push_back(planeMesh);
+        return planeMesh;
     }
 
     std::shared_ptr<Mesh> Mesh::CreateCube(float width, float height, float depth)
@@ -88,9 +86,6 @@ namespace Motion::Core
 
     std::shared_ptr<Mesh> Mesh::CreateSphere(uint32_t sectorCount, uint32_t stackCount)
     {
-        if (s_SphereMesh)
-            return s_SphereMesh;
-
         std::vector<float> vertices;
         std::vector<uint32_t> indices;
 
@@ -150,7 +145,35 @@ namespace Motion::Core
             { "a_TexCoord", BufferComponents::UV, BufferStride::F2, false, 24 }
         };
 
-        s_SphereMesh = std::make_shared<Mesh>(vertices.data(), static_cast<uint32_t>(vertices.size() * sizeof(float)), indices.data(),  static_cast<uint32_t>(indices.size()), layout);
-        return s_SphereMesh;
+
+        auto sphereMesh = std::make_shared<Mesh>(vertices.data(), static_cast<uint32_t>(vertices.size() * sizeof(float)), indices.data(), static_cast<uint32_t>(indices.size()), layout);
+        s_Meshes.push_back(sphereMesh);
+        return sphereMesh;
+    }
+    std::shared_ptr<Mesh> Mesh::CreateQuad(uint32_t width, uint32_t height)
+    {
+        std::vector<float> vertices = {
+            // Positions          // Normals           // TexCoords
+            -1.0f,  1.0f, 0.0f,   0.0f, 0.0f, -1.0f,   0.0f, 1.0f,
+             1.0f,  1.0f, 0.0f,   0.0f, 0.0f, -1.0f,   1.0f, 1.0f,
+             1.0f, -1.0f, 0.0f,   0.0f, 0.0f, -1.0f,   1.0f, 0.0f,
+            -1.0f, -1.0f, 0.0f,   0.0f, 0.0f, -1.0f,   0.0f, 0.0f
+        };
+
+        std::vector<uint32_t> indices = {
+            0, 1, 2,
+            2, 3, 0
+        };
+
+        BufferLayout layout = {
+            { "a_Position", BufferComponents::XYZ, BufferStride::F3, false, 0 },
+            { "a_Normal", BufferComponents::XYZ, BufferStride::F3, false, 12 },
+            { "a_TexCoord", BufferComponents::UV, BufferStride::F2, false, 24 }
+        };
+
+        auto quadMesh = std::make_shared<Mesh>(vertices.data(), static_cast<uint32_t>(vertices.size() * sizeof(float)), indices.data(), static_cast<uint32_t>(indices.size()), layout);
+        s_Meshes.push_back(quadMesh);
+        return quadMesh;
     }
 }
+

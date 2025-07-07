@@ -270,6 +270,72 @@ namespace Motion::Core
         }
     }
 
+    std::shared_ptr<IFrameTexture> AssetManager::CreateFrameTexture(const std::string & name, TextureID texID, FrameBufferSpecification & spec)
+    {
+        if(s_AssetRegistry.find(s_AssetNameUUIDMap[name]) != s_AssetRegistry.end())
+        {
+            MOTION_CORE_WARN("FrameTexture {0} already exists!", name);
+            return std::dynamic_pointer_cast<IFrameTexture>(s_AssetRegistry[s_AssetNameUUIDMap[name]]);
+        }
+
+        switch(Renderer::GetAPI())
+        {
+            case RenderingAPI::OpenGL:         
+            {
+                std::shared_ptr<IFrameTexture> frameTextureAsset = std::make_shared<GL_FrameTexture>(name, texID, spec);
+                if(frameTextureAsset)
+                {
+                    s_AssetRegistry[frameTextureAsset->GetMetaData().AssetUUID] = frameTextureAsset;
+                    MOTION_CORE_INFO("FrameTexture created: {0}", name);
+                }
+                else
+                {
+                    MOTION_CORE_ERROR("Failed to create FrameTexture: {0}", name);
+                    return nullptr;
+                }
+
+                TextureManager::InsertFrameTexture(frameTextureAsset->GetMetaData().AssetUUID, frameTextureAsset);
+                return frameTextureAsset;
+            }
+            case RenderingAPI::Vulkan:         MOTION_ASSERT(false, "Vulkan is not implemented yet!"); return nullptr; 
+            case RenderingAPI::DirectX:        MOTION_ASSERT(false, "DirectX is not implemented yet!"); return nullptr; 
+            default:                           MOTION_ASSERT(false, "Unknown rendering API!"); return nullptr;
+        }
+    }
+
+    std::shared_ptr<IFrameTexture> AssetManager::CreateFrameTexture(UUID uuid, const std::string & name, TextureID texID, FrameBufferSpecification & spec)
+    {
+        if(s_AssetRegistry.find(s_AssetNameUUIDMap[name]) != s_AssetRegistry.end())
+        {
+            MOTION_CORE_WARN("FrameTexture {0} already exists!", name);
+            return std::dynamic_pointer_cast<IFrameTexture>(s_AssetRegistry[s_AssetNameUUIDMap[name]]);
+        }
+
+        switch(Renderer::GetAPI())
+        {
+            case RenderingAPI::OpenGL:         
+            {
+                std::shared_ptr<IFrameTexture> frameTextureAsset = std::make_shared<GL_FrameTexture>(uuid, name, texID, spec);
+                if(frameTextureAsset)
+                {
+                    s_AssetRegistry[frameTextureAsset->GetMetaData().AssetUUID] = frameTextureAsset;
+                    MOTION_CORE_INFO("FrameTexture created: {0}", name);
+                }
+                else
+                {
+                    MOTION_CORE_ERROR("Failed to create FrameTexture: {0}", name);
+                    return nullptr;
+                }
+
+                TextureManager::InsertFrameTexture(frameTextureAsset->GetMetaData().AssetUUID, frameTextureAsset);
+                return frameTextureAsset;
+            }
+            case RenderingAPI::Vulkan:         MOTION_ASSERT(false, "Vulkan is not implemented yet!"); return nullptr; 
+            case RenderingAPI::DirectX:        MOTION_ASSERT(false, "DirectX is not implemented yet!"); return nullptr; 
+            default:                           MOTION_ASSERT(false, "Unknown rendering API!"); return nullptr;
+        }
+    }
+
     std::shared_ptr<Model> AssetManager::LoadModel(const std::string& name, std::filesystem::path& modelFile)
     {
         if(s_AssetRegistry.find(s_AssetNameUUIDMap[name]) != s_AssetRegistry.end())

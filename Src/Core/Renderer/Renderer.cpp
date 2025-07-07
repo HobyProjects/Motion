@@ -157,25 +157,36 @@ namespace Motion::Core
         std::shared_ptr<IShader> currentShader = nullptr;
         std::shared_ptr<Mesh> currentMesh = nullptr;
         std::shared_ptr<Material> currentMaterial = nullptr;
+        std::shared_ptr<IFrameTexture> currentFrameTexture = nullptr;
 
         for(const auto& draw : s_RenderQueue)
         {
             if(currentShader != draw.Shader)
             {
                 currentShader = draw.Shader;
-                currentShader->Bind();
+                if(currentShader != nullptr)
+                    currentShader->Bind();
             }
 
             if(currentMaterial != draw.MeshMaterial)
             {
                 currentMaterial = draw.MeshMaterial;
-                currentMaterial->Bind(currentShader); 
+                if(currentMaterial != nullptr)
+                    currentMaterial->Bind(currentShader); 
+            }
+
+            if(currentFrameTexture != draw.FrameTexture)
+            {
+                currentFrameTexture = draw.FrameTexture;
+                if(currentFrameTexture != nullptr)
+                    currentFrameTexture->Bind();
             }
 
             if(currentMesh != draw.SubMesh)
             {
                 currentMesh = draw.SubMesh;
-                currentMesh->Bind();
+                if(currentMesh != nullptr)
+                    currentMesh->Bind();
             }
 
             currentShader->SetUniform(UniformCache::ModelUniforms::CameraMatrix, draw.CameraMatrix);
@@ -187,6 +198,7 @@ namespace Motion::Core
         currentMaterial = nullptr;
         currentMesh = nullptr;
         currentShader = nullptr;
+        currentFrameTexture = nullptr;
     }
 
     uint32_t Renderer::GetDrawCalls()

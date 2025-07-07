@@ -1,5 +1,5 @@
 #include "CorePCH.hpp"
-#include "EditorLayer.hpp"
+#include "SceneEditorLayer.hpp"
 
 namespace Motion::App
 {
@@ -26,10 +26,7 @@ namespace Motion::App
             m_Viewport.FrameSpec.Samples = static_cast<uint32_t>(aaLevel);
         }
 
-        m_Framebuffer = Motion::Core::BufferFactory::CreateFrameBuffer(m_Viewport.FrameSpec);
-        Motion::Core::TextureID textureID = (m_Framebuffer->IsMSAA()) ? m_Framebuffer->GetResolvedColorAttachment() : m_Framebuffer->GetColorAttachment();
-        m_FrameTexture = Motion::Core::AssetManager::CreateFrameTexture("SceneFrameTexture", textureID, m_Framebuffer->GetFrameSpecification());
-        
+        m_Framebuffer = Motion::Core::BufferFactory::CreateFrameBuffer(m_Viewport.FrameSpec);    
         m_Scene = std::make_shared<Scene>(glm::vec2(m_ViewportWidth, m_ViewportHeight));
     }
 

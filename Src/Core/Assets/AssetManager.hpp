@@ -29,8 +29,6 @@ namespace Motion::Core
             static std::shared_ptr<ITexture> CreateTextureFromFile(UUID uuid, const std::string& name, const std::filesystem::path& textureFile, TextureType type, bool flipOnLoading = true);
             static std::shared_ptr<ITexture> CreatePlainTexture(const std::string& name, uint32_t width, uint32_t height);
             static std::shared_ptr<ITexture> CreatePlainTexture(UUID uuid, const std::string& name, uint32_t width, uint32_t height);
-            static std::shared_ptr<IFrameTexture> CreateFrameTexture(const std::string& name, TextureID texID, FrameBufferSpecification& spec);
-            static std::shared_ptr<IFrameTexture> CreateFrameTexture(UUID uuid, const std::string& name, TextureID texID, FrameBufferSpecification& spec);
 
             static std::shared_ptr<Model> LoadModel(const std::string& name, std::filesystem::path& modelFile);
             static std::shared_ptr<Model> LoadModel(UUID uuid, const std::string& name, std::filesystem::path& modelFile);

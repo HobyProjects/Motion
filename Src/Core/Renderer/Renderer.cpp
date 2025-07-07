@@ -157,15 +157,22 @@ namespace Motion::Core
         std::shared_ptr<IShader> currentShader = nullptr;
         std::shared_ptr<Mesh> currentMesh = nullptr;
         std::shared_ptr<Material> currentMaterial = nullptr;
-        std::shared_ptr<IFrameTexture> currentFrameTexture = nullptr;
 
         for(const auto& draw : s_RenderQueue)
         {
+            if(draw.RendererCallback != nullptr && 
+                draw.CallbackOrder == RendererCallbackOrder::FromBeginning)
+                draw.RendererCallback();
+
             if(currentShader != draw.Shader)
             {
                 currentShader = draw.Shader;
                 if(currentShader != nullptr)
                     currentShader->Bind();
+
+                if(draw.RendererCallback != nullptr && 
+                    draw.CallbackOrder == RendererCallbackOrder::AfterShaderBinding)
+                    draw.RendererCallback();
             }
 
             if(currentMaterial != draw.MeshMaterial)
@@ -173,13 +180,10 @@ namespace Motion::Core
                 currentMaterial = draw.MeshMaterial;
                 if(currentMaterial != nullptr)
                     currentMaterial->Bind(currentShader); 
-            }
 
-            if(currentFrameTexture != draw.FrameTexture)
-            {
-                currentFrameTexture = draw.FrameTexture;
-                if(currentFrameTexture != nullptr)
-                    currentFrameTexture->Bind();
+                if(draw.RendererCallback != nullptr && 
+                    draw.CallbackOrder == RendererCallbackOrder::AfterMaterialBinding)
+                    draw.RendererCallback();
             }
 
             if(currentMesh != draw.SubMesh)
@@ -187,18 +191,26 @@ namespace Motion::Core
                 currentMesh = draw.SubMesh;
                 if(currentMesh != nullptr)
                     currentMesh->Bind();
+
+                if(draw.RendererCallback != nullptr && 
+                    draw.CallbackOrder == RendererCallbackOrder::AfterMeshBinding)
+                    draw.RendererCallback();
             }
 
             currentShader->SetUniform(UniformCache::ModelUniforms::CameraMatrix, draw.CameraMatrix);
             currentShader->SetUniform(UniformCache::ModelUniforms::ModelMatrix, draw.ModelTransform);
             DrawIndexed(draw.SubMesh->GetIndicesCount());
+
+            if(draw.RendererCallback != nullptr && 
+                draw.CallbackOrder == RendererCallbackOrder::AfterDrawCall)
+                draw.RendererCallback();
+
             s_DrawCalls++;
         }
 
         currentMaterial = nullptr;
         currentMesh = nullptr;
         currentShader = nullptr;
-        currentFrameTexture = nullptr;
     }
 
     uint32_t Renderer::GetDrawCalls()

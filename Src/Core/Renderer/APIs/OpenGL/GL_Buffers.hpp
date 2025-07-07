@@ -97,16 +97,20 @@ namespace Motion::Core
 
             virtual void Bind() override;
             virtual void Unbind() override;
+
+            virtual void BindAttachment() override;
+            virtual void UnbindAttachment() override;
+
             virtual void ResizeFrame(uint32_t width, uint32_t Height) override;
             virtual BufferID GetFrameBufferID() const override { return m_FrameBufferID; }
             virtual BufferID GetColorAttachment() const override { return m_ColorAttachment; }
             virtual FrameBufferSpecification& GetFrameSpecification() override { return m_Specification; }
 
             virtual bool IsMSAA() const override { return m_Specification.Samples > 1; }
-            virtual BufferID GetResolvedFBO() const override { return m_ResolvedFBOID; }
+            virtual BufferID GetResolvedFrameBufferID() const override { return m_ResolvedFBOID; }
             virtual BufferID GetResolvedColorAttachment() const override { return m_ResolvedColorAttachment; }
             virtual void Resolve() override;
-            virtual void Render(const std::shared_ptr<IFrameTexture>& frameTexture) override;
+            virtual void Render() override;
 
         protected:
             virtual void CreateFrame() override;

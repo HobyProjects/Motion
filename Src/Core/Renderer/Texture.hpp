@@ -67,21 +67,6 @@ namespace Motion::Core
             virtual uint32_t GetGlobalAnisotropy() const  = 0;
     };
 
-    struct FrameBufferSpecification; // Forward declaration
-
-    class IFrameTexture : public IAsset
-    {
-        public:
-            IFrameTexture() = default;
-            virtual ~IFrameTexture() = default;
-
-            virtual void Bind() = 0;
-            virtual void Unbind() = 0;
-
-            virtual TextureID GetID() const = 0;
-            virtual FrameBufferSpecification& GetFrameSpecification() = 0;
-    };
-
     class TextureManager
     {
         private:
@@ -95,14 +80,8 @@ namespace Motion::Core
 
         public:
             static void InsertTexture(const UUID& uuid, const std::shared_ptr<ITexture>& texture);
-            static void InsertFrameTexture(const UUID& uuid, const std::shared_ptr<IFrameTexture>& texture);
-
             static std::shared_ptr<ITexture> GetTexture(const UUID& uuid);
             static std::shared_ptr<ITexture> GetTexture(const std::string& name);
-            static std::shared_ptr<IFrameTexture> GetFrameTexture(const UUID& uuid);
-            static std::shared_ptr<IFrameTexture> GetFrameTexture(const std::string& name);
-            
             static std::unordered_map<UUID, std::shared_ptr<ITexture>>::const_iterator GetTextures();
-            static std::unordered_map<UUID, std::shared_ptr<IFrameTexture>>::const_iterator GetFrameTextures();
     };
 }

@@ -25,7 +25,6 @@ namespace Motion::App
 
         private:
             std::shared_ptr<Motion::Core::IFrameBuffer> m_Framebuffer{ nullptr };
-            std::shared_ptr<Motion::Core::IFrameTexture> m_FrameTexture{ nullptr };
             std::shared_ptr<Motion::App::Scene> m_Scene{ nullptr };
             Viewport m_Viewport{};
 

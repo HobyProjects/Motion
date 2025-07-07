@@ -155,16 +155,19 @@ namespace Motion::Core
             virtual void Bind() = 0;
             virtual void Unbind() = 0;
 
+            virtual void BindAttachment() = 0;
+            virtual void UnbindAttachment() = 0;
+
             virtual void ResizeFrame(uint32_t width, uint32_t height) = 0;
             virtual BufferID GetFrameBufferID() const = 0;
             virtual BufferID GetColorAttachment() const = 0;
             virtual FrameBufferSpecification& GetFrameSpecification() = 0;
 
             virtual bool IsMSAA() const = 0;
-            virtual BufferID GetResolvedFBO() const = 0;
+            virtual BufferID GetResolvedFrameBufferID() const = 0;
             virtual BufferID GetResolvedColorAttachment() const = 0;
             virtual void Resolve() = 0;
-            virtual void Render(const std::shared_ptr<IFrameTexture>& frameTexture) = 0;
+            virtual void Render() = 0;
 
         protected:
             virtual void CreateFrame() = 0;

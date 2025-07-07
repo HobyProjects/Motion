@@ -188,6 +188,31 @@ namespace Motion::Core
     {
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
         Resolve();
+        Render();
+    }
+
+    void GL_FrameBuffer::BindAttachment()
+    {
+        if(IsMSAA())
+        {
+            glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, m_ResolvedColorAttachment);
+        }
+        else
+        {
+            glBindTexture(GL_TEXTURE_2D, m_ColorAttachment);
+        }
+    }
+
+    void GL_FrameBuffer::UnbindAttachment()
+    {
+        if(IsMSAA())
+        {
+            glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, 0);
+        }
+        else
+        {
+            glBindTexture(GL_TEXTURE_2D, 0);
+        }
     }
 
     void GL_FrameBuffer::ResizeFrame(uint32_t width, uint32_t height)
@@ -212,16 +237,17 @@ namespace Motion::Core
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
     }
 
-    void GL_FrameBuffer::Render(const std::shared_ptr<IFrameTexture>& frameTexture)
+    void GL_FrameBuffer::Render()
     {
         DrawCommand drawCommand;
         drawCommand.Shader = ShaderManager::GetShader("PostProcessing");
         drawCommand.SubMesh = m_PostProcessingQuad;
         drawCommand.MeshMaterial = nullptr;
-        drawCommand.FrameTexture = frameTexture;
         drawCommand.RendererPasses = RenderPass::PostProcessing;
         drawCommand.ModelTransform = glm::mat4(1.0f);
         drawCommand.CameraMatrix = glm::mat4(1.0f);
+        drawCommand.RendererCallback = [this]() { this->BindAttachment(); };
+        drawCommand.CallbackOrder = RendererCallbackOrder::AfterShaderBinding;
         Renderer::Submit(drawCommand);
     }
 

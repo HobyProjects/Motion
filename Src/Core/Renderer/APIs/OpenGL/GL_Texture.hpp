@@ -33,22 +33,4 @@ namespace Motion::Core
             TextureSpecification m_Specification;
             bool m_FromFile{ false };
     };
-
-    class GL_FrameTexture final : public AssetBase<IFrameTexture>
-    {
-        public:
-            GL_FrameTexture(UUID uuid, const std::string& name, TextureID texID, FrameBufferSpecification& spec);
-            GL_FrameTexture(const std::string& name, TextureID texID, FrameBufferSpecification& spec);
-            virtual ~GL_FrameTexture() = default;
-
-            virtual void Bind() override;
-            virtual void Unbind() override;
-
-            virtual TextureID GetID() const override { return m_TextureID; }
-            virtual FrameBufferSpecification& GetFrameSpecification() override { return m_Specification; }
-
-        private:
-            TextureID m_TextureID{ 0 };
-            FrameBufferSpecification& m_Specification;
-    };
 }

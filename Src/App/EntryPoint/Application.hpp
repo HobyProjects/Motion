@@ -7,7 +7,7 @@
 #include "Timer.hpp"
 
 #include "ImguiLayer.hpp"
-#include "EditorLayer.hpp"
+#include "SceneEditorLayer.hpp"
 
 namespace Motion::App
 {

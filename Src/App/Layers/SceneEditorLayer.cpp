@@ -27,6 +27,9 @@ namespace Motion::App
         }
 
         m_Framebuffer = Motion::Core::BufferFactory::CreateFrameBuffer(m_Viewport.FrameSpec);
+        Motion::Core::TextureID textureID = (m_Framebuffer->IsMSAA()) ? m_Framebuffer->GetResolvedColorAttachment() : m_Framebuffer->GetColorAttachment();
+        m_FrameTexture = Motion::Core::AssetManager::CreateFrameTexture("SceneFrameTexture", textureID, m_Framebuffer->GetFrameSpecification());
+        
         m_Scene = std::make_shared<Scene>(glm::vec2(m_ViewportWidth, m_ViewportHeight));
     }
 
@@ -81,7 +84,6 @@ namespace Motion::App
 
             if( m_Framebuffer->IsMSAA() )
             {
-                m_Framebuffer->Resolve();
                 ImGui::Image((ImTextureID) m_Framebuffer->GetResolvedColorAttachment(), viewportPanelSize, { 0, 1 }, { 1, 0 });
             }
             else

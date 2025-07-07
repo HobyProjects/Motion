@@ -13,7 +13,7 @@ namespace Motion::App
 
         m_LayersManager = std::make_shared<Motion::Core::LayersManager>();
         m_ImGuiLayer = std::make_shared<ImGuiLayer>(m_Window->GetHandle(), ImGuiColorScheme::Dark);
-        m_EditorLayer = std::make_shared<EditorLayer>(m_Window->GetHandle(), m_ImGuiLayer);
+        m_EditorLayer = std::make_shared<SceneEditorLayer>(m_Window->GetHandle(), m_ImGuiLayer);
 
         PushOverlay(m_ImGuiLayer);
         PushLayer(m_EditorLayer);

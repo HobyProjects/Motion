@@ -8,11 +8,11 @@
 
 namespace Motion::App
 {
-    class EditorLayer : public Motion::Core::Layer
+    class SceneEditorLayer : public Motion::Core::Layer
     {
         public:
-            EditorLayer(Motion::Core::WindowHandle, const std::shared_ptr<Motion::App::ImGuiLayer>& imguiLayer);
-            virtual ~EditorLayer() = default;
+            SceneEditorLayer(Motion::Core::WindowHandle, const std::shared_ptr<Motion::App::ImGuiLayer>& imguiLayer);
+            virtual ~SceneEditorLayer() = default;
 
             virtual void OnAttach() override;
             virtual void OnDetach() override;

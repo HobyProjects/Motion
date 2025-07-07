@@ -6,13 +6,13 @@ namespace Motion::App
     static std::weak_ptr<Motion::Core::IWindow> s_Window;
     static std::weak_ptr<Motion::App::ImGuiLayer> s_ImGuiLayer;
 
-    EditorLayer::EditorLayer(Motion::Core::WindowHandle handle, const std::shared_ptr<Motion::App::ImGuiLayer>& imguiLayer) : Motion::Core::Layer("EditorLayer") 
+    SceneEditorLayer::SceneEditorLayer(Motion::Core::WindowHandle handle, const std::shared_ptr<Motion::App::ImGuiLayer>& imguiLayer) : Motion::Core::Layer("EditorLayer") 
     {
         s_Window = Motion::Core::WindowManager::Get(handle);
         s_ImGuiLayer = imguiLayer;
     }
 
-    void EditorLayer::OnAttach()
+    void SceneEditorLayer::OnAttach()
     {
         m_Viewport.FrameSpec.Width = static_cast<uint32_t>(m_ViewportWidth);
         m_Viewport.FrameSpec.Height = static_cast<uint32_t>(m_ViewportHeight);
@@ -30,13 +30,13 @@ namespace Motion::App
         m_Scene = std::make_shared<Scene>(glm::vec2(m_ViewportWidth, m_ViewportHeight));
     }
 
-    void EditorLayer::OnDetach()
+    void SceneEditorLayer::OnDetach()
     {
         m_Framebuffer.reset();
         m_Scene.reset();
     }
 
-    void EditorLayer::OnUpdate(Motion::Core::WindowHandle handle, Motion::Core::Timer deltaTime)
+    void SceneEditorLayer::OnUpdate(Motion::Core::WindowHandle handle, Motion::Core::Timer deltaTime)
     {
         if(m_Viewport.SizeHasChanged(m_ViewportWidth, m_ViewportHeight))
         {
@@ -55,12 +55,12 @@ namespace Motion::App
         m_Framebuffer->Unbind();
     }
 
-    void EditorLayer::OnEvent(Motion::Core::WindowHandle handle, Motion::Core::IEvent& e)
+    void SceneEditorLayer::OnEvent(Motion::Core::WindowHandle handle, Motion::Core::IEvent& e)
     {
         m_Scene->OnEvent(handle, e);
     }
 
-    void EditorLayer::OnUIRender(Motion::Core::WindowHandle handle)
+    void SceneEditorLayer::OnUIRender(Motion::Core::WindowHandle handle)
     {
         DrawDockspace();
         ImGui::ShowDemoWindow();
@@ -94,7 +94,7 @@ namespace Motion::App
         ImGui::PopStyleVar();
     }
 
-    void EditorLayer::DrawDockspace()
+    void SceneEditorLayer::DrawDockspace()
     {
         static bool opt_fullscreen = true;
         static bool opt_padding = false;

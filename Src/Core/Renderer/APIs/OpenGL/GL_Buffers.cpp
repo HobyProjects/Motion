@@ -246,8 +246,8 @@ namespace Motion::Core
         drawCommand.RendererPasses = RenderPass::PostProcessing;
         drawCommand.ModelTransform = glm::mat4(1.0f);
         drawCommand.CameraMatrix = glm::mat4(1.0f);
-        drawCommand.RendererCallback = [this]() { this->BindAttachment(); };
-        drawCommand.CallbackOrder = RendererCallbackOrder::AfterShaderBinding;
+        drawCommand.AddCallback(RendererCallbackOrder::AfterShaderBinding, [this]() { this->BindAttachment();});
+        drawCommand.AddCallback(RendererCallbackOrder::AfterDrawCall, [this]() { this->UnbindAttachment();});
         Renderer::Submit(drawCommand);
     }
 

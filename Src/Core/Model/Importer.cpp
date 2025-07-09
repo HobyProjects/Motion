@@ -78,11 +78,20 @@ namespace Motion::Core
                     }
                     else
                     {
+                        texture.reset();
+                        texture = AssetManager::CreatePlainTexture(property.C_Str(), 100, 100);
+                        if(texture)
+                        {
+                            MOTION_CORE_WARN("Texture {0} could not be loaded, creating a default texture instead", property.C_Str());
+                            return texture;
+                        }
+
                         MOTION_CORE_ERROR("Unable to load texture in {0}. Manual loading might required.", property.C_Str());
                         return nullptr;
                     }
                 }
-            } else 
+            } 
+            else 
             {
                 MOTION_CORE_WARN("The model contained diffuse texture information, but texture loading failed. PATH: {0}", property.C_Str());
                 return nullptr;

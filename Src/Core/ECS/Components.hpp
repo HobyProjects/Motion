@@ -58,43 +58,21 @@ namespace Motion::Core
         ~MeshComponent() = default;
     };
 
-    struct DirectionalLightComponent 
+    struct PhysicsBodyComponent
     {
-        UUID ID{0};
-        glm::vec3 Direction{ -0.2f, -1.0f, -0.3f };
-        glm::vec3 Color{ 1.0f };
-        float Intensity = 1.0f;
-        bool CastShadows = true;
+        enum class BodyType { Static, Dynamic };
 
-        DirectionalLightComponent() : ID(UniqueIdentity::GetUniqueID()) {};
-        ~DirectionalLightComponent() = default;
-    };
+        float Mass = 1.0f;
+        BodyType Type = BodyType::Dynamic;
 
-    struct PointLightComponent 
-    {
-        UUID ID{0};
-        glm::vec3 Position{0.0f};
-        glm::vec3 Color{1.0f};
-        float Intensity = 1.0f;
-        float Radius = 10.0f;
-        float Falloff = 1.0f;
+        glm::vec3 Velocity = glm::vec3(0.0f);
+        glm::vec3 ForceAccum = glm::vec3(0.0f);
+        bool Active = false;
 
-        PointLightComponent() : ID(UniqueIdentity::GetUniqueID()) {};
-        ~PointLightComponent() = default;
-    };
-
-    struct SpotLightComponent 
-    {
-        UUID ID{0};
-        glm::vec3 Position{0.0f};
-        glm::vec3 Direction{0.0f, -1.0f, 0.0f};
-        glm::vec3 Color{1.0f};
-        float Intensity = 1.0f;
-        float InnerCutoff = 12.5f; // degrees
-        float OuterCutoff = 17.5f;
-        float Range = 15.0f;
-
-        SpotLightComponent() : ID(UniqueIdentity::GetUniqueID()) {};
-        ~SpotLightComponent() = default;
+        PhysicsBodyComponent(float mass = 1.0f)
+            : Mass(mass)
+        {
+            Type = (Mass <= 0.0f) ? BodyType::Static : BodyType::Dynamic;
+        }
     };
 }

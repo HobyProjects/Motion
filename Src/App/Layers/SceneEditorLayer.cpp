@@ -8,7 +8,7 @@ namespace Motion::App
 
     SceneEditorLayer::SceneEditorLayer(Motion::Core::WindowHandle handle, const std::shared_ptr<Motion::App::ImGuiLayer>& imguiLayer) : Motion::Core::Layer("EditorLayer") 
     {
-        s_Window = Motion::Core::WindowManager::Get(handle);
+        s_Window = Motion::Core::WindowManager::GetWindow(handle);
         s_ImGuiLayer = imguiLayer;
     }
 

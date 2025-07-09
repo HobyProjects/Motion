@@ -186,7 +186,7 @@ namespace Motion::Core
      *
      * @return A shared pointer to the window with the specified handle, or nullptr if the window is not found.
      */
-    std::shared_ptr<IWindow> WindowManager::Get(WindowHandle handle)
+    std::shared_ptr<IWindow> WindowManager::GetWindow(WindowHandle handle)
     {
         if(s_WindowManagementService.contains(handle))
         {
@@ -194,6 +194,28 @@ namespace Motion::Core
         }
 
         MOTION_CORE_ERROR("Window with handle {:X} not found", handle);
+        return nullptr;
+    }
+
+    /**
+     * Retrieves the currently active and focused window.
+     *
+     * This function iterates over all managed windows and returns the first window
+     * that is both active and focused. If no such window is found, it returns nullptr.
+     *
+     * @return A shared pointer to the active and focused window, or nullptr if no window
+     *         meets the criteria.
+     */
+    std::shared_ptr<IWindow> WindowManager::GetActiveWindow()
+    {
+        for(auto& window : s_WindowManagementService)
+        {
+            if(window.second->IsActive() && window.second->IsFocused())
+            {
+                return window.second;
+            }
+        }
+        
         return nullptr;
     }
 }

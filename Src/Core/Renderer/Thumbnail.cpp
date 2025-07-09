@@ -3,169 +3,129 @@
 
 namespace Motion::Core
 {
-    ModelThumbnail::ModelThumbnail(const std::string& name, uint32_t width, uint32_t height, const std::shared_ptr<Model::SubMesh>& model) 
+    static FrameBufferSpecification s_Specification{};
+    static std::shared_ptr<IFrameBuffer> s_FrameBuffer{nullptr};
+    static Camera3D s_Camera{};
+
+
+    static void CreateFrame()
     {
-        FrameBufferSpecification spec;
-        spec.Width = width;
-        spec.Height = height;
-        spec.SwapChainTarget = false;
+        std::weak_ptr<IWindow> activeWindow = WindowManager::GetActiveWindow();
+        if(!activeWindow.expired())
+        {
+            auto window = activeWindow.lock();
+            GraphicSettings graphicSettings = window->GetGraphicSettings();
 
-        m_FrameBuffer = BufferFactory::CreateFrameBuffer(spec);
+            switch(graphicSettings.AntiAliasing)
+            {
+                case GraphicSettings::AntiAliasingLevel::None:
+                {
+                    s_Specification.Samples = 1;
+                    break;
+                }
+                case GraphicSettings::AntiAliasingLevel::MSAAx2:
+                {
+                    s_Specification.Samples = 2;
+                    break;
+                }
+                case GraphicSettings::AntiAliasingLevel::MSAAx4:
+                {
+                    s_Specification.Samples = 4;
+                    break;
+                }
+                case GraphicSettings::AntiAliasingLevel::MSAAx8:
+                {
+                    s_Specification.Samples = 8;
+                    break;
+                }
+            }
 
-        m_Camera.ViewportWidth = static_cast<float>(width);
-        m_Camera.ViewportHeight = static_cast<float>(height);
-        m_Camera.AspectRatio = width / static_cast<float>(height);
-        m_Camera.Position = glm::vec3(0.0f, 0.0f, -5.0f);
-        m_Camera.RefreshCameraMatrix();
+            if(!s_FrameBuffer)
+                s_FrameBuffer = BufferFactory::CreateFrameBuffer(s_Specification);
+            else
+                s_FrameBuffer->ResizeFrame(s_Specification.Width, s_Specification.Height);
 
-        CreateThumbnail();
+            s_Camera.ViewportWidth = static_cast<float>(s_Specification.Width);
+            s_Camera.ViewportHeight = static_cast<float>(s_Specification.Height);
+            s_Camera.AspectRatio = static_cast<float>(s_Specification.Width) / static_cast<float>(s_Specification.Height);
+            s_Camera.Position = { 0.0f, 0.0f, 200.0f };
+        }
+        else
+        {
+            MOTION_ASSERT(false, "Active window is null!");
+        }
     }
 
-    void ModelThumbnail::CreateThumbnail() 
+    std::shared_ptr<IThumbnail> ThumbnailFactory::CreateThumbnail(const std::string& name, const std::shared_ptr<Model>& model, uint32_t width, uint32_t height)
     {
-        if (!m_Mesh || !m_Mesh->MeshPtr)
-            return;
+/*         if(s_Specification.Width != width || s_Specification.Height != height)
+        {
+            s_Specification.Width = width;
+            s_Specification.Height = height;
+            CreateFrame();
+        }
 
-        m_FrameBuffer->Bind();
+        auto modelThumbnail = std::make_shared<ModelThumbnail>(name, width, height, model);
+        if(!modelThumbnail->m_Model)
+        {
+            MOTION_CORE_ERROR("Can not create thumbnail for model {0}, it is not valid", name);
+            return nullptr;
+        }
 
-        Renderer::SetViewport(0, 0, (int)m_Camera.ViewportWidth, (int)m_Camera.ViewportHeight);
+        if(!s_FrameBuffer)
+            CreateFrame();
+
+        s_FrameBuffer->Bind();
+
+        Renderer::SetViewport(0, 0, (uint32_t)s_Camera.ViewportWidth, (uint32_t)s_Camera.ViewportHeight);
         Renderer::ClearColor(glm::vec4(0.1f, 0.1f, 0.1f, 1.0f));
         Renderer::Clear();
-        m_Camera.RefreshCameraMatrix();
+        s_Camera.RefreshCameraMatrix();
 
-        Material::ShadingMethod shadingMethod = Material::ShadingMethod::Unknown;
-        std::weak_ptr<Model::SubMeshMaterial> mat = m_Mesh->ParentModel->GetSubMeshMaterial(m_Mesh->MaterialIndex);
-        if(!mat.expired())
-        {
-            auto material = mat.lock();
-            shadingMethod = material->Materials->GetShadingMethod();
-        }
+        modelThumbnail->m_Model->Render(glm::mat4(1.0f), s_Camera.GetCameraMatrix());
 
-        std::weak_ptr<IShader> shader;
-        switch(shadingMethod)
-        {
-            case Material::ShadingMethod::Phong:
-                shader = AssetManager::GetShader("PhongShader");
-                break;
-            case Material::ShadingMethod::PBR:
-                shader = AssetManager::GetShader("PBRShader");
-                break;
-            case Material::ShadingMethod::Unlit:
-                shader = AssetManager::GetShader("UnlitShader");
-                break;
-            default:
-                shader = AssetManager::GetShader("DefaultShader");
-                break;
-        };
+        s_FrameBuffer->Unbind();
 
-        if (shader.expired())
-        {
-            MOTION_CORE_ERROR("Shader not found for shading method: {0}", static_cast<int>(shadingMethod));
-            return;
-        }
+        if(s_FrameBuffer->IsMSAA())
+            modelThumbnail->m_Specification.Attachment = s_FrameBuffer->GetResolvedColorAttachment();
+        else
+            modelThumbnail->m_Specification.Attachment = s_FrameBuffer->GetColorAttachment();
 
-        DrawCommand command;
-        command.Shader = shader.lock();
-        command.SubMesh = m_Mesh->MeshPtr;
-        command.MeshMaterial = mat.lock()->Materials;
-        command.RendererPasses = RenderPass::Opaque;
-        command.ModelTransform = glm::mat4(1.0f);
-        command.CameraMatrix = m_Camera.GetCameraMatrix();
+        return modelThumbnail; */
 
-        Renderer::BeginFrame();
-        Renderer::Submit(command);
-        Renderer::EndFrame();
-
-        m_FrameBuffer->Unbind();
+        return nullptr;
     }
 
-    uint32_t ModelThumbnail::GetColorAttachment() const 
+    std::shared_ptr<IThumbnail> ThumbnailFactory::CreateThumbnail(const std::string& name, const std::shared_ptr<ITexture>& texture, uint32_t width, uint32_t height)
     {
-        if (m_FrameBuffer)
+/*         if(s_Specification.Width != width || s_Specification.Height != height)
         {
-            return m_FrameBuffer->GetColorAttachment();
+            s_Specification.Width = width;
+            s_Specification.Height = height;
+            CreateFrame();
         }
 
-        MOTION_CORE_ERROR("FrameBuffer is not initialized.");
-        return 0;   
-    }
-
-    MaterialThumbnail::MaterialThumbnail(const std::string& name, uint32_t width, uint32_t height, const std::shared_ptr<Model::SubMeshMaterial>& material)
-    {
-        FrameBufferSpecification spec;
-        spec.Width = width;
-        spec.Height = height;
-        spec.SwapChainTarget = false;
-
-        m_FrameBuffer = BufferFactory::CreateFrameBuffer(spec);
-        m_Material = material;
-
-        m_Camera.ViewportWidth = static_cast<float>(width);
-        m_Camera.ViewportHeight = static_cast<float>(height);
-        m_Camera.AspectRatio = width / static_cast<float>(height);
-        m_Camera.Position = glm::vec3(0.0f, 0.0f, -5.0f);
-        m_Camera.RefreshCameraMatrix();
-
-        CreateThumbnail();
-    }
-
-    uint32_t MaterialThumbnail::GetColorAttachment() const 
-    {
-        if (m_FrameBuffer)
+        auto textureThumbnail = std::make_shared<TextureThumbnail>(name, width, height, texture);
+        if(!textureThumbnail->m_Texture)
         {
-            return m_FrameBuffer->GetColorAttachment();
+            MOTION_CORE_ERROR("Can not create thumbnail for texture {0}, it is not valid", name);
+            return nullptr;
         }
 
-        MOTION_CORE_ERROR("FrameBuffer is not initialized.");
-        return 0;
-    }
+        textureThumbnail->m_Mesh = Mesh::CreateQuad(width, height);
 
-    void MaterialThumbnail::CreateThumbnail() 
-    {
-        if (!m_Material || !m_Material->Materials)
-            return;
+        if(!s_FrameBuffer)
+            CreateFrame();
 
-        m_FrameBuffer->Bind();
+        s_FrameBuffer->Bind();
 
-        Renderer::SetViewport(0, 0, (int)m_Camera.ViewportWidth, (int)m_Camera.ViewportHeight);
+        Renderer::SetViewport(0, 0, (uint32_t)s_Camera.ViewportWidth, (uint32_t)s_Camera.ViewportHeight);
         Renderer::ClearColor(glm::vec4(0.1f, 0.1f, 0.1f, 1.0f));
         Renderer::Clear();
-        m_Camera.RefreshCameraMatrix();
+        s_Camera.RefreshCameraMatrix(); */
 
-        DrawCommand command;
-        command.Shader = AssetManager::GetShader("MaterialShader");
-        command.SubMesh = Mesh::CreateCube(1.0f, 1.0f, 1.0f); // Create a simple cube mesh for the thumbnail
-        command.MeshMaterial = m_Material->Materials;
-        command.RendererPasses = RenderPass::Opaque;
-        command.ModelTransform = glm::mat4(1.0f);
-        command.CameraMatrix = m_Camera.GetCameraMatrix();
+        // [FIXME]: There is problem with renderer, need to fix it before implementing this feature
 
-        Renderer::BeginFrame();
-        Renderer::Submit(command);
-        Renderer::EndFrame();
-
-        m_FrameBuffer->Unbind();
-    }
-
-    ImTextureID ThumbnailCache::GetOrGenerateForMesh(UUID id, const std::shared_ptr<Model::SubMesh>& mesh) {
-        auto& entry = m_Cache[id];
-
-        if (!entry.MeshThumb)
-            entry.MeshThumb = std::make_unique<ModelThumbnail>("mesh", m_ThumbWidth, m_ThumbHeight, mesh);
-
-        return (ImTextureID)(intptr_t)entry.MeshThumb->GetColorAttachment();
-    }
-
-    ImTextureID ThumbnailCache::GetOrGenerateForMaterial(UUID id, const std::shared_ptr<Model::SubMeshMaterial>& material) {
-        auto& entry = m_Cache[id];
-
-        if (!entry.MaterialThumb)
-            entry.MaterialThumb = std::make_unique<MaterialThumbnail>("material", m_ThumbWidth, m_ThumbHeight, material);
-
-        return (ImTextureID)(intptr_t)entry.MaterialThumb->GetColorAttachment();
-    }
-
-    void ThumbnailCache::Invalidate(UUID id) {
-        m_Cache.erase(id);
+        return nullptr;
     }
 }

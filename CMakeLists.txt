@@ -206,6 +206,7 @@ set(
         ${MOTION_APP_DIR}/Camera/MainCamera.hpp
         ${MOTION_APP_DIR}/Scene/Scene.hpp
         ${MOTION_APP_DIR}/Scene/SceneRenderer.hpp
+        ${MOTION_APP_DIR}/Scene/SceneEnviroment.hpp
 )
 
 set(
@@ -217,6 +218,7 @@ set(
         ${MOTION_APP_DIR}/Camera/MainCamera.cpp
         ${MOTION_APP_DIR}/Scene/Scene.cpp
         ${MOTION_APP_DIR}/Scene/SceneRenderer.cpp
+        ${MOTION_APP_DIR}/Scene/SceneEnviroment.cpp
 )
 
 add_executable(${MOTION_APP_EXECUTABLE} ${MOTION_APP_HEADERS} ${MOTION_APP_SOURCES})

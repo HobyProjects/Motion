@@ -18,7 +18,7 @@ namespace Motion::Core
      */
     void UI::Init(WindowHandle whnd)
     {
-        std::weak_ptr<IWindow> window = WindowManager::Get(whnd);
+        std::weak_ptr<IWindow> window = WindowManager::GetWindow(whnd);
         if(!window.expired())
         {
             auto windowPtr = window.lock();

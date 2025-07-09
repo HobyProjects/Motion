@@ -153,7 +153,8 @@ namespace Motion::Core
             static WindowHandle UniqueHandle();
             static std::shared_ptr<IWindow> Create(const std::string& title);
             static void Destroy(std::shared_ptr<IWindow>& window);
-            static std::shared_ptr<IWindow> Get(WindowHandle handle);
+            static std::shared_ptr<IWindow> GetWindow(WindowHandle handle);
+            static std::shared_ptr<IWindow> GetActiveWindow();
     };
     
 }

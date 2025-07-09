@@ -16,7 +16,17 @@
 
 namespace Motion::Core
 {
-    std::filesystem::path DialogBoxes::OpenFileDialog(NativeWindow window, const std::string& caption, const std::string& filter, const std::filesystem::path& defaultPath)
+    static const char* ALL_FILES_FILTER         = "All Files\0*.*\0\0";
+    static const char* TEXT_FILES_FILTER        = "Text Files\0*.txt\0\0";
+    static const char* IMAGE_FILES_FILTER       = "Image Files\0*.png;*.jpg;*.jpeg;*.tga;*.bmp;*.dds\0\0";
+    static const char* TEXTURE_FILES_FILTER     = "Texture Files\0*.png;*.jpg;*.jpeg;*.tga;*.bmp;*.dds\0\0";
+    static const char* MODEL_FILES_FILTER       = "Model Files\0*.fbx;*.obj;*.gltf;*.glb;*.dae;*.stl;*.ply;\0\0";
+    static const char* SHADER_FILES_FILTER      = "Shader Files\0*.glsl;*.hlsl\0\0";
+    static const char* FONT_FILES_FILTER        = "Font Files\0*.ttf;*.otf\0\0";
+    static const char* AUDIO_FILES_FILTER       = "Audio Files\0*.wav;*.mp3\0\0";
+    static const char* VIDEO_FILES_FILTER       = "Video Files\0*.mp4;*.mkv;*.avi\0\0";
+
+    std::filesystem::path DialogBoxes::OpenFileDialog(NativeWindow window, const std::string& caption, FileType fileType, const std::filesystem::path& defaultPath)
     {
         #ifdef MOTION_PLATFORM_WINDOWS
 
@@ -29,9 +39,18 @@ namespace Motion::Core
         ofn.lpstrFile = szFile;
         ofn.nMaxFile = sizeof(szFile);
 
-        // Filter must be properly formatted with '\0'
-        std::string formattedFilter = filter; // Ensure it's "Text Files\0*.txt\0All Files\0*.*\0\0"
-        ofn.lpstrFilter = formattedFilter.c_str();
+        switch(fileType)
+        {
+            case FileType::AllFiles: ofn.lpstrFilter = ALL_FILES_FILTER; break;
+            case FileType::TextFile: ofn.lpstrFilter = TEXT_FILES_FILTER; break;
+            case FileType::TextureFile: ofn.lpstrFilter = TEXTURE_FILES_FILTER; break;
+            case FileType::ModelFile: ofn.lpstrFilter = MODEL_FILES_FILTER; break;
+            case FileType::ShaderFile: ofn.lpstrFilter = SHADER_FILES_FILTER; break;
+            case FileType::FontFile: ofn.lpstrFilter = FONT_FILES_FILTER; break;
+            case FileType::AudioFile: ofn.lpstrFilter = AUDIO_FILES_FILTER; break;
+            case FileType::VideoFile: ofn.lpstrFilter = VIDEO_FILES_FILTER; break;
+            case FileType::ImageFile: ofn.lpstrFilter = IMAGE_FILES_FILTER; break;
+        };
 
         ofn.nFilterIndex = 1;
         ofn.lpstrFileTitle = nullptr;
@@ -57,7 +76,7 @@ namespace Motion::Core
         #endif
     }
 
-    std::filesystem::path DialogBoxes::SaveFileDialog(NativeWindow window, const std::string& caption, const std::string& filter, const std::filesystem::path& defaultPath)
+    std::filesystem::path DialogBoxes::SaveFileDialog(NativeWindow window, const std::string& caption, FileType fileType, const std::filesystem::path& defaultPath)
     {
         #ifdef MOTION_PLATFORM_WINDOWS
 
@@ -70,10 +89,18 @@ namespace Motion::Core
         ofn.lpstrFile = szFile;
         ofn.nMaxFile = sizeof(szFile);
 
-        // IMPORTANT: The filter string must be double-null terminated
-        std::string formattedFilter = filter; // Must be like: "Text Files\0*.txt\0All Files\0*.*\0\0"
-        ofn.lpstrFilter = formattedFilter.c_str();
-        ofn.nFilterIndex = 1;
+        switch(fileType)
+        {
+            case FileType::AllFiles: ofn.lpstrFilter = ALL_FILES_FILTER; break;
+            case FileType::TextFile: ofn.lpstrFilter = TEXT_FILES_FILTER; break;
+            case FileType::TextureFile: ofn.lpstrFilter = TEXTURE_FILES_FILTER; break;
+            case FileType::ModelFile: ofn.lpstrFilter = MODEL_FILES_FILTER; break;
+            case FileType::ShaderFile: ofn.lpstrFilter = SHADER_FILES_FILTER; break;
+            case FileType::FontFile: ofn.lpstrFilter = FONT_FILES_FILTER; break;
+            case FileType::AudioFile: ofn.lpstrFilter = AUDIO_FILES_FILTER; break;
+            case FileType::VideoFile: ofn.lpstrFilter = VIDEO_FILES_FILTER; break;
+            case FileType::ImageFile: ofn.lpstrFilter = IMAGE_FILES_FILTER; break;
+        };
 
         ofn.lpstrFileTitle = nullptr;
         ofn.nMaxFileTitle = 0;

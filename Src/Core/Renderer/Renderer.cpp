@@ -160,52 +160,53 @@ namespace Motion::Core
 
         for(const auto& draw : s_RenderQueue)
         {
-            if(draw.RendererCallback != nullptr && 
-                draw.CallbackOrder == RendererCallbackOrder::FromBeginning)
-                draw.RendererCallback();
+            draw.InvokeCallback(RendererCallbackOrder::FromBeginning);
 
             if(currentShader != draw.Shader)
             {
                 currentShader = draw.Shader;
-                if(currentShader != nullptr)
+                if(currentShader)
+                {
                     currentShader->Bind();
+                    draw.InvokeCallback(RendererCallbackOrder::AfterShaderBinding);
 
-                if(draw.RendererCallback != nullptr && 
-                    draw.CallbackOrder == RendererCallbackOrder::AfterShaderBinding)
-                    draw.RendererCallback();
+                    if(currentMaterial != draw.MeshMaterial)
+                    {
+                        currentMaterial = draw.MeshMaterial;
+                        if(currentMaterial) 
+                        {
+                            currentMaterial->Bind(currentShader); 
+                            draw.InvokeCallback(RendererCallbackOrder::AfterMaterialBinding);
+                        }
+                    }
+
+                    if(currentMesh != draw.SubMesh)
+                    {
+                        currentMesh = draw.SubMesh;
+                        if(currentMesh) 
+                        {
+                            currentMesh->Bind();
+                            draw.InvokeCallback(RendererCallbackOrder::AfterMeshBinding);
+                        }
+                    }
+
+                    if(currentShader)
+                    {
+                        currentShader->SetUniform(UniformCache::ModelUniforms::CameraMatrix, draw.CameraMatrix);
+                        currentShader->SetUniform(UniformCache::ModelUniforms::ModelMatrix, draw.ModelTransform);
+                        DrawIndexed(draw.SubMesh->GetIndicesCount());
+                        draw.InvokeCallback(RendererCallbackOrder::AfterDrawCall);
+                    }
+
+                    ++s_DrawCalls;
+                }
+                else
+                {
+                    MOTION_CORE_WARN("Can not run draw call without shader!, RENDER CALL: {}", s_DrawCalls);
+                    continue;
+                }
             }
 
-            if(currentMaterial != draw.MeshMaterial)
-            {
-                currentMaterial = draw.MeshMaterial;
-                if(currentMaterial != nullptr)
-                    currentMaterial->Bind(currentShader); 
-
-                if(draw.RendererCallback != nullptr && 
-                    draw.CallbackOrder == RendererCallbackOrder::AfterMaterialBinding)
-                    draw.RendererCallback();
-            }
-
-            if(currentMesh != draw.SubMesh)
-            {
-                currentMesh = draw.SubMesh;
-                if(currentMesh != nullptr)
-                    currentMesh->Bind();
-
-                if(draw.RendererCallback != nullptr && 
-                    draw.CallbackOrder == RendererCallbackOrder::AfterMeshBinding)
-                    draw.RendererCallback();
-            }
-
-            currentShader->SetUniform(UniformCache::ModelUniforms::CameraMatrix, draw.CameraMatrix);
-            currentShader->SetUniform(UniformCache::ModelUniforms::ModelMatrix, draw.ModelTransform);
-            DrawIndexed(draw.SubMesh->GetIndicesCount());
-
-            if(draw.RendererCallback != nullptr && 
-                draw.CallbackOrder == RendererCallbackOrder::AfterDrawCall)
-                draw.RendererCallback();
-
-            s_DrawCalls++;
         }
 
         currentMaterial = nullptr;

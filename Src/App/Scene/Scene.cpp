@@ -60,14 +60,11 @@ namespace Motion::App
 		{
 			if( ImGui::MenuItem("Import Model") )
 			{
-                std::weak_ptr<Motion::Core::IWindow> window = Motion::Core::WindowManager::Get(handle);
+                std::weak_ptr<Motion::Core::IWindow> window = Motion::Core::WindowManager::GetWindow(handle);
                 if( !window.expired() )
                 {
                     auto windowPtr = window.lock();
-                    std::filesystem::path filePath = Motion::Core::DialogBoxes::OpenFileDialog(
-                        windowPtr->GetNativeWindow(), "Import Model",
-                        "Model Files (*.fbx;*.obj;*.gltf;*.glb)\0*.fbx;*.obj;*.gltf;*.glb\0All Files (*.*)\0*.*\0");
-
+                    std::filesystem::path filePath = Motion::Core::DialogBoxes::OpenFileDialog(windowPtr->GetNativeWindow(), "Import Model", Motion::Core::DialogBoxes::FileType::ModelFile);
                     if( !filePath.empty() )
                     {
                         std::shared_ptr<Motion::Core::Model> model = Motion::Core::AssetManager::LoadModel(filePath.filename().string(), filePath);

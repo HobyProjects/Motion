@@ -4,7 +4,7 @@ namespace Motion::Core
 {
     KeyState GLFW3_InputsHandler::KeyState(WindowHandle whnd, KeyCode key)
     {
-        std::weak_ptr<IWindow> window = WindowManager::Get(whnd);
+        std::weak_ptr<IWindow> window = WindowManager::GetWindow(whnd);
         if(!window.expired())
         {
             auto windowPtr = window.lock();
@@ -26,7 +26,7 @@ namespace Motion::Core
 
     MouseButtonState GLFW3_InputsHandler::MouseButtonState(WindowHandle whnd, MouseButton button)
     {
-        std::weak_ptr<IWindow> window = WindowManager::Get(whnd);
+        std::weak_ptr<IWindow> window = WindowManager::GetWindow(whnd);
         if(!window.expired())
         {
             auto windowPtr = window.lock();
@@ -46,7 +46,7 @@ namespace Motion::Core
 
     glm::vec2 GLFW3_InputsHandler::CurrentMousePosition(WindowHandle whnd)
     {
-        std::weak_ptr<IWindow> window = WindowManager::Get(whnd);
+        std::weak_ptr<IWindow> window = WindowManager::GetWindow(whnd);
         if(!window.expired())
         {
             auto windowPtr = window.lock();

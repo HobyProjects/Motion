@@ -144,7 +144,7 @@ namespace Motion::Core
         if(s_AssetRegistry.find(s_AssetNameUUIDMap[name]) != s_AssetRegistry.end())
         {
             MOTION_CORE_WARN("Texture {0} already exists!", name);
-            return std::dynamic_pointer_cast<ITexture>(s_AssetRegistry[s_AssetNameUUIDMap[name]]);
+            return nullptr;
         }
 
         switch(Renderer::GetAPI())

@@ -49,7 +49,7 @@ namespace Motion::App
     void ImGuiLayer::End()
     {
         ImGuiIO& io = ImGui::GetIO();
-        std::weak_ptr<Motion::Core::IWindow> window = Motion::Core::WindowManager::Get(m_WindowHandle);
+        std::weak_ptr<Motion::Core::IWindow> window = Motion::Core::WindowManager::GetWindow(m_WindowHandle);
         if(!window.expired())
         {
             auto windowPtr = window.lock();

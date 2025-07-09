@@ -1,47 +1,78 @@
 #pragma once
 
-#include "Renderer.hpp"
-#include "Buffers.hpp"
-#include "Camera3D.hpp"
+#include "Asset.hpp"
 #include "Model.hpp"
 
 namespace Motion::Core
 {
-    class ModelThumbnail
+    class ThumbnailFactory; // Forward declaration
+
+    struct ThumbnailSpecification
     {
-        public:
-            ModelThumbnail() = default;
-            ModelThumbnail(const std::string& name,uint32_t width, uint32_t height, const std::shared_ptr<Model::SubMesh>& model);
-            ~ModelThumbnail() = default;
-
-            uint32_t GetColorAttachment() const;
-
-        private:
-            void CreateThumbnail();
-
-        private:
-            std::shared_ptr<Model::SubMesh> m_Mesh{nullptr};
-            std::shared_ptr<IFrameBuffer> m_FrameBuffer{nullptr};
-            Camera3D m_Camera;
+        uint32_t Width{ 128 };
+        uint32_t Height{ 128 };
+        TextureID Attachment{ 0 };
     };
 
-    class MaterialThumbnail
+    class IThumbnail : public IAsset
     {
         public:
-            MaterialThumbnail() = default;
-            MaterialThumbnail(const std::string& name, uint32_t width, uint32_t height, const std::shared_ptr<Model::SubMeshMaterial>& material);
-            ~MaterialThumbnail() = default;
+            IThumbnail() = default;
+            virtual ~IThumbnail() = default;
 
-            uint32_t GetColorAttachment() const;
+            virtual TextureID GetAttachment() const = 0;
+            virtual ThumbnailSpecification& GetSpecification() = 0;
+    };
+
+    class ModelThumbnail : public AssetBase<IThumbnail>
+    {
+        public:
+            ModelThumbnail(const std::string& name, uint32_t width, uint32_t height, const std::shared_ptr<Model::SubMesh>& model);
+            ~ModelThumbnail() = default;
+
+            virtual TextureID GetAttachment() const override { return m_Specification.Attachment; }
+            virtual ThumbnailSpecification& GetSpecification() override { return m_Specification; }
 
         private:
-            void CreateThumbnail();
+            ThumbnailSpecification m_Specification{};
+            std::shared_ptr<Model> m_Model{nullptr};
+
+            friend class ThumbnailFactory;
+    };
+
+    class TextureThumbnail : public AssetBase<IThumbnail>
+    {
+        public:
+            TextureThumbnail(const std::string& name, uint32_t width, uint32_t height, const std::shared_ptr<Model::SubMeshMaterial>& material);
+            ~TextureThumbnail() = default;
+
+            virtual TextureID GetAttachment() const override { return m_Specification.Attachment; }
+            virtual ThumbnailSpecification& GetSpecification() override { return m_Specification; }
 
         private:
-            std::shared_ptr<Model> m_Mesh{nullptr};
-            std::shared_ptr<Model::SubMeshMaterial> m_Material{nullptr};
-            std::shared_ptr<IFrameBuffer> m_FrameBuffer{nullptr};
-            Camera3D m_Camera;
+            ThumbnailSpecification m_Specification;
+            std::shared_ptr<ITexture> m_Texture{nullptr};
+            std::shared_ptr<Mesh> m_Mesh{nullptr};
+
+            friend class ThumbnailFactory;
+    };
+
+    class ThumbnailFactory
+    {
+        private:
+            ThumbnailFactory();
+            ~ThumbnailFactory() = default;
+
+            ThumbnailFactory(const ThumbnailFactory&) = delete;
+            ThumbnailFactory& operator=(const ThumbnailFactory&) = delete;
+            ThumbnailFactory(ThumbnailFactory&&) = delete;
+            ThumbnailFactory& operator=(ThumbnailFactory&&) = delete;
+
+        public:
+            static std::shared_ptr<IThumbnail> CreateThumbnail(const std::string& name, const std::shared_ptr<Model>& model, uint32_t width = 128, uint32_t height = 128);
+            static std::shared_ptr<IThumbnail> CreateThumbnail(const std::string& name, const std::shared_ptr<ITexture>& texture, uint32_t width = 128, uint32_t height = 128);
+            static void UpdateThumbnail(const std::shared_ptr<ModelThumbnail>& thumbnail, uint32_t width = 128, uint32_t height = 128);
+            static void UpdateThumbnail(const std::shared_ptr<TextureThumbnail>& thumbnail, uint32_t width = 128, uint32_t height = 128);
     };
 
     class ThumbnailCache 
@@ -57,7 +88,7 @@ namespace Motion::Core
         private:
             struct ThumbnailEntry {
                 std::unique_ptr<ModelThumbnail> MeshThumb;
-                std::unique_ptr<MaterialThumbnail> MaterialThumb;
+                std::unique_ptr<TextureThumbnail> MaterialThumb;
             };
 
             std::unordered_map<UUID, ThumbnailEntry> m_Cache;

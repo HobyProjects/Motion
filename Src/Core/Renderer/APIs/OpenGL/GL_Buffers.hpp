@@ -120,13 +120,13 @@ namespace Motion::Core
 
         private:
             BufferID m_FrameBufferID{ 0 };
-            BufferID m_ColorAttachment{ 0 };
-            BufferID m_DepthAttachment{ 0 };
+            TextureID m_ColorAttachment{ 0 };
+            TextureID m_DepthAttachment{ 0 };
 
             // For MSAA resolve
             BufferID m_ResolvedFBOID{ 0 };
-            BufferID m_ResolvedColorAttachment{ 0 };
-            BufferID m_ResolvedDepthAttachment{ 0 };
+            TextureID m_ResolvedColorAttachment{ 0 };
+            TextureID m_ResolvedDepthAttachment{ 0 };
 
             FrameBufferSpecification m_Specification{};
             std::shared_ptr<Mesh> m_PostProcessingQuad{ nullptr };

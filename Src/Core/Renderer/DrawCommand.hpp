@@ -37,46 +37,58 @@ namespace Motion::Core
 
     struct DrawCommand
     {
-        std::shared_ptr<IShader> Shader{nullptr};
-        std::shared_ptr<Mesh> SubMesh{nullptr};
-        std::shared_ptr<Material> MeshMaterial{nullptr};
-        glm::mat4 ModelTransform{1.0f};
-        glm::mat4 CameraMatrix{1.0f};
-        RenderPass RendererPasses{RenderPass::Opaque};
+        std::array<std::vector<RendererCallbackFunction>, MAX_CALLBACKS> CallbackSlots;
+        std::unordered_map<std::string, UniformVariant> CustomUniforms{};
+        std::shared_ptr<Material> MaterialRef{nullptr};
+        std::shared_ptr<IShader> ShaderRef{nullptr};
+        std::shared_ptr<Mesh> MeshRef{nullptr};
+        glm::mat4 ModelMatrix{1.0f};
+        glm::mat4 ViewProjMatrix{1.0f};
+        RenderPass RenderPassMask{RenderPass::Opaque};
 
-        // Efficient, grouped callback storage
-        std::array<std::vector<RendererCallbackFunction>, MAX_CALLBACKS> CallbackTable;
+        void SetUniform(const std::string& name, float value) { CustomUniforms[name] = value; }
+        void SetUniform(const std::string& name, int32_t value) { CustomUniforms[name] = value; }
+        void SetUniform(const std::string& name, uint32_t value) { CustomUniforms[name] = value; }
+        void SetUniform(const std::string& name, glm::vec2 value) { CustomUniforms[name] = value; }
+        void SetUniform(const std::string& name, glm::vec3 value) { CustomUniforms[name] = value; }
+        void SetUniform(const std::string& name, glm::vec4 value) { CustomUniforms[name] = value; }
+        void SetUniform(const std::string& name, glm::mat2 value) { CustomUniforms[name] = value; }
+        void SetUniform(const std::string& name, glm::mat3 value) { CustomUniforms[name] = value; }
+        void SetUniform(const std::string& name, glm::mat4 value) { CustomUniforms[name] = value; }
 
         void InvokeCallback(RendererCallbackOrder order) const
         {
-            if (CallbackTable[static_cast<size_t>(order)].empty())
+            if (CallbackSlots[static_cast<size_t>(order)].empty())
                 return;
 
-            const auto& callbacks = CallbackTable[static_cast<size_t>(order)];
+            const auto& callbacks = CallbackSlots[static_cast<size_t>(order)];
             for (const auto& fn : callbacks)
                 fn();
         }
 
         void AddCallback(RendererCallbackOrder order, RendererCallbackFunction fn)
         {
-            if (CallbackTable[static_cast<size_t>(order)].size() >= MAX_CALLBACKS)
+            if (CallbackSlots[static_cast<size_t>(order)].size() >= MAX_CALLBACKS)
             {
                 MOTION_ASSERT(false, "Max number of callbacks reached!");
                 return;
             }
             
-            CallbackTable[static_cast<size_t>(order)].emplace_back(std::move(fn));
+            CallbackSlots[static_cast<size_t>(order)].emplace_back(std::move(fn));
         }
 
         bool operator<(const DrawCommand& other) const
         {
-            return std::tie(Shader, SubMesh, MeshMaterial, RendererPasses) <
-                   std::tie(other.Shader, other.SubMesh, other.MeshMaterial, other.RendererPasses);
+            return std::tie(ShaderRef, MeshRef, MaterialRef, RenderPassMask) <
+                   std::tie(other.ShaderRef, other.MeshRef, other.MaterialRef, other.RenderPassMask);
         }
 
         bool HasCallback(RendererCallbackOrder order) const
         {
-            return !CallbackTable[static_cast<size_t>(order)].empty();
+            return !CallbackSlots[static_cast<size_t>(order)].empty();
         }
+
+        DrawCommand() = default;
+        ~DrawCommand() = default;
     };
 }

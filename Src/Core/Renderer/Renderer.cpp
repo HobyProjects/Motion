@@ -136,7 +136,7 @@ namespace Motion::Core
 
     void Renderer::Submit(const DrawCommand& drawCommand) 
     {
-        s_RenderQueue.push_back(drawCommand);
+        s_RenderQueue.push_back(std::move(drawCommand));
     }
 
     void Renderer::BeginFrame()
@@ -162,17 +162,23 @@ namespace Motion::Core
         {
             draw.InvokeCallback(RendererCallbackOrder::FromBeginning);
 
-            if(currentShader != draw.Shader)
+            if(currentShader != draw.ShaderRef)
             {
-                currentShader = draw.Shader;
+                currentShader = draw.ShaderRef;
                 if(currentShader)
                 {
                     currentShader->Bind();
                     draw.InvokeCallback(RendererCallbackOrder::AfterShaderBinding);
 
-                    if(currentMaterial != draw.MeshMaterial)
+                    if(!draw.CustomUniforms.empty())
                     {
-                        currentMaterial = draw.MeshMaterial;
+                        for(const auto& [name, value] : draw.CustomUniforms)
+                            std::visit([&](auto&& uniform) { currentShader->SetUniform(name, uniform); }, value);
+                    }
+
+                    if(currentMaterial != draw.MaterialRef)
+                    {
+                        currentMaterial = draw.MaterialRef;
                         if(currentMaterial) 
                         {
                             currentMaterial->Bind(currentShader); 
@@ -180,9 +186,9 @@ namespace Motion::Core
                         }
                     }
 
-                    if(currentMesh != draw.SubMesh)
+                    if(currentMesh != draw.MeshRef)
                     {
-                        currentMesh = draw.SubMesh;
+                        currentMesh = draw.MeshRef;
                         if(currentMesh) 
                         {
                             currentMesh->Bind();
@@ -192,9 +198,9 @@ namespace Motion::Core
 
                     if(currentShader)
                     {
-                        currentShader->SetUniform(UniformCache::ModelUniforms::CameraMatrix, draw.CameraMatrix);
-                        currentShader->SetUniform(UniformCache::ModelUniforms::ModelMatrix, draw.ModelTransform);
-                        DrawIndexed(draw.SubMesh->GetIndicesCount());
+                        currentShader->SetUniform(UniformCache::ModelUniforms::ViewProjMatrix, draw.ViewProjMatrix);
+                        currentShader->SetUniform(UniformCache::ModelUniforms::ModelMatrix, draw.ModelMatrix);
+                        DrawIndexed(draw.MeshRef->GetIndicesCount());
                         draw.InvokeCallback(RendererCallbackOrder::AfterDrawCall);
                     }
 

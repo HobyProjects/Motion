@@ -4,6 +4,7 @@
 #include <string>
 #include <unordered_map>
 #include <glm/glm.hpp>
+#include <variant>
 
 #include "Asset.hpp"
 #include "UUID.hpp"
@@ -13,6 +14,7 @@ namespace Motion::Core
     using ShaderID          = uint32_t;
     using ShaderProgramID   = uint32_t;
     using UniformLocation   = uint32_t;
+    using UniformVariant    = std::variant<float, int32_t, uint32_t, glm::vec2, glm::vec3, glm::vec4, glm::mat2, glm::mat3, glm::mat4>;
 
     enum class ShaderType : uint32_t
     {
@@ -36,7 +38,15 @@ namespace Motion::Core
         struct ModelUniforms
         {
             static constexpr const char* ModelMatrix = "u_ModelMatrix";
-            static constexpr const char* CameraMatrix = "u_CameraMatrix";
+            static constexpr const char* ViewProjMatrix = "u_CameraMatrix";
+        };
+
+        //Light
+        struct LightUniforms
+        {
+            static constexpr const char* LightPosition = "u_LightPosition";
+            static constexpr const char* LightColor = "u_LightColor";
+            static constexpr const char* LightIntensity = "u_LightIntensity";
         };
 
         // Surface Colors

@@ -26,7 +26,7 @@ namespace Motion::App
         private:
             std::shared_ptr<Motion::Core::IFrameBuffer> m_Framebuffer{ nullptr };
             std::shared_ptr<Motion::App::Scene> m_Scene{ nullptr };
-            Viewport m_Viewport{};
+            SceneViewport m_Viewport{};
 
             float m_ViewportWidth{ 1280.0f }, m_ViewportHeight{ 720.0f };
     };

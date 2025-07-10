@@ -52,6 +52,7 @@ namespace Motion::App
         
         m_Scene->OnUpdate(handle, deltaTime);
 
+        Motion::Core::Renderer::Flush();
         m_Framebuffer->Unbind();
     }
 
@@ -80,14 +81,9 @@ namespace Motion::App
             }
 
             if( m_Framebuffer->IsMSAA() )
-            {
                 ImGui::Image((ImTextureID) m_Framebuffer->GetResolvedColorAttachment(), viewportPanelSize, { 0, 1 }, { 1, 0 });
-            }
             else
-            {
                 ImGui::Image((ImTextureID) m_Framebuffer->GetColorAttachment(), viewportPanelSize, { 0, 1 }, { 1, 0 });
-            }
-
         }
         ImGui::End();
         ImGui::PopStyleVar();

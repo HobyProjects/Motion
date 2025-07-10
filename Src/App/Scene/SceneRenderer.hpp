@@ -2,11 +2,15 @@
 
 #include <glm/glm.hpp>
 
+#include "Entity.hpp"
 #include "MainCamera.hpp"
 #include "Model.hpp"
+#include "SceneEnviroment.hpp"
 
 namespace Motion::App
 {
+    class Scene; // forward declaration
+
     class SceneRenderer
     {
         private:
@@ -19,7 +23,7 @@ namespace Motion::App
             SceneRenderer& operator=(SceneRenderer&&) = delete;
 
         public:
-            static void BeginScene(const glm::mat4& cameraMatrix);
+            static void BeginScene(Scene* currentScene, const glm::mat4& cameraMatrix);
             static void SubmitModel(const std::shared_ptr<Motion::Core::Model>& model, const glm::mat4& transform);
             static void EndScene();
             static void Flush();

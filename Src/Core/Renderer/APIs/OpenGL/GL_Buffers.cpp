@@ -240,12 +240,12 @@ namespace Motion::Core
     void GL_FrameBuffer::Render()
     {
         DrawCommand drawCommand;
-        drawCommand.Shader = ShaderManager::GetShader("PostProcessing");
-        drawCommand.SubMesh = m_PostProcessingQuad;
-        drawCommand.MeshMaterial = nullptr;
-        drawCommand.RendererPasses = RenderPass::PostProcessing;
-        drawCommand.ModelTransform = glm::mat4(1.0f);
-        drawCommand.CameraMatrix = glm::mat4(1.0f);
+        drawCommand.ShaderRef = ShaderManager::GetShader("PostProcessing");
+        drawCommand.MeshRef = m_PostProcessingQuad;
+        drawCommand.MaterialRef = nullptr;
+        drawCommand.RenderPassMask = RenderPass::PostProcessing;
+        drawCommand.ModelMatrix = glm::mat4(1.0f);
+        drawCommand.ViewProjMatrix = glm::mat4(1.0f);
         drawCommand.AddCallback(RendererCallbackOrder::AfterShaderBinding, [this]() { this->BindAttachment();});
         drawCommand.AddCallback(RendererCallbackOrder::AfterDrawCall, [this]() { this->UnbindAttachment();});
         Renderer::Submit(drawCommand);

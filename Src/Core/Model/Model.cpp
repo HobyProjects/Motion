@@ -21,12 +21,12 @@ namespace Motion::Core
                 case Material::ShadingMethod::Unlit: shader = ShaderManager::GetShader("UnlitShader"); break;
             };
 
-            drawCommand.Shader = shader;
-            drawCommand.SubMesh = subMesh->MeshPtr;
-            drawCommand.MeshMaterial = material;
-            drawCommand.RendererPasses = RenderPass::Opaque;
-            drawCommand.ModelTransform = transform;
-            drawCommand.CameraMatrix = cameraMatrix;
+            drawCommand.ShaderRef = shader;
+            drawCommand.MeshRef = subMesh->MeshPtr;
+            drawCommand.MaterialRef = material;
+            drawCommand.RenderPassMask = RenderPass::Opaque;
+            drawCommand.ModelMatrix = transform;
+            drawCommand.ViewProjMatrix = cameraMatrix;
 
             Renderer::Submit(drawCommand);
         }

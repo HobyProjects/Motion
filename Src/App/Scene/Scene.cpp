@@ -34,9 +34,37 @@ namespace Motion::App
         m_MainCamera->SetAspectRatio(width, height);
     }
 
+    void Scene::StartSimulation()
+    {
+        auto& physicsAttri = m_Enviroment.Physics.GetSettings();
+        physicsAttri.IsEnabled = true;
+        m_Enviroment.StepModeEnabled = false;
+        m_SimulationStarted = true;
+        
+    }
+
+    void Scene::StopSimulation()
+    {
+        auto& physicsAttri = m_Enviroment.Physics.GetSettings();
+        physicsAttri.IsEnabled = false;
+        m_Enviroment.StepModeEnabled = false;
+        m_SimulationStarted = false;
+    }
+
+    void Scene::ManualSimulation()
+    {
+        if(m_Enviroment.SimMode == SimulationMode::ManualStep)
+        {
+            auto& physicsAttri = m_Enviroment.Physics.GetSettings();
+            physicsAttri.IsEnabled = true;
+            m_Enviroment.StepModeEnabled = true;
+            m_SimulationStarted = true;
+        }
+    }
+
     void Scene::RenderScene(Motion::Core::WindowHandle handle)
     {
-        SceneRenderer::BeginScene(m_MainCamera->GetCameraMatrix());
+        SceneRenderer::BeginScene(this, m_MainCamera->GetCameraMatrix());
 
         for (auto& entity : m_Entities)
         {
@@ -49,7 +77,6 @@ namespace Motion::App
         }
 
         SceneRenderer::EndScene();
-        SceneRenderer::Flush();
     }
 
     void Scene::RenderEntities(Motion::Core::WindowHandle handle)
@@ -58,6 +85,7 @@ namespace Motion::App
 
         if( ImGui::BeginPopupContextWindow(0, ImGuiPopupFlags_MouseButtonRight | ImGuiPopupFlags_NoOpenOverItems) )
 		{
+            if(m_SimulationStarted) ImGui::BeginDisabled();
 			if( ImGui::MenuItem("Import Model") )
 			{
                 std::weak_ptr<Motion::Core::IWindow> window = Motion::Core::WindowManager::GetWindow(handle);
@@ -78,13 +106,14 @@ namespace Motion::App
                         }
                         else
                         {
-                            MOTION_ERROR("Failed to load model from file: {}", filePath.string());
+                            MOTION_ERROR("Failed to load model from file: {0}", filePath.string());
                         }
                     }
                 }
 			}
 
 			ImGui::EndPopup();
+            if(m_SimulationStarted) ImGui::EndDisabled();
 		}
 
 		if( ImGui::IsMouseDown(ImGuiMouseButton_Left) && ImGui::IsWindowHovered() )
@@ -94,6 +123,7 @@ namespace Motion::App
 
         for( uint32_t i = 0; i < m_Entities.size(); i++ )
 		{
+            if(m_SimulationStarted) ImGui::BeginDisabled();
 			std::shared_ptr<Motion::Core::Entity> entity = m_Entities[i];
 			auto& tag = entity->GetComponent<Motion::Core::TagComponent>();
 			ImGuiTreeNodeFlags flags = ( ( m_SelectedEntity == entity ) ? ImGuiTreeNodeFlags_Selected : 0 ) | ImGuiTreeNodeFlags_OpenOnArrow;
@@ -109,6 +139,7 @@ namespace Motion::App
 			{
 				ImGui::TreePop();
 			}
+            if(m_SimulationStarted) ImGui::EndDisabled();
 		}
 
         ImGui::Begin("Properties");
@@ -122,7 +153,7 @@ namespace Motion::App
     }
 
     template<typename T, typename UIFunc>
-    static void DrawComponentControls(const std::string& name, const std::shared_ptr<Motion::Core::Entity>& entity, UIFunc uiFunc)
+    static void DrawComponentControls(const std::string& name, const std::shared_ptr<Motion::Core::Entity>& entity, UIFunc uiFunc, bool enabled = true)
     {
         static const ImGuiTreeNodeFlags treeNodeFlags = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_AllowItemOverlap | ImGuiTreeNodeFlags_FramePadding;
 
@@ -133,8 +164,10 @@ namespace Motion::App
 
             if( open )
             {
+                if(!enabled ) ImGui::BeginDisabled();
                 uiFunc(component);
                 ImGui::TreePop();
+                if(!enabled ) ImGui::EndDisabled();
             }
         }
     }
@@ -164,26 +197,55 @@ namespace Motion::App
 			Motion::Core::UI::CustomControl::DragControllerVec3("Scale", component.Scale, 1.0f);
 
 			ImGui::PopStyleVar();
-		});
+
+		}, !m_SimulationStarted);
 
 
         //[TODO]: Other components can be added here
     }
 
-    void Viewport::Update(const Motion::Core::FrameBufferSpecification & spec)
+    void Scene::UpdatePhysicsComponents(Motion::Core::Timer deltaTime)
+    {
+        if(m_SimulationStarted)
+        {
+            auto& physicsAttri = m_Enviroment.Physics.GetSettings();
+            if(!physicsAttri.IsEnabled)
+                return;
+    
+            switch(m_Enviroment.SimMode)
+            {
+                case SimulationMode::Realtime:
+                {
+                    for(auto& entity : m_Entities)
+                        m_Enviroment.Physics.Update(entity, deltaTime);
+    
+                    break;
+                }
+                case SimulationMode::ManualStep:
+                {
+                    for(auto& entity : m_Entities)
+                        m_Enviroment.Physics.Update(entity, physicsAttri.FixedTimeStep);
+    
+                    break;
+                }
+            }
+        }
+    }
+
+    void SceneViewport::Update(const Motion::Core::FrameBufferSpecification & spec)
     {
         FrameSpec = spec;
         Size = { (float)spec.Width, (float)spec.Height };
     }
 
-    void Viewport::Update(const glm::vec2 & size)
+    void SceneViewport::Update(const glm::vec2 & size)
     {
         Size = size;
         FrameSpec.Width = (uint32_t)size.x;
         FrameSpec.Height = (uint32_t)size.y;
     }
 
-    bool Viewport::SizeHasChanged(float width, float height)
+    bool SceneViewport::SizeHasChanged(float width, float height)
     {
         return Size.x != width || Size.y != height || FrameSpec.Width != width || FrameSpec.Height != height;
     }

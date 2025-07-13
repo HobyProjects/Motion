@@ -18,6 +18,8 @@ namespace Motion::Core
         m_IndicesCount = indicesCount;
     }
 
+
+
     std::shared_ptr<Mesh> Mesh::CreatePlane(float width, float height, uint32_t widthSegments, uint32_t heightSegments)
     {
         std::vector<float> vertices;

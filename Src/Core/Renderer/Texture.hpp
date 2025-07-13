@@ -32,6 +32,9 @@ namespace Motion::Core
         SheenMapsTexture,
         TransmissionMapsTexture,
         UnknownTextureType,
+
+        // Cube Maps
+        CubeMapTexture
     };
 
     inline uint32_t operator|(TextureType a, TextureType b) { return static_cast<uint32_t>(a) | static_cast<uint32_t>(b); }
@@ -65,6 +68,19 @@ namespace Motion::Core
 
             virtual void SetGlobalAnisotropy(uint32_t level) const = 0;
             virtual uint32_t GetGlobalAnisotropy() const  = 0;
+
+        protected:
+            virtual bool LoadTextureFromFile(const std::filesystem::path& textureFile, bool flip) = 0;
+            virtual bool GenerateTexture2D(uint32_t width, uint32_t height) = 0;
+    };
+
+    class ITextureCubeMap : public ITexture
+    {
+        public:
+            ITextureCubeMap() = default;
+            virtual ~ITextureCubeMap() = default;
+
+            virtual void SetFace(uint32_t face, int mipLevel, uint32_t width, uint32_t height, uint32_t format, const void* data) = 0;
     };
 
     class TextureManager

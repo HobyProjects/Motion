@@ -228,7 +228,6 @@ namespace Motion::Core
                     return nullptr;
                 }
 
-                TextureManager::InsertTexture(textureAsset->GetMetaData().AssetUUID, textureAsset);
                 return textureAsset;
             }
             case RenderingAPI::Vulkan:         MOTION_ASSERT(false, "Vulkan is not implemented yet!"); return nullptr; 

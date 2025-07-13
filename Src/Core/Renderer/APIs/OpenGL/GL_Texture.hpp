@@ -8,52 +8,56 @@ namespace Motion::Core
     class GL_Texture final : public AssetBase<ITexture>
     {
         public:
-            GL_Texture(const std::string& name, uint32_t width, uint32_t height);
-            GL_Texture(UUID uuid, const std::string& name, uint32_t width, uint32_t height);
+            GL_Texture(const std::string& name, std::uint32_t width, std::uint32_t height);
+            GL_Texture(UUID uuid, const std::string& name, std::uint32_t width, std::uint32_t height);
+
             GL_Texture(const std::string& name, const std::filesystem::path& textureFile, TextureType type, bool flip = true);
             GL_Texture(UUID uuid, const std::string& name, const std::filesystem::path& textureFile, TextureType type, bool flip = true);
+            
             virtual ~GL_Texture();
 
-            virtual void Bind() const override;
-            virtual void Bind(uint32_t bindingPoint) const override;
-            virtual void Unbind() const override;
+            virtual void Bind() const noexcept override;
+            virtual void Bind(std::uint32_t bindingPoint) const noexcept override;
+            virtual void Unbind() const noexcept override;
 
-            virtual TextureID GetID() const override { return m_Specification.TexID; }
-            virtual TextureSpecification GetSpecification() const override { return m_Specification; }
-            virtual bool IsFromFile() const override { return m_FromFile; }
+            [[nodiscard]] virtual TextureID GetID() const noexcept override;
+            [[nodiscard]] virtual TextureSpecification GetSpecification() const noexcept override;
+            [[nodiscard]] virtual bool IsFromFile() const noexcept override;
 
-            virtual void SetGlobalAnisotropy(uint32_t level) const override;
-            virtual uint32_t GetGlobalAnisotropy() const override { return TextureSpecification::GlobalAnisotropyLevel; }
+            virtual void SetGlobalAnisotropy(std::uint32_t level) const noexcept override;
+            [[nodiscard]] virtual std::uint32_t GetGlobalAnisotropy() const noexcept override;
+
+        protected:
+            [[nodiscard]] virtual bool LoadTextureFromFile(const std::filesystem::path& textureFile, bool flip) override;
+            [[nodiscard]] virtual bool GenerateTexture2D(std::uint32_t width, std::uint32_t height) override;
 
         private:
-            TextureSpecification m_Specification;
+            TextureSpecification m_Specification{};
             bool m_FromFile{ false };
     };
 
-    class GL_TextureCubeMap final : public AssetBase<ITextureCubeMap>
+    class GL_CubeMapTexture final : public AssetBase<ICubeMapTexture>
     {
         public:
-            GL_TextureCubeMap(UUID uuid, const std::string& name, uint32_t width, uint32_t height);
-            GL_TextureCubeMap(const std::string& name, uint32_t width, uint32_t height);
-            GL_TextureCubeMap(UUID uuid, const std::string& name, const std::filesystem::path& textureFile, TextureType type, bool flip = true);
-            GL_TextureCubeMap(const std::string& name, const std::filesystem::path& textureFile, TextureType type, bool flip = true);
-            virtual ~GL_TextureCubeMap();
+            GL_CubeMapTexture(const std::string& name, const std::filesystem::path& textureFile);
+            GL_CubeMapTexture(UUID uuid, const std::string& name, const std::filesystem::path& textureFile);
+            virtual ~GL_CubeMapTexture();
 
-            virtual void Bind() const override;
-            virtual void Bind(uint32_t bindingPoint) const override;
-            virtual void Unbind() const override;
+            virtual void Bind() const noexcept override;
+            virtual void Unbind() const noexcept override;
 
-            virtual TextureID GetID() const override { return m_Specification.TexID; }
-            virtual TextureSpecification GetSpecification() const override { return m_Specification; }
-            virtual bool IsFromFile() const override { return m_FromFile; }
+            [[nodiscard]] virtual TextureID GetID() const noexcept override;
+            [[nodiscard]] virtual TextureSpecification GetSpecification() const noexcept override;
 
-            virtual void SetGlobalAnisotropy(uint32_t level) const override;
-            virtual uint32_t GetGlobalAnisotropy() const override { return TextureSpecification::GlobalAnisotropyLevel; }
+            virtual void SetFace(std::uint32_t face, std::int32_t mipLevel, std::uint32_t width, std::uint32_t height, 
+                std::uint32_t format, const void* data) override;
 
-            virtual void SetFace(uint32_t face, int mipLevel, uint32_t width, uint32_t height, uint32_t format, const void* data) override;
+        protected:
+            [[nodiscard]] virtual bool LoadCubeMapTextureHDR(const std::filesystem::path& textureFile) override;
 
         private:
-            TextureSpecification m_Specification;
-            bool m_FromFile{ false };
+            TextureSpecification m_Specification{};
     };
+
+
 }

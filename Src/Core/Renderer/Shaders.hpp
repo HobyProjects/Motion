@@ -34,6 +34,15 @@ namespace Motion::Core
 
     struct UniformCache
     {
+        struct ShaderVertexAttributes
+        {
+            inline static constexpr std::string_view Position = "a_Position";
+            inline static constexpr std::string_view TexCoords = "a_TexCoords";
+            inline static constexpr std::string_view Normals = "a_Normals";
+            inline static constexpr std::string_view Tangents = "a_Tangents";
+            inline static constexpr std::string_view Bitangents = "a_Bitangents";
+        };
+
         struct ModelUniforms
         {
             inline static constexpr std::string_view ModelMatrix = "u_ModelMatrix";
@@ -127,15 +136,15 @@ namespace Motion::Core
         virtual UniformLocation GetUniformLocation(const std::string& uniformName) const = 0;
         virtual bool InUse() const noexcept = 0;
 
-        virtual void SetUniform(const std::string& uniformName, float value) = 0;
-        virtual void SetUniform(const std::string& uniformName, std::int32_t value) = 0;
-        virtual void SetUniform(const std::string& uniformName, std::uint32_t value) = 0;
-        virtual void SetUniform(const std::string& uniformName, const glm::vec2& value) = 0;
-        virtual void SetUniform(const std::string& uniformName, const glm::vec3& value) = 0;
-        virtual void SetUniform(const std::string& uniformName, const glm::vec4& value) = 0;
-        virtual void SetUniform(const std::string& uniformName, const glm::mat2& value) = 0;
-        virtual void SetUniform(const std::string& uniformName, const glm::mat3& value) = 0;
-        virtual void SetUniform(const std::string& uniformName, const glm::mat4& value) = 0;
+        virtual void SetUniform(const std::string_view& uniformName, float value) = 0;
+        virtual void SetUniform(const std::string_view& uniformName, std::int32_t value) = 0;
+        virtual void SetUniform(const std::string_view& uniformName, std::uint32_t value) = 0;
+        virtual void SetUniform(const std::string_view& uniformName, const glm::vec2& value) = 0;
+        virtual void SetUniform(const std::string_view& uniformName, const glm::vec3& value) = 0;
+        virtual void SetUniform(const std::string_view& uniformName, const glm::vec4& value) = 0;
+        virtual void SetUniform(const std::string_view& uniformName, const glm::mat2& value) = 0;
+        virtual void SetUniform(const std::string_view& uniformName, const glm::mat3& value) = 0;
+        virtual void SetUniform(const std::string_view& uniformName, const glm::mat4& value) = 0;
     };
 
     class ShaderBuilder

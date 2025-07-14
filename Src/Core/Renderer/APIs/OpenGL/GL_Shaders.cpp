@@ -223,9 +223,9 @@ namespace Motion::Core
      * @param uniformName The name of the uniform variable in the shader program.
      * @param value The float value to set for the uniform variable.
      */
-    void GL_Shader::SetUniform(const std::string& uniformName, float value)
+    void GL_Shader::SetUniform(const std::string_view& uniformName, float value)
     {
-        glUniform1f(GetUniformLocation(uniformName), value);
+        glUniform1f(GetUniformLocation(uniformName.data()), value);
     }
 
     /**
@@ -237,9 +237,9 @@ namespace Motion::Core
      * @param uniformName The name of the uniform variable to set.
      * @param value The integer value to assign to the uniform variable.
      */
-    void GL_Shader::SetUniform(const std::string& uniformName, int32_t value)
+    void GL_Shader::SetUniform(const std::string_view& uniformName, int32_t value)
     {
-        glUniform1i(GetUniformLocation(uniformName), value);
+        glUniform1i(GetUniformLocation(uniformName.data()), value);
     }
 
     /**
@@ -251,9 +251,9 @@ namespace Motion::Core
      * @param uniformName The name of the uniform variable to set.
      * @param value The unsigned integer value to assign to the uniform variable.
      */
-    void GL_Shader::SetUniform(const std::string& uniformName, uint32_t value)
+    void GL_Shader::SetUniform(const std::string_view& uniformName, uint32_t value)
     {
-        glUniform1ui(GetUniformLocation(uniformName), value);
+        glUniform1ui(GetUniformLocation(uniformName.data()), value);
     }
 
     /**
@@ -265,9 +265,9 @@ namespace Motion::Core
      * @param uniformName The name of the uniform variable in the shader.
      * @param value The glm::vec2 value to set for the uniform variable.
      */
-    void GL_Shader::SetUniform(const std::string& uniformName, const glm::vec2& value)
+    void GL_Shader::SetUniform(const std::string_view& uniformName, const glm::vec2& value)
     {
-        glUniform2fv(GetUniformLocation(uniformName), 1, glm::value_ptr(value));
+        glUniform2fv(GetUniformLocation(uniformName.data()), 1, glm::value_ptr(value));
     }
 
     /**
@@ -279,9 +279,9 @@ namespace Motion::Core
      * @param uniformName The name of the uniform variable in the shader.
      * @param value The glm::vec3 value to set for the uniform.
      */
-    void GL_Shader::SetUniform(const std::string& uniformName, const glm::vec3& value)
+    void GL_Shader::SetUniform(const std::string_view& uniformName, const glm::vec3& value)
     {
-        glUniform3fv(GetUniformLocation(uniformName), 1, glm::value_ptr(value));
+        glUniform3fv(GetUniformLocation(uniformName.data()), 1, glm::value_ptr(value));
     }
 
     /**
@@ -293,9 +293,9 @@ namespace Motion::Core
      * @param uniformName The name of the uniform variable in the shader.
      * @param value The glm::vec4 value to set for the uniform.
      */
-    void GL_Shader::SetUniform(const std::string& uniformName, const glm::vec4& value)
+    void GL_Shader::SetUniform(const std::string_view& uniformName, const glm::vec4& value)
     {
-        glUniform4fv(GetUniformLocation(uniformName), 1, glm::value_ptr(value));
+        glUniform4fv(GetUniformLocation(uniformName.data()), 1, glm::value_ptr(value));
     }
 
     /**
@@ -306,9 +306,9 @@ namespace Motion::Core
      * @param uniformName The name of the uniform variable in the shader.
      * @param value The 2x2 matrix value to set for the uniform.
      */
-    void GL_Shader::SetUniform(const std::string& uniformName, const glm::mat2& value)
+    void GL_Shader::SetUniform(const std::string_view& uniformName, const glm::mat2& value)
     {
-        glUniformMatrix2fv(GetUniformLocation(uniformName), 1, GL_FALSE, glm::value_ptr(value));
+        glUniformMatrix2fv(GetUniformLocation(uniformName.data()), 1, GL_FALSE, glm::value_ptr(value));
     }
 
     /**
@@ -320,9 +320,9 @@ namespace Motion::Core
      * @param uniformName The name of the uniform variable in the shader.
      * @param value The glm::mat3 value to set for the uniform.
      */
-    void GL_Shader::SetUniform(const std::string& uniformName, const glm::mat3& value)
+    void GL_Shader::SetUniform(const std::string_view& uniformName, const glm::mat3& value)
     {
-        glUniformMatrix3fv(GetUniformLocation(uniformName), 1, GL_FALSE, glm::value_ptr(value));
+        glUniformMatrix3fv(GetUniformLocation(uniformName.data()), 1, GL_FALSE, glm::value_ptr(value));
     }
 
     /**
@@ -334,9 +334,9 @@ namespace Motion::Core
      * @param uniformName The name of the uniform variable in the shader.
      * @param value The 4x4 matrix (glm::mat4) to set for the uniform.
      */
-    void GL_Shader::SetUniform(const std::string& uniformName, const glm::mat4& value)
+    void GL_Shader::SetUniform(const std::string_view& uniformName, const glm::mat4& value)
     {
-        glUniformMatrix4fv(GetUniformLocation(uniformName), 1, GL_FALSE, glm::value_ptr(value));
+        glUniformMatrix4fv(GetUniformLocation(uniformName.data()), 1, GL_FALSE, glm::value_ptr(value));
     }
 
     /**

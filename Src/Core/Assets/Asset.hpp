@@ -11,6 +11,7 @@ namespace Motion::Core
         Texture,
         Material,
         Model,
+        Mesh,
     };
 
     struct AssetMetaData

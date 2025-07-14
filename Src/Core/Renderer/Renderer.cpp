@@ -2,15 +2,15 @@
 
 namespace Motion::Core
 {
-    #ifdef MOTION_PLATFORM_WINDOWS
-        // This should be DirectX but for now we are using OpenGL
-        static RenderingAPI s_RenderingAPI = RenderingAPI::OpenGL;
-    #elif defined(MOTION_PLATFORM_LINUX)
-        // This should be Vulkan but for now we are using OpenGL
-        static RenderingAPI s_RenderingAPI = RenderingAPI::OpenGL;
-    #else
-        #error "Unknown platform!"
-    #endif
+#ifdef MOTION_PLATFORM_WINDOWS
+    // This should be DirectX but for now we are using OpenGL
+    static RenderingAPI s_RenderingAPI = RenderingAPI::OpenGL;
+#elif defined(MOTION_PLATFORM_LINUX)
+    // This should be Vulkan but for now we are using OpenGL
+    static RenderingAPI s_RenderingAPI = RenderingAPI::OpenGL;
+#else
+#error "Unknown platform!"
+#endif
 
     static std::vector<DrawCommand> s_RenderQueue;
     static uint32_t s_DrawCalls = 0;
@@ -19,18 +19,18 @@ namespace Motion::Core
     {
         switch (s_RenderingAPI)
         {
-            case RenderingAPI::OpenGL:
-                GL_Renderer::Init();
-                break;
-            case RenderingAPI::Vulkan:
-                MOTION_ASSERT(false, "Vulkan is not implemented yet!");
-                break;
-            case RenderingAPI::DirectX:
-                MOTION_ASSERT(false, "DirectX is not implemented yet!");
-                break;
-            default:
-                MOTION_ASSERT(false, "Unknown rendering API!");
-                break;
+        case RenderingAPI::OpenGL:
+            GL_Renderer::Init();
+            break;
+        case RenderingAPI::Vulkan:
+            MOTION_ASSERT(false, "Vulkan is not implemented yet!");
+            break;
+        case RenderingAPI::DirectX:
+            MOTION_ASSERT(false, "DirectX is not implemented yet!");
+            break;
+        default:
+            MOTION_ASSERT(false, "Unknown rendering API!");
+            break;
         }
     }
 
@@ -38,18 +38,18 @@ namespace Motion::Core
     {
         switch (s_RenderingAPI)
         {
-            case RenderingAPI::OpenGL:
-                GL_Renderer::Quit();
-                break;
-            case RenderingAPI::Vulkan:
-                MOTION_ASSERT(false, "Vulkan is not implemented yet!");
-                break;
-            case RenderingAPI::DirectX:
-                MOTION_ASSERT(false, "DirectX is not implemented yet!");
-                break;
-            default:
-                MOTION_ASSERT(false, "Unknown rendering API!");
-                break;
+        case RenderingAPI::OpenGL:
+            GL_Renderer::Quit();
+            break;
+        case RenderingAPI::Vulkan:
+            MOTION_ASSERT(false, "Vulkan is not implemented yet!");
+            break;
+        case RenderingAPI::DirectX:
+            MOTION_ASSERT(false, "DirectX is not implemented yet!");
+            break;
+        default:
+            MOTION_ASSERT(false, "Unknown rendering API!");
+            break;
         }
     }
 
@@ -62,18 +62,18 @@ namespace Motion::Core
     {
         switch (s_RenderingAPI)
         {
-            case RenderingAPI::OpenGL:
-                GL_Renderer::Clear();
-                break;
-            case RenderingAPI::Vulkan:
-                MOTION_ASSERT(false, "Vulkan is not implemented yet!");
-                break;
-            case RenderingAPI::DirectX:
-                MOTION_ASSERT(false, "DirectX is not implemented yet!");
-                break;
-            default:
-                MOTION_ASSERT(false, "Unknown rendering API!");
-                break;
+        case RenderingAPI::OpenGL:
+            GL_Renderer::Clear();
+            break;
+        case RenderingAPI::Vulkan:
+            MOTION_ASSERT(false, "Vulkan is not implemented yet!");
+            break;
+        case RenderingAPI::DirectX:
+            MOTION_ASSERT(false, "DirectX is not implemented yet!");
+            break;
+        default:
+            MOTION_ASSERT(false, "Unknown rendering API!");
+            break;
         }
     }
 
@@ -81,18 +81,18 @@ namespace Motion::Core
     {
         switch (s_RenderingAPI)
         {
-            case RenderingAPI::OpenGL:
-                GL_Renderer::ClearColor(color);
-                break;
-            case RenderingAPI::Vulkan:
-                MOTION_ASSERT(false, "Vulkan is not implemented yet!");
-                break;
-            case RenderingAPI::DirectX:
-                MOTION_ASSERT(false, "DirectX is not implemented yet!");
-                break;
-            default:
-                MOTION_ASSERT(false, "Unknown rendering API!");
-                break;
+        case RenderingAPI::OpenGL:
+            GL_Renderer::ClearColor(color);
+            break;
+        case RenderingAPI::Vulkan:
+            MOTION_ASSERT(false, "Vulkan is not implemented yet!");
+            break;
+        case RenderingAPI::DirectX:
+            MOTION_ASSERT(false, "DirectX is not implemented yet!");
+            break;
+        default:
+            MOTION_ASSERT(false, "Unknown rendering API!");
+            break;
         }
     }
 
@@ -100,18 +100,18 @@ namespace Motion::Core
     {
         switch (s_RenderingAPI)
         {
-            case RenderingAPI::OpenGL:
-                GL_Renderer::SetViewport(x, y, width, height);
-                break;
-            case RenderingAPI::Vulkan:
-                MOTION_ASSERT(false, "Vulkan is not implemented yet!");
-                break;
-            case RenderingAPI::DirectX:
-                MOTION_ASSERT(false, "DirectX is not implemented yet!");
-                break;
-            default:
-                MOTION_ASSERT(false, "Unknown rendering API!");
-                break;
+        case RenderingAPI::OpenGL:
+            GL_Renderer::SetViewport(x, y, width, height);
+            break;
+        case RenderingAPI::Vulkan:
+            MOTION_ASSERT(false, "Vulkan is not implemented yet!");
+            break;
+        case RenderingAPI::DirectX:
+            MOTION_ASSERT(false, "DirectX is not implemented yet!");
+            break;
+        default:
+            MOTION_ASSERT(false, "Unknown rendering API!");
+            break;
         }
     }
 
@@ -119,22 +119,22 @@ namespace Motion::Core
     {
         switch (s_RenderingAPI)
         {
-            case RenderingAPI::OpenGL:
-                GL_Renderer::DrawIndexed(indicesCount);
-                break;
-            case RenderingAPI::Vulkan:
-                MOTION_ASSERT(false, "Vulkan is not implemented yet!");
-                break;
-            case RenderingAPI::DirectX:
-                MOTION_ASSERT(false, "DirectX is not implemented yet!");
-                break;
-            default:
-                MOTION_ASSERT(false, "Unknown rendering API!");
-                break;
+        case RenderingAPI::OpenGL:
+            GL_Renderer::DrawIndexed(indicesCount);
+            break;
+        case RenderingAPI::Vulkan:
+            MOTION_ASSERT(false, "Vulkan is not implemented yet!");
+            break;
+        case RenderingAPI::DirectX:
+            MOTION_ASSERT(false, "DirectX is not implemented yet!");
+            break;
+        default:
+            MOTION_ASSERT(false, "Unknown rendering API!");
+            break;
         }
     }
 
-    void Renderer::Submit(const DrawCommand& drawCommand) 
+    void Renderer::Submit(const DrawCommand& drawCommand)
     {
         s_RenderQueue.push_back(std::move(drawCommand));
     }
@@ -158,45 +158,45 @@ namespace Motion::Core
         std::shared_ptr<Mesh> currentMesh = nullptr;
         std::shared_ptr<Material> currentMaterial = nullptr;
 
-        for(const auto& draw : s_RenderQueue)
+        for (const auto& draw : s_RenderQueue)
         {
             draw.InvokeCallback(RendererCallbackOrder::FromBeginning);
 
-            if(currentShader != draw.ShaderRef)
+            if (currentShader != draw.ShaderRef)
             {
                 currentShader = draw.ShaderRef;
-                if(currentShader)
+                if (currentShader)
                 {
                     currentShader->Bind();
                     draw.InvokeCallback(RendererCallbackOrder::AfterShaderBinding);
 
-                    if(!draw.CustomUniforms.empty())
+                    if (!draw.CustomUniforms.empty())
                     {
-                        for(const auto& [name, value] : draw.CustomUniforms)
+                        for (const auto& [name, value] : draw.CustomUniforms)
                             std::visit([&](auto&& uniform) { currentShader->SetUniform(name, uniform); }, value);
                     }
 
-                    if(currentMaterial != draw.MaterialRef)
+                    if (currentMaterial != draw.MaterialRef)
                     {
                         currentMaterial = draw.MaterialRef;
-                        if(currentMaterial) 
+                        if (currentMaterial)
                         {
-                            currentMaterial->Bind(currentShader); 
+                            currentMaterial->Bind(currentShader);
                             draw.InvokeCallback(RendererCallbackOrder::AfterMaterialBinding);
                         }
                     }
 
-                    if(currentMesh != draw.MeshRef)
+                    if (currentMesh != draw.MeshRef)
                     {
                         currentMesh = draw.MeshRef;
-                        if(currentMesh) 
+                        if (currentMesh)
                         {
                             currentMesh->Bind();
                             draw.InvokeCallback(RendererCallbackOrder::AfterMeshBinding);
                         }
                     }
 
-                    if(currentShader)
+                    if (currentShader)
                     {
                         currentShader->SetUniform(UniformCache::ModelUniforms::ViewProjMatrix, draw.ViewProjMatrix);
                         currentShader->SetUniform(UniformCache::ModelUniforms::ModelMatrix, draw.ModelMatrix);

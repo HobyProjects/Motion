@@ -20,15 +20,15 @@ namespace Motion::Core
         virtual UniformLocation GetUniformLocation(const std::string& uniformName) const override;
         virtual bool InUse() const noexcept override;
 
-        virtual void SetUniform(const std::string& uniformName, float value) override;
-        virtual void SetUniform(const std::string& uniformName, int32_t value) override;
-        virtual void SetUniform(const std::string& uniformName, uint32_t value) override;
-        virtual void SetUniform(const std::string& uniformName, const glm::vec2& value) override;
-        virtual void SetUniform(const std::string& uniformName, const glm::vec3& value) override;
-        virtual void SetUniform(const std::string& uniformName, const glm::vec4& value) override;
-        virtual void SetUniform(const std::string& uniformName, const glm::mat2& value) override;
-        virtual void SetUniform(const std::string& uniformName, const glm::mat3& value) override;
-        virtual void SetUniform(const std::string& uniformName, const glm::mat4& value) override;
+        virtual void SetUniform(const std::string_view& uniformName, float value) override;
+        virtual void SetUniform(const std::string_view& uniformName, int32_t value) override;
+        virtual void SetUniform(const std::string_view& uniformName, uint32_t value) override;
+        virtual void SetUniform(const std::string_view& uniformName, const glm::vec2& value) override;
+        virtual void SetUniform(const std::string_view& uniformName, const glm::vec3& value) override;
+        virtual void SetUniform(const std::string_view& uniformName, const glm::vec4& value) override;
+        virtual void SetUniform(const std::string_view& uniformName, const glm::mat2& value) override;
+        virtual void SetUniform(const std::string_view& uniformName, const glm::mat3& value) override;
+        virtual void SetUniform(const std::string_view& uniformName, const glm::mat4& value) override;
 
     private:
         ShaderProgramID m_ProgramID{ 0 };

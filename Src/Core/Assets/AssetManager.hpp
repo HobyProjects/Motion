@@ -459,6 +459,50 @@ namespace Motion::Core
     };
 
 
+    template<>
+    struct AssetBackendsBuilder<Mesh>
+    {
+        /**
+         * @brief Creates a new Mesh instance and returns a shared pointer to it.
+         *
+         * This function constructs a Mesh object with a unique identifier, the specified name,
+         * vertex and index data, buffer layout, and an optional parent model. The Mesh is managed
+         * by a std::shared_ptr for automatic memory management.
+         *
+         * @param name The name of the mesh.
+         * @param vertices Pointer to the array of vertex data.
+         * @param verticesSize The size (in bytes or elements, as required by Mesh) of the vertex data array.
+         * @param indices Pointer to the array of index data.
+         * @param indicesCount The number of indices in the index data array.
+         * @param layout The buffer layout describing the structure of the vertex data.
+         * @param parentModel Shared pointer to the parent Model, or nullptr if there is no parent.
+         * @return std::shared_ptr<Mesh> A shared pointer to the newly created Mesh instance.
+         */
+        std::shared_ptr<Mesh> Create(const std::string& name, float* vertices, std::uint32_t verticesSize, std::uint32_t* indices, std::uint32_t indicesCount, const BufferLayout& layout, const std::shared_ptr<Model>& parentModel)
+        {
+            return std::make_shared<Mesh>(UniqueIdentity::GetUniqueID(), name, vertices, verticesSize, indices, indicesCount, layout, parentModel);
+        }
+
+        /**
+         * @brief Creates a new Mesh object and returns a shared pointer to it.
+         *
+         * @param uuid Unique identifier for the mesh.
+         * @param name Name of the mesh.
+         * @param vertices Pointer to the array of vertex data.
+         * @param verticesSize Size of the vertex data array (in floats).
+         * @param indices Pointer to the array of index data.
+         * @param indicesCount Number of indices in the index array.
+         * @param layout Buffer layout describing the structure of the vertex data.
+         * @param parentModel Shared pointer to the parent Model object.
+         * @return std::shared_ptr<Mesh> Shared pointer to the newly created Mesh object.
+         */
+        std::shared_ptr<Mesh> Create(const UUID& uuid, const std::string& name, float* vertices, std::uint32_t verticesSize, std::uint32_t* indices, std::uint32_t indicesCount, const BufferLayout& layout, const std::shared_ptr<Model>& parentModel)
+        {
+            return std::make_shared<Mesh>(uuid, name, vertices, verticesSize, indices, indicesCount, layout, parentModel);
+        }
+    };
+
+
     class AssetManager
     {
     public:

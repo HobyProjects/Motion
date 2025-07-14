@@ -12,7 +12,7 @@ namespace Motion::Core
      *
      * @param programID The identifier of the shader program to be deleted.
      */
-    void ShaderFactory::DeleteShaderProgram(ShaderProgramID programID)
+    void ShaderBuilder::DeleteShaderProgram(ShaderProgramID programID)
     {
         switch (Renderer::GetAPI())
         {
@@ -22,6 +22,7 @@ namespace Motion::Core
         default:                           MOTION_ASSERT(false, "Unknown rendering API!"); break;
         };
     }
+
 
     /**
      * @brief Creates a new shader program based on the current rendering API.
@@ -34,7 +35,7 @@ namespace Motion::Core
      *
      * @note Currently, only OpenGL is implemented. Vulkan and DirectX will trigger assertions.
      */
-    ShaderProgramID ShaderFactory::CreateShaderProgram()
+    ShaderProgramID ShaderBuilder::CreateShaderProgram()
     {
         switch (Renderer::GetAPI())
         {
@@ -55,7 +56,7 @@ namespace Motion::Core
      * @param shaderID    The identifier of the shader to attach.
      * @param programID   The identifier of the shader program to which the shader will be attached.
      */
-    void ShaderFactory::AttachShaderProgram(ShaderID shaderID, ShaderProgramID programID)
+    void ShaderBuilder::AttachShaderProgram(ShaderID shaderID, ShaderProgramID programID)
     {
         switch (Renderer::GetAPI())
         {
@@ -77,7 +78,7 @@ namespace Motion::Core
      * @param sourceCode The source code of the shader as a string.
      * @return ShaderID The identifier of the compiled shader, or 0 if compilation failed or the API is not implemented.
      */
-    ShaderID ShaderFactory::CompileShader(ShaderType shaderType, const std::string& sourceCode)
+    ShaderID ShaderBuilder::CompileShader(ShaderType shaderType, const std::string& sourceCode)
     {
         switch (Renderer::GetAPI())
         {
@@ -100,7 +101,7 @@ namespace Motion::Core
      * @note Currently, only the OpenGL backend is implemented. Vulkan and DirectX
      *       backends are not yet supported.
      */
-    void ShaderFactory::LinkShaderProgram(ShaderProgramID programID)
+    void ShaderBuilder::LinkShaderProgram(ShaderProgramID programID)
     {
         switch (Renderer::GetAPI())
         {
@@ -122,7 +123,7 @@ namespace Motion::Core
      *
      * @param programID The identifier of the shader program to validate.
      */
-    void ShaderFactory::ValidateShaderProgram(ShaderProgramID programID)
+    void ShaderBuilder::ValidateShaderProgram(ShaderProgramID programID)
     {
         switch (Renderer::GetAPI())
         {
@@ -134,24 +135,136 @@ namespace Motion::Core
     }
 
     /**
-     * @brief Reads the shader file from the specified file path based on the current rendering API.
+     * @brief Converts a string representation of a shader type to its corresponding ShaderType enum value.
      *
-     * This function delegates the reading of shader files to the appropriate shader factory
-     * implementation depending on the active rendering API (e.g., OpenGL, Vulkan, DirectX).
-     * If the rendering API is not implemented or unknown, an assertion is triggered and an empty string is returned.
+     * This function takes a string (e.g., "vertex", "fragment", "geometry", etc.) and returns the matching
+     * ShaderType enum. If the string does not match any known shader type, ShaderType::None is returned.
+     *
+     * @param typeStr The string representation of the shader type.
+     * @return ShaderType The corresponding ShaderType enum value, or ShaderType::None if no match is found.
+     */
+    static ShaderType GetShaderTypeFromString(const std::string& typeStr)
+    {
+        if (typeStr == "vertex")                      return ShaderType::Vertex;
+        if (typeStr == "fragment")                    return ShaderType::Fragment;
+        if (typeStr == "geometry")                    return ShaderType::Geometry;
+        if (typeStr == "compute")                     return ShaderType::Compute;
+        if (typeStr == "tessellation_control")        return ShaderType::TessellationControl;
+        if (typeStr == "tessellation_evaluation")     return ShaderType::TessellationEvaluation;
+
+        return ShaderType::None;
+    }
+
+    /**
+     * @brief Reads the contents of a shader file from the specified file path.
+     *
+     * This function attempts to open and read the entire contents of the shader file
+     * located at the given file path. If the file does not exist or cannot be opened,
+     * an assertion is triggered and an empty string is returned.
      *
      * @param filePath The path to the shader file to be read.
-     * @return The contents of the shader file as a std::string. Returns an empty string if the rendering API is not implemented or unknown.
+     * @return A std::string containing the contents of the shader file, or an empty string if the file does not exist or cannot be opened.
      */
-    std::string ShaderFactory::ReadShaderFiles(const std::filesystem::path& filePath)
+    std::string ShaderBuilder::ReadShaderFile(const std::filesystem::path& filePath)
     {
-        switch (Renderer::GetAPI())
+        if (!std::filesystem::exists(filePath))
         {
-        case RenderingAPI::OpenGL:         return GL_ShaderFactory::ReadShaderFiles(filePath);
-        case RenderingAPI::Vulkan:         MOTION_ASSERT(false, "Vulkan is not implemented yet!"); return "";
-        case RenderingAPI::DirectX:        MOTION_ASSERT(false, "DirectX is not implemented yet!"); return "";
-        default:                           MOTION_ASSERT(false, "Unknown rendering API!"); return "";
-        };
+            MOTION_ASSERT(false, "Shader file does not exist: {0}", filePath.string());
+            return {};
+        }
+
+        std::ifstream file(filePath);
+        if (!file.is_open())
+        {
+            MOTION_ASSERT(false, "Failed to open shader file: {0}", filePath.string());
+            return {};
+        }
+
+        std::string sourceCode((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+        file.close();
+        return sourceCode;
+    }
+
+    /**
+     * @brief Reads a shader file containing multiple shader stages and extracts their source code.
+     *
+     * This function reads the entire contents of the specified shader file and parses it to extract
+     * the source code for each shader stage (e.g., vertex, fragment, etc.) defined within the file.
+     * Shader stages are expected to be marked with a line of the form `#type <shader_type>`.
+     *
+     * @param filePath The path to the shader file to read.
+     * @return An unordered map associating each ShaderType with its corresponding source code string.
+     *         If the file is empty or no valid shader stages are found, the returned map will be empty.
+     *
+     * @note If an unknown shader type is encountered, a warning is logged and that section is skipped.
+     */
+    std::unordered_map<ShaderType, std::string> ShaderBuilder::ReadFullShaderFile(const std::filesystem::path& filePath)
+    {
+        std::string source = ReadShaderFile(filePath);
+        if (source.empty())
+            return {};
+
+        std::unordered_map<ShaderType, std::string> shaderSources;
+        std::regex typeRegex(R"(#type\s+(\w+))");
+        std::sregex_iterator it(source.begin(), source.end(), typeRegex);
+        std::sregex_iterator end;
+
+        std::vector<std::pair<size_t, ShaderType>> shaderPositions;
+        for (; it != end; ++it)
+        {
+            std::string typeStr = (*it)[1];
+            ShaderType shaderType = GetShaderTypeFromString(typeStr);
+            if (shaderType == ShaderType::None)
+            {
+                MOTION_CORE_WARN("Unknown shader type: {0}", typeStr);
+                continue;
+            }
+            shaderPositions.emplace_back(it->position(), shaderType);
+        }
+
+        for (size_t i = 0; i < shaderPositions.size(); ++i)
+        {
+            size_t begin = source.find('\n', shaderPositions[i].first) + 1;
+            size_t end = (i + 1 < shaderPositions.size()) ? shaderPositions[i + 1].first : source.size();
+            shaderSources[shaderPositions[i].second] = source.substr(begin, end - begin);
+        }
+
+        return shaderSources;
+    }
+
+    /**
+     * @brief Reads the contents of vertex and fragment shader files and returns them as a map.
+     *
+     * This function checks if the provided vertex and fragment shader file paths exist.
+     * If either file does not exist, it asserts and returns an empty map.
+     * It then reads the contents of both files using ReadShaderFile and stores them in a map
+     * with their corresponding ShaderType as the key. If reading either file fails (resulting in
+     * an empty string), it asserts and returns an empty map.
+     *
+     * @param vertexPath The filesystem path to the vertex shader file.
+     * @param fragmentPath The filesystem path to the fragment shader file.
+     * @return std::unordered_map<ShaderType, std::string> A map containing the shader source code
+     *         for each shader type. Returns an empty map if files do not exist or cannot be read.
+     */
+    std::unordered_map<ShaderType, std::string> ShaderBuilder::ReadShaderFiles(const std::filesystem::path& vertexPath, const std::filesystem::path& fragmentPath)
+    {
+        if (!std::filesystem::exists(vertexPath) || !std::filesystem::exists(fragmentPath))
+        {
+            MOTION_ASSERT(false, "One or both shader files do not exist: {0}, {1}", vertexPath.string(), fragmentPath.string());
+            return {};
+        }
+
+        std::unordered_map<ShaderType, std::string> shaderSources;
+        shaderSources[ShaderType::Vertex] = ReadShaderFile(vertexPath);
+        shaderSources[ShaderType::Fragment] = ReadShaderFile(fragmentPath);
+
+        if (shaderSources[ShaderType::Vertex].empty() || shaderSources[ShaderType::Fragment].empty())
+        {
+            MOTION_ASSERT(false, "Failed to read shader files: {0}, {1}", vertexPath.string(), fragmentPath.string());
+            return {};
+        }
+
+        return shaderSources;
     }
 }
 

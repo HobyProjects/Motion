@@ -135,25 +135,21 @@ namespace Motion::Core
         virtual void SetUniform(const std::string& uniformName, const glm::mat4& value) = 0;
     };
 
-    class ShaderFactory
+    class ShaderBuilder
     {
-    private:
-        ShaderFactory() = default;
-        ~ShaderFactory() = default;
-
-        ShaderFactory(const ShaderFactory&) = delete;
-        ShaderFactory& operator=(const ShaderFactory&) = delete;
-        ShaderFactory(ShaderFactory&&) = delete;
-        ShaderFactory& operator=(ShaderFactory&&) = delete;
-
     public:
+        ShaderBuilder() = default;
+        ~ShaderBuilder() = default;
+
         static ShaderProgramID CreateShaderProgram();
         static void AttachShaderProgram(ShaderID shaderID, ShaderProgramID programID);
         static ShaderID CompileShader(ShaderType shaderType, const std::string& sourceCode);
         static void LinkShaderProgram(ShaderProgramID programID);
         static void ValidateShaderProgram(ShaderProgramID programID);
         static void DeleteShaderProgram(ShaderProgramID programID);
-        static std::string ReadShaderFiles(const std::filesystem::path& filePath);
+        static std::string ReadShaderFile(const std::filesystem::path& filePath);
+        static std::unordered_map<ShaderType, std::string> ReadFullShaderFile(const std::filesystem::path& filePath);
+        static std::unordered_map<ShaderType, std::string> ReadShaderFiles(const std::filesystem::path& vertexPath, const std::filesystem::path& fragmentPath);
     };
 }
 

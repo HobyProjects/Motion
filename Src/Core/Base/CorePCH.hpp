@@ -18,6 +18,8 @@
 #include <future>
 #include <thread>
 #include <regex>
+#include <mutex>
+#include <format>
 
 //external
 #define GLFW_INCLUDE_NONE
@@ -60,8 +62,6 @@
 
 //Material
 #include "Material.hpp"
-#include "MaterialManager.hpp"
-#include "MaterialSerializer.hpp"
 
 //Events
 #include "Event.hpp"

@@ -18,6 +18,7 @@ namespace Motion::Core
         virtual ShaderProgramID ProgramID() const override { return m_ProgramID; }
         virtual std::string GetName() const override { return m_Name; }
         virtual UniformLocation GetUniformLocation(const std::string& uniformName) const override;
+        virtual bool InUse() const noexcept override;
 
         virtual void SetUniform(const std::string& uniformName, float value) override;
         virtual void SetUniform(const std::string& uniformName, int32_t value) override;
@@ -33,6 +34,7 @@ namespace Motion::Core
         ShaderProgramID m_ProgramID{ 0 };
         ShaderType m_ShaderType{ ShaderType::None };
         mutable std::unordered_map<std::string, UniformLocation> m_UniformLocations;
+        mutable bool m_InUse{ false };
         std::string m_Name{ "Default" };
     };
 

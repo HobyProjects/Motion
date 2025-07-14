@@ -1,86 +1,105 @@
 #pragma once
 
+#include <filesystem>
+#include <memory>
+#include <unordered_map>
+#include <string>
+#include <string_view>
+#include <variant>
+
+#include <glm/glm.hpp>
+
 #include "Shaders.hpp"
 #include "Texture.hpp"
 #include "Asset.hpp"
 
 namespace Motion::Core
 {
-    struct SurfaceColors
+    using MaterialParameters = std::variant<float, glm::vec3, glm::vec4>;
+
+    enum class MaterialShadingMethod : std::uint32_t
     {
-        glm::vec3 AmbientColor{0.0f};
-        glm::vec3 DiffuseColor{0.0f};
-        glm::vec3 SpecularColor{0.0f};
-        glm::vec3 EmissiveColor{0.0f};
-        glm::vec3 TransparentColor{0.0f};
-        glm::vec3 ReflectiveColor{0.0f};
-        glm::vec3 BaseColor{0.0f};
+        Phong = 0,
+        PBR,
+        Unlit,
+        Auto
     };
 
-    struct MaterialProperties
+    struct MaterialTexturesBinding
     {
-        float Shininess{0.0f};
-        float ShininessStrenght{0.0f};
-        float Opacity{0.0f};
-        float IndexOfRefraction{0.0f};
-        float BumpScaling{0.0};
-        float Reflectivity{0.0};
+        std::string_view UniformName;
+        std::shared_ptr<ITexture> Texture{ nullptr };
+
+        MaterialTexturesBinding(const std::string_view& uniformName, std::shared_ptr<ITexture> texture)
+            : UniformName(uniformName), Texture(std::move(texture)) {
+        }
+        ~MaterialTexturesBinding() = default;
     };
 
-    struct MaterialFactors
+    struct MaterialPropertyBinding
     {
-        float MetalicFactor{0.0f};
-        float RoughnessFactor{0.0f};
-        float TransmissionFactor{0.0f};
-        float ClearCoatFactor{0.0f};
-        float ClearCoatRoughnessFactor{0.0f};
-        float SheenColorFactor{0.0f};
-        float SheenRoughnessFactor{0.0f};
-        float IndexOfRefraction{0.0f};
-        float AmbientOcclusionFactor{0.0f};
-    };
+        std::string_view UniformName;
+        MaterialParameters ParameterValue;
 
+        MaterialPropertyBinding(const std::string_view& uniformName, const MaterialParameters& value)
+            : UniformName(uniformName), ParameterValue(value) {
+        }
+        ~MaterialPropertyBinding() = default;
+    };
 
     class Material final : public AssetBase<IAsset>
     {
-        public:
-            enum class ShadingMethod { Phong, PBR, Unlit, Unknown };
+    public:
+        Material(const UUID& uuid, const std::string& name, MaterialShadingMethod shadingMethod = MaterialShadingMethod::Auto);
+        Material(const std::string& name, MaterialShadingMethod shadingMethod = MaterialShadingMethod::Auto);
+        virtual ~Material() = default;
 
-        public:
-            Material(const std::string& name, const std::string& materialFile):
-                AssetBase<IAsset>(UniqueIdentity::GetUniqueID(), name, AssetType::Material, materialFile){}
-            Material(UUID uuid, const std::string& name, ShadingMethod shadingMethod, const std::string& materialFile):
-                AssetBase<IAsset>(uuid, name, AssetType::Material, materialFile), m_Shading(shadingMethod){}
-            virtual ~Material() = default;
+        void Bind(const std::shared_ptr<IShader>& shader) const noexcept;
+        void Unbind() const noexcept;
 
-            void Bind();
-            void Bind(const std::shared_ptr<IShader>& shader);
-            void Unbind();
+        void Set(std::string_view name, std::shared_ptr<ITexture> texture);
+        void Set(std::string_view name, const MaterialParameters& value);
 
-            void SetUniform(const std::string& name, float value);
-            void SetUniform(const std::string& name, const glm::vec3& value);
-            void SetUniform(const std::string& name, const glm::vec4& value);
-            void SetTexture(const std::string& name, const std::shared_ptr<ITexture>& texture);
+        [[nodiscard]] bool HasTexture(std::string_view name) const noexcept;
+        [[nodiscard]] std::shared_ptr<ITexture> GetTexture(std::string_view name) const noexcept;
 
-            float GetFloatUniform(const std::string& name) const { return m_FloatUniformsMaps.at(name); }
-            glm::vec3 GetVec3Uniform(const std::string& name) const { return m_Vec3UniformsMaps.at(name); }
-            glm::vec4 GetVec4Uniform(const std::string& name) const { return m_Vec4UniformsMaps.at(name); }
-            std::shared_ptr<ITexture> GetTexture(const std::string& name) const { return m_TexturesMaps.at(name); }
-            ShadingMethod GetShadingMethod();
+        [[nodiscard]] bool HasProperty(std::string_view name) const noexcept;
+        [[nodiscard]] MaterialParameters GetProperty(std::string_view name) const noexcept;
+        void DetermineShadingMethod() const noexcept;
 
-            std::unordered_map<std::string, float> GetFloatUniforms() const { return m_FloatUniformsMaps; }
-            std::unordered_map<std::string, glm::vec3> GetVec3Uniforms() const { return m_Vec3UniformsMaps; }
-            std::unordered_map<std::string, glm::vec4> GetVec4Uniforms() const { return m_Vec4UniformsMaps; }
-            std::unordered_map<std::string, std::shared_ptr<ITexture>> GetTextures() const { return m_TexturesMaps; }
+        /**
+         * @brief Retrieves the value of a material property by name and type.
+         *
+         * This templated function attempts to fetch the value of a property with the specified name,
+         * casting it to the requested type T. If the property exists and its type matches T, the value is returned.
+         * Otherwise, an error is logged and a default-constructed value of type T is returned.
+         *
+         * @tparam T The expected type of the property value.
+         * @param name The name of the property to retrieve.
+         * @return The value of the property if found and type matches; otherwise, a default-constructed T.
+         *
+         * @note If the property does not exist or the type does not match, an error is logged.
+         * @note This function is noexcept and will not throw exceptions.
+         */
+        template<typename T>
+        [[nodiscard]] T GetPropertyValue(std::string_view name) const noexcept
+        {
+            if (HasProperty(name))
+            {
+                const auto& binding = m_ParameterBindings.at(name);
+                if (const auto* value = std::get_if<T>(&binding.ParameterValue))
+                {
+                    return *value;
+                }
+            }
 
-        private:
-            ShadingMethod DetectShadingMethod(); 
+            MOTION_CORE_ERROR("Material does not have a property with name: {}", name);
+            return T(0.0f); // Return default value if not found or type mismatch
+        }
 
-        private:
-            std::unordered_map<std::string, float> m_FloatUniformsMaps;
-            std::unordered_map<std::string, glm::vec3> m_Vec3UniformsMaps;
-            std::unordered_map<std::string, glm::vec4> m_Vec4UniformsMaps;
-            std::unordered_map<std::string, std::shared_ptr<ITexture>> m_TexturesMaps;
-            ShadingMethod m_Shading{ShadingMethod::Unknown};
+    private:
+        std::unordered_map<std::string_view, MaterialTexturesBinding> m_TextureBindings;
+        std::unordered_map<std::string_view, MaterialPropertyBinding> m_ParameterBindings;
+        mutable MaterialShadingMethod m_ShadingMethod{ MaterialShadingMethod::Auto };
     };
 }

@@ -2,9 +2,11 @@
 
 #include <filesystem>
 #include <string>
+#include <string_view>
 #include <unordered_map>
-#include <glm/glm.hpp>
 #include <variant>
+
+#include <glm/glm.hpp>
 
 #include "Asset.hpp"
 #include "UUID.hpp"
@@ -34,76 +36,76 @@ namespace Motion::Core
     {
         struct ModelUniforms
         {
-            static constexpr const char* ModelMatrix = "u_ModelMatrix";
-            static constexpr const char* ViewProjMatrix = "u_CameraMatrix";
+            inline static constexpr std::string_view ModelMatrix = "u_ModelMatrix";
+            inline static constexpr std::string_view ViewProjMatrix = "u_ViewProjMatrix";
         };
 
         //Light
         struct LightUniforms
         {
-            static constexpr const char* LightPosition = "u_LightPosition";
-            static constexpr const char* LightColor = "u_LightColor";
-            static constexpr const char* LightIntensity = "u_LightIntensity";
+            inline static constexpr std::string_view LightPosition = "u_LightPosition";
+            inline static constexpr std::string_view LightColor = "u_LightColor";
+            inline static constexpr std::string_view LightIntensity = "u_LightIntensity";
         };
 
         // Surface Colors
         struct SurfaceColorsUniforms
         {
-            static constexpr const char* AmbientColor = "u_AmbientColor";
-            static constexpr const char* DiffuseColor = "u_DiffuseColor";
-            static constexpr const char* SpecularColor = "u_SpecularColor";
-            static constexpr const char* EmissiveColor = "u_EmissiveColor";
-            static constexpr const char* TransparentColor = "u_TransparentColor";
-            static constexpr const char* ReflectiveColor = "u_ReflectiveColor";
+            inline static constexpr std::string_view AmbientColor = "u_AmbientColor";
+            inline static constexpr std::string_view DiffuseColor = "u_DiffuseColor";
+            inline static constexpr std::string_view SpecularColor = "u_SpecularColor";
+            inline static constexpr std::string_view EmissiveColor = "u_EmissiveColor";
+            inline static constexpr std::string_view TransparentColor = "u_TransparentColor";
+            inline static constexpr std::string_view ReflectiveColor = "u_ReflectiveColor";
         };
 
         struct MaterialPropertiesUniforms
         {
-            static constexpr const char* Shininess = "u_Shininess";
-            static constexpr const char* ShininessStrength = "u_ShininessStrength";
-            static constexpr const char* Opacity = "u_Opacity";
-            static constexpr const char* IndexOfRefraction = "u_IndexOfRefraction";
-            static constexpr const char* BumpScaling = "u_BumpScaling";
-            static constexpr const char* Reflectivity = "u_Reflectivity";
+            inline static constexpr std::string_view Shininess = "u_Shininess";
+            inline static constexpr std::string_view ShininessStrength = "u_ShininessStrength";
+            inline static constexpr std::string_view Opacity = "u_Opacity";
+            inline static constexpr std::string_view IndexOfRefraction = "u_IndexOfRefraction";
+            inline static constexpr std::string_view BumpScaling = "u_BumpScaling";
+            inline static constexpr std::string_view Reflectivity = "u_Reflectivity";
         };
 
         struct MaterialFactorsUniforms
         {
-            static constexpr const char* BaseColor = "u_BaseColor";
-            static constexpr const char* MetallicFactor = "u_MetallicFactor";
-            static constexpr const char* RoughnessFactor = "u_RoughnessFactor";
-            static constexpr const char* TransmissionFactor = "u_TransmissionFactor";
-            static constexpr const char* ClearCoatFactor = "u_ClearCoatFactor";
-            static constexpr const char* ClearCoatRoughnessFactor = "u_ClearCoatRoughnessFactor";
-            static constexpr const char* SheenFactor = "u_SheenFactor";
-            static constexpr const char* SheenRoughnessFactor = "u_SheenRoughnessFactor";
-            static constexpr const char* AmbientOcclusionFactor = "u_AmbientOcclusion";
-            static constexpr const char* IndexOfRefraction = "u_IndexOfRefraction";
+            inline static constexpr std::string_view BaseColor = "u_BaseColor";
+            inline static constexpr std::string_view MetallicFactor = "u_MetallicFactor";
+            inline static constexpr std::string_view RoughnessFactor = "u_RoughnessFactor";
+            inline static constexpr std::string_view TransmissionFactor = "u_TransmissionFactor";
+            inline static constexpr std::string_view ClearCoatFactor = "u_ClearCoatFactor";
+            inline static constexpr std::string_view ClearCoatRoughnessFactor = "u_ClearCoatRoughnessFactor";
+            inline static constexpr std::string_view SheenFactor = "u_SheenFactor";
+            inline static constexpr std::string_view SheenRoughnessFactor = "u_SheenRoughnessFactor";
+            inline static constexpr std::string_view AmbientOcclusionFactor = "u_AmbientOcclusion";
+            inline static constexpr std::string_view IndexOfRefraction = "u_IndexOfRefraction";
         };
 
         struct LegacyTextureUniforms
         {
-            static constexpr const char* DiffuseTexture = "u_DiffuseTexture";
-            static constexpr const char* AmbientTexture = "u_AmbientTexture";
-            static constexpr const char* SpecularTexture = "u_SpecularTexture";
-            static constexpr const char* EmissiveTexture = "u_EmissiveTexture";
-            static constexpr const char* NormalMapsTexture = "u_NormalMapsTexture";
-            static constexpr const char* HightMapsTexture = "u_HightMapsTexture";
-            static constexpr const char* ShininessTexture = "u_ShininessTexture";
-            static constexpr const char* OpacityMapsTexture = "u_OpacityTexture";
-            static constexpr const char* LightMapsTexture = "u_LightTexture";
+            inline static constexpr std::string_view DiffuseTexture = "u_DiffuseTexture";
+            inline static constexpr std::string_view AmbientTexture = "u_AmbientTexture";
+            inline static constexpr std::string_view SpecularTexture = "u_SpecularTexture";
+            inline static constexpr std::string_view EmissiveTexture = "u_EmissiveTexture";
+            inline static constexpr std::string_view NormalMapsTexture = "u_NormalMapsTexture";
+            inline static constexpr std::string_view HightMapsTexture = "u_HightMapsTexture";
+            inline static constexpr std::string_view ShininessTexture = "u_ShininessTexture";
+            inline static constexpr std::string_view OpacityMapsTexture = "u_OpacityTexture";
+            inline static constexpr std::string_view LightMapsTexture = "u_LightTexture";
         };
 
         struct PBRTextureUniforms
         {
-            static constexpr const char* BaseColorTexture = "u_BaseColorTexture";
-            static constexpr const char* MetallicTexture = "u_MetallicTexture";
-            static constexpr const char* RoughnessTexture = "u_RoughnessTexture";
-            static constexpr const char* AOMapTexture = "u_AmbientOcclusionTexture";
-            static constexpr const char* EmissiveTexture = "u_EmissiveTexture";
-            static constexpr const char* ClearCoatTexture = "u_ClearCoatTexture";
-            static constexpr const char* SheenTexture = "u_SheenTexture";
-            static constexpr const char* TransmissionTexture = "u_TransmissionTexture";
+            inline static constexpr std::string_view BaseColorTexture = "u_BaseColorTexture";
+            inline static constexpr std::string_view MetallicTexture = "u_MetallicTexture";
+            inline static constexpr std::string_view RoughnessTexture = "u_RoughnessTexture";
+            inline static constexpr std::string_view AOMapTexture = "u_AmbientOcclusionTexture";
+            inline static constexpr std::string_view EmissiveTexture = "u_EmissiveTexture";
+            inline static constexpr std::string_view ClearCoatTexture = "u_ClearCoatTexture";
+            inline static constexpr std::string_view SheenTexture = "u_SheenTexture";
+            inline static constexpr std::string_view TransmissionTexture = "u_TransmissionTexture";
         };
 
         UniformCache() = default;
@@ -123,6 +125,7 @@ namespace Motion::Core
         virtual ShaderProgramID ProgramID() const = 0;
         virtual std::string GetName() const = 0;
         virtual UniformLocation GetUniformLocation(const std::string& uniformName) const = 0;
+        virtual bool InUse() const noexcept = 0;
 
         virtual void SetUniform(const std::string& uniformName, float value) = 0;
         virtual void SetUniform(const std::string& uniformName, std::int32_t value) = 0;

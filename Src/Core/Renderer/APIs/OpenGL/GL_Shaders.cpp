@@ -348,6 +348,7 @@ namespace Motion::Core
     void GL_Shader::Bind() const
     {
         glUseProgram(m_ProgramID);
+        m_InUse = true;
     }
 
     /**
@@ -360,5 +361,6 @@ namespace Motion::Core
     void GL_Shader::Unbind() const
     {
         glUseProgram(0);
+        m_InUse = false;
     }
 }

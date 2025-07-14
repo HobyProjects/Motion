@@ -334,7 +334,9 @@ def generate_presets(dir_path: str, build_type: str, generator: str, packages: l
 
             # Common Flags
             "BUILD_SHARED_LIBS": "OFF",
-            "CMAKE_BUILD_TYPE": build_type
+            "CMAKE_BUILD_TYPE": build_type,
+            "CMAKE_COMPILE_COMMANDS": "ON",
+            "CMAKE_VERBOSE_MAKEFILE": "ON",
         }
 
     configure_presets = [

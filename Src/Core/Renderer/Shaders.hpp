@@ -11,10 +11,10 @@
 
 namespace Motion::Core
 {
-    using ShaderID          = uint32_t;
-    using ShaderProgramID   = uint32_t;
-    using UniformLocation   = uint32_t;
-    using UniformVariant    = std::variant<float, int32_t, uint32_t, glm::vec2, glm::vec3, glm::vec4, glm::mat2, glm::mat3, glm::mat4>;
+    using ShaderID = uint32_t;
+    using ShaderProgramID = uint32_t;
+    using UniformLocation = uint32_t;
+    using UniformVariant = std::variant<float, int32_t, uint32_t, glm::vec2, glm::vec3, glm::vec4, glm::mat2, glm::mat3, glm::mat4>;
 
     enum class ShaderType : uint32_t
     {
@@ -29,12 +29,9 @@ namespace Motion::Core
 
     inline uint32_t operator|(ShaderType a, ShaderType b) { return static_cast<uint32_t>(a) | static_cast<uint32_t>(b); }
     inline uint32_t operator&(ShaderType a, ShaderType b) { return static_cast<uint32_t>(a) & static_cast<uint32_t>(b); }
-    inline uint32_t operator^(ShaderType a, ShaderType b) { return static_cast<uint32_t>(a) ^ static_cast<uint32_t>(b); }
-    inline uint32_t operator~(ShaderType a) { return ~static_cast<uint32_t>(a); }
 
     struct UniformCache
     {
-        //Model
         struct ModelUniforms
         {
             static constexpr const char* ModelMatrix = "u_ModelMatrix";
@@ -116,65 +113,47 @@ namespace Motion::Core
 
     class IShader : public IAsset
     {
-        public:
-            IShader() = default;
-            virtual ~IShader() = default;
+    public:
+        IShader() = default;
+        virtual ~IShader() = default;
 
-            virtual void Bind() const = 0;
-            virtual void Unbind() const = 0;
+        virtual void Bind() const = 0;
+        virtual void Unbind() const = 0;
 
-            virtual ShaderProgramID ProgramID() const = 0;
-            virtual std::string GetName() const = 0;
-            virtual UniformLocation GetUniformLocation(const std::string& uniformName) const = 0;
-            
-            virtual void SetUniform(const std::string& uniformName, float value) = 0;
-            virtual void SetUniform(const std::string& uniformName, int32_t value) = 0;
-            virtual void SetUniform(const std::string& uniformName, uint32_t value) = 0;
-            virtual void SetUniform(const std::string& uniformName, const glm::vec2& value) = 0;
-            virtual void SetUniform(const std::string& uniformName, const glm::vec3& value) = 0;
-            virtual void SetUniform(const std::string& uniformName, const glm::vec4& value) = 0;
-            virtual void SetUniform(const std::string& uniformName, const glm::mat2& value) = 0;
-            virtual void SetUniform(const std::string& uniformName, const glm::mat3& value) = 0;
-            virtual void SetUniform(const std::string& uniformName, const glm::mat4& value) = 0;
+        virtual ShaderProgramID ProgramID() const = 0;
+        virtual std::string GetName() const = 0;
+        virtual UniformLocation GetUniformLocation(const std::string& uniformName) const = 0;
+
+        virtual void SetUniform(const std::string& uniformName, float value) = 0;
+        virtual void SetUniform(const std::string& uniformName, std::int32_t value) = 0;
+        virtual void SetUniform(const std::string& uniformName, std::uint32_t value) = 0;
+        virtual void SetUniform(const std::string& uniformName, const glm::vec2& value) = 0;
+        virtual void SetUniform(const std::string& uniformName, const glm::vec3& value) = 0;
+        virtual void SetUniform(const std::string& uniformName, const glm::vec4& value) = 0;
+        virtual void SetUniform(const std::string& uniformName, const glm::mat2& value) = 0;
+        virtual void SetUniform(const std::string& uniformName, const glm::mat3& value) = 0;
+        virtual void SetUniform(const std::string& uniformName, const glm::mat4& value) = 0;
     };
 
     class ShaderFactory
     {
-        private:
-            ShaderFactory() = default;
-            ~ShaderFactory() = default;
+    private:
+        ShaderFactory() = default;
+        ~ShaderFactory() = default;
 
-            ShaderFactory(const ShaderFactory&) = delete;
-            ShaderFactory& operator=(const ShaderFactory&) = delete;
-            ShaderFactory(ShaderFactory&&) = delete;
-            ShaderFactory& operator=(ShaderFactory&&) = delete;
+        ShaderFactory(const ShaderFactory&) = delete;
+        ShaderFactory& operator=(const ShaderFactory&) = delete;
+        ShaderFactory(ShaderFactory&&) = delete;
+        ShaderFactory& operator=(ShaderFactory&&) = delete;
 
-        public:
-            static ShaderProgramID CreateShaderProgram();
-            static void AttachShaderProgram(ShaderID shaderID, ShaderProgramID programID);
-            static ShaderID CompileShader(ShaderType shaderType, const std::string& sourceCode);
-            static void LinkShaderProgram(ShaderProgramID programID);
-            static void ValidateShaderProgram(ShaderProgramID programID);
-            static void DeleteShaderProgram(ShaderProgramID programID);
-            static std::string ReadShaderFiles(const std::filesystem::path& filePath);
-    };
-
-    class ShaderManager
-    {
-        private:
-            ShaderManager() = default;
-            ~ShaderManager() = default;
-
-            ShaderManager(const ShaderManager&) = delete;
-            ShaderManager& operator=(const ShaderManager&) = delete;
-            ShaderManager(ShaderManager&&) = delete;
-            ShaderManager& operator=(ShaderManager&&) = delete;
-
-        public:
-            static void InsertShader(const UUID& uuid, const std::shared_ptr<IShader>& shader);
-            static std::shared_ptr<IShader> GetShader(const UUID& uuid);
-            static std::shared_ptr<IShader> GetShader(const std::string& name);
-            static std::unordered_map<UUID, std::shared_ptr<IShader>>::const_iterator GetShaders();
+    public:
+        static ShaderProgramID CreateShaderProgram();
+        static void AttachShaderProgram(ShaderID shaderID, ShaderProgramID programID);
+        static ShaderID CompileShader(ShaderType shaderType, const std::string& sourceCode);
+        static void LinkShaderProgram(ShaderProgramID programID);
+        static void ValidateShaderProgram(ShaderProgramID programID);
+        static void DeleteShaderProgram(ShaderProgramID programID);
+        static std::string ReadShaderFiles(const std::filesystem::path& filePath);
     };
 }
 

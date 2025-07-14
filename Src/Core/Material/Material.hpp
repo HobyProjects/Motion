@@ -50,6 +50,7 @@ namespace Motion::Core
     class Material final : public AssetBase<IAsset>
     {
     public:
+        Material() = default;
         Material(const UUID& uuid, const std::string& name, MaterialShadingMethod shadingMethod = MaterialShadingMethod::Auto);
         Material(const std::string& name, MaterialShadingMethod shadingMethod = MaterialShadingMethod::Auto);
         virtual ~Material() = default;

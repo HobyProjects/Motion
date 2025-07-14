@@ -11,6 +11,7 @@
 #include "Asset.hpp"
 #include "Shaders.hpp"
 #include "Texture.hpp"
+#include "Material.hpp"
 #include "Model.hpp"
 
 namespace Motion::Core
@@ -499,6 +500,42 @@ namespace Motion::Core
         std::shared_ptr<Mesh> Create(const UUID& uuid, const std::string& name, float* vertices, std::uint32_t verticesSize, std::uint32_t* indices, std::uint32_t indicesCount, const BufferLayout& layout, const std::shared_ptr<Model>& parentModel)
         {
             return std::make_shared<Mesh>(uuid, name, vertices, verticesSize, indices, indicesCount, layout, parentModel);
+        }
+    };
+
+    template<>
+    struct AssetBackendsBuilder<Material>
+    {
+        /**
+         * @brief Creates a new Material instance and returns a shared pointer to it.
+         *
+         * This function constructs a Material object with a unique identifier, the specified name,
+         * and an optional shading method. The Material is managed by a std::shared_ptr for automatic memory management.
+         *
+         * @param name The name of the material.
+         * @param shadingMethod The shading method to use for the material (default is Auto).
+         * @return std::shared_ptr<Material> A shared pointer to the newly created Material instance.
+         */
+        static std::shared_ptr<Material> Create(const std::string& name, MaterialShadingMethod shadingMethod = MaterialShadingMethod::Auto)
+        {
+            UUID uuid = UniqueIdentity::GetUniqueID();
+            return std::make_shared<Material>(uuid, name, shadingMethod);
+        }
+
+        /**
+         * @brief Creates a new Material instance with a specified UUID and returns a shared pointer to it.
+         *
+         * This function constructs a Material object with the given UUID, name, and an optional shading method.
+         * The Material is managed by a std::shared_ptr for automatic memory management.
+         *
+         * @param uuid The unique identifier for the material.
+         * @param name The name of the material.
+         * @param shadingMethod The shading method to use for the material (default is Auto).
+         * @return std::shared_ptr<Material> A shared pointer to the newly created Material instance.
+         */
+        static std::shared_ptr<Material> Create(const UUID& uuid, const std::string& name, MaterialShadingMethod shadingMethod = MaterialShadingMethod::Auto)
+        {
+            return std::make_shared<Material>(uuid, name, shadingMethod);
         }
     };
 

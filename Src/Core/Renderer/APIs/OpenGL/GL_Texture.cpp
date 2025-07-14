@@ -22,7 +22,7 @@ namespace Motion::Core
 
         m_Specification.Type = TextureType::BaseColorMapsTexture;
         m_Specification.Source = TextureSource::GeneratedTexture;
-        m_MetaData.IsLoaded = true;
+        m_MetaData.IsAssetInitialized = true;
     }
 
     /**
@@ -45,7 +45,7 @@ namespace Motion::Core
 
         m_Specification.Type = TextureType::BaseColorMapsTexture;
         m_Specification.Source = TextureSource::GeneratedTexture;
-        m_MetaData.IsLoaded = true;
+        m_MetaData.IsAssetInitialized = true;
     }
 
     /**
@@ -69,7 +69,7 @@ namespace Motion::Core
 
         m_Specification.Type = type;
         m_Specification.Source = TextureSource::TextureFile;
-        m_MetaData.IsLoaded = true;
+        m_MetaData.IsAssetInitialized = true;
     }
 
     /**
@@ -94,7 +94,7 @@ namespace Motion::Core
 
         m_Specification.Type = type;
         m_Specification.Source = TextureSource::TextureFile;
-        m_MetaData.IsLoaded = true;
+        m_MetaData.IsAssetInitialized = true;
     }
 
     /**
@@ -256,8 +256,8 @@ namespace Motion::Core
         if (m_Specification.TextureData)
         {
             m_MetaData.AssetName = textureFile.filename().string();
-            m_MetaData.FilePath = textureFile.string();
-            m_MetaData.IsLoaded = true;
+            m_MetaData.AssetSource = textureFile.string();
+            m_MetaData.IsAssetInitialized = true;
             return true;
         }
 
@@ -319,7 +319,7 @@ namespace Motion::Core
             return;
         }
 
-        m_MetaData.IsLoaded = true;
+        m_MetaData.IsAssetInitialized = true;
     }
 
     /**
@@ -342,7 +342,7 @@ namespace Motion::Core
             return;
         }
 
-        m_MetaData.IsLoaded = true;
+        m_MetaData.IsAssetInitialized = true;
     }
 
     /**
@@ -457,8 +457,8 @@ namespace Motion::Core
         MOTION_ASSERT(m_Specification.TextureData, "Unable to load cube map texture file {0}; {1}", textureFile.string(), SOIL_last_result());
 
         m_MetaData.AssetName = textureFile.filename().string();
-        m_MetaData.FilePath = textureFile.string();
-        m_MetaData.IsLoaded = true;
+        m_MetaData.AssetSource = textureFile.string();
+        m_MetaData.IsAssetInitialized = true;
 
         m_Specification.InternalDataFormat = GL_RGBA16F;
         m_Specification.TextureDataFormat = GL_RGBA16F;

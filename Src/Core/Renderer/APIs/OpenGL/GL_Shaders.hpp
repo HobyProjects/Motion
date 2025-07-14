@@ -36,8 +36,6 @@ namespace Motion::Core
         std::string m_Name{ "Default" };
     };
 
-
-
     class GL_ShaderFactory
     {
     private:

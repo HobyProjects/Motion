@@ -8,14 +8,14 @@ static constexpr const char* MATKEY_AMBIENT_OCCLUISION_FACTOR = "$mat.occlusionS
 
 namespace Motion::Core
 {
-    std::shared_ptr<Model> Importer::ImportModel(const std::string& modelName, const std::filesystem::path& path) 
+    std::shared_ptr<Model> Importer::ImportModel(const std::string& modelName, const std::filesystem::path& path)
     {
         std::shared_ptr<Model> modelPtr = std::make_shared<Model>(modelName, path);
         modelPtr->Name = modelName;
 
         Assimp::Importer importer;
-		const aiScene* scene = importer.ReadFile(path.string(), aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_GenSmoothNormals | aiProcess_JoinIdenticalVertices);
-        if(!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode) 
+        const aiScene* scene = importer.ReadFile(path.string(), aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_GenSmoothNormals | aiProcess_JoinIdenticalVertices);
+        if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)
         {
             MOTION_CORE_ERROR("Assimp Importer Error: {0}", importer.GetErrorString());
             return nullptr;
@@ -23,26 +23,26 @@ namespace Motion::Core
         else
         {
             MOTION_CORE_INFO("Assimp Importer: Model {0} loaded successfully from {1}", modelName, path.string());
-            modelPtr->m_MetaData.IsLoaded = true;
+            modelPtr->m_MetaData.IsAssetInitialized = true;
             LoadNode(modelPtr, scene->mRootNode, scene);
             LoadMaterials(modelPtr, scene);
-            modelPtr->m_MetaData.IsLoaded = true;
+            modelPtr->m_MetaData.IsAssetInitialized = true;
             return modelPtr;
         }
 
         return nullptr;
     }
 
-    
-    std::shared_ptr<Model> Importer::ImportModel(UUID uuid, const std::string & modelName, const std::filesystem::path & path)
+
+    std::shared_ptr<Model> Importer::ImportModel(UUID uuid, const std::string& modelName, const std::filesystem::path& path)
     {
         std::shared_ptr<Model> modelPtr = std::make_shared<Model>(uuid, modelName, path);
         modelPtr->Name = modelName;
 
         Assimp::Importer importer;
-		const aiScene* scene = importer.ReadFile(path.string(), 
+        const aiScene* scene = importer.ReadFile(path.string(),
             aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_GenSmoothNormals | aiProcess_JoinIdenticalVertices | aiProcess_CalcTangentSpace);
-        if(!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode) 
+        if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)
         {
             MOTION_CORE_ERROR("Assimp Importer Error: {0}", importer.GetErrorString());
             return nullptr;
@@ -50,29 +50,29 @@ namespace Motion::Core
         else
         {
             MOTION_CORE_INFO("Assimp Importer: Model {0} loaded successfully from {1}", modelName, path.string());
-            modelPtr->m_MetaData.IsLoaded = true;
+            modelPtr->m_MetaData.IsAssetInitialized = true;
             LoadNode(modelPtr, scene->mRootNode, scene);
             LoadMaterials(modelPtr, scene);
-            modelPtr->m_MetaData.IsLoaded = true;
+            modelPtr->m_MetaData.IsAssetInitialized = true;
             return modelPtr;
         }
 
         return nullptr;
-    } 
+    }
 
     static std::shared_ptr<ITexture> LoadTextures(aiTextureType aiTexType, aiMaterial* aiMaterial, TextureType textureType)
     {
         aiString property{};
 
-        if ((aiMaterial->GetTextureCount(aiTexType) > 0)) 
+        if ((aiMaterial->GetTextureCount(aiTexType) > 0))
         {
-            if (AI_SUCCESS == aiMaterial->GetTexture(aiTexType, 0, &property)) 
+            if (AI_SUCCESS == aiMaterial->GetTexture(aiTexType, 0, &property))
             {
-                if(property.data[0] != '*') 
+                if (property.data[0] != '*')
                 {
                     MOTION_CORE_INFO("Loading Texture in {0} ", property.C_Str());
                     std::shared_ptr<ITexture> texture = AssetManager::CreateTextureFromFile(property.C_Str(), std::filesystem::path(property.C_Str()), textureType);
-                    if(texture != nullptr)
+                    if (texture != nullptr)
                     {
                         MOTION_CORE_INFO("Loading success! PATH: {0}", property.C_Str());
                         return texture;
@@ -81,8 +81,8 @@ namespace Motion::Core
                     {
                         texture.reset();
                         texture = AssetManager::CreatePlainTexture(property.C_Str(), 100, 100);
-                        
-                        if(texture)
+
+                        if (texture)
                         {
                             MOTION_CORE_WARN("Texture {0} could not be loaded, creating a default texture instead", property.C_Str());
                             return texture;
@@ -95,13 +95,13 @@ namespace Motion::Core
 
                     }
                 }
-            } 
-            else 
+            }
+            else
             {
                 MOTION_CORE_WARN("The model contained diffuse texture information, but texture loading failed. PATH: {0}", property.C_Str());
 
                 std::shared_ptr<ITexture> texture = AssetManager::CreatePlainTexture(property.C_Str(), 100, 100);
-                if(texture)
+                if (texture)
                 {
                     MOTION_CORE_WARN("Texture {0} could not be loaded, creating a default texture instead", property.C_Str());
                     return texture;
@@ -121,8 +121,8 @@ namespace Motion::Core
     {
         MOTION_CORE_INFO("Looking for data type {0}", dataType);
 
-        float data{0.0f};
-        if(currentMaterial->Get(dataType, type, idx, data) == AI_SUCCESS)
+        float data{ 0.0f };
+        if (currentMaterial->Get(dataType, type, idx, data) == AI_SUCCESS)
         {
             MOTION_CORE_INFO("Found data type {0} with value {1}", dataType, data);
             return data;
@@ -138,8 +138,8 @@ namespace Motion::Core
     {
         MOTION_CORE_INFO("Looking for data type {0}", dataType);
 
-        glm::vec3 data{0.0f, 0.0f, 0.0f};
-        if(currentMaterial->Get(dataType, type, idx, data) == AI_SUCCESS)
+        glm::vec3 data{ 0.0f, 0.0f, 0.0f };
+        if (currentMaterial->Get(dataType, type, idx, data) == AI_SUCCESS)
         {
             MOTION_CORE_INFO("Found data type {0} with value {1}, {2}, {3}", dataType, data.x, data.y, data.z);
             return data;
@@ -147,7 +147,7 @@ namespace Motion::Core
         else
         {
             MOTION_CORE_WARN("Data type {0} not found, returning default value {1}, {2}, {3}", dataType, 0.0f, 0.0f, 0.0f);
-            return {0.0f, 0.0f, 0.0f};
+            return { 0.0f, 0.0f, 0.0f };
         }
     }
 
@@ -159,22 +159,22 @@ namespace Motion::Core
 
         // Extracting vertex, TexCoords, Normals, Tangents and Bitangents
         MOTION_CORE_INFO("Extracting Model SubMesh ({0}) Vertex and Indices data...", meshIndex);
-        for(uint32_t i = 0; i < mesh->mNumVertices; i++)
+        for (uint32_t i = 0; i < mesh->mNumVertices; i++)
         {
             // Position
-            vertices.insert(vertices.end(), { mesh->mVertices[i].x, mesh->mVertices[i].y, mesh->mVertices[i].z});
-            
+            vertices.insert(vertices.end(), { mesh->mVertices[i].x, mesh->mVertices[i].y, mesh->mVertices[i].z });
+
             // TexCoords
-            if(mesh->HasTextureCoords(0))
+            if (mesh->HasTextureCoords(0))
                 vertices.insert(vertices.end(), { mesh->mTextureCoords[0][i].x, mesh->mTextureCoords[0][i].y });
             else
                 vertices.insert(vertices.end(), { 0.0f, 0.0f });
 
             // Normals
-            vertices.insert(vertices.end(), { -mesh->mNormals [i].x, -mesh->mNormals [i].y, -mesh->mNormals [i].z });
+            vertices.insert(vertices.end(), { -mesh->mNormals[i].x, -mesh->mNormals[i].y, -mesh->mNormals[i].z });
 
             // Tangents and Bitangents
-            if(mesh->HasTangentsAndBitangents())
+            if (mesh->HasTangentsAndBitangents())
             {
                 glm::vec3 tangent = glm::normalize(glm::vec3(mesh->mTangents[i].x, mesh->mTangents[i].y, mesh->mTangents[i].z));
                 glm::vec3 bitangent = glm::normalize(glm::vec3(mesh->mBitangents[i].x, mesh->mBitangents[i].y, mesh->mBitangents[i].z));
@@ -190,58 +190,58 @@ namespace Motion::Core
         }
 
         // Extracting Indices
-        for(uint32_t i = 0; i < mesh->mNumFaces; i++)
+        for (uint32_t i = 0; i < mesh->mNumFaces; i++)
         {
             aiFace face = mesh->mFaces[i];
-            for(uint32_t j = 0; j < face.mNumIndices; j++)
+            for (uint32_t j = 0; j < face.mNumIndices; j++)
             {
                 indices.push_back(face.mIndices[j]);
             }
         }
 
-        std::shared_ptr<Model::SubMesh> subMesh = std::make_shared<Model::SubMesh>(meshIndex++, mesh->mMaterialIndex, 
+        std::shared_ptr<Model::SubMesh> subMesh = std::make_shared<Model::SubMesh>(meshIndex++, mesh->mMaterialIndex,
             std::make_shared<Mesh>(
-                vertices.data(), 
-                (uint32_t) vertices.size(), 
-                indices.data(), 
-                (uint32_t) indices.size(), 
+                vertices.data(),
+                (uint32_t)vertices.size(),
+                indices.data(),
+                (uint32_t)indices.size(),
                 BufferLayout(
-                {
-                    { "a_Position", BufferComponents::XYZ, BufferStride::F3, false, offsetof(Mesh::Vertex, Position) },
-                    { "a_TexCoords", BufferComponents::UV, BufferStride::F2, false, offsetof(Mesh::Vertex, TexCoord)},
-                    { "a_Normals", BufferComponents::XYZ, BufferStride::F3, false, offsetof(Mesh::Vertex, Normal) },
-                    { "a_Tangents", BufferComponents::XYZ, BufferStride::F3, false, offsetof(Mesh::Vertex, Tangent) },
-                    { "a_Bitangents", BufferComponents::XYZ, BufferStride::F3, false, offsetof(Mesh::Vertex, Bitangent) }
-                }
-            )));
-        
+                    {
+                        { "a_Position", BufferComponents::XYZ, BufferStride::F3, false, offsetof(Mesh::Vertex, Position) },
+                        { "a_TexCoords", BufferComponents::UV, BufferStride::F2, false, offsetof(Mesh::Vertex, TexCoord)},
+                        { "a_Normals", BufferComponents::XYZ, BufferStride::F3, false, offsetof(Mesh::Vertex, Normal) },
+                        { "a_Tangents", BufferComponents::XYZ, BufferStride::F3, false, offsetof(Mesh::Vertex, Tangent) },
+                        { "a_Bitangents", BufferComponents::XYZ, BufferStride::F3, false, offsetof(Mesh::Vertex, Bitangent) }
+                    }
+                )));
+
         subMesh->ParentModel = modelPtr.get();
         modelPtr->m_SubMeshes.emplace_back(std::move(subMesh));
     }
 
     void Importer::LoadNode(const std::shared_ptr<Model>& modelPtr, aiNode* node, const aiScene* scene)
     {
-        for(uint32_t i = 0; i < node->mNumMeshes; i++)
+        for (uint32_t i = 0; i < node->mNumMeshes; i++)
         {
             LoadMesh(modelPtr, scene->mMeshes[node->mMeshes[i]], scene);
         }
 
-        for(uint32_t i = 0; i < node->mNumChildren; i++)
+        for (uint32_t i = 0; i < node->mNumChildren; i++)
         {
             LoadNode(modelPtr, node->mChildren[i], scene);
         }
     }
 
-    void Motion::Core::Importer::LoadMaterials(const std::shared_ptr<Model>& modelPtr, const aiScene* scene) 
+    void Motion::Core::Importer::LoadMaterials(const std::shared_ptr<Model>& modelPtr, const aiScene* scene)
     {
         //Extracting Materials 
-        for(auto& mesh : modelPtr->m_SubMeshes)
+        for (auto& mesh : modelPtr->m_SubMeshes)
         {
             MOTION_CORE_INFO("Extracting Model SubMesh {0} Materials", mesh->MeshIndex);
             aiMaterial* currentMaterial = scene->mMaterials[mesh->MaterialIndex];
 
             aiString property;
-            if(currentMaterial->Get(AI_MATKEY_NAME, property) != AI_SUCCESS)
+            if (currentMaterial->Get(AI_MATKEY_NAME, property) != AI_SUCCESS)
             {
                 MOTION_CORE_WARN("Material without a name is not handled >> SKIPPING {0}", mesh->MaterialIndex);
                 continue;
@@ -294,7 +294,7 @@ namespace Motion::Core
             subMeshMaterials->Materials->SetTexture(UniformCache::PBRTextureUniforms::RoughnessTexture, LoadTextures(aiTextureType_DIFFUSE_ROUGHNESS, currentMaterial, TextureType::RoughnessMapsTexture));
             subMeshMaterials->Materials->SetTexture(UniformCache::PBRTextureUniforms::AOMapTexture, LoadTextures(aiTextureType_AMBIENT_OCCLUSION, currentMaterial, TextureType::AOMapsTexture));
             subMeshMaterials->Materials->SetTexture(UniformCache::PBRTextureUniforms::EmissiveTexture, LoadTextures(aiTextureType_EMISSION_COLOR, currentMaterial, TextureType::EmissiveMapsTexture));
-            subMeshMaterials->Materials->SetTexture(UniformCache::PBRTextureUniforms::ClearCoatTexture, LoadTextures(aiTextureType_CLEARCOAT, currentMaterial,  TextureType::ClearCoatMapsTexture));
+            subMeshMaterials->Materials->SetTexture(UniformCache::PBRTextureUniforms::ClearCoatTexture, LoadTextures(aiTextureType_CLEARCOAT, currentMaterial, TextureType::ClearCoatMapsTexture));
             subMeshMaterials->Materials->SetTexture(UniformCache::PBRTextureUniforms::SheenTexture, LoadTextures(aiTextureType_SHEEN, currentMaterial, TextureType::SheenMapsTexture));
             subMeshMaterials->Materials->SetTexture(UniformCache::PBRTextureUniforms::TransmissionTexture, LoadTextures(aiTextureType_TRANSMISSION, currentMaterial, TextureType::TransmissionMapsTexture));
 

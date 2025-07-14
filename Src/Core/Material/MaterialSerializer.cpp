@@ -18,7 +18,7 @@ namespace Motion::Core
         YAML::Emitter out;
         out << YAML::BeginMap;
 
-        out << YAML::Key << "UUID" << YAML::Value << material->GetMetaData().AssetUUID;
+        out << YAML::Key << "UUID" << YAML::Value << material->GetMetaData().AssetID;
         out << YAML::Key << "Name" << YAML::Value << material->GetMetaData().AssetName;
         out << YAML::Key << "ShadingMethod" << YAML::Value << (uint32_t)material->GetShadingMethod();
 
@@ -49,9 +49,9 @@ namespace Motion::Core
         for (const auto& [name, value] : material->GetTextures())
         {
             out << YAML::Key << name << YAML::Value << YAML::BeginMap;
-            out << YAML::Key << "UUID" << YAML::Value << value->GetMetaData().AssetUUID;
+            out << YAML::Key << "UUID" << YAML::Value << value->GetMetaData().AssetID;
             out << YAML::Key << "Name" << YAML::Value << value->GetMetaData().AssetName;
-            out << YAML::Key << "Path" << YAML::Value << value->GetMetaData().FilePath;
+            out << YAML::Key << "Path" << YAML::Value << value->GetMetaData().AssetSource;
             out << YAML::Key << "Type" << YAML::Value << (uint32_t)value->GetSpecification().Type;
             if (!value->Source())
             {

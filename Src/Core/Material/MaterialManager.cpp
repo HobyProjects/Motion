@@ -6,21 +6,21 @@ namespace Motion::Core
     static std::unordered_map<UUID, std::shared_ptr<Material>> s_MaterialsByID;
     static std::unordered_map<std::string, UUID> s_NameToUUID;
 
-    void MaterialManager::Rgister(const std::string& name, const std::shared_ptr<Material>& material) 
+    void MaterialManager::Rgister(const std::string& name, const std::shared_ptr<Material>& material)
     {
-        if(s_MaterialsByID.find(material->GetMetaData().AssetUUID) != s_MaterialsByID.end())
+        if (s_MaterialsByID.find(material->GetMetaData().AssetID) != s_MaterialsByID.end())
         {
-            MOTION_CORE_WARN("Material with UUID {0} already exists!", material->GetMetaData().AssetUUID);
+            MOTION_CORE_WARN("Material with UUID {0} already exists!", material->GetMetaData().AssetID);
             return;
         }
 
-        s_MaterialsByID[material->GetMetaData().AssetUUID] = std::move(material);
-        s_NameToUUID[name] = material->GetMetaData().AssetUUID;
+        s_MaterialsByID[material->GetMetaData().AssetID] = std::move(material);
+        s_NameToUUID[name] = material->GetMetaData().AssetID;
     }
 
     std::shared_ptr<Material> MaterialManager::Get(const UUID& id)
     {
-        if(s_MaterialsByID.find(id) == s_MaterialsByID.end())
+        if (s_MaterialsByID.find(id) == s_MaterialsByID.end())
         {
             MOTION_CORE_WARN("Material with UUID {0} does not exist!", id);
             return nullptr;
@@ -31,7 +31,7 @@ namespace Motion::Core
 
     std::shared_ptr<Material> MaterialManager::Get(const std::string& name)
     {
-        if(s_NameToUUID.find(name) == s_NameToUUID.end())
+        if (s_NameToUUID.find(name) == s_NameToUUID.end())
         {
             MOTION_CORE_WARN("Material with name {0} does not exist!", name);
             return nullptr;
@@ -52,7 +52,7 @@ namespace Motion::Core
 
     void MaterialManager::Unregister(const UUID& id)
     {
-        if(s_MaterialsByID.find(id) == s_MaterialsByID.end())
+        if (s_MaterialsByID.find(id) == s_MaterialsByID.end())
         {
             MOTION_CORE_WARN("Material with UUID {0} does not exist!", id);
             return;
@@ -61,9 +61,9 @@ namespace Motion::Core
         s_MaterialsByID.erase(id);
     }
 
-    void MaterialManager::Unregister(const std::string & name)
+    void MaterialManager::Unregister(const std::string& name)
     {
-        if(s_NameToUUID.find(name) == s_NameToUUID.end())
+        if (s_NameToUUID.find(name) == s_NameToUUID.end())
         {
             MOTION_CORE_WARN("Material with name {0} does not exist!", name);
             return;

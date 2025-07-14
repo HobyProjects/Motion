@@ -143,7 +143,7 @@ namespace Motion::Core
 
         GL_ShaderFactory::LinkShaderProgram(m_ProgramID);
         GL_ShaderFactory::ValidateShaderProgram(m_ProgramID);
-        m_MetaData.IsLoaded = true;
+        m_MetaData.IsAssetInitialized = true;
     }
 
     /**
@@ -172,7 +172,7 @@ namespace Motion::Core
 
         GL_ShaderFactory::LinkShaderProgram(m_ProgramID);
         GL_ShaderFactory::ValidateShaderProgram(m_ProgramID);
-        m_MetaData.IsLoaded = true;
+        m_MetaData.IsAssetInitialized = true;
     }
 
     /**

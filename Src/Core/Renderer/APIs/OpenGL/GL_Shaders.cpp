@@ -1,4 +1,5 @@
 #include "CorePCH.hpp"
+#include "GL_Shaders.hpp"
 
 namespace Motion::Core
 {
@@ -132,7 +133,6 @@ namespace Motion::Core
     GL_Shader::GL_Shader(const std::string& name, const std::unordered_map<ShaderType, std::string>& shaderSources, const std::filesystem::path& sourceFile) :
         AssetBase<IShader>(UniqueIdentity::GetUniqueID(), name, AssetType::Shader, sourceFile.string())
     {
-        m_Name = name;
         m_ProgramID = GL_ShaderFactory::CreateShaderProgram();
 
         for (const auto& [type, source] : shaderSources)
@@ -143,6 +143,8 @@ namespace Motion::Core
 
         GL_ShaderFactory::LinkShaderProgram(m_ProgramID);
         GL_ShaderFactory::ValidateShaderProgram(m_ProgramID);
+        ReflectUniforms();
+
         m_MetaData.IsAssetInitialized = true;
     }
 
@@ -161,7 +163,6 @@ namespace Motion::Core
     GL_Shader::GL_Shader(UUID uuid, const std::string& name, const std::unordered_map<ShaderType, std::string>& shaderSources, const std::filesystem::path& sourceFile) :
         AssetBase<IShader>(uuid, name, AssetType::Shader, sourceFile.string())
     {
-        m_Name = name;
         m_ProgramID = GL_ShaderFactory::CreateShaderProgram();
 
         for (const auto& [type, source] : shaderSources)
@@ -172,6 +173,8 @@ namespace Motion::Core
 
         GL_ShaderFactory::LinkShaderProgram(m_ProgramID);
         GL_ShaderFactory::ValidateShaderProgram(m_ProgramID);
+        ReflectUniforms();
+
         m_MetaData.IsAssetInitialized = true;
     }
 
@@ -198,21 +201,24 @@ namespace Motion::Core
      * @param uniformName The name of the uniform variable whose location is to be retrieved.
      * @return The location of the uniform variable, or -1 if the uniform is not found.
      */
-    UniformLocation GL_Shader::GetUniformLocation(const std::string& uniformName) const
+    UniformLocation GL_Shader::GetUniformLocation(const std::string_view uniformName)
     {
-        if (m_UniformLocations.find(uniformName) == m_UniformLocations.end())
+        auto iterator = m_UniformLocationsCache.find(uniformName);
+        if (iterator != m_UniformLocationsCache.end())
         {
-            UniformLocation location = glGetUniformLocation(m_ProgramID, uniformName.c_str());
-            if (location == -1)
-            {
-                MOTION_ASSERT(location, "Failed to get uniform location: {0}", uniformName);
-                return -1;
-            }
-
-            m_UniformLocations[uniformName] = location;
+            return iterator->second;
         }
 
-        return m_UniformLocations[uniformName];
+        UniformLocation location = glGetUniformLocation(m_ProgramID, uniformName.data());
+        if (location == INVALID_UNIFORM_LOCATION)
+        {
+            MOTION_ASSERT(false, "Uniform '{0}' not found in shader program '{1}'", uniformName, m_MetaData.AssetName);
+            return INVALID_UNIFORM_LOCATION; // Return an invalid location if the uniform is not found
+        }
+
+        // Cache the uniform location for future use
+        m_UniformLocationsCache[uniformName] = location;
+        return location;
     }
 
     /**
@@ -223,9 +229,31 @@ namespace Motion::Core
      * @param uniformName The name of the uniform variable in the shader program.
      * @param value The float value to set for the uniform variable.
      */
-    void GL_Shader::SetUniform(const std::string_view& uniformName, float value)
+    void GL_Shader::SetUniform(const std::string_view uniformName, float value)
     {
-        glUniform1f(GetUniformLocation(uniformName.data()), value);
+        auto uniformInfoIterator = m_UniformInformationCache.find(uniformName);
+        if (uniformInfoIterator != m_UniformInformationCache.end())
+        {
+            const UniformInfomation& uniformInfo = uniformInfoIterator->second;
+            if (uniformInfo.IsValid && uniformInfo.Type == UniformType::Float)
+            {
+                glUniform1f(uniformInfo.Location, value);
+            }
+        }
+        else
+        {
+            MOTION_CORE_WARN("Uniform '{0}' is not of type Float or is invalid", uniformName);
+            UniformLocation location = GetUniformLocation(uniformName);
+            if (location != INVALID_UNIFORM_LOCATION)
+            {
+                m_UniformInformationCache[uniformName] = UniformInfomation(uniformName, UniformType::Float, location);
+                glUniform1f(location, value);
+            }
+            else
+            {
+                MOTION_CORE_ERROR("Uniform '{0}' not found in shader program '{1}'", uniformName, m_MetaData.AssetName);
+            }
+        }
     }
 
     /**
@@ -237,9 +265,31 @@ namespace Motion::Core
      * @param uniformName The name of the uniform variable to set.
      * @param value The integer value to assign to the uniform variable.
      */
-    void GL_Shader::SetUniform(const std::string_view& uniformName, int32_t value)
+    void GL_Shader::SetUniform(const std::string_view uniformName, int32_t value)
     {
-        glUniform1i(GetUniformLocation(uniformName.data()), value);
+        auto uniformInfoIterator = m_UniformInformationCache.find(uniformName);
+        if (uniformInfoIterator != m_UniformInformationCache.end())
+        {
+            const UniformInfomation& uniformInfo = uniformInfoIterator->second;
+            if (uniformInfo.IsValid && uniformInfo.Type == UniformType::Int)
+            {
+                glUniform1i(uniformInfo.Location, value);
+            }
+        }
+        else
+        {
+            MOTION_CORE_WARN("Uniform '{0}' is not of type Int or is invalid", uniformName);
+            UniformLocation location = GetUniformLocation(uniformName);
+            if (location != INVALID_UNIFORM_LOCATION)
+            {
+                m_UniformInformationCache[uniformName] = UniformInfomation(uniformName, UniformType::Int, location);
+                glUniform1i(location, value);
+            }
+            else
+            {
+                MOTION_CORE_ERROR("Uniform '{0}' not found in shader program '{1}'", uniformName, m_MetaData.AssetName);
+            }
+        }
     }
 
     /**
@@ -251,9 +301,31 @@ namespace Motion::Core
      * @param uniformName The name of the uniform variable to set.
      * @param value The unsigned integer value to assign to the uniform variable.
      */
-    void GL_Shader::SetUniform(const std::string_view& uniformName, uint32_t value)
+    void GL_Shader::SetUniform(const std::string_view uniformName, uint32_t value)
     {
-        glUniform1ui(GetUniformLocation(uniformName.data()), value);
+        auto uniformInfoIterator = m_UniformInformationCache.find(uniformName);
+        if (uniformInfoIterator != m_UniformInformationCache.end())
+        {
+            const UniformInfomation& uniformInfo = uniformInfoIterator->second;
+            if (uniformInfo.IsValid && uniformInfo.Type == UniformType::UInt)
+            {
+                glUniform1ui(uniformInfo.Location, value);
+            }
+        }
+        else
+        {
+            MOTION_CORE_WARN("Uniform '{0}' is not of type UInt or is invalid", uniformName);
+            UniformLocation location = GetUniformLocation(uniformName);
+            if (location != INVALID_UNIFORM_LOCATION)
+            {
+                m_UniformInformationCache[uniformName] = UniformInfomation(uniformName, UniformType::UInt, location);
+                glUniform1ui(location, value);
+            }
+            else
+            {
+                MOTION_CORE_ERROR("Uniform '{0}' not found in shader program '{1}'", uniformName, m_MetaData.AssetName);
+            }
+        }
     }
 
     /**
@@ -265,9 +337,31 @@ namespace Motion::Core
      * @param uniformName The name of the uniform variable in the shader.
      * @param value The glm::vec2 value to set for the uniform variable.
      */
-    void GL_Shader::SetUniform(const std::string_view& uniformName, const glm::vec2& value)
+    void GL_Shader::SetUniform(const std::string_view uniformName, const glm::vec2& value)
     {
-        glUniform2fv(GetUniformLocation(uniformName.data()), 1, glm::value_ptr(value));
+        auto uniformInfoIterator = m_UniformInformationCache.find(uniformName);
+        if (uniformInfoIterator != m_UniformInformationCache.end())
+        {
+            const UniformInfomation& uniformInfo = uniformInfoIterator->second;
+            if (uniformInfo.IsValid && uniformInfo.Type == UniformType::Vec2)
+            {
+                glUniform2fv(uniformInfo.Location, 1, glm::value_ptr(value));
+            }
+        }
+        else
+        {
+            MOTION_CORE_WARN("Uniform '{0}' is not of type Vec2 or is invalid", uniformName);
+            UniformLocation location = GetUniformLocation(uniformName);
+            if (location != INVALID_UNIFORM_LOCATION)
+            {
+                m_UniformInformationCache[uniformName] = UniformInfomation(uniformName, UniformType::Vec2, location);
+                glUniform2fv(location, 1, glm::value_ptr(value));
+            }
+            else
+            {
+                MOTION_CORE_ERROR("Uniform '{0}' not found in shader program '{1}'", uniformName, m_MetaData.AssetName);
+            }
+        }
     }
 
     /**
@@ -279,9 +373,31 @@ namespace Motion::Core
      * @param uniformName The name of the uniform variable in the shader.
      * @param value The glm::vec3 value to set for the uniform.
      */
-    void GL_Shader::SetUniform(const std::string_view& uniformName, const glm::vec3& value)
+    void GL_Shader::SetUniform(const std::string_view uniformName, const glm::vec3& value)
     {
-        glUniform3fv(GetUniformLocation(uniformName.data()), 1, glm::value_ptr(value));
+        auto uniformInfoIterator = m_UniformInformationCache.find(uniformName);
+        if (uniformInfoIterator != m_UniformInformationCache.end())
+        {
+            const UniformInfomation& uniformInfo = uniformInfoIterator->second;
+            if (uniformInfo.IsValid && uniformInfo.Type == UniformType::Vec3)
+            {
+                glUniform3fv(uniformInfo.Location, 1, glm::value_ptr(value));
+            }
+        }
+        else
+        {
+            MOTION_CORE_WARN("Uniform '{0}' is not of type Vec3 or is invalid", uniformName);
+            UniformLocation location = GetUniformLocation(uniformName);
+            if (location != INVALID_UNIFORM_LOCATION)
+            {
+                m_UniformInformationCache[uniformName] = UniformInfomation(uniformName, UniformType::Vec3, location);
+                glUniform3fv(location, 1, glm::value_ptr(value));
+            }
+            else
+            {
+                MOTION_CORE_ERROR("Uniform '{0}' not found in shader program '{1}'", uniformName, m_MetaData.AssetName);
+            }
+        }
     }
 
     /**
@@ -293,9 +409,31 @@ namespace Motion::Core
      * @param uniformName The name of the uniform variable in the shader.
      * @param value The glm::vec4 value to set for the uniform.
      */
-    void GL_Shader::SetUniform(const std::string_view& uniformName, const glm::vec4& value)
+    void GL_Shader::SetUniform(const std::string_view uniformName, const glm::vec4& value)
     {
-        glUniform4fv(GetUniformLocation(uniformName.data()), 1, glm::value_ptr(value));
+        auto uniformInfoIterator = m_UniformInformationCache.find(uniformName);
+        if (uniformInfoIterator != m_UniformInformationCache.end())
+        {
+            const UniformInfomation& uniformInfo = uniformInfoIterator->second;
+            if (uniformInfo.IsValid && uniformInfo.Type == UniformType::Vec4)
+            {
+                glUniform4fv(uniformInfo.Location, 1, glm::value_ptr(value));
+            }
+        }
+        else
+        {
+            MOTION_CORE_WARN("Uniform '{0}' is not of type Vec4 or is invalid", uniformName);
+            UniformLocation location = GetUniformLocation(uniformName);
+            if (location != INVALID_UNIFORM_LOCATION)
+            {
+                m_UniformInformationCache[uniformName] = UniformInfomation(uniformName, UniformType::Vec4, location);
+                glUniform4fv(location, 1, glm::value_ptr(value));
+            }
+            else
+            {
+                MOTION_CORE_ERROR("Uniform '{0}' not found in shader program '{1}'", uniformName, m_MetaData.AssetName);
+            }
+        }
     }
 
     /**
@@ -306,9 +444,31 @@ namespace Motion::Core
      * @param uniformName The name of the uniform variable in the shader.
      * @param value The 2x2 matrix value to set for the uniform.
      */
-    void GL_Shader::SetUniform(const std::string_view& uniformName, const glm::mat2& value)
+    void GL_Shader::SetUniform(const std::string_view uniformName, const glm::mat2& value)
     {
-        glUniformMatrix2fv(GetUniformLocation(uniformName.data()), 1, GL_FALSE, glm::value_ptr(value));
+        auto uniformInfoIterator = m_UniformInformationCache.find(uniformName);
+        if (uniformInfoIterator != m_UniformInformationCache.end())
+        {
+            const UniformInfomation& uniformInfo = uniformInfoIterator->second;
+            if (uniformInfo.IsValid && uniformInfo.Type == UniformType::Mat2)
+            {
+                glUniformMatrix2fv(uniformInfo.Location, 1, GL_FALSE, glm::value_ptr(value));
+            }
+        }
+        else
+        {
+            MOTION_CORE_WARN("Uniform '{0}' is not of type Mat2 or is invalid", uniformName);
+            UniformLocation location = GetUniformLocation(uniformName);
+            if (location != INVALID_UNIFORM_LOCATION)
+            {
+                m_UniformInformationCache[uniformName] = UniformInfomation(uniformName, UniformType::Mat2, location);
+                glUniformMatrix2fv(location, 1, GL_FALSE, glm::value_ptr(value));
+            }
+            else
+            {
+                MOTION_CORE_ERROR("Uniform '{0}' not found in shader program '{1}'", uniformName, m_MetaData.AssetName);
+            }
+        }
     }
 
     /**
@@ -320,9 +480,31 @@ namespace Motion::Core
      * @param uniformName The name of the uniform variable in the shader.
      * @param value The glm::mat3 value to set for the uniform.
      */
-    void GL_Shader::SetUniform(const std::string_view& uniformName, const glm::mat3& value)
+    void GL_Shader::SetUniform(const std::string_view uniformName, const glm::mat3& value)
     {
-        glUniformMatrix3fv(GetUniformLocation(uniformName.data()), 1, GL_FALSE, glm::value_ptr(value));
+        auto uniformInfoIterator = m_UniformInformationCache.find(uniformName);
+        if (uniformInfoIterator != m_UniformInformationCache.end())
+        {
+            const UniformInfomation& uniformInfo = uniformInfoIterator->second;
+            if (uniformInfo.IsValid && uniformInfo.Type == UniformType::Mat3)
+            {
+                glUniformMatrix3fv(uniformInfo.Location, 1, GL_FALSE, glm::value_ptr(value));
+            }
+        }
+        else
+        {
+            MOTION_CORE_WARN("Uniform '{0}' is not of type Mat3 or is invalid", uniformName);
+            UniformLocation location = GetUniformLocation(uniformName);
+            if (location != INVALID_UNIFORM_LOCATION)
+            {
+                m_UniformInformationCache[uniformName] = UniformInfomation(uniformName, UniformType::Mat3, location);
+                glUniformMatrix3fv(location, 1, GL_FALSE, glm::value_ptr(value));
+            }
+            else
+            {
+                MOTION_CORE_ERROR("Uniform '{0}' not found in shader program '{1}'", uniformName, m_MetaData.AssetName);
+            }
+        }
     }
 
     /**
@@ -334,10 +516,108 @@ namespace Motion::Core
      * @param uniformName The name of the uniform variable in the shader.
      * @param value The 4x4 matrix (glm::mat4) to set for the uniform.
      */
-    void GL_Shader::SetUniform(const std::string_view& uniformName, const glm::mat4& value)
+    void GL_Shader::SetUniform(const std::string_view uniformName, const glm::mat4& value)
     {
-        glUniformMatrix4fv(GetUniformLocation(uniformName.data()), 1, GL_FALSE, glm::value_ptr(value));
+        auto uniformInfoIterator = m_UniformInformationCache.find(uniformName);
+        if (uniformInfoIterator != m_UniformInformationCache.end())
+        {
+            const UniformInfomation& uniformInfo = uniformInfoIterator->second;
+            if (uniformInfo.IsValid && uniformInfo.Type == UniformType::Mat4)
+            {
+                glUniformMatrix4fv(uniformInfo.Location, 1, GL_FALSE, glm::value_ptr(value));
+            }
+        }
+        else
+        {
+            MOTION_CORE_WARN("Uniform '{0}' is not of type Mat4 or is invalid", uniformName);
+            UniformLocation location = GetUniformLocation(uniformName);
+            if (location != INVALID_UNIFORM_LOCATION)
+            {
+                m_UniformInformationCache[uniformName] = UniformInfomation(uniformName, UniformType::Mat4, location);
+                glUniformMatrix4fv(location, 1, GL_FALSE, glm::value_ptr(value));
+            }
+            else
+            {
+                MOTION_CORE_ERROR("Uniform '{0}' not found in shader program '{1}'", uniformName, m_MetaData.AssetName);
+            }
+        }
     }
+
+
+    /**
+     * @brief Reflects and caches the locations and types of all relevant shader uniforms.
+     *
+     * This method populates the m_UniformInformationCache map with information about
+     * various shader uniform variables, including their names, types, and locations
+     * within the currently active OpenGL shader program. The uniforms covered include
+     * material colors, factors, properties, global attributes, light attributes, and
+     * texture samplers. This caching mechanism allows for efficient uniform updates
+     * during rendering by avoiding repeated location queries.
+     *
+     * @note This function assumes that the shader program is already compiled and linked,
+     *       and that all uniform names used are present in the shader source.
+     */
+    void GL_Shader::ReflectUniforms()
+    {
+        m_UniformInformationCache[UniformCache::Color_AmbientColor] = { UniformCache::Color_AmbientColor, UniformType::Vec4, GetUniformLocation(UniformCache::Color_AmbientColor) };
+        m_UniformInformationCache[UniformCache::Color_DiffuseColor] = { UniformCache::Color_DiffuseColor, UniformType::Vec4, GetUniformLocation(UniformCache::Color_DiffuseColor) };
+        m_UniformInformationCache[UniformCache::Color_SpecularColor] = { UniformCache::Color_SpecularColor, UniformType::Vec4, GetUniformLocation(UniformCache::Color_SpecularColor) };
+        m_UniformInformationCache[UniformCache::Color_EmissiveColor] = { UniformCache::Color_EmissiveColor, UniformType::Vec4, GetUniformLocation(UniformCache::Color_EmissiveColor) };
+        m_UniformInformationCache[UniformCache::Color_ReflectiveColor] = { UniformCache::Color_ReflectiveColor, UniformType::Vec4, GetUniformLocation(UniformCache::Color_ReflectiveColor) };
+        m_UniformInformationCache[UniformCache::Color_TransparentColor] = { UniformCache::Color_TransparentColor, UniformType::Vec4, GetUniformLocation(UniformCache::Color_TransparentColor) };
+
+        m_UniformInformationCache[UniformCache::Factor_AmbientOcclusionFactor] = { UniformCache::Factor_AmbientOcclusionFactor, UniformType::Float, GetUniformLocation(UniformCache::Factor_AmbientOcclusionFactor) };
+        m_UniformInformationCache[UniformCache::Factor_BaseColorFactor] = { UniformCache::Factor_BaseColorFactor, UniformType::Vec4, GetUniformLocation(UniformCache::Factor_BaseColorFactor) };
+        m_UniformInformationCache[UniformCache::Factor_MetallicFactor] = { UniformCache::Factor_MetallicFactor, UniformType::Float, GetUniformLocation(UniformCache::Factor_MetallicFactor) };
+        m_UniformInformationCache[UniformCache::Factor_RoughnessFactor] = { UniformCache::Factor_RoughnessFactor, UniformType::Float, GetUniformLocation(UniformCache::Factor_RoughnessFactor) };
+        m_UniformInformationCache[UniformCache::Factor_ClearCoatFactor] = { UniformCache::Factor_ClearCoatFactor, UniformType::Float, GetUniformLocation(UniformCache::Factor_ClearCoatFactor) };
+        m_UniformInformationCache[UniformCache::Factor_ClearCoatRoughnessFactor] = { UniformCache::Factor_ClearCoatRoughnessFactor, UniformType::Float, GetUniformLocation(UniformCache::Factor_ClearCoatRoughnessFactor) };
+        m_UniformInformationCache[UniformCache::Factor_SheenFactor] = { UniformCache::Factor_SheenFactor, UniformType::Float, GetUniformLocation(UniformCache::Factor_SheenFactor) };
+        m_UniformInformationCache[UniformCache::Factor_SheenRoughnessFactor] = { UniformCache::Factor_SheenRoughnessFactor, UniformType::Float, GetUniformLocation(UniformCache::Factor_SheenRoughnessFactor) };
+        m_UniformInformationCache[UniformCache::Factor_TransmissionFactor] = { UniformCache::Factor_TransmissionFactor, UniformType::Float, GetUniformLocation(UniformCache::Factor_TransmissionFactor) };
+        m_UniformInformationCache[UniformCache::Factor_IndexOfRefraction] = { UniformCache::Factor_IndexOfRefraction, UniformType::Float, GetUniformLocation(UniformCache::Factor_IndexOfRefraction) };
+
+        m_UniformInformationCache[UniformCache::Property_BumpScaling] = { UniformCache::Property_BumpScaling, UniformType::Float, GetUniformLocation(UniformCache::Property_BumpScaling) };
+        m_UniformInformationCache[UniformCache::Property_Shininess] = { UniformCache::Property_Shininess, UniformType::Float, GetUniformLocation(UniformCache::Property_Shininess) };
+        m_UniformInformationCache[UniformCache::Property_IndexOfRefraction] = { UniformCache::Property_IndexOfRefraction, UniformType::Float, GetUniformLocation(UniformCache::Property_IndexOfRefraction) };
+        m_UniformInformationCache[UniformCache::Property_Opacity] = { UniformCache::Property_Opacity, UniformType::Float, GetUniformLocation(UniformCache::Property_Opacity) };
+        m_UniformInformationCache[UniformCache::Property_Reflectivity] = { UniformCache::Property_Reflectivity, UniformType::Float, GetUniformLocation(UniformCache::Property_Reflectivity) };
+        m_UniformInformationCache[UniformCache::Property_Shininess] = { UniformCache::Property_Shininess, UniformType::Float, GetUniformLocation(UniformCache::Property_Shininess) };
+        m_UniformInformationCache[UniformCache::Property_ShininessStrength] = { UniformCache::Property_ShininessStrength, UniformType::Float, GetUniformLocation(UniformCache::Property_ShininessStrength) };
+
+        m_UniformInformationCache[UniformCache::GlobalAttri_ModelMatrix] = { UniformCache::GlobalAttri_ModelMatrix, UniformType::Mat4, GetUniformLocation(UniformCache::GlobalAttri_ModelMatrix) };
+        m_UniformInformationCache[UniformCache::GlobalAttri_ViewProjMatrix] = { UniformCache::GlobalAttri_ViewProjMatrix, UniformType::Mat4, GetUniformLocation(UniformCache::GlobalAttri_ViewProjMatrix) };
+
+        m_UniformInformationCache[UniformCache::LightAttri_Position] = { UniformCache::LightAttri_Position, UniformType::Vec3, GetUniformLocation(UniformCache::LightAttri_Position) };
+        m_UniformInformationCache[UniformCache::LightAttri_Color] = { UniformCache::LightAttri_Color, UniformType::Vec3, GetUniformLocation(UniformCache::LightAttri_Color) };
+        m_UniformInformationCache[UniformCache::LightAttri_Intensity] = { UniformCache::LightAttri_Intensity, UniformType::Float, GetUniformLocation(UniformCache::LightAttri_Intensity) };
+
+        m_UniformInformationCache[UniformCache::Texture_AmbientTexture] = { UniformCache::Texture_AmbientTexture, UniformType::Sampler2D, GetUniformLocation(UniformCache::Texture_AmbientTexture) };
+        m_UniformInformationCache[UniformCache::Texture_DiffuseTexture] = { UniformCache::Texture_DiffuseTexture, UniformType::Sampler2D, GetUniformLocation(UniformCache::Texture_DiffuseTexture) };
+        m_UniformInformationCache[UniformCache::Texture_SpecularTexture] = { UniformCache::Texture_SpecularTexture, UniformType::Sampler2D, GetUniformLocation(UniformCache::Texture_SpecularTexture) };
+        m_UniformInformationCache[UniformCache::Texture_EmissiveTexture] = { UniformCache::Texture_EmissiveTexture, UniformType::Sampler2D, GetUniformLocation(UniformCache::Texture_EmissiveTexture) };
+        m_UniformInformationCache[UniformCache::Texture_NormalMapsTexture] = { UniformCache::Texture_NormalMapsTexture, UniformType::Sampler2D, GetUniformLocation(UniformCache::Texture_NormalMapsTexture) };
+        m_UniformInformationCache[UniformCache::Texture_HightMapsTexture] = { UniformCache::Texture_HightMapsTexture, UniformType::Sampler2D, GetUniformLocation(UniformCache::Texture_HightMapsTexture) };
+        m_UniformInformationCache[UniformCache::Texture_ShininessTexture] = { UniformCache::Texture_ShininessTexture, UniformType::Sampler2D, GetUniformLocation(UniformCache::Texture_ShininessTexture) };
+        m_UniformInformationCache[UniformCache::Texture_OpacityMapsTexture] = { UniformCache::Texture_OpacityMapsTexture, UniformType::Sampler2D, GetUniformLocation(UniformCache::Texture_OpacityMapsTexture) };
+        m_UniformInformationCache[UniformCache::Texture_LightMapsTexture] = { UniformCache::Texture_LightMapsTexture, UniformType::Sampler2D, GetUniformLocation(UniformCache::Texture_LightMapsTexture) };
+        m_UniformInformationCache[UniformCache::Texture_BaseColorTexture] = { UniformCache::Texture_BaseColorTexture, UniformType::Sampler2D, GetUniformLocation(UniformCache::Texture_BaseColorTexture) };
+        m_UniformInformationCache[UniformCache::Texture_MetallicTexture] = { UniformCache::Texture_MetallicTexture, UniformType::Sampler2D, GetUniformLocation(UniformCache::Texture_MetallicTexture) };
+        m_UniformInformationCache[UniformCache::Texture_RoughnessTexture] = { UniformCache::Texture_RoughnessTexture, UniformType::Sampler2D, GetUniformLocation(UniformCache::Texture_RoughnessTexture) };
+        m_UniformInformationCache[UniformCache::Texture_AOMapTexture] = { UniformCache::Texture_AOMapTexture, UniformType::Sampler2D, GetUniformLocation(UniformCache::Texture_AOMapTexture) };
+        m_UniformInformationCache[UniformCache::Texture_EmissiveTexture] = { UniformCache::Texture_EmissiveTexture, UniformType::Sampler2D, GetUniformLocation(UniformCache::Texture_EmissiveTexture) };
+        m_UniformInformationCache[UniformCache::Texture_ClearCoatTexture] = { UniformCache::Texture_ClearCoatTexture, UniformType::Sampler2D, GetUniformLocation(UniformCache::Texture_ClearCoatTexture) };
+        m_UniformInformationCache[UniformCache::Texture_SheenTexture] = { UniformCache::Texture_SheenTexture, UniformType::Sampler2D, GetUniformLocation(UniformCache::Texture_SheenTexture) };
+        m_UniformInformationCache[UniformCache::Texture_TransmissionTexture] = { UniformCache::Texture_TransmissionTexture, UniformType::Sampler2D, GetUniformLocation(UniformCache::Texture_TransmissionTexture) };
+    }
+
+    std::int32_t GL_Shader::GetMaxTextureUnits() const
+    {
+        std::int32_t maxTextureUnits = 0;
+        glGetIntegerv(GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS, &maxTextureUnits);
+        return maxTextureUnits;
+    }
+
 
     /**
      * @brief Binds the shader program for use in the current OpenGL context.
@@ -348,7 +628,6 @@ namespace Motion::Core
     void GL_Shader::Bind() const
     {
         glUseProgram(m_ProgramID);
-        m_InUse = true;
     }
 
     /**
@@ -361,6 +640,5 @@ namespace Motion::Core
     void GL_Shader::Unbind() const
     {
         glUseProgram(0);
-        m_InUse = false;
     }
 }

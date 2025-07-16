@@ -56,7 +56,7 @@
 #include "Layer.hpp"
 #include "LayersManager.hpp"
 
-// Assets
+// Assetss
 #include "Asset.hpp"
 #include "AssetManager.hpp"
 
@@ -72,7 +72,6 @@
 #include "GLFW_InputsHandler.hpp"
 
 //Renderer
-#include "Renderer.hpp"
 #include "DrawCommand.hpp"
 #include "Buffers.hpp"
 #include "Shaders.hpp"
@@ -84,6 +83,7 @@
 #include "Mesh.hpp"
 #include "Importer.hpp"
 #include "Thumbnail.hpp"
+#include "Renderer.hpp"
 
 //Renderer - OpenGL
 #include "GL_Debug.hpp"

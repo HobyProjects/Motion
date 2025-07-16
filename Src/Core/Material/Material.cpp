@@ -10,9 +10,11 @@ namespace Motion::Core
      * @param name The name of the material.
      * @param shadingMethod The shading method used by the material.
      */
-    Material::Material(const UUID& uuid, const std::string& name, MaterialShadingMethod shadingMethod) :
-        AssetBase(uuid, name, AssetType::Material, "Undefined"), m_ShadingMethod(shadingMethod)
+    Material::Material(const UUID& uuid, const std::string& name) :
+        AssetBase(uuid, name, AssetType::Material, "Undefined")
     {
+        m_MetaData.IsAssetInitialized = true;
+        m_ShadingMethod = MaterialShadingMethod::Auto;
     }
 
     /**
@@ -24,9 +26,68 @@ namespace Motion::Core
      * @param name The name of the material.
      * @param shadingMethod The shading method to be used by the material.
      */
-    Material::Material(const std::string& name, MaterialShadingMethod shadingMethod) :
-        AssetBase(UniqueIdentity::GetUniqueID(), name, AssetType::Material, "Undefined"), m_ShadingMethod(shadingMethod)
+    Material::Material(const std::string& name) :
+        AssetBase(UniqueIdentity::GetUniqueID(), name, AssetType::Material, "Undefined")
     {
+        m_MetaData.IsAssetInitialized = true;
+        m_ShadingMethod = MaterialShadingMethod::Auto;
+    }
+
+    /**
+     * @brief Sets the value of a float uniform parameter for the material.
+     *
+     * This function assigns the given float value to the uniform parameter specified by its name.
+     * If the parameter already exists, its value is updated; otherwise, a new parameter is created.
+     *
+     * @param uniformName The name of the uniform parameter to set.
+     * @param value The float value to assign to the uniform parameter.
+     */
+    void Material::SetUniform(const std::string_view uniformName, float value)
+    {
+        m_FloatParameters[uniformName] = value;
+    }
+
+    /**
+     * @brief Sets a vec3 uniform parameter for the material.
+     *
+     * Stores the given glm::vec3 value in the material's uniform parameter map,
+     * associated with the specified uniform name. If the uniform already exists,
+     * its value will be updated.
+     *
+     * @param uniformName The name of the uniform parameter to set.
+     * @param value The glm::vec3 value to assign to the uniform parameter.
+     */
+    void Material::SetUniform(const std::string_view uniformName, const glm::vec3& value)
+    {
+        m_Vec3Parameters[uniformName] = value;
+    }
+
+    /**
+     * @brief Sets a vec4 uniform parameter for the material.
+     *
+     * Updates or adds a vec4 parameter associated with the given uniform name.
+     *
+     * @param uniformName The name of the uniform parameter to set.
+     * @param value The glm::vec4 value to assign to the uniform parameter.
+     */
+    void Material::SetUniform(const std::string_view uniformName, const glm::vec4& value)
+    {
+        m_Vec4Parameters[uniformName] = value;
+    }
+
+    /**
+     * @brief Associates a texture with a specified uniform name in the material.
+     *
+     * This function sets or updates the texture corresponding to the given uniform name.
+     * The texture is stored internally and can be used during rendering to bind the appropriate
+     * texture to the shader uniform.
+     *
+     * @param uniformName The name of the shader uniform to associate with the texture.
+     * @param texture A shared pointer to the texture object to be set.
+     */
+    void Material::SetTexture(const std::string_view uniformName, const std::shared_ptr<ITexture>& texture)
+    {
+        m_Textures[uniformName] = texture;
     }
 
     /**
@@ -39,27 +100,42 @@ namespace Motion::Core
      * @param shader A shared pointer to the shader to which the material parameters and textures will be bound.
      * @note This function is noexcept and thread-safe for the shading method determination.
      */
-    void Material::Bind(const std::shared_ptr<IShader>& shader) const noexcept
+    void Material::Bind(const std::shared_ptr<IShader>& shader) noexcept
     {
         static std::once_flag flag;
         std::call_once(flag, [this]() { DetermineShadingMethod(); });
 
-        if (shader && shader->InUse())
+        if (shader->IsAssetInitialized())
         {
-            for (const auto& [name, binding] : m_ParameterBindings)
+            for (const auto& [uniformName, value] : m_FloatParameters)
             {
-                const auto& value = binding.ParameterValue;
-                std::visit([&](auto&& arg) { shader->SetUniform(name.data(), arg); }, value);
+                shader->SetUniform(uniformName, value);
             }
 
-            std::uint32_t bindingPoint = 0;
-            for (const auto& [name, binding] : m_TextureBindings)
+            for (const auto& [uniformName, value] : m_Vec3Parameters)
             {
-                if (binding.Texture)
+                shader->SetUniform(uniformName, value);
+            }
+
+            for (const auto& [uniformName, value] : m_Vec4Parameters)
+            {
+                shader->SetUniform(uniformName, value);
+            }
+
+            for (const auto& [uniformName, texture] : m_Textures)
+            {
+                if (texture->IsAssetInitialized())
                 {
-                    shader->SetUniform(std::format("{}_{}", name.data(), bindingPoint).c_str(), static_cast<float>(bindingPoint));
-                    binding.Texture->Bind(bindingPoint);
-                    bindingPoint++;
+                    static std::uint32_t bindingPoint = 0;
+
+                    if (bindingPoint >= shader->GetMaxTextureUnits())
+                    {
+                        MOTION_CORE_ERROR("Exceeded maximum texture units in shader: {0}", shader->GetName());
+                        return;
+                    }
+
+                    texture->Bind(bindingPoint);
+                    shader->SetUniform(uniformName, bindingPoint);
                 }
             }
         }
@@ -76,107 +152,13 @@ namespace Motion::Core
      */
     void Material::Unbind() const noexcept
     {
-        for (const auto& [name, binding] : m_TextureBindings)
+        for (const auto& [uniformName, texture] : m_Textures)
         {
-            if (binding.Texture)
-                binding.Texture->Unbind();
+            if (texture->IsAssetInitialized())
+            {
+                texture->Unbind();
+            }
         }
-    }
-
-    /**
-     * @brief Associates a texture with a given name in the material.
-     *
-     * This function binds a texture to the material using the specified name as the key.
-     * If the provided texture is valid (non-null), it is stored in the material's texture bindings.
-     *
-     * @param name The identifier for the texture binding.
-     * @param texture A shared pointer to the texture to be associated with the name.
-     */
-    void Material::Set(std::string_view name, std::shared_ptr<ITexture> texture)
-    {
-        if (texture)
-            m_TextureBindings[name] = { name, std::move(texture) };
-    }
-
-    /**
-     * @brief Sets a material parameter by name.
-     *
-     * Associates the given parameter name with the specified MaterialParameters value.
-     * If the parameter already exists, its value will be updated.
-     *
-     * @param name The name of the material parameter to set.
-     * @param value The MaterialParameters value to associate with the parameter name.
-     */
-    void Material::Set(std::string_view name, const MaterialParameters& value)
-    {
-        m_ParameterBindings[name] = { name, value };
-    }
-
-    /**
-     * @brief Checks if a texture with the specified name is bound to the material.
-     *
-     * @param name The name of the texture to check for.
-     * @return true if the texture is bound; false otherwise.
-     *
-     * @note This function does not throw exceptions.
-     */
-    bool Material::HasTexture(std::string_view name) const noexcept
-    {
-        return m_TextureBindings.find(name) != m_TextureBindings.end();
-    }
-
-    /**
-     * @brief Retrieves a texture bound to the material by its name.
-     *
-     * Searches for a texture with the specified name in the material's texture bindings.
-     * If found, returns a shared pointer to the texture. If not found, logs an error
-     * and returns nullptr.
-     *
-     * @param name The name of the texture to retrieve.
-     * @return std::shared_ptr<ITexture> Shared pointer to the texture if found, nullptr otherwise.
-     */
-    std::shared_ptr<ITexture> Material::GetTexture(std::string_view name) const noexcept
-    {
-        auto it = m_TextureBindings.find(name);
-        if (it != m_TextureBindings.end())
-            return it->second.Texture;
-
-        MOTION_CORE_ERROR("Material does not have a texture with name: {}", name);
-        return nullptr;
-    }
-
-    /**
-     * @brief Checks if a material property with the given name exists.
-     *
-     * This function determines whether a property identified by the specified
-     * name is present in the material's parameter bindings.
-     *
-     * @param name The name of the property to check for existence.
-     * @return true if the property exists; false otherwise.
-     */
-    bool Material::HasProperty(std::string_view name) const noexcept
-    {
-        return m_ParameterBindings.find(name) != m_ParameterBindings.end();
-    }
-
-    /**
-     * @brief Retrieves the value of a material property by its name.
-     *
-     * Searches for the specified property name in the material's parameter bindings.
-     * If the property exists, its value is returned. Otherwise, an error is logged
-     * and a default-constructed MaterialParameters object is returned.
-     *
-     * @param name The name of the property to retrieve.
-     * @return MaterialParameters The value of the property if found; otherwise, a default value.
-     */
-    MaterialParameters Material::GetProperty(std::string_view name) const noexcept
-    {
-        auto it = m_ParameterBindings.find(name);
-        if (it != m_ParameterBindings.end())
-            return it->second.ParameterValue;
-
-        MOTION_CORE_ERROR("Material does not have a property with name: {}", name);
-        return {};
     }
 
     /**
@@ -194,19 +176,19 @@ namespace Motion::Core
      * @note This method modifies the m_ShadingMethod member variable if the shading method is determined.
      * @note The method is noexcept and does not throw exceptions.
      */
-    void Material::DetermineShadingMethod() const noexcept
+    void Material::DetermineShadingMethod() noexcept
     {
         if (m_ShadingMethod == MaterialShadingMethod::Auto)
         {
-            glm::vec3 baseColor = GetPropertyValue<glm::vec3>(UniformCache::MaterialFactorsUniforms::BaseColor);
-            float metallicFactor = GetPropertyValue<float>(UniformCache::MaterialFactorsUniforms::MetallicFactor);
-            float roughnessFactor = GetPropertyValue<float>(UniformCache::MaterialFactorsUniforms::RoughnessFactor);
+            glm::vec3 baseColor = m_Vec3Parameters[UniformCache::Factor_BaseColorFactor];
+            float metallicFactor = m_FloatParameters[UniformCache::Factor_MetallicFactor];
+            float roughnessFactor = m_FloatParameters[UniformCache::Factor_RoughnessFactor];
 
             bool usePBR = baseColor != glm::vec3(0.0f) && metallicFactor > 0.0f && roughnessFactor < 1.0f &&
-                HasTexture(UniformCache::PBRTextureUniforms::BaseColorTexture) &&
-                HasTexture(UniformCache::PBRTextureUniforms::MetallicTexture) &&
-                HasTexture(UniformCache::PBRTextureUniforms::RoughnessTexture) &&
-                HasTexture(UniformCache::PBRTextureUniforms::AOMapTexture);
+                m_Textures.contains(UniformCache::Texture_BaseColorTexture) &&
+                m_Textures.contains(UniformCache::Texture_MetallicTexture) &&
+                m_Textures.contains(UniformCache::Texture_RoughnessTexture) &&
+                m_Textures.contains(UniformCache::Texture_AOMapTexture);
 
             if (usePBR)
             {
@@ -214,14 +196,14 @@ namespace Motion::Core
                 return;
             }
 
-            glm::vec3 diffuseColor = GetPropertyValue<glm::vec3>(UniformCache::SurfaceColorsUniforms::DiffuseColor);
-            glm::vec3 specularColor = GetPropertyValue<glm::vec3>(UniformCache::SurfaceColorsUniforms::SpecularColor);
-            float shininess = GetPropertyValue<float>(UniformCache::MaterialPropertiesUniforms::Shininess);
+            glm::vec3 diffuseColor = m_Vec3Parameters[UniformCache::Color_DiffuseColor];
+            glm::vec3 specularColor = m_Vec3Parameters[UniformCache::Color_SpecularColor];
+            float shininess = m_FloatParameters[UniformCache::Property_Shininess];
 
             bool usePhong = diffuseColor != glm::vec3(0.0f) && specularColor != glm::vec3(0.0f) && shininess > 0.0f ||
-                HasTexture(UniformCache::LegacyTextureUniforms::DiffuseTexture) &&
-                HasTexture(UniformCache::LegacyTextureUniforms::SpecularTexture) &&
-                HasTexture(UniformCache::LegacyTextureUniforms::ShininessTexture);
+                m_Textures.contains(UniformCache::Texture_DiffuseTexture) &&
+                m_Textures.contains(UniformCache::Texture_SpecularTexture) &&
+                m_Textures.contains(UniformCache::Texture_ShininessTexture);
 
             if (usePhong)
             {
@@ -229,8 +211,8 @@ namespace Motion::Core
                 return;
             }
 
-            glm::vec3 emissiveColor = GetPropertyValue<glm::vec3>(UniformCache::SurfaceColorsUniforms::EmissiveColor);
-            if (emissiveColor != glm::vec3(0.0f) && HasTexture(UniformCache::LegacyTextureUniforms::EmissiveTexture))
+            glm::vec3 emissiveColor = m_Vec3Parameters[UniformCache::Color_EmissiveColor];
+            if (emissiveColor != glm::vec3(0.0f) && m_Textures.contains(UniformCache::Texture_EmissiveTexture))
             {
                 m_ShadingMethod = MaterialShadingMethod::Unlit;
                 return;
@@ -240,6 +222,4 @@ namespace Motion::Core
             m_ShadingMethod = MaterialShadingMethod::Unlit;
         }
     }
-
-
 }

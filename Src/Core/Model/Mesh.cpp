@@ -17,10 +17,10 @@ namespace Motion::Core
      * @param indices Pointer to the array of index data.
      * @param indicesCount The number of indices in the index array.
      * @param layout The layout describing the structure of the vertex buffer.
-     * @param parentModel Shared pointer to the parent Model object.
+     * @param parentModel Shared pointer to the parent StaticMesh object.
      */
     Mesh::Mesh(const std::string& name, float* vertices, std::uint32_t verticesSize, std::uint32_t* indices, std::uint32_t indicesCount,
-        const BufferLayout& layout, const std::shared_ptr<Model>& parentModel)
+        const BufferLayout& layout, const std::shared_ptr<StaticMesh>& parentModel)
         : AssetBase<IAsset>(UniqueIdentity::GetUniqueID(), name, AssetType::Mesh, "Undefined")
         , m_ParentModel(parentModel)
         , m_IndicesCount(indicesCount)
@@ -49,10 +49,10 @@ namespace Motion::Core
      * @param indices Pointer to the array of index data.
      * @param indicesCount The number of indices in the index array.
      * @param layout The layout describing the structure of the vertex buffer.
-     * @param parentModel Shared pointer to the parent Model object.
+     * @param parentModel Shared pointer to the parent StaticMesh object.
      */
     Mesh::Mesh(const UUID& uuid, const std::string& name, float* vertices, std::uint32_t verticesSize, std::uint32_t* indices, std::uint32_t indicesCount,
-        const BufferLayout& layout, const std::shared_ptr<Model>& parentModel)
+        const BufferLayout& layout, const std::shared_ptr<StaticMesh>& parentModel)
         : AssetBase<IAsset>(uuid, name, AssetType::Mesh, "Undefined")
         , m_ParentModel(parentModel)
         , m_IndicesCount(indicesCount)
@@ -136,12 +136,12 @@ namespace Motion::Core
     /**
      * @brief Returns the parent model associated with the mesh.
      *
-     * This function retrieves the shared pointer to the parent Model object that
+     * This function retrieves the shared pointer to the parent StaticMesh object that
      * owns this mesh, allowing access to model-level properties and methods.
      *
-     * @return Shared pointer to the parent Model object.
+     * @return Shared pointer to the parent StaticMesh object.
      */
-    std::shared_ptr<Model> Mesh::GetParentModel() const noexcept
+    std::shared_ptr<StaticMesh> Mesh::GetParentModel() const noexcept
     {
         return m_ParentModel;
     }

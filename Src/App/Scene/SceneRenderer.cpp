@@ -8,20 +8,20 @@ namespace Motion::App
 {
     struct DrawCalls
     {
-        std::shared_ptr<Motion::Core::Model> Model{nullptr};
+        std::shared_ptr<Motion::Core::StaticMesh> StaticMesh{ nullptr };
         glm::mat4 Transform;
 
         bool operator<(const DrawCalls& other) const
         {
-            if (Model.get() != other.Model.get())
-                return Model.get() < other.Model.get();
+            if (StaticMesh.get() != other.StaticMesh.get())
+                return StaticMesh.get() < other.StaticMesh.get();
 
             return std::memcmp(&Transform, &other.Transform, sizeof(glm::mat4)) < 0;
         }
     };
 
-    static Scene* s_CurrentScene{nullptr};
-    static glm::mat4 s_CurrentCameraMatrix{1.0f};
+    static Scene* s_CurrentScene{ nullptr };
+    static glm::mat4 s_CurrentCameraMatrix{ 1.0f };
     static std::vector<DrawCalls> s_DrawCalls;
 
 
@@ -32,7 +32,7 @@ namespace Motion::App
         s_DrawCalls.clear();
     }
 
-    void SceneRenderer::SubmitModel(const std::shared_ptr<Motion::Core::Model>& model, const glm::mat4& transform)
+    void SceneRenderer::SubmitModel(const std::shared_ptr<Motion::Core::StaticMesh>& model, const glm::mat4& transform)
     {
         s_DrawCalls.push_back({ model, transform });
     }
@@ -46,33 +46,33 @@ namespace Motion::App
     {
         std::sort(s_DrawCalls.begin(), s_DrawCalls.end(), [](const DrawCalls& a, const DrawCalls& b) { return a < b; });
 
-        for(const auto& drawCall : s_DrawCalls)
+        for (const auto& drawCall : s_DrawCalls)
         {
-            for(std::vector<std::shared_ptr<Motion::Core::Model::SubMesh>>::iterator it = drawCall.Model->begin(); it != drawCall.Model->end(); ++it)
+            for (std::vector<std::shared_ptr<Motion::Core::StaticMesh::SubMesh>>::iterator it = drawCall.StaticMesh->begin(); it != drawCall.StaticMesh->end(); ++it)
             {
-                std::shared_ptr<Motion::Core::Model::SubMesh> subMesh = *it;
-                std::shared_ptr<Motion::Core::Model::SubMeshMaterial> subMeshMaterial = drawCall.Model->GetSubMeshMaterial(subMesh->MaterialIndex);
+                std::shared_ptr<Motion::Core::StaticMesh::SubMesh> subMesh = *it;
+                std::shared_ptr<Motion::Core::StaticMesh::SubMeshMaterial> subMeshMaterial = drawCall.StaticMesh->GetSubMeshMaterial(subMesh->MaterialIndex);
                 std::shared_ptr<Motion::Core::Material> material = subMeshMaterial->Materials;
                 Motion::Core::Material::ShadingMethod shadingMethod = material->GetShadingMethod();
                 std::shared_ptr<Motion::Core::IShader> shader{ nullptr };
 
                 switch (shadingMethod)
                 {
-                    case Motion::Core::Material::ShadingMethod::Phong:
-                        shader = Motion::Core::AssetManager::GetShader("phong");
-                        break;
-                    case Motion::Core::Material::ShadingMethod::PBR:
-                        shader = Motion::Core::AssetManager::GetShader("pbr");
-                        break;
-                    case Motion::Core::Material::ShadingMethod::Unlit:
-                        shader = Motion::Core::AssetManager::GetShader("unlit");
-                        break;
-                    default:
-                        MOTION_WARN("Unknown shading method");
-                        break;
+                case Motion::Core::Material::ShadingMethod::Phong:
+                    shader = Motion::Core::AssetManager::GetShader("phong");
+                    break;
+                case Motion::Core::Material::ShadingMethod::PBR:
+                    shader = Motion::Core::AssetManager::GetShader("pbr");
+                    break;
+                case Motion::Core::Material::ShadingMethod::Unlit:
+                    shader = Motion::Core::AssetManager::GetShader("unlit");
+                    break;
+                default:
+                    MOTION_WARN("Unknown shading method");
+                    break;
                 };
 
-                if(shader != nullptr)
+                if (shader != nullptr)
                 {
                     Motion::Core::DrawCommand drawCommand{};
                     drawCommand.ShaderRef = shader;
@@ -82,7 +82,7 @@ namespace Motion::App
                     drawCommand.ModelMatrix = drawCall.Transform;
                     drawCommand.ViewProjMatrix = s_CurrentCameraMatrix;
 
-                    if(s_CurrentScene->m_Enviroment.Physics.GetSettings().IsEnabled)
+                    if (s_CurrentScene->m_Enviroment.Physics.GetSettings().IsEnabled)
                     {
                         drawCommand.SetUniform(Motion::Core::UniformCache::LightUniforms::LightPosition, s_CurrentScene->m_Enviroment.DirectionalLight.Direction);
                         drawCommand.SetUniform(Motion::Core::UniformCache::LightUniforms::LightColor, s_CurrentScene->m_Enviroment.DirectionalLight.Color);
@@ -92,7 +92,7 @@ namespace Motion::App
                     Motion::Core::Renderer::Submit(drawCommand);
                 }
 
-                MOTION_WARN("Shader not found; for model: {0}", drawCall.Model->GetMetaData().AssetName);
+                MOTION_WARN("Shader not found; for model: {0}", drawCall.StaticMesh->GetMetaData().AssetName);
                 continue;
             }
         }

@@ -128,6 +128,7 @@ set(
     ${MOTION_CORE_DIR}/Renderer/Shaders.cpp
     ${MOTION_CORE_DIR}/Renderer/Texture.cpp
     ${MOTION_CORE_DIR}/Renderer/Renderer.cpp
+    ${MOTION_CORE_DIR}/Renderer/DrawCommand.cpp
     ${MOTION_CORE_DIR}/Renderer/Arrays.cpp
     ${MOTION_CORE_DIR}/Renderer/Camera3D.cpp
     ${MOTION_CORE_DIR}/Renderer/Thumbnail.cpp

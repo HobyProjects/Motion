@@ -8,7 +8,7 @@
 
 namespace Motion::Core
 {
-    class Model; // Forward declaration
+    class StaticMesh; // Forward declaration
 
     struct Vertex
     {
@@ -24,25 +24,25 @@ namespace Motion::Core
     public:
         Mesh() = default;
         Mesh(const std::string& name, float* vertices, std::uint32_t verticesSize, std::uint32_t* indices, std::uint32_t indicesCount,
-            const BufferLayout& layout, const std::shared_ptr<Model>& parentModel);
+            const BufferLayout& layout, const std::shared_ptr<StaticMesh>& parentModel);
         Mesh(const UUID& uuid, const std::string& name, float* vertices, std::uint32_t verticesSize, std::uint32_t* indices, std::uint32_t indicesCount,
-            const BufferLayout& layout, const std::shared_ptr<Model>& parentModel);
+            const BufferLayout& layout, const std::shared_ptr<StaticMesh>& parentModel);
         ~Mesh() = default;
 
         void Bind() const noexcept;
         void Unbind() const noexcept;
         void QuickRender(const glm::mat4& transformMatrix, const glm::mat4& viewProjectionMatrix, const std::shared_ptr<IShader>& shader) const noexcept;
         std::uint32_t GetIndicesCount() const noexcept;
-        std::shared_ptr<Model> GetParentModel() const noexcept;
+        std::shared_ptr<StaticMesh> GetParentModel() const noexcept;
 
     private:
         std::shared_ptr<IVertexBuffer> m_VertexBuffer{ nullptr };
         std::shared_ptr<IElementBuffer> m_ElementBuffer{ nullptr };
         std::shared_ptr<IVertexArray> m_VertexArray{ nullptr };
-        std::shared_ptr<Model> m_ParentModel{ nullptr };
+        std::shared_ptr<StaticMesh> m_ParentModel{ nullptr };
         uint32_t m_IndicesCount{ 0 };
 
-        friend class Model; // Allow Model to access private members
+        friend class StaticMesh; // Allow StaticMesh to access private members
     };
 
 

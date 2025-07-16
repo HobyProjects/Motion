@@ -1,7 +1,12 @@
 #pragma once
 
 #include <array>
+#include <mutex>
+#include <atomic>
+#include <vector>
 #include <functional>
+#include <string_view>
+#include <unordered_map>
 #include <initializer_list>
 
 #include "Shaders.hpp"
@@ -10,85 +15,62 @@
 
 namespace Motion::Core
 {
-    enum class RenderPass : uint32_t
+    class Renderer; // forward declaration
+
+    enum class RenderPass : std::uint8_t
     {
-        Opaque              = 0,
-        Transparent         = 1,
-        PostProcessing      = 2,
-        Shadow              = 3
+        Opaque = 0,
+        Transparent = Bits<1>::value,
+        PostProcessing = Bits<2>::value,
+        Shadow = Bits<3>::value
     };
 
-    enum class RendererCallbackOrder : uint32_t
+    inline std::uint8_t operator|(RenderPass a, RenderPass b) { return static_cast<std::uint8_t>(a) | static_cast<std::uint8_t>(b); }
+    inline std::uint8_t operator&(RenderPass a, RenderPass b) { return static_cast<std::uint8_t>(a) & static_cast<std::uint8_t>(b); }
+
+    enum DrawFlags : std::uint8_t
     {
-        FromBeginning           = 0, // Trigger the callback before bind in to shader, materials or mesh
-        AfterShaderBinding      = 1, // Trigger the callback after bind in to shader
-        AfterMaterialBinding    = 2, // Trigger the callback after bind in to material
-        AfterMeshBinding        = 3, // Trigger the callback after bind in to mesh
-        AfterDrawCall           = 4  // Trigger the callback after draw call
+        None = 0,
+        SkipDepthWrite = Bits<1>::value,
+        Wireframe = Bits<2>::value,
+        Instanced = Bits<3>::value, // Note: Instancing is not yet implemented
     };
 
-    constexpr size_t MAX_CALLBACKS = 5;
-    using RendererCallbackFunction = std::function<void()>;
-
-    inline uint32_t operator|(RenderPass a, RenderPass b) { return static_cast<uint32_t>(a) | static_cast<uint32_t>(b); }
-    inline uint32_t operator&(RenderPass a, RenderPass b) { return static_cast<uint32_t>(a) & static_cast<uint32_t>(b); }
-    inline uint32_t operator^(RenderPass a, RenderPass b) { return static_cast<uint32_t>(a) ^ static_cast<uint32_t>(b); }
-    inline uint32_t operator~(RenderPass a) { return ~static_cast<uint32_t>(a); }
+    inline std::uint8_t operator|(DrawFlags a, DrawFlags b) { return static_cast<std::uint8_t>(a) | static_cast<std::uint8_t>(b); }
+    inline std::uint8_t operator&(DrawFlags a, DrawFlags b) { return static_cast<std::uint8_t>(a) & static_cast<std::uint8_t>(b); }
 
     struct DrawCommand
     {
-        std::array<std::vector<RendererCallbackFunction>, MAX_CALLBACKS> CallbackSlots;
-        std::unordered_map<std::string, UniformVariant> CustomUniforms{};
-        std::shared_ptr<Material> MaterialRef{nullptr};
-        std::shared_ptr<IShader> ShaderRef{nullptr};
-        std::shared_ptr<Mesh> MeshRef{nullptr};
-        glm::mat4 ModelMatrix{1.0f};
-        glm::mat4 ViewProjMatrix{1.0f};
-        RenderPass RenderPassMask{RenderPass::Opaque};
-
-        void SetUniform(const std::string& name, float value) { CustomUniforms[name] = value; }
-        void SetUniform(const std::string& name, int32_t value) { CustomUniforms[name] = value; }
-        void SetUniform(const std::string& name, uint32_t value) { CustomUniforms[name] = value; }
-        void SetUniform(const std::string& name, glm::vec2 value) { CustomUniforms[name] = value; }
-        void SetUniform(const std::string& name, glm::vec3 value) { CustomUniforms[name] = value; }
-        void SetUniform(const std::string& name, glm::vec4 value) { CustomUniforms[name] = value; }
-        void SetUniform(const std::string& name, glm::mat2 value) { CustomUniforms[name] = value; }
-        void SetUniform(const std::string& name, glm::mat3 value) { CustomUniforms[name] = value; }
-        void SetUniform(const std::string& name, glm::mat4 value) { CustomUniforms[name] = value; }
-
-        void InvokeCallback(RendererCallbackOrder order) const
-        {
-            if (CallbackSlots[static_cast<size_t>(order)].empty())
-                return;
-
-            const auto& callbacks = CallbackSlots[static_cast<size_t>(order)];
-            for (const auto& fn : callbacks)
-                fn();
-        }
-
-        void AddCallback(RendererCallbackOrder order, RendererCallbackFunction fn)
-        {
-            if (CallbackSlots[static_cast<size_t>(order)].size() >= MAX_CALLBACKS)
-            {
-                MOTION_ASSERT(false, "Max number of callbacks reached!");
-                return;
-            }
-            
-            CallbackSlots[static_cast<size_t>(order)].emplace_back(std::move(fn));
-        }
+        UUID SortKey{ 0 };
+        UUID MaterialID{ 0 };
+        UUID MeshID{ 0 };
+        glm::mat4 ModelMatrix{ 1.0f };
+        glm::mat4 ViewProjectionMatrix{ 1.0f };
+        RenderPass RenderPass{ RenderPass::Opaque };
+        DrawFlags Flags{ DrawFlags::None };
 
         bool operator<(const DrawCommand& other) const
         {
-            return std::tie(ShaderRef, MeshRef, MaterialRef, RenderPassMask) <
-                   std::tie(other.ShaderRef, other.MeshRef, other.MaterialRef, other.RenderPassMask);
+            return std::tie(SortKey, MaterialID, MeshID) <
+                std::tie(other.SortKey, other.MaterialID, other.MeshID);
         }
-
-        bool HasCallback(RendererCallbackOrder order) const
-        {
-            return !CallbackSlots[static_cast<size_t>(order)].empty();
-        }
-
-        DrawCommand() = default;
-        ~DrawCommand() = default;
     };
+
+    class DrawCommandQueue
+    {
+    public:
+        void Submit(const DrawCommand& drawCommand);
+        std::vector<DrawCommand>& Consume();
+        void SwapBuffers();
+
+    private:
+        std::vector<DrawCommand> m_Buffers[2];
+        std::atomic<std::uint32_t> m_WriteIndex = 0;
+        std::mutex m_SubmitMutex;
+
+        friend class Renderer; // Allow Renderer to access private members
+    };
+
+
+
 }

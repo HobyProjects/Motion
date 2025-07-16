@@ -34,7 +34,7 @@ namespace Motion::Core
          */
         static std::shared_ptr<IShader> Create(const std::string& name, const std::filesystem::path& sourceFile)
         {
-            switch (Renderer::GetAPI())
+            switch (Renderer::GetInstance().GetAPI())
             {
             case RenderingAPI::OpenGL:
             {
@@ -83,7 +83,7 @@ namespace Motion::Core
          */
         static std::shared_ptr<IShader> Create(const UUID& uuid, const std::string& name, const std::filesystem::path& sourceFile)
         {
-            switch (Renderer::GetAPI())
+            switch (Renderer::GetInstance().GetAPI())
             {
             case RenderingAPI::OpenGL:
             {
@@ -129,7 +129,7 @@ namespace Motion::Core
          */
         static std::shared_ptr<IShader> Create(const std::string& name, const std::filesystem::path& vertexPath, const std::filesystem::path& fragmentPath)
         {
-            switch (Renderer::GetAPI())
+            switch (Renderer::GetInstance().GetAPI())
             {
             case RenderingAPI::OpenGL:
             {
@@ -178,7 +178,7 @@ namespace Motion::Core
          */
         static std::shared_ptr<IShader> Create(const UUID& uuid, const std::string& name, const std::filesystem::path& vertexPath, const std::filesystem::path& fragmentPath)
         {
-            switch (Renderer::GetAPI())
+            switch (Renderer::GetInstance().GetAPI())
             {
             case RenderingAPI::OpenGL:
             {
@@ -227,7 +227,7 @@ namespace Motion::Core
          */
         static std::shared_ptr<ITexture> Create(const std::string& name, std::uint32_t width, std::uint32_t height)
         {
-            switch (Renderer::GetAPI())
+            switch (Renderer::GetInstance().GetAPI())
             {
             case RenderingAPI::OpenGL:
             {
@@ -267,7 +267,7 @@ namespace Motion::Core
          */
         static std::shared_ptr<ITexture> Create(const UUID& uuid, const std::string& name, std::uint32_t width, std::uint32_t height)
         {
-            switch (Renderer::GetAPI())
+            switch (Renderer::GetInstance().GetAPI())
             {
             case RenderingAPI::OpenGL:
             {
@@ -307,7 +307,7 @@ namespace Motion::Core
          */
         static std::shared_ptr<ITexture> Create(const std::string& name, const std::filesystem::path& textureFile, TextureType type, bool flip = true)
         {
-            switch (Renderer::GetAPI())
+            switch (Renderer::GetInstance().GetAPI())
             {
             case RenderingAPI::OpenGL:
             {
@@ -350,7 +350,7 @@ namespace Motion::Core
          */
         static std::shared_ptr<ITexture> Create(const UUID& uuid, const std::string& name, const std::filesystem::path& textureFile, TextureType type, bool flip = true)
         {
-            switch (Renderer::GetAPI())
+            switch (Renderer::GetInstance().GetAPI())
             {
             case RenderingAPI::OpenGL:
             {
@@ -393,7 +393,7 @@ namespace Motion::Core
          */
         static std::shared_ptr<ICubeMapTexture> Create(const std::string& name, const std::filesystem::path& textureFile)
         {
-            switch (Renderer::GetAPI())
+            switch (Renderer::GetInstance().GetAPI())
             {
             case RenderingAPI::OpenGL:
             {
@@ -434,7 +434,7 @@ namespace Motion::Core
          */
         static std::shared_ptr<ICubeMapTexture> Create(const UUID& uuid, const std::string& name, const std::filesystem::path& textureFile)
         {
-            switch (Renderer::GetAPI())
+            switch (Renderer::GetInstance().GetAPI())
             {
             case RenderingAPI::OpenGL:
             {
@@ -476,10 +476,10 @@ namespace Motion::Core
          * @param indices Pointer to the array of index data.
          * @param indicesCount The number of indices in the index data array.
          * @param layout The buffer layout describing the structure of the vertex data.
-         * @param parentModel Shared pointer to the parent Model, or nullptr if there is no parent.
+         * @param parentModel Shared pointer to the parent StaticMesh, or nullptr if there is no parent.
          * @return std::shared_ptr<Mesh> A shared pointer to the newly created Mesh instance.
          */
-        std::shared_ptr<Mesh> Create(const std::string& name, float* vertices, std::uint32_t verticesSize, std::uint32_t* indices, std::uint32_t indicesCount, const BufferLayout& layout, const std::shared_ptr<Model>& parentModel)
+        std::shared_ptr<Mesh> Create(const std::string& name, float* vertices, std::uint32_t verticesSize, std::uint32_t* indices, std::uint32_t indicesCount, const BufferLayout& layout, const std::shared_ptr<StaticMesh>& parentModel)
         {
             return std::make_shared<Mesh>(UniqueIdentity::GetUniqueID(), name, vertices, verticesSize, indices, indicesCount, layout, parentModel);
         }
@@ -494,10 +494,10 @@ namespace Motion::Core
          * @param indices Pointer to the array of index data.
          * @param indicesCount Number of indices in the index array.
          * @param layout Buffer layout describing the structure of the vertex data.
-         * @param parentModel Shared pointer to the parent Model object.
+         * @param parentModel Shared pointer to the parent StaticMesh object.
          * @return std::shared_ptr<Mesh> Shared pointer to the newly created Mesh object.
          */
-        std::shared_ptr<Mesh> Create(const UUID& uuid, const std::string& name, float* vertices, std::uint32_t verticesSize, std::uint32_t* indices, std::uint32_t indicesCount, const BufferLayout& layout, const std::shared_ptr<Model>& parentModel)
+        std::shared_ptr<Mesh> Create(const UUID& uuid, const std::string& name, float* vertices, std::uint32_t verticesSize, std::uint32_t* indices, std::uint32_t indicesCount, const BufferLayout& layout, const std::shared_ptr<StaticMesh>& parentModel)
         {
             return std::make_shared<Mesh>(uuid, name, vertices, verticesSize, indices, indicesCount, layout, parentModel);
         }
@@ -513,13 +513,12 @@ namespace Motion::Core
          * and an optional shading method. The Material is managed by a std::shared_ptr for automatic memory management.
          *
          * @param name The name of the material.
-         * @param shadingMethod The shading method to use for the material (default is Auto).
          * @return std::shared_ptr<Material> A shared pointer to the newly created Material instance.
          */
-        static std::shared_ptr<Material> Create(const std::string& name, MaterialShadingMethod shadingMethod = MaterialShadingMethod::Auto)
+        static std::shared_ptr<Material> Create(const std::string& name)
         {
             UUID uuid = UniqueIdentity::GetUniqueID();
-            return std::make_shared<Material>(uuid, name, shadingMethod);
+            return std::make_shared<Material>(uuid, name);
         }
 
         /**
@@ -530,12 +529,11 @@ namespace Motion::Core
          *
          * @param uuid The unique identifier for the material.
          * @param name The name of the material.
-         * @param shadingMethod The shading method to use for the material (default is Auto).
          * @return std::shared_ptr<Material> A shared pointer to the newly created Material instance.
          */
-        static std::shared_ptr<Material> Create(const UUID& uuid, const std::string& name, MaterialShadingMethod shadingMethod = MaterialShadingMethod::Auto)
+        static std::shared_ptr<Material> Create(const UUID& uuid, const std::string& name)
         {
-            return std::make_shared<Material>(uuid, name, shadingMethod);
+            return std::make_shared<Material>(uuid, name);
         }
     };
 

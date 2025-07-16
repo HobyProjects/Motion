@@ -10,24 +10,24 @@ namespace Motion::Core
 {
     struct TagComponent
     {
-        UUID ID{0};
+        UUID ID{ 0 };
         std::string Tag{ "unamed" };
         bool IsActive{ false };
 
         TagComponent() = default;
-        TagComponent(const std::string& tag) : Tag(tag) { ID = UniqueIdentity::GetUniqueID();}
+        TagComponent(const std::string& tag) : Tag(tag) { ID = UniqueIdentity::GetUniqueID(); }
         TagComponent(const std::string& tag, bool isActive) : Tag(tag), IsActive(isActive) { ID = UniqueIdentity::GetUniqueID(); }
         ~TagComponent() = default;
     };
 
     struct TransformComponent
     {
-        UUID ID{0};
+        UUID ID{ 0 };
         glm::vec3 Translation{ 0.0f, 0.0f, 0.0f };
         glm::vec3 Rotation{ 0.0f, 0.0f, 0.0f };
         glm::vec3 Scale{ 1.0f, 1.0f, 1.0f };
 
-        TransformComponent(): ID(UniqueIdentity::GetUniqueID()) {};
+        TransformComponent() : ID(UniqueIdentity::GetUniqueID()) {};
         ~TransformComponent() = default;
 
         glm::mat4 GetTransform() const
@@ -48,13 +48,15 @@ namespace Motion::Core
 
     struct MeshComponent
     {
-        UUID ID{0};
+        UUID ID{ 0 };
         std::string Name{ "unamed" };
-        std::shared_ptr<Model> Mesh{ nullptr };
+        std::shared_ptr<StaticMesh> Mesh{ nullptr };
 
-        MeshComponent(): ID(UniqueIdentity::GetUniqueID()) {};
-        MeshComponent(const std::string& name, const std::shared_ptr<Model>& mesh)
-            : Name(name), Mesh(mesh) { ID = UniqueIdentity::GetUniqueID(); }
+        MeshComponent() : ID(UniqueIdentity::GetUniqueID()) {};
+        MeshComponent(const std::string& name, const std::shared_ptr<StaticMesh>& mesh)
+            : Name(name), Mesh(mesh) {
+            ID = UniqueIdentity::GetUniqueID();
+        }
         ~MeshComponent() = default;
     };
 

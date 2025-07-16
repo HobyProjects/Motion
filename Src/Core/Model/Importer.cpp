@@ -8,9 +8,9 @@ static constexpr const char* MATKEY_AMBIENT_OCCLUISION_FACTOR = "$mat.occlusionS
 
 namespace Motion::Core
 {
-    std::shared_ptr<Model> Importer::ImportModel(const std::string& modelName, const std::filesystem::path& path)
+    std::shared_ptr<StaticMesh> Importer::ImportModel(const std::string& modelName, const std::filesystem::path& path)
     {
-        std::shared_ptr<Model> modelPtr = std::make_shared<Model>(modelName, path);
+        std::shared_ptr<StaticMesh> modelPtr = std::make_shared<StaticMesh>(modelName, path);
         modelPtr->Name = modelName;
 
         Assimp::Importer importer;
@@ -22,7 +22,7 @@ namespace Motion::Core
         }
         else
         {
-            MOTION_CORE_INFO("Assimp Importer: Model {0} loaded successfully from {1}", modelName, path.string());
+            MOTION_CORE_INFO("Assimp Importer: StaticMesh {0} loaded successfully from {1}", modelName, path.string());
             modelPtr->m_MetaData.IsAssetInitialized = true;
             LoadNode(modelPtr, scene->mRootNode, scene);
             LoadMaterials(modelPtr, scene);
@@ -34,9 +34,9 @@ namespace Motion::Core
     }
 
 
-    std::shared_ptr<Model> Importer::ImportModel(UUID uuid, const std::string& modelName, const std::filesystem::path& path)
+    std::shared_ptr<StaticMesh> Importer::ImportModel(UUID uuid, const std::string& modelName, const std::filesystem::path& path)
     {
-        std::shared_ptr<Model> modelPtr = std::make_shared<Model>(uuid, modelName, path);
+        std::shared_ptr<StaticMesh> modelPtr = std::make_shared<StaticMesh>(uuid, modelName, path);
         modelPtr->Name = modelName;
 
         Assimp::Importer importer;
@@ -49,7 +49,7 @@ namespace Motion::Core
         }
         else
         {
-            MOTION_CORE_INFO("Assimp Importer: Model {0} loaded successfully from {1}", modelName, path.string());
+            MOTION_CORE_INFO("Assimp Importer: StaticMesh {0} loaded successfully from {1}", modelName, path.string());
             modelPtr->m_MetaData.IsAssetInitialized = true;
             LoadNode(modelPtr, scene->mRootNode, scene);
             LoadMaterials(modelPtr, scene);
@@ -151,14 +151,14 @@ namespace Motion::Core
         }
     }
 
-    void Importer::LoadMesh(const std::shared_ptr<Model>& modelPtr, aiMesh* mesh, const aiScene* scene)
+    void Importer::LoadMesh(const std::shared_ptr<StaticMesh>& modelPtr, aiMesh* mesh, const aiScene* scene)
     {
         static uint32_t meshIndex = 0;
         std::vector<float> vertices;
         std::vector<uint32_t> indices;
 
         // Extracting vertex, TexCoords, Normals, Tangents and Bitangents
-        MOTION_CORE_INFO("Extracting Model SubMesh ({0}) Vertex and Indices data...", meshIndex);
+        MOTION_CORE_INFO("Extracting StaticMesh SubMesh ({0}) Vertex and Indices data...", meshIndex);
         for (uint32_t i = 0; i < mesh->mNumVertices; i++)
         {
             // Position
@@ -199,7 +199,7 @@ namespace Motion::Core
             }
         }
 
-        std::shared_ptr<Model::SubMesh> subMesh = std::make_shared<Model::SubMesh>(meshIndex++, mesh->mMaterialIndex,
+        std::shared_ptr<StaticMesh::SubMesh> subMesh = std::make_shared<StaticMesh::SubMesh>(meshIndex++, mesh->mMaterialIndex,
             std::make_shared<Mesh>(
                 vertices.data(),
                 (uint32_t)vertices.size(),
@@ -219,7 +219,7 @@ namespace Motion::Core
         modelPtr->m_SubMeshes.emplace_back(std::move(subMesh));
     }
 
-    void Importer::LoadNode(const std::shared_ptr<Model>& modelPtr, aiNode* node, const aiScene* scene)
+    void Importer::LoadNode(const std::shared_ptr<StaticMesh>& modelPtr, aiNode* node, const aiScene* scene)
     {
         for (uint32_t i = 0; i < node->mNumMeshes; i++)
         {
@@ -232,12 +232,12 @@ namespace Motion::Core
         }
     }
 
-    void Motion::Core::Importer::LoadMaterials(const std::shared_ptr<Model>& modelPtr, const aiScene* scene)
+    void Motion::Core::Importer::LoadMaterials(const std::shared_ptr<StaticMesh>& modelPtr, const aiScene* scene)
     {
         //Extracting Materials 
         for (auto& mesh : modelPtr->m_SubMeshes)
         {
-            MOTION_CORE_INFO("Extracting Model SubMesh {0} Materials", mesh->MeshIndex);
+            MOTION_CORE_INFO("Extracting StaticMesh SubMesh {0} Materials", mesh->MeshIndex);
             aiMaterial* currentMaterial = scene->mMaterials[mesh->MaterialIndex];
 
             aiString property;
@@ -247,7 +247,7 @@ namespace Motion::Core
                 continue;
             }
 
-            std::shared_ptr<Model::SubMeshMaterial> subMeshMaterials = std::make_shared<Model::SubMeshMaterial>(mesh->MaterialIndex, mesh->MeshIndex, std::format("SubMesh {0} Material {1} - {2} ", mesh->MeshIndex, mesh->MaterialIndex, property.C_Str()), property.C_Str());
+            std::shared_ptr<StaticMesh::SubMeshMaterial> subMeshMaterials = std::make_shared<StaticMesh::SubMeshMaterial>(mesh->MaterialIndex, mesh->MeshIndex, std::format("SubMesh {0} Material {1} - {2} ", mesh->MeshIndex, mesh->MaterialIndex, property.C_Str()), property.C_Str());
 
             // Suface Colors
             subMeshMaterials->Materials->SetUniform(UniformCache::SurfaceColorsUniforms::AmbientColor, LoadMaterialVec3Data(currentMaterial, AI_MATKEY_COLOR_AMBIENT));

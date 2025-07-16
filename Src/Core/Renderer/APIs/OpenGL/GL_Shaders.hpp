@@ -16,26 +16,28 @@ namespace Motion::Core
         virtual void Unbind() const override;
 
         virtual ShaderProgramID ProgramID() const override { return m_ProgramID; }
-        virtual std::string GetName() const override { return m_Name; }
-        virtual UniformLocation GetUniformLocation(const std::string& uniformName) const override;
-        virtual bool InUse() const noexcept override;
+        virtual std::string GetName() const override { return m_MetaData.AssetName; }
+        virtual UniformLocation GetUniformLocation(const std::string_view uniformName) override;
 
-        virtual void SetUniform(const std::string_view& uniformName, float value) override;
-        virtual void SetUniform(const std::string_view& uniformName, int32_t value) override;
-        virtual void SetUniform(const std::string_view& uniformName, uint32_t value) override;
-        virtual void SetUniform(const std::string_view& uniformName, const glm::vec2& value) override;
-        virtual void SetUniform(const std::string_view& uniformName, const glm::vec3& value) override;
-        virtual void SetUniform(const std::string_view& uniformName, const glm::vec4& value) override;
-        virtual void SetUniform(const std::string_view& uniformName, const glm::mat2& value) override;
-        virtual void SetUniform(const std::string_view& uniformName, const glm::mat3& value) override;
-        virtual void SetUniform(const std::string_view& uniformName, const glm::mat4& value) override;
+        virtual void SetUniform(const std::string_view uniformName, float value) override;
+        virtual void SetUniform(const std::string_view uniformName, int32_t value) override;
+        virtual void SetUniform(const std::string_view uniformName, uint32_t value) override;
+        virtual void SetUniform(const std::string_view uniformName, const glm::vec2& value) override;
+        virtual void SetUniform(const std::string_view uniformName, const glm::vec3& value) override;
+        virtual void SetUniform(const std::string_view uniformName, const glm::vec4& value) override;
+        virtual void SetUniform(const std::string_view uniformName, const glm::mat2& value) override;
+        virtual void SetUniform(const std::string_view uniformName, const glm::mat3& value) override;
+        virtual void SetUniform(const std::string_view uniformName, const glm::mat4& value) override;
+        virtual void ReflectUniforms() override;
+
+    public:
+        virtual std::int32_t GetMaxTextureUnits() const override;
 
     private:
         ShaderProgramID m_ProgramID{ 0 };
         ShaderType m_ShaderType{ ShaderType::None };
-        mutable std::unordered_map<std::string, UniformLocation> m_UniformLocations;
-        mutable bool m_InUse{ false };
-        std::string m_Name{ "Default" };
+        std::unordered_map<std::string_view, UniformInfomation> m_UniformInformationCache{};
+        std::unordered_map<std::string_view, UniformLocation> m_UniformLocationsCache{};
     };
 
     class GL_ShaderFactory

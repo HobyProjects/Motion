@@ -10,7 +10,7 @@ namespace Motion::Core
         Shader,
         Texture,
         Material,
-        Model,
+        StaticMesh,
         Mesh,
     };
 

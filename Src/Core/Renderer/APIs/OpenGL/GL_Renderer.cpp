@@ -1,4 +1,5 @@
 #include "CorePCH.hpp"
+#include "GL_Renderer.hpp"
 
 namespace Motion::Core
 {
@@ -8,14 +9,14 @@ namespace Motion::Core
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         glEnable(GL_DEPTH_TEST);
 
-        #ifdef MOTION_DEBUG
+#ifdef MOTION_BUILD_DEBUG
 
-            glEnable(GL_DEBUG_OUTPUT);
-            glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
-            glDebugMessageCallback(GL_MessageCallBack, nullptr);
-            glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DEBUG_SEVERITY_NOTIFICATION, 0, nullptr, GL_FALSE);
-        
-        #endif
+        glEnable(GL_DEBUG_OUTPUT);
+        glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+        glDebugMessageCallback(GL_MessageCallBack, nullptr);
+        glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DEBUG_SEVERITY_NOTIFICATION, 0, nullptr, GL_FALSE);
+
+#endif
     }
 
     void GL_Renderer::Quit()
@@ -42,4 +43,41 @@ namespace Motion::Core
     {
         glDrawElements(GL_TRIANGLES, indicesCount, GL_UNSIGNED_INT, NULL);
     }
+
+    void GL_Renderer::ApplyDrawFlags(DrawFlags flags)
+    {
+        switch (flags)
+        {
+        case DrawFlags::None:
+        {
+            glDisable(GL_DEPTH_TEST);
+            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+            break;
+        }
+        case DrawFlags::SkipDepthWrite:
+        {
+            glDepthMask(GL_FALSE);
+            break;
+        }
+        case DrawFlags::Wireframe:
+        {
+            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+            break;
+        }
+        case DrawFlags::Instanced:
+        {
+            // Instancing is not yet implemented
+            MOTION_ASSERT(false, "Instancing is not yet implemented!");
+            break;
+        }
+        };
+    }
+
+    void GL_Renderer::ResetDrawFlags()
+    {
+        glDepthMask(GL_TRUE);
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+        glEnable(GL_DEPTH_TEST);
+    }
 }
+

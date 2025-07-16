@@ -13,19 +13,19 @@ namespace Motion::App
 
     class SceneRenderer
     {
-        private:
-            SceneRenderer() = default;
-            ~SceneRenderer() = default;
+    private:
+        SceneRenderer() = default;
+        ~SceneRenderer() = default;
 
-            SceneRenderer(const SceneRenderer&) = delete;
-            SceneRenderer& operator=(const SceneRenderer&) = delete;
-            SceneRenderer(SceneRenderer&&) = delete;
-            SceneRenderer& operator=(SceneRenderer&&) = delete;
+        SceneRenderer(const SceneRenderer&) = delete;
+        SceneRenderer& operator=(const SceneRenderer&) = delete;
+        SceneRenderer(SceneRenderer&&) = delete;
+        SceneRenderer& operator=(SceneRenderer&&) = delete;
 
-        public:
-            static void BeginScene(Scene* currentScene, const glm::mat4& cameraMatrix);
-            static void SubmitModel(const std::shared_ptr<Motion::Core::Model>& model, const glm::mat4& transform);
-            static void EndScene();
-            static void Flush();
+    public:
+        static void BeginScene(Scene* currentScene, const glm::mat4& cameraMatrix);
+        static void SubmitModel(const std::shared_ptr<Motion::Core::StaticMesh>& model, const glm::mat4& transform);
+        static void EndScene();
+        static void Flush();
     };
 }

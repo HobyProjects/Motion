@@ -278,19 +278,14 @@ namespace Motion::Core
     }
 
     /**
-     * @brief Executes the rendering of a draw command by binding the associated shader, setting uniforms,
-     *        binding materials, and drawing the mesh.
+     * @brief Executes the rendering of a draw command by binding the appropriate shader, material, and mesh.
      *
-     * This function performs the following steps:
-     *   1. Checks if the shader referenced by the draw command is valid and binds it.
-     *   2. Iterates over all uniform variables in the draw command and sets them in the shader.
-     *   3. Binds each material associated with the draw command to the shader.
-     *   4. Checks if the mesh referenced by the draw command is valid, binds it, and issues a draw call.
-     *   5. Unbinds the shader after rendering.
+     * This function retrieves the material associated with the given draw command and selects the appropriate shader
+     * based on the material's shading method. It then binds the shader, sets the necessary uniform variables (such as
+     * model and view-projection matrices), binds the material and mesh, and issues a draw call. If the mesh or shader
+     * is not properly initialized, an error is logged.
      *
-     * Error messages are logged if the shader or any material is expired or invalid.
-     *
-     * @param drawCommand Shared pointer to the DrawCommand containing rendering information.
+     * @param drawCommand The draw command containing references to the material, mesh, and transformation matrices to be used for rendering.
      */
     void Renderer::Flush(const DrawCommand& drawCommand)
     {
@@ -319,7 +314,6 @@ namespace Motion::Core
 
         if (shader->IsAssetInitialized())
         {
-            ApplyDrawFlags(drawCommand.Flags);
             shader->Bind();
             shader->SetUniform(UniformCache::GlobalAttri_ModelMatrix, drawCommand.ModelMatrix);
             shader->SetUniform(UniformCache::GlobalAttri_ViewProjMatrix, drawCommand.ViewProjectionMatrix);
@@ -338,7 +332,6 @@ namespace Motion::Core
             }
             material->Unbind();
             shader->Unbind();
-            ResetDrawFlags();
         }
     }
 

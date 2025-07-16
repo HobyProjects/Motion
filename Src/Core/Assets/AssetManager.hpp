@@ -9,8 +9,10 @@
 
 #include "UUID.hpp"
 #include "Asset.hpp"
-#include "Shaders.hpp"
-#include "Texture.hpp"
+
+#include "GL_Shaders.hpp"
+#include "GL_Texture.hpp"
+
 #include "Material.hpp"
 #include "Model.hpp"
 
@@ -34,7 +36,8 @@ namespace Motion::Core
          */
         static std::shared_ptr<IShader> Create(const std::string& name, const std::filesystem::path& sourceFile)
         {
-            switch (Renderer::GetInstance().GetAPI())
+            auto& renderer = Renderer::GetInstance();
+            switch (renderer.GetAPI())
             {
             case RenderingAPI::OpenGL:
             {
@@ -83,7 +86,8 @@ namespace Motion::Core
          */
         static std::shared_ptr<IShader> Create(const UUID& uuid, const std::string& name, const std::filesystem::path& sourceFile)
         {
-            switch (Renderer::GetInstance().GetAPI())
+            auto& renderer = Renderer::GetInstance();
+            switch (renderer.GetAPI())
             {
             case RenderingAPI::OpenGL:
             {
@@ -129,7 +133,8 @@ namespace Motion::Core
          */
         static std::shared_ptr<IShader> Create(const std::string& name, const std::filesystem::path& vertexPath, const std::filesystem::path& fragmentPath)
         {
-            switch (Renderer::GetInstance().GetAPI())
+            auto& renderer = Renderer::GetInstance();
+            switch (renderer.GetAPI())
             {
             case RenderingAPI::OpenGL:
             {
@@ -178,7 +183,8 @@ namespace Motion::Core
          */
         static std::shared_ptr<IShader> Create(const UUID& uuid, const std::string& name, const std::filesystem::path& vertexPath, const std::filesystem::path& fragmentPath)
         {
-            switch (Renderer::GetInstance().GetAPI())
+            auto& renderer = Renderer::GetInstance();
+            switch (renderer.GetAPI())
             {
             case RenderingAPI::OpenGL:
             {
@@ -227,7 +233,8 @@ namespace Motion::Core
          */
         static std::shared_ptr<ITexture> Create(const std::string& name, std::uint32_t width, std::uint32_t height)
         {
-            switch (Renderer::GetInstance().GetAPI())
+            auto& renderer = Renderer::GetInstance();
+            switch (renderer.GetAPI())
             {
             case RenderingAPI::OpenGL:
             {
@@ -267,7 +274,8 @@ namespace Motion::Core
          */
         static std::shared_ptr<ITexture> Create(const UUID& uuid, const std::string& name, std::uint32_t width, std::uint32_t height)
         {
-            switch (Renderer::GetInstance().GetAPI())
+            auto& renderer = Renderer::GetInstance();
+            switch (renderer.GetAPI())
             {
             case RenderingAPI::OpenGL:
             {
@@ -307,7 +315,8 @@ namespace Motion::Core
          */
         static std::shared_ptr<ITexture> Create(const std::string& name, const std::filesystem::path& textureFile, TextureType type, bool flip = true)
         {
-            switch (Renderer::GetInstance().GetAPI())
+            auto& renderer = Renderer::GetInstance();
+            switch (renderer.GetAPI())
             {
             case RenderingAPI::OpenGL:
             {
@@ -350,7 +359,8 @@ namespace Motion::Core
          */
         static std::shared_ptr<ITexture> Create(const UUID& uuid, const std::string& name, const std::filesystem::path& textureFile, TextureType type, bool flip = true)
         {
-            switch (Renderer::GetInstance().GetAPI())
+            auto& renderer = Renderer::GetInstance();
+            switch (renderer.GetAPI())
             {
             case RenderingAPI::OpenGL:
             {
@@ -393,7 +403,8 @@ namespace Motion::Core
          */
         static std::shared_ptr<ICubeMapTexture> Create(const std::string& name, const std::filesystem::path& textureFile)
         {
-            switch (Renderer::GetInstance().GetAPI())
+            auto& renderer = Renderer::GetInstance();
+            switch (renderer.GetAPI())
             {
             case RenderingAPI::OpenGL:
             {
@@ -434,7 +445,8 @@ namespace Motion::Core
          */
         static std::shared_ptr<ICubeMapTexture> Create(const UUID& uuid, const std::string& name, const std::filesystem::path& textureFile)
         {
-            switch (Renderer::GetInstance().GetAPI())
+            auto& renderer = Renderer::GetInstance();
+            switch (renderer.GetAPI())
             {
             case RenderingAPI::OpenGL:
             {
@@ -534,6 +546,42 @@ namespace Motion::Core
         static std::shared_ptr<Material> Create(const UUID& uuid, const std::string& name)
         {
             return std::make_shared<Material>(uuid, name);
+        }
+    };
+
+    template<>
+    struct AssetBackendsBuilder<StaticMesh>
+    {
+        /**
+         * @brief Creates a new StaticMesh instance and returns a shared pointer to it.
+         *
+         * This function constructs a StaticMesh object with a unique identifier, the specified name,
+         * and the path to the model file. The StaticMesh is managed by a std::shared_ptr for automatic memory management.
+         *
+         * @param name The name of the static mesh.
+         * @param modelFile The filesystem path to the model file.
+         * @return std::shared_ptr<StaticMesh> A shared pointer to the newly created StaticMesh instance.
+         */
+        static std::shared_ptr<StaticMesh> Create(const std::string& name, const std::filesystem::path& modelFile)
+        {
+            UUID uuid = UniqueIdentity::GetUniqueID();
+            return std::make_shared<StaticMesh>(uuid, name, modelFile);
+        }
+
+        /**
+         * @brief Creates a new StaticMesh instance with a specified UUID and returns a shared pointer to it.
+         *
+         * This function constructs a StaticMesh object with the given UUID, name, and path to the model file.
+         * The StaticMesh is managed by a std::shared_ptr for automatic memory management.
+         *
+         * @param uuid The unique identifier for the static mesh.
+         * @param name The name of the static mesh.
+         * @param modelFile The filesystem path to the model file.
+         * @return std::shared_ptr<StaticMesh> A shared pointer to the newly created StaticMesh instance.
+         */
+        static std::shared_ptr<StaticMesh> Create(const UUID& uuid, const std::string& name, const std::filesystem::path& modelFile)
+        {
+            return std::make_shared<StaticMesh>(uuid, name, modelFile);
         }
     };
 

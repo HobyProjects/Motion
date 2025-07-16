@@ -15,15 +15,15 @@ namespace Motion::Core
     class StaticMesh final : public AssetBase<IAsset>
     {
     public:
-        struct MeshPart
+        struct MeshSegment
         {
-            MeshPart() = default;
-            ~MeshPart() = default;
+            MeshSegment() = default;
+            ~MeshSegment() = default;
 
-            std::uint32_t SubMeshIndex{ 0 };
-            std::uint32_t SubMaterialIndex{ 0 };
+            std::uint32_t MeshIndex{ 0 };
+            std::uint32_t MaterialIndex{ 0 };
             std::shared_ptr<Mesh> MeshSelf{ nullptr };
-            std::vector<std::shared_ptr<Material>> SubMeshMaterials{};
+            std::shared_ptr<Material> Materials{};
         };
 
     public:
@@ -32,16 +32,15 @@ namespace Motion::Core
         StaticMesh(UUID uuid, const std::string& name, const std::filesystem::path& modelFile);
         virtual ~StaticMesh() = default;
 
-
-        std::vector<std::shared_ptr<MeshPart>>::iterator begin() { return m_SubMeshes.begin(); }
-        std::vector<std::shared_ptr<MeshPart>>::iterator end() { return m_SubMeshes.end(); }
-        std::vector<std::shared_ptr<MeshPart>>::const_iterator cbegin() const { return m_SubMeshes.cbegin(); }
-        std::vector<std::shared_ptr<MeshPart>>::const_iterator cend() const { return m_SubMeshes.cend(); }
+        std::vector<std::shared_ptr<MeshSegment>>::iterator begin() { return m_Meshes.begin(); }
+        std::vector<std::shared_ptr<MeshSegment>>::iterator end() { return m_Meshes.end(); }
+        std::vector<std::shared_ptr<MeshSegment>>::const_iterator cbegin() const { return m_Meshes.cbegin(); }
+        std::vector<std::shared_ptr<MeshSegment>>::const_iterator cend() const { return m_Meshes.cend(); }
 
         void Render(const glm::mat4& modelTransForm, const glm::mat4& cameraMatrix);
 
     private:
-        std::vector<std::shared_ptr<MeshPart>> m_SubMeshes;
+        std::vector<std::shared_ptr<MeshSegment>> m_Meshes;
         friend class Importer;
     };
 

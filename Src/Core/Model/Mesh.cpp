@@ -32,6 +32,17 @@ namespace Motion::Core
         m_VertexArray = ArrayFactory::CreateVertexArray();
         m_VertexArray->EmplaceVertexBuffer(m_VertexBuffer);
         m_VertexArray->EmplaceIndexBuffer(m_ElementBuffer);
+
+        if (m_VertexBuffer && m_ElementBuffer && m_VertexArray)
+        {
+            MOTION_CORE_INFO("Mesh '{}' created successfully with {} vertices and {} indices.", name, verticesSize / sizeof(float), indicesCount);
+            m_MetaData.IsAssetInitialized = true;
+        }
+        else
+        {
+            MOTION_ASSERT(false, "Failed to create Mesh '{}': VertexBuffer, ElementBuffer, or VertexArray is null.", name);
+            m_MetaData.IsAssetInitialized = false;
+        }
     }
 
     /**
@@ -64,6 +75,17 @@ namespace Motion::Core
         m_VertexArray = ArrayFactory::CreateVertexArray();
         m_VertexArray->EmplaceVertexBuffer(m_VertexBuffer);
         m_VertexArray->EmplaceIndexBuffer(m_ElementBuffer);
+
+        if (m_VertexBuffer && m_ElementBuffer && m_VertexArray)
+        {
+            MOTION_CORE_INFO("Mesh '{}' created successfully with {} vertices and {} indices.", name, verticesSize / sizeof(float), indicesCount);
+            m_MetaData.IsAssetInitialized = true;
+        }
+        else
+        {
+            MOTION_ASSERT(false, "Failed to create Mesh '{}': VertexBuffer, ElementBuffer, or VertexArray is null.", name);
+            m_MetaData.IsAssetInitialized = false;
+        }
     }
 
     /**
@@ -109,13 +131,13 @@ namespace Motion::Core
             return;
 
         shader->Bind();
-        shader->SetUniform(UniformCache::ModelUniforms::ModelMatrix.data(), transformMatrix);
-        shader->SetUniform(UniformCache::ModelUniforms::ViewProjMatrix.data(), viewProjectionMatrix);
+        shader->SetUniform(UniformCache::GlobalAttri_ModelMatrix, transformMatrix);
+        shader->SetUniform(UniformCache::GlobalAttri_ViewProjMatrix, viewProjectionMatrix);
 
         if (m_VertexArray)
         {
             m_VertexArray->Bind();
-            Renderer::DrawIndexed(m_IndicesCount);
+            Renderer::GetInstance().DrawIndexed(m_IndicesCount);
             m_VertexArray->Unbind();
         }
     }
@@ -268,11 +290,11 @@ namespace Motion::Core
         }
 
         BufferLayout layout({
-            { UniformCache::ShaderVertexAttributes::Position.data(), BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Position) },
-            { UniformCache::ShaderVertexAttributes::TexCoords.data(), BufferComponents::UV, BufferStride::F2, false, offsetof(Vertex, TexCoord) },
-            { UniformCache::ShaderVertexAttributes::Normals.data(), BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Normal) },
-            { UniformCache::ShaderVertexAttributes::Tangents.data(), BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Tangent) },
-            { UniformCache::ShaderVertexAttributes::Bitangents.data(), BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Bitangent) }
+            { UniformCache::VertexAttri_Position, BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Position) },
+            { UniformCache::VertexAttri_TexCoords, BufferComponents::UV, BufferStride::F2, false, offsetof(Vertex, TexCoord) },
+            { UniformCache::VertexAttri_Normals, BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Normal) },
+            { UniformCache::VertexAttri_Tangents, BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Tangent) },
+            { UniformCache::VertexAttri_Bitangents, BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Bitangent) }
             });
 
         static std::uint32_t meshCount = 0;
@@ -399,11 +421,11 @@ namespace Motion::Core
         }
 
         BufferLayout layout({
-            { UniformCache::ShaderVertexAttributes::Position.data(), BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Position) },
-            { UniformCache::ShaderVertexAttributes::TexCoords.data(), BufferComponents::UV, BufferStride::F2, false, offsetof(Vertex, TexCoord) },
-            { UniformCache::ShaderVertexAttributes::Normals.data(), BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Normal) },
-            { UniformCache::ShaderVertexAttributes::Tangents.data(), BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Tangent) },
-            { UniformCache::ShaderVertexAttributes::Bitangents.data(), BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Bitangent) }
+            { UniformCache::VertexAttri_Position, BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Position) },
+            { UniformCache::VertexAttri_TexCoords, BufferComponents::UV, BufferStride::F2, false, offsetof(Vertex, TexCoord) },
+            { UniformCache::VertexAttri_Normals, BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Normal) },
+            { UniformCache::VertexAttri_Tangents, BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Tangent) },
+            { UniformCache::VertexAttri_Bitangents, BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Bitangent) }
             });
 
         static std::uint32_t meshCount = 0;
@@ -519,11 +541,11 @@ namespace Motion::Core
         }
 
         BufferLayout layout({
-            { UniformCache::ShaderVertexAttributes::Position.data(), BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Position) },
-            { UniformCache::ShaderVertexAttributes::TexCoords.data(), BufferComponents::UV, BufferStride::F2, false, offsetof(Vertex, TexCoord) },
-            { UniformCache::ShaderVertexAttributes::Normals.data(), BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Normal) },
-            { UniformCache::ShaderVertexAttributes::Tangents.data(), BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Tangent) },
-            { UniformCache::ShaderVertexAttributes::Bitangents.data(), BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Bitangent) }
+            { UniformCache::VertexAttri_Position, BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Position) },
+            { UniformCache::VertexAttri_TexCoords, BufferComponents::UV, BufferStride::F2, false, offsetof(Vertex, TexCoord) },
+            { UniformCache::VertexAttri_Normals, BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Normal) },
+            { UniformCache::VertexAttri_Tangents, BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Tangent) },
+            { UniformCache::VertexAttri_Bitangents, BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Bitangent) }
             });
 
         static std::uint32_t meshCount = 0;
@@ -608,11 +630,11 @@ namespace Motion::Core
         }
 
         BufferLayout layout({
-            { UniformCache::ShaderVertexAttributes::Position.data(), BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Position) },
-            { UniformCache::ShaderVertexAttributes::TexCoords.data(), BufferComponents::UV, BufferStride::F2, false, offsetof(Vertex, TexCoord) },
-            { UniformCache::ShaderVertexAttributes::Normals.data(), BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Normal) },
-            { UniformCache::ShaderVertexAttributes::Tangents.data(), BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Tangent) },
-            { UniformCache::ShaderVertexAttributes::Bitangents.data(), BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Bitangent) }
+            { UniformCache::VertexAttri_Position, BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Position) },
+            { UniformCache::VertexAttri_TexCoords, BufferComponents::UV, BufferStride::F2, false, offsetof(Vertex, TexCoord) },
+            { UniformCache::VertexAttri_Normals, BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Normal) },
+            { UniformCache::VertexAttri_Tangents, BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Tangent) },
+            { UniformCache::VertexAttri_Bitangents, BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Bitangent) }
             });
 
         static std::uint32_t meshCount = 0;

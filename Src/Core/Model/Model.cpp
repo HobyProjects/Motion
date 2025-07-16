@@ -19,7 +19,22 @@ namespace Motion::Core
 
     void StaticMesh::Render(const glm::mat4& modelTransForm, const glm::mat4& cameraMatrix)
     {
+        for (const auto& segments : m_Meshes)
+        {
+            if (segments->MeshSelf->IsAssetInitialized())
+            {
+                DrawCommand drawCommand;
+                drawCommand.SortKey = UniqueIdentity::GetUniqueID();
+                drawCommand.MaterialID = segments->Materials->GetUUID();
+                drawCommand.MeshID = segments->MeshSelf->GetUUID();
+                drawCommand.ModelMatrix = modelTransForm;
+                drawCommand.ViewProjectionMatrix = cameraMatrix;
+                drawCommand.RenderPass = RenderPass::Opaque; // Assuming Opaque for simplicity, can be changed based on context
 
+                auto& renderer = Renderer::GetInstance();
+                renderer.Submit(drawCommand);
+            }
+        }
     }
 
 

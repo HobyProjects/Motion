@@ -18,6 +18,17 @@ namespace Motion::Core
     inline uint32_t operator|(RenderingAPI a, RenderingAPI b) { return static_cast<uint32_t>(a) | static_cast<uint32_t>(b); }
     inline uint32_t operator&(RenderingAPI a, RenderingAPI b) { return static_cast<uint32_t>(a) & static_cast<uint32_t>(b); }
 
+    enum DrawFlags : std::uint8_t
+    {
+        None = 0,
+        SkipDepthWrite = Bits<1>::value,
+        Wireframe = Bits<2>::value,
+        //Instanced = Bits<3>::value, // Note: Instancing is not yet implemented
+    };
+
+    inline std::uint8_t operator|(DrawFlags a, DrawFlags b) { return static_cast<std::uint8_t>(a) | static_cast<std::uint8_t>(b); }
+    inline std::uint8_t operator&(DrawFlags a, DrawFlags b) { return static_cast<std::uint8_t>(a) & static_cast<std::uint8_t>(b); }
+
     class Renderer
     {
     private:

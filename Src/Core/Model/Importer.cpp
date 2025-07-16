@@ -1,33 +1,33 @@
 #include "CorePCH.hpp"
 #include "Importer.hpp"
 
-static constexpr const char* MATKEY_CLEARCOAT_ROUGHNESS_FACTOR = "$mat.clearcoat.roughnessFactor";
-static constexpr const char* MATKEY_IOR = "$mat.ior";
-static constexpr const char* MATKEY_SHEEN_ROUGHNESS_FACTOR = "$mat.sheen.roughnessFactor";
-static constexpr const char* MATKEY_AMBIENT_OCCLUISION_FACTOR = "$mat.occlusionStrength";
+#define AI_MATKEY_CLEARCOAT_ROUGHNESS_FACTOR "$mat.clearcoat.roughnessFactor", 0, 0
+#define AI_MATKEY_IOR "$mat.ior", 0, 0
+#define AI_MATKEY_SHEEN_ROUGHNESS_FACTOR "$mat.sheen.roughnessFactor", 0, 0
+#define AI_MATKEY_AMBIENT_OCCLUISION_FACTOR "$mat.occlusionStrength", 0, 0
 
 namespace Motion::Core
 {
     std::shared_ptr<StaticMesh> Importer::ImportModel(const std::string& modelName, const std::filesystem::path& path)
     {
-        std::shared_ptr<StaticMesh> modelPtr = std::make_shared<StaticMesh>(modelName, path);
-        modelPtr->Name = modelName;
+        auto& assetManager = AssetManager::GetInstance();
+        std::shared_ptr<StaticMesh> staticMeshPtr = assetManager.Create<StaticMesh>(modelName, path);
 
         Assimp::Importer importer;
-        const aiScene* scene = importer.ReadFile(path.string(), aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_GenSmoothNormals | aiProcess_JoinIdenticalVertices);
+        const aiScene* scene = importer.ReadFile(path.string(), aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_GenSmoothNormals | aiProcess_JoinIdenticalVertices | aiProcess_CalcTangentSpace);
         if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)
         {
             MOTION_CORE_ERROR("Assimp Importer Error: {0}", importer.GetErrorString());
-            return nullptr;
+            staticMeshPtr->m_MetaData.IsAssetInitialized = false;
+            return staticMeshPtr;
         }
         else
         {
             MOTION_CORE_INFO("Assimp Importer: StaticMesh {0} loaded successfully from {1}", modelName, path.string());
-            modelPtr->m_MetaData.IsAssetInitialized = true;
-            LoadNode(modelPtr, scene->mRootNode, scene);
-            LoadMaterials(modelPtr, scene);
-            modelPtr->m_MetaData.IsAssetInitialized = true;
-            return modelPtr;
+            LoadNode(staticMeshPtr, scene->mRootNode, scene);
+
+            staticMeshPtr->m_MetaData.IsAssetInitialized = true;
+            return staticMeshPtr;
         }
 
         return nullptr;
@@ -36,25 +36,24 @@ namespace Motion::Core
 
     std::shared_ptr<StaticMesh> Importer::ImportModel(UUID uuid, const std::string& modelName, const std::filesystem::path& path)
     {
-        std::shared_ptr<StaticMesh> modelPtr = std::make_shared<StaticMesh>(uuid, modelName, path);
-        modelPtr->Name = modelName;
+        auto& assetManager = AssetManager::GetInstance();
+        std::shared_ptr<StaticMesh> staticMeshPtr = assetManager.Create<StaticMesh>(uuid, modelName, path);
 
         Assimp::Importer importer;
-        const aiScene* scene = importer.ReadFile(path.string(),
-            aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_GenSmoothNormals | aiProcess_JoinIdenticalVertices | aiProcess_CalcTangentSpace);
+        const aiScene* scene = importer.ReadFile(path.string(), aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_GenSmoothNormals | aiProcess_JoinIdenticalVertices | aiProcess_CalcTangentSpace);
         if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)
         {
             MOTION_CORE_ERROR("Assimp Importer Error: {0}", importer.GetErrorString());
-            return nullptr;
+            staticMeshPtr->m_MetaData.IsAssetInitialized = false;
+            return staticMeshPtr;
         }
         else
         {
             MOTION_CORE_INFO("Assimp Importer: StaticMesh {0} loaded successfully from {1}", modelName, path.string());
-            modelPtr->m_MetaData.IsAssetInitialized = true;
-            LoadNode(modelPtr, scene->mRootNode, scene);
-            LoadMaterials(modelPtr, scene);
-            modelPtr->m_MetaData.IsAssetInitialized = true;
-            return modelPtr;
+            LoadNode(staticMeshPtr, scene->mRootNode, scene);
+
+            staticMeshPtr->m_MetaData.IsAssetInitialized = true;
+            return staticMeshPtr;
         }
 
         return nullptr;
@@ -63,6 +62,7 @@ namespace Motion::Core
     static std::shared_ptr<ITexture> LoadTextures(aiTextureType aiTexType, aiMaterial* aiMaterial, TextureType textureType)
     {
         aiString property{};
+        auto& assetManager = AssetManager::GetInstance();
 
         if ((aiMaterial->GetTextureCount(aiTexType) > 0))
         {
@@ -71,45 +71,31 @@ namespace Motion::Core
                 if (property.data[0] != '*')
                 {
                     MOTION_CORE_INFO("Loading Texture in {0} ", property.C_Str());
-                    std::shared_ptr<ITexture> texture = AssetManager::CreateTextureFromFile(property.C_Str(), std::filesystem::path(property.C_Str()), textureType);
+                    std::filesystem::path texturePath = std::filesystem::path(property.C_Str());
+                    std::string textureFileName = texturePath.filename().string();
+
+                    std::shared_ptr<ITexture> texture = assetManager.Create<ITexture>(textureFileName, texturePath, textureType);
                     if (texture != nullptr)
                     {
-                        MOTION_CORE_INFO("Loading success! PATH: {0}", property.C_Str());
+                        MOTION_CORE_INFO("{} Texture loading success!", textureFileName);
                         return texture;
                     }
                     else
                     {
                         texture.reset();
-                        texture = AssetManager::CreatePlainTexture(property.C_Str(), 100, 100);
+                        texture = assetManager.Create<ITexture>(textureFileName, 100, 100);
 
                         if (texture)
                         {
-                            MOTION_CORE_WARN("Texture {0} could not be loaded, creating a default texture instead", property.C_Str());
+                            MOTION_CORE_WARN("Texture {0} could not be loaded, creating a default texture instead", textureFileName);
                             return texture;
                         }
                         else
                         {
-                            MOTION_CORE_ERROR("Unable to load texture in {0}. Manual loading might required.", property.C_Str());
+                            MOTION_CORE_ERROR("Unable to load texture in {0}. Manual loading might required.", texturePath.string());
                             return nullptr;
                         }
-
                     }
-                }
-            }
-            else
-            {
-                MOTION_CORE_WARN("The model contained diffuse texture information, but texture loading failed. PATH: {0}", property.C_Str());
-
-                std::shared_ptr<ITexture> texture = AssetManager::CreatePlainTexture(property.C_Str(), 100, 100);
-                if (texture)
-                {
-                    MOTION_CORE_WARN("Texture {0} could not be loaded, creating a default texture instead", property.C_Str());
-                    return texture;
-                }
-                else
-                {
-                    MOTION_CORE_ERROR("Unable to load texture in {0}. Manual loading might required.", property.C_Str());
-                    return nullptr;
                 }
             }
         }
@@ -151,13 +137,15 @@ namespace Motion::Core
         }
     }
 
-    void Importer::LoadMesh(const std::shared_ptr<StaticMesh>& modelPtr, aiMesh* mesh, const aiScene* scene)
+    void Importer::LoadMesh(const std::shared_ptr<StaticMesh>& staticMeshPtr, aiMesh* mesh, const aiScene* scene)
     {
         static uint32_t meshIndex = 0;
         std::vector<float> vertices;
         std::vector<uint32_t> indices;
 
-        // Extracting vertex, TexCoords, Normals, Tangents and Bitangents
+        auto& assetManager = AssetManager::GetInstance();
+        bool hasNormalizeTangents{ false };
+
         MOTION_CORE_INFO("Extracting StaticMesh SubMesh ({0}) Vertex and Indices data...", meshIndex);
         for (uint32_t i = 0; i < mesh->mNumVertices; i++)
         {
@@ -181,11 +169,13 @@ namespace Motion::Core
 
                 vertices.insert(vertices.end(), { tangent.x, tangent.y, tangent.z });
                 vertices.insert(vertices.end(), { bitangent.x, bitangent.y, bitangent.z });
+                hasNormalizeTangents = true;
             }
             else
             {
                 vertices.insert(vertices.end(), { 0.0f, 0.0f, 0.0f });
                 vertices.insert(vertices.end(), { 0.0f, 0.0f, 0.0f });
+                hasNormalizeTangents = false;
             }
         }
 
@@ -199,107 +189,107 @@ namespace Motion::Core
             }
         }
 
-        std::shared_ptr<StaticMesh::SubMesh> subMesh = std::make_shared<StaticMesh::SubMesh>(meshIndex++, mesh->mMaterialIndex,
-            std::make_shared<Mesh>(
-                vertices.data(),
-                (uint32_t)vertices.size(),
-                indices.data(),
-                (uint32_t)indices.size(),
-                BufferLayout(
-                    {
-                        { "a_Position", BufferComponents::XYZ, BufferStride::F3, false, offsetof(Mesh::Vertex, Position) },
-                        { "a_TexCoords", BufferComponents::UV, BufferStride::F2, false, offsetof(Mesh::Vertex, TexCoord)},
-                        { "a_Normals", BufferComponents::XYZ, BufferStride::F3, false, offsetof(Mesh::Vertex, Normal) },
-                        { "a_Tangents", BufferComponents::XYZ, BufferStride::F3, false, offsetof(Mesh::Vertex, Tangent) },
-                        { "a_Bitangents", BufferComponents::XYZ, BufferStride::F3, false, offsetof(Mesh::Vertex, Bitangent) }
-                    }
-                )));
+        std::shared_ptr<StaticMesh::MeshSegment> meshSegment = std::make_shared<StaticMesh::MeshSegment>();
+        meshSegment->MeshIndex = meshIndex++;
+        meshSegment->MaterialIndex = mesh->mMaterialIndex;
+        meshSegment->MeshSelf = assetManager.Create<Mesh>(
+            std::format("{}_SubMesh_{}", staticMeshPtr->GetName(), meshSegment->MeshIndex),
+            vertices.data(), vertices.size(),
+            indices.data(), indices.size(),
+            BufferLayout({
+                { UniformCache::VertexAttri_Position, BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Position) },
+                { UniformCache::VertexAttri_TexCoords, BufferComponents::UV, BufferStride::F2, false, offsetof(Vertex, TexCoord) },
+                { UniformCache::VertexAttri_Normals, BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Normal) },
+                { UniformCache::VertexAttri_Tangents, BufferComponents::XYZ, BufferStride::F3, hasNormalizeTangents, offsetof(Vertex, Tangent) },
+                { UniformCache::VertexAttri_Bitangents, BufferComponents::XYZ, BufferStride::F3, hasNormalizeTangents, offsetof(Vertex, Bitangent) }
+                }),
+            staticMeshPtr
+        );
 
-        subMesh->ParentModel = modelPtr.get();
-        modelPtr->m_SubMeshes.emplace_back(std::move(subMesh));
+        LoadMaterials(meshSegment, scene);
+        staticMeshPtr->m_Meshes.emplace_back(std::move(meshSegment));
     }
 
-    void Importer::LoadNode(const std::shared_ptr<StaticMesh>& modelPtr, aiNode* node, const aiScene* scene)
+    void Importer::LoadNode(const std::shared_ptr<StaticMesh>& staticMeshPtr, aiNode* node, const aiScene* scene)
     {
         for (uint32_t i = 0; i < node->mNumMeshes; i++)
         {
-            LoadMesh(modelPtr, scene->mMeshes[node->mMeshes[i]], scene);
+            LoadMesh(staticMeshPtr, scene->mMeshes[node->mMeshes[i]], scene);
         }
 
         for (uint32_t i = 0; i < node->mNumChildren; i++)
         {
-            LoadNode(modelPtr, node->mChildren[i], scene);
+            LoadNode(staticMeshPtr, node->mChildren[i], scene);
         }
     }
 
-    void Motion::Core::Importer::LoadMaterials(const std::shared_ptr<StaticMesh>& modelPtr, const aiScene* scene)
+    void Motion::Core::Importer::LoadMaterials(const std::shared_ptr<StaticMesh::MeshSegment>& meshSegment, const aiScene* scene)
     {
-        //Extracting Materials 
-        for (auto& mesh : modelPtr->m_SubMeshes)
+        MOTION_CORE_INFO("Extracting StaticMesh - SubMesh {0} Materials", meshSegment->MeshIndex);
+        auto& assetManager = AssetManager::GetInstance();
+        aiMaterial* currentMaterial = scene->mMaterials[meshSegment->MaterialIndex];
+        aiString property;
+
+        if (currentMaterial->Get(AI_MATKEY_NAME, property) != AI_SUCCESS)
         {
-            MOTION_CORE_INFO("Extracting StaticMesh SubMesh {0} Materials", mesh->MeshIndex);
-            aiMaterial* currentMaterial = scene->mMaterials[mesh->MaterialIndex];
-
-            aiString property;
-            if (currentMaterial->Get(AI_MATKEY_NAME, property) != AI_SUCCESS)
-            {
-                MOTION_CORE_WARN("Material without a name is not handled >> SKIPPING {0}", mesh->MaterialIndex);
-                continue;
-            }
-
-            std::shared_ptr<StaticMesh::SubMeshMaterial> subMeshMaterials = std::make_shared<StaticMesh::SubMeshMaterial>(mesh->MaterialIndex, mesh->MeshIndex, std::format("SubMesh {0} Material {1} - {2} ", mesh->MeshIndex, mesh->MaterialIndex, property.C_Str()), property.C_Str());
-
-            // Suface Colors
-            subMeshMaterials->Materials->SetUniform(UniformCache::SurfaceColorsUniforms::AmbientColor, LoadMaterialVec3Data(currentMaterial, AI_MATKEY_COLOR_AMBIENT));
-            subMeshMaterials->Materials->SetUniform(UniformCache::SurfaceColorsUniforms::DiffuseColor, LoadMaterialVec3Data(currentMaterial, AI_MATKEY_COLOR_DIFFUSE));
-            subMeshMaterials->Materials->SetUniform(UniformCache::SurfaceColorsUniforms::SpecularColor, LoadMaterialVec3Data(currentMaterial, AI_MATKEY_COLOR_SPECULAR));
-            subMeshMaterials->Materials->SetUniform(UniformCache::SurfaceColorsUniforms::EmissiveColor, LoadMaterialVec3Data(currentMaterial, AI_MATKEY_COLOR_EMISSIVE));
-            subMeshMaterials->Materials->SetUniform(UniformCache::SurfaceColorsUniforms::ReflectiveColor, LoadMaterialVec3Data(currentMaterial, AI_MATKEY_COLOR_REFLECTIVE));
-            subMeshMaterials->Materials->SetUniform(UniformCache::SurfaceColorsUniforms::TransparentColor, LoadMaterialVec3Data(currentMaterial, AI_MATKEY_COLOR_TRANSPARENT));
-
-            //Material properties
-            subMeshMaterials->Materials->SetUniform(UniformCache::MaterialPropertiesUniforms::Shininess, LoadMaterialFloatData(currentMaterial, AI_MATKEY_SHININESS));
-            subMeshMaterials->Materials->SetUniform(UniformCache::MaterialPropertiesUniforms::ShininessStrength, LoadMaterialFloatData(currentMaterial, AI_MATKEY_SHININESS_STRENGTH));
-            subMeshMaterials->Materials->SetUniform(UniformCache::MaterialPropertiesUniforms::Opacity, LoadMaterialFloatData(currentMaterial, AI_MATKEY_OPACITY));
-            subMeshMaterials->Materials->SetUniform(UniformCache::MaterialPropertiesUniforms::IndexOfRefraction, LoadMaterialFloatData(currentMaterial, MATKEY_IOR, 0, 0));
-            subMeshMaterials->Materials->SetUniform(UniformCache::MaterialPropertiesUniforms::BumpScaling, LoadMaterialFloatData(currentMaterial, AI_MATKEY_BUMPSCALING));
-            subMeshMaterials->Materials->SetUniform(UniformCache::MaterialPropertiesUniforms::Reflectivity, LoadMaterialFloatData(currentMaterial, AI_MATKEY_REFLECTIVITY));
-
-            //Material Factors
-            subMeshMaterials->Materials->SetUniform(UniformCache::MaterialFactorsUniforms::BaseColor, LoadMaterialVec3Data(currentMaterial, AI_MATKEY_BASE_COLOR));
-            subMeshMaterials->Materials->SetUniform(UniformCache::MaterialFactorsUniforms::MetallicFactor, LoadMaterialFloatData(currentMaterial, AI_MATKEY_METALLIC_FACTOR));
-            subMeshMaterials->Materials->SetUniform(UniformCache::MaterialFactorsUniforms::RoughnessFactor, LoadMaterialFloatData(currentMaterial, AI_MATKEY_ROUGHNESS_FACTOR));
-            subMeshMaterials->Materials->SetUniform(UniformCache::MaterialFactorsUniforms::TransmissionFactor, LoadMaterialFloatData(currentMaterial, AI_MATKEY_TRANSMISSION_FACTOR));
-            subMeshMaterials->Materials->SetUniform(UniformCache::MaterialFactorsUniforms::ClearCoatFactor, LoadMaterialFloatData(currentMaterial, AI_MATKEY_CLEARCOAT_FACTOR));
-            subMeshMaterials->Materials->SetUniform(UniformCache::MaterialFactorsUniforms::ClearCoatFactor, LoadMaterialFloatData(currentMaterial, MATKEY_CLEARCOAT_ROUGHNESS_FACTOR, 0, 0));
-            subMeshMaterials->Materials->SetUniform(UniformCache::MaterialFactorsUniforms::SheenFactor, LoadMaterialFloatData(currentMaterial, AI_MATKEY_SHEEN_COLOR_FACTOR));
-            subMeshMaterials->Materials->SetUniform(UniformCache::MaterialFactorsUniforms::SheenFactor, LoadMaterialFloatData(currentMaterial, MATKEY_SHEEN_ROUGHNESS_FACTOR, 0, 0));
-            subMeshMaterials->Materials->SetUniform(UniformCache::MaterialFactorsUniforms::IndexOfRefraction, LoadMaterialFloatData(currentMaterial, AI_MATKEY_REFRACTI));
-            subMeshMaterials->Materials->SetUniform(UniformCache::MaterialFactorsUniforms::AmbientOcclusionFactor, LoadMaterialFloatData(currentMaterial, MATKEY_AMBIENT_OCCLUISION_FACTOR, 0, 0));
-
-            // ********************************* legacy textures types ******************************************** //
-
-            subMeshMaterials->Materials->SetTexture(UniformCache::LegacyTextureUniforms::DiffuseTexture, LoadTextures(aiTextureType_DIFFUSE, currentMaterial, TextureType::DiffuseTexture));
-            subMeshMaterials->Materials->SetTexture(UniformCache::LegacyTextureUniforms::SpecularTexture, LoadTextures(aiTextureType_SPECULAR, currentMaterial, TextureType::SpecularTexture));
-            subMeshMaterials->Materials->SetTexture(UniformCache::LegacyTextureUniforms::AmbientTexture, LoadTextures(aiTextureType_AMBIENT, currentMaterial, TextureType::AmbientTexture));
-            subMeshMaterials->Materials->SetTexture(UniformCache::LegacyTextureUniforms::EmissiveTexture, LoadTextures(aiTextureType_EMISSIVE, currentMaterial, TextureType::EmissiveTexture));
-            subMeshMaterials->Materials->SetTexture(UniformCache::LegacyTextureUniforms::NormalMapsTexture, LoadTextures(aiTextureType_NORMALS, currentMaterial, TextureType::NormalMapsTexture));
-            subMeshMaterials->Materials->SetTexture(UniformCache::LegacyTextureUniforms::ShininessTexture, LoadTextures(aiTextureType_SHININESS, currentMaterial, TextureType::ShininessTexture));
-            subMeshMaterials->Materials->SetTexture(UniformCache::LegacyTextureUniforms::OpacityMapsTexture, LoadTextures(aiTextureType_OPACITY, currentMaterial, TextureType::OpacityMapsTexture));
-
-            // ********************************* Modern textures types ******************************************** //
-
-            subMeshMaterials->Materials->SetTexture(UniformCache::PBRTextureUniforms::BaseColorTexture, LoadTextures(aiTextureType_BASE_COLOR, currentMaterial, TextureType::BaseColorMapsTexture));
-            subMeshMaterials->Materials->SetTexture(UniformCache::PBRTextureUniforms::MetallicTexture, LoadTextures(aiTextureType_METALNESS, currentMaterial, TextureType::MetallicMapsTexture));
-            subMeshMaterials->Materials->SetTexture(UniformCache::PBRTextureUniforms::RoughnessTexture, LoadTextures(aiTextureType_DIFFUSE_ROUGHNESS, currentMaterial, TextureType::RoughnessMapsTexture));
-            subMeshMaterials->Materials->SetTexture(UniformCache::PBRTextureUniforms::AOMapTexture, LoadTextures(aiTextureType_AMBIENT_OCCLUSION, currentMaterial, TextureType::AOMapsTexture));
-            subMeshMaterials->Materials->SetTexture(UniformCache::PBRTextureUniforms::EmissiveTexture, LoadTextures(aiTextureType_EMISSION_COLOR, currentMaterial, TextureType::EmissiveMapsTexture));
-            subMeshMaterials->Materials->SetTexture(UniformCache::PBRTextureUniforms::ClearCoatTexture, LoadTextures(aiTextureType_CLEARCOAT, currentMaterial, TextureType::ClearCoatMapsTexture));
-            subMeshMaterials->Materials->SetTexture(UniformCache::PBRTextureUniforms::SheenTexture, LoadTextures(aiTextureType_SHEEN, currentMaterial, TextureType::SheenMapsTexture));
-            subMeshMaterials->Materials->SetTexture(UniformCache::PBRTextureUniforms::TransmissionTexture, LoadTextures(aiTextureType_TRANSMISSION, currentMaterial, TextureType::TransmissionMapsTexture));
-
-            subMeshMaterials->ParentModel = modelPtr.get();
-            modelPtr->m_SubMeshMaterialMapping[mesh->MeshIndex] = subMeshMaterials;
+            MOTION_CORE_WARN("Material without a name is not been handled. Skipping material load for SubMesh {0}", meshSegment->MeshIndex);
+            return;
         }
+
+        meshSegment->Materials = assetManager.Create<Material>(property.C_Str());
+        if (!meshSegment->Materials)
+        {
+            MOTION_CORE_ERROR("Failed to create Material for SubMesh {0}", meshSegment->MeshIndex);
+            meshSegment->MeshSelf.reset();
+            meshSegment->Materials = nullptr;
+            return;
+        }
+
+        // Surface Colors
+        meshSegment->Materials->SetUniform(UniformCache::Color_AmbientColor, LoadMaterialVec3Data(currentMaterial, AI_MATKEY_COLOR_AMBIENT));
+        meshSegment->Materials->SetUniform(UniformCache::Color_DiffuseColor, LoadMaterialVec3Data(currentMaterial, AI_MATKEY_COLOR_DIFFUSE));
+        meshSegment->Materials->SetUniform(UniformCache::Color_SpecularColor, LoadMaterialVec3Data(currentMaterial, AI_MATKEY_COLOR_SPECULAR));
+        meshSegment->Materials->SetUniform(UniformCache::Color_EmissiveColor, LoadMaterialVec3Data(currentMaterial, AI_MATKEY_COLOR_EMISSIVE));
+        meshSegment->Materials->SetUniform(UniformCache::Color_ReflectiveColor, LoadMaterialVec3Data(currentMaterial, AI_MATKEY_COLOR_REFLECTIVE));
+        meshSegment->Materials->SetUniform(UniformCache::Color_TransparentColor, LoadMaterialVec3Data(currentMaterial, AI_MATKEY_COLOR_TRANSPARENT));
+
+        //Material properties
+        meshSegment->Materials->SetUniform(UniformCache::Property_Shininess, LoadMaterialFloatData(currentMaterial, AI_MATKEY_SHININESS));
+        meshSegment->Materials->SetUniform(UniformCache::Property_ShininessStrength, LoadMaterialFloatData(currentMaterial, AI_MATKEY_SHININESS_STRENGTH));
+        meshSegment->Materials->SetUniform(UniformCache::Property_Opacity, LoadMaterialFloatData(currentMaterial, AI_MATKEY_OPACITY));
+        meshSegment->Materials->SetUniform(UniformCache::Property_IndexOfRefraction, LoadMaterialFloatData(currentMaterial, AI_MATKEY_IOR));
+        meshSegment->Materials->SetUniform(UniformCache::Property_BumpScaling, LoadMaterialFloatData(currentMaterial, AI_MATKEY_BUMPSCALING));
+        meshSegment->Materials->SetUniform(UniformCache::Property_Reflectivity, LoadMaterialFloatData(currentMaterial, AI_MATKEY_REFLECTIVITY));
+
+        //Material Factors
+        meshSegment->Materials->SetUniform(UniformCache::Factor_BaseColorFactor, LoadMaterialVec3Data(currentMaterial, AI_MATKEY_BASE_COLOR));
+        meshSegment->Materials->SetUniform(UniformCache::Factor_MetallicFactor, LoadMaterialFloatData(currentMaterial, AI_MATKEY_METALLIC_FACTOR));
+        meshSegment->Materials->SetUniform(UniformCache::Factor_RoughnessFactor, LoadMaterialFloatData(currentMaterial, AI_MATKEY_ROUGHNESS_FACTOR));
+        meshSegment->Materials->SetUniform(UniformCache::Factor_TransmissionFactor, LoadMaterialFloatData(currentMaterial, AI_MATKEY_TRANSMISSION_FACTOR));
+        meshSegment->Materials->SetUniform(UniformCache::Factor_ClearCoatFactor, LoadMaterialFloatData(currentMaterial, AI_MATKEY_CLEARCOAT_FACTOR));
+        meshSegment->Materials->SetUniform(UniformCache::Factor_ClearCoatFactor, LoadMaterialFloatData(currentMaterial, AI_MATKEY_CLEARCOAT_ROUGHNESS_FACTOR));
+        meshSegment->Materials->SetUniform(UniformCache::Factor_SheenFactor, LoadMaterialFloatData(currentMaterial, AI_MATKEY_SHEEN_COLOR_FACTOR));
+        meshSegment->Materials->SetUniform(UniformCache::Factor_SheenFactor, LoadMaterialFloatData(currentMaterial, AI_MATKEY_SHEEN_ROUGHNESS_FACTOR));
+        meshSegment->Materials->SetUniform(UniformCache::Factor_IndexOfRefraction, LoadMaterialFloatData(currentMaterial, AI_MATKEY_REFRACTI));
+        meshSegment->Materials->SetUniform(UniformCache::Factor_AmbientOcclusionFactor, LoadMaterialFloatData(currentMaterial, AI_MATKEY_AMBIENT_OCCLUISION_FACTOR));
+
+        // ********************************* legacy textures types ******************************************** //
+        meshSegment->Materials->SetTexture(UniformCache::Texture_DiffuseTexture, LoadTextures(aiTextureType_DIFFUSE, currentMaterial, TextureType::DiffuseTexture));
+        meshSegment->Materials->SetTexture(UniformCache::Texture_SpecularTexture, LoadTextures(aiTextureType_SPECULAR, currentMaterial, TextureType::SpecularTexture));
+        meshSegment->Materials->SetTexture(UniformCache::Texture_AmbientTexture, LoadTextures(aiTextureType_AMBIENT, currentMaterial, TextureType::AmbientTexture));
+        meshSegment->Materials->SetTexture(UniformCache::Texture_EmissiveTexture, LoadTextures(aiTextureType_EMISSIVE, currentMaterial, TextureType::EmissiveTexture));
+        meshSegment->Materials->SetTexture(UniformCache::Texture_NormalMapsTexture, LoadTextures(aiTextureType_NORMALS, currentMaterial, TextureType::NormalMapsTexture));
+        meshSegment->Materials->SetTexture(UniformCache::Texture_ShininessTexture, LoadTextures(aiTextureType_SHININESS, currentMaterial, TextureType::ShininessTexture));
+        meshSegment->Materials->SetTexture(UniformCache::Texture_OpacityMapsTexture, LoadTextures(aiTextureType_OPACITY, currentMaterial, TextureType::OpacityMapsTexture));
+
+        // ********************************* Modern textures types ******************************************** //
+        meshSegment->Materials->SetTexture(UniformCache::Texture_BaseColorTexture, LoadTextures(aiTextureType_BASE_COLOR, currentMaterial, TextureType::BaseColorMapsTexture));
+        meshSegment->Materials->SetTexture(UniformCache::Texture_MetallicTexture, LoadTextures(aiTextureType_METALNESS, currentMaterial, TextureType::MetallicMapsTexture));
+        meshSegment->Materials->SetTexture(UniformCache::Texture_RoughnessTexture, LoadTextures(aiTextureType_DIFFUSE_ROUGHNESS, currentMaterial, TextureType::RoughnessMapsTexture));
+        meshSegment->Materials->SetTexture(UniformCache::Texture_AOMapTexture, LoadTextures(aiTextureType_AMBIENT_OCCLUSION, currentMaterial, TextureType::AOMapsTexture));
+        meshSegment->Materials->SetTexture(UniformCache::Texture_EmissiveTexture, LoadTextures(aiTextureType_EMISSION_COLOR, currentMaterial, TextureType::EmissiveMapsTexture));
+        meshSegment->Materials->SetTexture(UniformCache::Texture_ClearCoatTexture, LoadTextures(aiTextureType_CLEARCOAT, currentMaterial, TextureType::ClearCoatMapsTexture));
+        meshSegment->Materials->SetTexture(UniformCache::Texture_SheenTexture, LoadTextures(aiTextureType_SHEEN, currentMaterial, TextureType::SheenMapsTexture));
+        meshSegment->Materials->SetTexture(UniformCache::Texture_TransmissionTexture, LoadTextures(aiTextureType_TRANSMISSION, currentMaterial, TextureType::TransmissionMapsTexture));
     }
 }

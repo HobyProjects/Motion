@@ -11,13 +11,13 @@
 
 namespace Motion::Core
 {
-    inline constexpr uint32_t SHADER_BUFFER_DEFAULT_SIZE = 1024;
-    inline constexpr uint32_t SHADER_BUFFER_MAX_SIZE = 65536;
-    inline constexpr uint32_t SHADER_BUFFER_MAX_BINDING = 16;
-    inline constexpr uint32_t UNIFORM_BUFFER_MAX_BINDING = 16;
-    inline constexpr uint32_t UNIFORM_BUFFER_MAX_SIZE = 65536;
+    inline constexpr std::uint32_t SHADER_BUFFER_DEFAULT_SIZE = 1024;
+    inline constexpr std::uint32_t SHADER_BUFFER_MAX_SIZE = 65536;
+    inline constexpr std::uint32_t SHADER_BUFFER_MAX_BINDING = 16;
+    inline constexpr std::uint32_t UNIFORM_BUFFER_MAX_BINDING = 16;
+    inline constexpr std::uint32_t UNIFORM_BUFFER_MAX_SIZE = 65536;
 
-    enum class BufferComponents : uint32_t
+    enum class BufferComponents : std::uint32_t
     {
         X = 1,
         XY = 2,
@@ -31,7 +31,7 @@ namespace Motion::Core
         NAN_ = 0,
     };
 
-    enum class BufferStride : uint32_t
+    enum class BufferStride : std::uint32_t
     {
         BOOLEAN = sizeof(bool),
         F1 = sizeof(float),
@@ -72,8 +72,8 @@ namespace Motion::Core
         std::vector<BufferElements> m_Elements{};
     };
 
-    using BufferID = uint32_t;
-    using BindingPoint = uint32_t;
+    using BufferID = std::uint32_t;
+    using BindingPoint = std::uint32_t;
     using BufferLayoutPtr = std::shared_ptr<BufferLayout>;
 
     class IVertexBuffer
@@ -86,7 +86,7 @@ namespace Motion::Core
         virtual void Unbind() const = 0;
         virtual BufferID GetID() const = 0;
 
-        virtual void SetData(const void* data, uint32_t size) = 0;
+        virtual void SetData(const void* data, std::uint32_t size) = 0;
         virtual void SetLayout(const BufferLayout& layout) = 0;
         virtual const BufferLayout& GetLayout() const = 0;
     };
@@ -100,7 +100,7 @@ namespace Motion::Core
         virtual void Bind() const = 0;
         virtual void Unbind() const = 0;
         virtual BufferID GetID() const = 0;
-        virtual uint32_t GetElementCount() const = 0;
+        virtual std::uint32_t GetElementCount() const = 0;
     };
 
     class IShaderBuffer
@@ -113,12 +113,12 @@ namespace Motion::Core
         virtual void Unbind() const = 0;
         virtual BufferID GetID() const = 0;
 
-        virtual void SetBufferData(uint32_t offset, uint32_t size, const glm::mat4& data) = 0;
-        virtual void SetBufferData(uint32_t offset, uint32_t size, const glm::mat3& data) = 0;
-        virtual void SetBufferData(uint32_t offset, uint32_t size, const glm::vec4& data) = 0;
-        virtual void SetBufferData(uint32_t offset, uint32_t size, const glm::vec3& data) = 0;
-        virtual void SetBufferData(uint32_t offset, uint32_t size, const glm::vec2& data) = 0;
-        virtual void SetBufferData(uint32_t offset, uint32_t size, float data) = 0;
+        virtual void SetBufferData(std::uint32_t offset, std::uint32_t size, const glm::mat4& data) = 0;
+        virtual void SetBufferData(std::uint32_t offset, std::uint32_t size, const glm::mat3& data) = 0;
+        virtual void SetBufferData(std::uint32_t offset, std::uint32_t size, const glm::vec4& data) = 0;
+        virtual void SetBufferData(std::uint32_t offset, std::uint32_t size, const glm::vec3& data) = 0;
+        virtual void SetBufferData(std::uint32_t offset, std::uint32_t size, const glm::vec2& data) = 0;
+        virtual void SetBufferData(std::uint32_t offset, std::uint32_t size, float data) = 0;
     };
 
     class IUniformBuffer
@@ -127,23 +127,23 @@ namespace Motion::Core
         IUniformBuffer() = default;
         virtual ~IUniformBuffer() = default;
 
+        [[nodiscard]] virtual BufferID GetID() const = 0;
+
         virtual void Bind() const = 0;
         virtual void Unbind() const = 0;
-        virtual BufferID GetID() const = 0;
 
-        virtual void SetBufferData(uint32_t offset, uint32_t size, const glm::mat4& data) = 0;
-        virtual void SetBufferData(uint32_t offset, uint32_t size, const glm::mat3& data) = 0;
-        virtual void SetBufferData(uint32_t offset, uint32_t size, const glm::vec4& data) = 0;
-        virtual void SetBufferData(uint32_t offset, uint32_t size, const glm::vec3& data) = 0;
-        virtual void SetBufferData(uint32_t offset, uint32_t size, const glm::vec2& data) = 0;
-        virtual void SetBufferData(uint32_t offset, uint32_t size, float data) = 0;
+        virtual void SetBufferData(std::uint32_t offset, std::uint32_t size, const glm::mat4& data) = 0;
+        virtual void SetBufferData(std::uint32_t offset, std::uint32_t size, const glm::mat3& data) = 0;
+        virtual void SetBufferData(std::uint32_t offset, std::uint32_t size, const glm::vec4& data) = 0;
+        virtual void SetBufferData(std::uint32_t offset, std::uint32_t size, const glm::vec3& data) = 0;
+        virtual void SetBufferData(std::uint32_t offset, std::uint32_t size, const glm::vec2& data) = 0;
+        virtual void SetBufferData(std::uint32_t offset, std::uint32_t size, float data) = 0;
     };
 
     struct FrameBufferSpecification
     {
-        uint32_t Width{ 0 };
-        uint32_t Height{ 0 };
-        uint32_t Samples{ 1 };
+        std::vector<FrameBufferTextureFormat> Attachments;
+        std::uint32_t Width{ 0 }, Height{ 0 };
         bool SwapChainTarget{ false };
     };
 
@@ -155,23 +155,13 @@ namespace Motion::Core
 
         virtual void Bind() = 0;
         virtual void Unbind() = 0;
+        virtual void ResizeFrame(std::uint32_t width, std::uint32_t height) = 0;
+        virtual void ClearAttachment(std::uint32_t attachmentIndex, std::int32_t value) = 0;
 
-        virtual void BindAttachment() = 0;
-        virtual void UnbindAttachment() = 0;
-
-        virtual void ResizeFrame(uint32_t width, uint32_t height) = 0;
-        virtual BufferID GetFrameBufferID() const = 0;
-        virtual BufferID GetColorAttachment() const = 0;
-        virtual FrameBufferSpecification& GetFrameSpecification() = 0;
-
-        virtual bool IsMSAA() const = 0;
-        virtual BufferID GetResolvedFrameBufferID() const = 0;
-        virtual BufferID GetResolvedColorAttachment() const = 0;
-        virtual void Resolve() = 0;
-        virtual void Render() = 0;
-
-    protected:
-        virtual void CreateFrame() = 0;
+        [[nodiscard]] virtual BufferID GetFrameBufferID() const = 0;
+        [[nodiscard]] virtual FrameBufferSpecification& GetFrameSpecification() = 0;
+        [[nodiscard]] virtual FrameTextureID GetAttachmentID(std::uint32_t index) const = 0;
+        [[nodiscard]] virtual std::int32_t ReadPixel(std::uint32_t attachmentIndex, std::int32_t x, std::int32_t y) = 0;
     };
 
     class BufferFactory
@@ -186,11 +176,11 @@ namespace Motion::Core
         BufferFactory& operator=(BufferFactory&&) = delete;
 
     public:
-        static std::shared_ptr<IVertexBuffer> CreateVertexBuffer(uint32_t alloca_size);
-        static std::shared_ptr<IVertexBuffer> CreateVertexBuffer(float* data, uint32_t size);
-        static std::shared_ptr<IElementBuffer> CreateElementBuffer(uint32_t* data, uint32_t size);
-        static std::shared_ptr<IShaderBuffer> CreateShaderBuffer(uint32_t size, BindingPoint binding);
-        static std::shared_ptr<IUniformBuffer> CreateUniformBuffer(uint32_t size, BindingPoint binding);
+        static std::shared_ptr<IVertexBuffer> CreateVertexBuffer(std::uint32_t alloca_size);
+        static std::shared_ptr<IVertexBuffer> CreateVertexBuffer(float* data, std::uint32_t size);
+        static std::shared_ptr<IElementBuffer> CreateElementBuffer(std::uint32_t* data, std::uint32_t size);
+        static std::shared_ptr<IShaderBuffer> CreateShaderBuffer(std::uint32_t size, BindingPoint binding);
+        static std::shared_ptr<IUniformBuffer> CreateUniformBuffer(std::uint32_t size, BindingPoint binding);
         static std::shared_ptr<IFrameBuffer> CreateFrameBuffer(const FrameBufferSpecification& specification);
     };
 }

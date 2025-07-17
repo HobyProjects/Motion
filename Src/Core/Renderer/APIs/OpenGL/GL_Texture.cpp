@@ -482,4 +482,98 @@ namespace Motion::Core
         m_Specification.TextureData = nullptr;
         return true;
     }
+
+    /**
+     * @brief Constructs a GL_FrameTexture object with the specified name and texture ID.
+     *
+     * This constructor initializes the frame texture with a unique ID, name, and whether it uses multi-sampling.
+     * It sets the texture ID pointer to the provided textureID parameter.
+     *
+     * @param name The name of the frame texture.
+     * @param textureID Pointer to the TextureID that this frame texture will use.
+     * @param useMultiSampling Whether to use multi-sampling for this frame texture.
+     */
+    GL_FrameTexture::GL_FrameTexture(const std::string& name, FrameTextureID* textureID, bool useMultiSampling) :
+        AssetBase<IFrameTexture>(UniqueIdentity::GetUniqueID(), name, AssetType::Texture, "FrameTexture"),
+        m_TextureID(textureID),
+        m_UseMultiSampling(useMultiSampling)
+    {
+        m_MetaData.IsAssetInitialized = true;
+    }
+
+    /**
+     * @brief Constructs a GL_FrameTexture object with the specified UUID, name, and texture ID.
+     *
+     * This constructor initializes the frame texture with a unique UUID, name, and whether it uses multi-sampling.
+     * It sets the texture ID pointer to the provided textureID parameter.
+     *
+     * @param uuid The unique identifier for the frame texture.
+     * @param name The name of the frame texture.
+     * @param textureID Pointer to the TextureID that this frame texture will use.
+     * @param useMultiSampling Whether to use multi-sampling for this frame texture.
+     */
+    GL_FrameTexture::GL_FrameTexture(UUID uuid, const std::string& name, FrameTextureID* textureID, bool useMultiSampling) :
+        AssetBase<IFrameTexture>(uuid, name, AssetType::Texture, "FrameTexture"),
+        m_TextureID(textureID),
+        m_UseMultiSampling(useMultiSampling)
+    {
+        m_MetaData.IsAssetInitialized = true;
+    }
+
+    /**
+     * @brief Destructor for GL_FrameTexture.
+     *
+     * This destructor cleans up the resources associated with the frame texture.
+     * It does not delete the texture ID pointer, as it is expected to be managed externally.
+     */
+    void GL_FrameTexture::Bind() const noexcept
+    {
+        if (m_TextureID != nullptr && m_UseMultiSampling)
+        {
+            glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, *m_TextureID);
+        }
+        else if (m_TextureID != nullptr)
+        {
+            glBindTexture(GL_TEXTURE_2D, *m_TextureID);
+        }
+    }
+
+    /**
+     * @brief Unbinds the currently bound frame texture.
+     *
+     * This method unbinds the frame texture by binding the appropriate OpenGL texture target to 0.
+     * If multi-sampling is used, it binds GL_TEXTURE_2D_MULTISAMPLE; otherwise, it binds GL_TEXTURE_2D.
+     */
+    void GL_FrameTexture::Unbind() const noexcept
+    {
+        if (m_TextureID != nullptr && m_UseMultiSampling)
+        {
+            glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, 0);
+        }
+        else if (m_TextureID != nullptr)
+        {
+            glBindTexture(GL_TEXTURE_2D, 0);
+        }
+    }
+
+    /**
+     * @brief Resets the texture ID pointer for this frame texture.
+     *
+     * This method allows the texture ID pointer to be reset to a new value, which is useful
+     * when the texture ID needs to be updated or changed.
+     *
+     * @param textureID Pointer to the new TextureID that this frame texture will use.
+     */
+    void GL_FrameTexture::Reset(FrameTextureID* textureID) noexcept
+    {
+        if (textureID != nullptr)
+        {
+            m_TextureID = textureID;
+        }
+        else
+        {
+            MOTION_ASSERT(false, "TextureID pointer cannot be null in GL_FrameTexture::Reset");
+        }
+    }
+
 }

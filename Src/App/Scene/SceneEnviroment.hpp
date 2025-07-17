@@ -11,7 +11,7 @@ namespace Motion::App
     {
         glm::vec3 Direction{ 0.0f, -1.0f, 0.0f };
         glm::vec3 Color{ 1.0f, 1.0f, 1.0f };
-        float AmbientIntensity{1.0f};
+        float AmbientIntensity{ 1.0f };
 
         DirectionalLight() = default;
         ~DirectionalLight() = default;
@@ -26,24 +26,24 @@ namespace Motion::App
 
     class PhysicsWorld
     {
-        public:
-            PhysicsWorld() = default;
+    public:
+        PhysicsWorld() = default;
 
-            void SetSettings(const PhysicsAttributes& settings) { m_Settings = settings; }
-            PhysicsAttributes& GetSettings() { return m_Settings; }
-            void Update(std::shared_ptr<Motion::Core::Entity> entity, float deltaTime);
+        void SetSettings(const PhysicsAttributes& settings) { m_Settings = settings; }
+        PhysicsAttributes& GetSettings() { return m_Settings; }
+        void Update(std::shared_ptr<Motion::Core::Entity> entity, float deltaTime);
 
-        private:
-            void EnviromentIntegration(Motion::Core::TransformComponent& transform, Motion::Core::PhysicsBodyComponent& body, float deltaTime);
+    private:
+        void EnvironmentIntegration(Motion::Core::TransformComponent& transform, Motion::Core::PhysicsBodyComponent& body, float deltaTime);
 
-        private:
-            PhysicsAttributes m_Settings{};
+    private:
+        PhysicsAttributes m_Settings{};
     };
 
-    enum class SimulationMode 
+    enum class SimulationMode
     {
-        Realtime,   
-        ManualStep  
+        Realtime,
+        ManualStep
     };
 
     struct SceneEnviroment

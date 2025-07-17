@@ -10,6 +10,7 @@
 namespace Motion::Core
 {
     using TextureID = std::uint32_t;
+    using FrameTextureID = std::uint32_t;
 
     enum class TextureType : std::uint32_t
     {
@@ -102,11 +103,39 @@ namespace Motion::Core
         [[nodiscard]] virtual bool LoadCubeMapTextureHDR(const std::filesystem::path& textureFile) = 0;
     };
 
+    enum class FrameBufferTextureFormat : std::uint32_t
+    {
+        None = 0,
+        RGBA8,
+        RGB8,
+        R16F,
+        R32F,
+        R16I,
+        R32I,
+        Depth24Stencil8,
+        Depth32F,
+        Depth24,
+        Depth32
+    };
+
+    class IFrameTexture : public IAsset
+    {
+    public:
+        IFrameTexture() = default;
+        virtual ~IFrameTexture() = default;
+
+        virtual void Bind() const noexcept = 0;
+        virtual void Unbind() const noexcept = 0;
+        virtual void Reset(FrameTextureID* textureID) noexcept = 0;
+
+        [[nodiscard]] virtual FrameTextureID* GetID() const noexcept = 0;
+
+    };
+
     template<typename T>
     concept TextureExpected = requires(T texture)
     {
         { texture.Bind() } -> std::same_as<void>;
         { texture.GetID() } -> std::same_as<std::uint32_t>;
-        { texture.GetSpecification() } -> std::same_as<TextureSpecification>;
     };
 }

@@ -20,22 +20,22 @@ namespace Motion::Core
             {
             case GraphicSettings::AntiAliasingLevel::None:
             {
-                s_Specification.Samples = 1;
+                s_Specification.MultiSampling = 1;
                 break;
             }
             case GraphicSettings::AntiAliasingLevel::MSAAx2:
             {
-                s_Specification.Samples = 2;
+                s_Specification.MultiSampling = 2;
                 break;
             }
             case GraphicSettings::AntiAliasingLevel::MSAAx4:
             {
-                s_Specification.Samples = 4;
+                s_Specification.MultiSampling = 4;
                 break;
             }
             case GraphicSettings::AntiAliasingLevel::MSAAx8:
             {
-                s_Specification.Samples = 8;
+                s_Specification.MultiSampling = 8;
                 break;
             }
             }

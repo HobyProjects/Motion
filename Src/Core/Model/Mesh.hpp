@@ -23,10 +23,8 @@ namespace Motion::Core
     {
     public:
         Mesh() = default;
-        Mesh(const std::string& name, float* vertices, std::uint32_t verticesSize, std::uint32_t* indices, std::uint32_t indicesCount,
-            const BufferLayout& layout, const std::shared_ptr<StaticMesh>& parentModel);
-        Mesh(const UUID& uuid, const std::string& name, float* vertices, std::uint32_t verticesSize, std::uint32_t* indices, std::uint32_t indicesCount,
-            const BufferLayout& layout, const std::shared_ptr<StaticMesh>& parentModel);
+        Mesh(const std::string& name, float* vertices, std::uint32_t verticesSize, std::uint32_t* indices, std::uint32_t indicesCount, const BufferLayout& layout, const std::shared_ptr<StaticMesh>& parentModel);
+        Mesh(const UUID& uuid, const std::string& name, float* vertices, std::uint32_t verticesSize, std::uint32_t* indices, std::uint32_t indicesCount, const BufferLayout& layout, const std::shared_ptr<StaticMesh>& parentModel);
         ~Mesh() = default;
 
         void Bind() const noexcept;

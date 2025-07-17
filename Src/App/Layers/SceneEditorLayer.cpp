@@ -6,7 +6,7 @@ namespace Motion::App
     static std::weak_ptr<Motion::Core::IWindow> s_Window;
     static std::weak_ptr<Motion::App::ImGuiLayer> s_ImGuiLayer;
 
-    SceneEditorLayer::SceneEditorLayer(Motion::Core::WindowHandle handle, const std::shared_ptr<Motion::App::ImGuiLayer>& imguiLayer) : Motion::Core::Layer("EditorLayer") 
+    SceneEditorLayer::SceneEditorLayer(Motion::Core::WindowHandle handle, const std::shared_ptr<Motion::App::ImGuiLayer>& imguiLayer) : Motion::Core::Layer("EditorLayer")
     {
         s_Window = Motion::Core::WindowManager::GetWindow(handle);
         s_ImGuiLayer = imguiLayer;
@@ -18,15 +18,15 @@ namespace Motion::App
         m_Viewport.FrameSpec.Height = static_cast<uint32_t>(m_ViewportHeight);
         m_Viewport.Size = { m_ViewportWidth, m_ViewportHeight };
 
-        if(!s_Window.expired())
+        if (!s_Window.expired())
         {
             auto window = s_Window.lock();
             Motion::Core::GraphicSettings& graphicSettings = window->GetGraphicSettings();
             Motion::Core::GraphicSettings::AntiAliasingLevel aaLevel = graphicSettings.AntiAliasing;
-            m_Viewport.FrameSpec.Samples = static_cast<uint32_t>(aaLevel);
+            m_Viewport.FrameSpec.MultiSampling = static_cast<uint32_t>(aaLevel);
         }
 
-        m_Framebuffer = Motion::Core::BufferFactory::CreateFrameBuffer(m_Viewport.FrameSpec);    
+        m_Framebuffer = Motion::Core::BufferFactory::CreateFrameBuffer(m_Viewport.FrameSpec);
         m_Scene = std::make_shared<Scene>(glm::vec2(m_ViewportWidth, m_ViewportHeight));
     }
 
@@ -38,10 +38,10 @@ namespace Motion::App
 
     void SceneEditorLayer::OnUpdate(Motion::Core::WindowHandle handle, Motion::Core::Timer deltaTime)
     {
-        if(m_Viewport.SizeHasChanged(m_ViewportWidth, m_ViewportHeight))
+        if (m_Viewport.SizeHasChanged(m_ViewportWidth, m_ViewportHeight))
         {
             m_Viewport.Update(glm::vec2(m_ViewportWidth, m_ViewportHeight));
-            m_Framebuffer->ResizeFrame((uint32_t) m_ViewportWidth, (uint32_t) m_ViewportHeight);
+            m_Framebuffer->ResizeFrame((uint32_t)m_ViewportWidth, (uint32_t)m_ViewportHeight);
             m_Scene->OnViewportSizeChanges(m_ViewportWidth, m_ViewportHeight);
         }
 
@@ -49,7 +49,7 @@ namespace Motion::App
 
         Motion::Core::Renderer::ClearColor({ 0.243, 0.243, 0.243, 1.0f });
         Motion::Core::Renderer::Clear();
-        
+
         m_Scene->OnUpdate(handle, deltaTime);
 
         Motion::Core::Renderer::Flush();
@@ -69,21 +69,21 @@ namespace Motion::App
 
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
         ImGui::Begin("Scene");
-        if(!s_ImGuiLayer.expired())
+        if (!s_ImGuiLayer.expired())
         {
             auto imguiLayer = s_ImGuiLayer.lock();
             imguiLayer->AcceptEvents(ImGui::IsWindowFocused() || ImGui::IsWindowHovered());
             ImVec2 viewportPanelSize = ImGui::GetContentRegionAvail();
-            if( viewportPanelSize.x != m_ViewportWidth || viewportPanelSize.y != m_ViewportHeight )
+            if (viewportPanelSize.x != m_ViewportWidth || viewportPanelSize.y != m_ViewportHeight)
             {
                 m_ViewportWidth = viewportPanelSize.x;
                 m_ViewportHeight = viewportPanelSize.y;
             }
 
-            if( m_Framebuffer->IsMSAA() )
-                ImGui::Image((ImTextureID) m_Framebuffer->GetResolvedColorAttachment(), viewportPanelSize, { 0, 1 }, { 1, 0 });
+            if (m_Framebuffer->IsMSAA())
+                ImGui::Image((ImTextureID)m_Framebuffer->GetResolvedColorAttachment(), viewportPanelSize, { 0, 1 }, { 1, 0 });
             else
-                ImGui::Image((ImTextureID) m_Framebuffer->GetColorAttachment(), viewportPanelSize, { 0, 1 }, { 1, 0 });
+                ImGui::Image((ImTextureID)m_Framebuffer->GetColorAttachment(), viewportPanelSize, { 0, 1 }, { 1, 0 });
         }
         ImGui::End();
         ImGui::PopStyleVar();
@@ -96,7 +96,7 @@ namespace Motion::App
         static ImGuiDockNodeFlags dockspace_flags = ImGuiDockNodeFlags_None;
         ImGuiWindowFlags window_flags = ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoDocking;
 
-        if( opt_fullscreen )
+        if (opt_fullscreen)
         {
             const ImGuiViewport* viewport = ImGui::GetMainViewport();
             ImGui::SetNextWindowPos(viewport->WorkPos);
@@ -113,26 +113,26 @@ namespace Motion::App
             dockspace_flags &= -ImGuiDockNodeFlags_PassthruCentralNode;
         }
 
-        if( dockspace_flags & ImGuiDockNodeFlags_PassthruCentralNode )
+        if (dockspace_flags & ImGuiDockNodeFlags_PassthruCentralNode)
             window_flags |= ImGuiWindowFlags_NoBackground;
 
-        if( !opt_padding )
+        if (!opt_padding)
             ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
 
         static bool show_dockspace = true;
         ImGui::Begin("Dockspace", &show_dockspace, window_flags);
 
-        if( !opt_padding )
+        if (!opt_padding)
             ImGui::PopStyleVar();
 
-        if( opt_fullscreen )
+        if (opt_fullscreen)
             ImGui::PopStyleVar(2);
 
         ImGuiIO& io = ImGui::GetIO();
         ImGuiStyle& style = ImGui::GetStyle();
         float minWinSizeX = style.WindowMinSize.x;
         style.WindowMinSize.x = 370.0f;
-        if( io.ConfigFlags & ImGuiConfigFlags_DockingEnable )
+        if (io.ConfigFlags & ImGuiConfigFlags_DockingEnable)
         {
             ImGuiID dockspace_id = ImGui::GetID("MyDockSpace");
             ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), dockspace_flags);

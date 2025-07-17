@@ -1,4 +1,5 @@
 #include "CorePCH.hpp"
+#include "Renderer.hpp"
 
 namespace Motion::Core
 {
@@ -246,6 +247,11 @@ namespace Motion::Core
         s_CommandQueue.Submit(drawCommand);
     }
 
+
+    void Renderer::Submit(const FrameDrawCommand& frameDrawCommand)
+    {
+    }
+
     /**
      * @brief Prepares the renderer for a new frame.
      *
@@ -269,6 +275,9 @@ namespace Motion::Core
      */
     void Renderer::EndFrame()
     {
+
+
+
         s_CommandQueue.SwapBuffers(); // Flip draw buffers
         {
             std::lock_guard lock(s_RenderMutex);

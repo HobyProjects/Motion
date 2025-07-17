@@ -585,6 +585,92 @@ namespace Motion::Core
         }
     };
 
+    template<>
+    struct AssetBackendsBuilder<IFrameTexture>
+    {
+        /**
+         * @brief Creates a new frame texture object based on the current rendering API.
+         *
+         * This static function instantiates a frame texture using the appropriate implementation
+         * for the active rendering API (e.g., OpenGL). If the API is not supported, it logs an error
+         * and returns nullptr.
+         *
+         * @param name The name to assign to the frame texture.
+         * @param textureID Pointer to a TextureID object to be associated with the frame texture.
+         * @param useMultiSampling Boolean flag indicating whether multisampling should be enabled.
+         * @return std::shared_ptr<IFrameTexture> Shared pointer to the created frame texture object,
+         *         or nullptr if the rendering API is not supported.
+         */
+        static std::shared_ptr<IFrameTexture> Create(const std::string& name, TextureID* textureID, bool useMultiSampling)
+        {
+            auto& renderer = Renderer::GetInstance();
+            switch (renderer.GetAPI())
+            {
+            case RenderingAPI::OpenGL:
+            {
+                UUID uuid = UniqueIdentity::GetUniqueID();
+                return std::make_shared<GL_FrameTexture>(uuid, name, textureID, useMultiSampling);
+            }
+            case RenderingAPI::Vulkan:
+            {
+                MOTION_CORE_ERROR("Vulkan API is not yet supported for frame texture creation!");
+                return nullptr;
+            }
+            case RenderingAPI::DirectX:
+            {
+                MOTION_CORE_ERROR("DirectX API is not yet supported for frame texture creation!");
+                return nullptr;
+            }
+            default:
+            {
+                MOTION_CORE_ERROR("Unsupported rendering API for frame texture creation!");
+                return nullptr;
+            }
+            }
+        }
+
+        /**
+         * @brief Creates a new frame texture object based on the current rendering API.
+         *
+         * This static function instantiates a frame texture using the appropriate implementation
+         * for the active rendering API (e.g., OpenGL). If the API is not supported, it logs an error
+         * and returns nullptr.
+         *
+         * @param uuid The unique identifier for the frame texture.
+         * @param name The name to assign to the frame texture.
+         * @param textureID Pointer to a TextureID object to be associated with the frame texture.
+         * @param useMultiSampling Boolean flag indicating whether multisampling should be enabled.
+         * @return std::shared_ptr<IFrameTexture> Shared pointer to the created frame texture object,
+         *         or nullptr if the rendering API is not supported.
+         */
+        static std::shared_ptr<IFrameTexture> Create(const UUID& uuid, const std::string& name, TextureID* textureID, bool useMultiSampling)
+        {
+            auto& renderer = Renderer::GetInstance();
+            switch (renderer.GetAPI())
+            {
+            case RenderingAPI::OpenGL:
+            {
+                return std::make_shared<GL_FrameTexture>(uuid, name, textureID, useMultiSampling);
+            }
+            case RenderingAPI::Vulkan:
+            {
+                MOTION_CORE_ERROR("Vulkan API is not yet supported for frame texture creation!");
+                return nullptr;
+            }
+            case RenderingAPI::DirectX:
+            {
+                MOTION_CORE_ERROR("DirectX API is not yet supported for frame texture creation!");
+                return nullptr;
+            }
+            default:
+            {
+                MOTION_CORE_ERROR("Unsupported rendering API for frame texture creation!");
+                return nullptr;
+            }
+            }
+        }
+    };
+
 
     class AssetManager
     {

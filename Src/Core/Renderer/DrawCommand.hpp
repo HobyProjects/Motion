@@ -17,17 +17,6 @@ namespace Motion::Core
 {
     class Renderer; // forward declaration
 
-    enum class RenderPass : std::uint8_t
-    {
-        Opaque = 0,
-        Transparent = Bits<1>::value,
-        PostProcessing = Bits<2>::value,
-        Shadow = Bits<3>::value
-    };
-
-    inline std::uint8_t operator|(RenderPass a, RenderPass b) { return static_cast<std::uint8_t>(a) | static_cast<std::uint8_t>(b); }
-    inline std::uint8_t operator&(RenderPass a, RenderPass b) { return static_cast<std::uint8_t>(a) & static_cast<std::uint8_t>(b); }
-
     struct DrawCommand
     {
         UUID SortKey{ 0 };
@@ -35,12 +24,24 @@ namespace Motion::Core
         UUID MeshID{ 0 };
         glm::mat4 ModelMatrix{ 1.0f };
         glm::mat4 ViewProjectionMatrix{ 1.0f };
-        RenderPass RenderPass{ RenderPass::Opaque };
 
         bool operator<(const DrawCommand& other) const
         {
             return std::tie(SortKey, MaterialID, MeshID) <
                 std::tie(other.SortKey, other.MaterialID, other.MeshID);
+        }
+    };
+
+    struct FrameDrawCommand
+    {
+        UUID SortKey{ 0 };
+        UUID MeshID{ 0 };
+        TextureID TextureID{ 0 };
+
+        bool operator<(const FrameDrawCommand& other) const
+        {
+            return std::tie(SortKey, MeshID, TextureID) <
+                std::tie(other.SortKey, other.MeshID, other.TextureID);
         }
     };
 

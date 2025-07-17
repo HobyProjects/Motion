@@ -55,23 +55,4 @@ namespace Motion::Core
     private:
         TextureSpecification m_Specification{};
     };
-
-    class GL_FrameTexture final : public AssetBase<IFrameTexture>
-    {
-    public:
-        GL_FrameTexture(const std::string& name, FrameTextureID* textureID, bool useMultiSampling);
-        GL_FrameTexture(UUID uuid, const std::string& name, FrameTextureID* textureID, bool useMultiSampling);
-        virtual ~GL_FrameTexture() = default;
-
-        virtual void Bind() const noexcept override;
-        virtual void Unbind() const noexcept override;
-        virtual void Reset(FrameTextureID* textureID) noexcept override;
-
-        [[nodiscard]] virtual FrameTextureID* GetID() const noexcept override { return m_TextureID; }
-
-    private:
-        FrameTextureID* m_TextureID{ nullptr };
-        bool m_UseMultiSampling{ false };
-    };
-
 }

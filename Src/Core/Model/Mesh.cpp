@@ -115,31 +115,19 @@ namespace Motion::Core
     }
 
     /**
-     * @brief Renders the mesh with the specified transformation and shader.
+     * @brief Renders the mesh using the renderer instance.
      *
-     * This function binds the shader, sets the model and view-projection matrices,
-     * and issues a draw call to render the mesh. It is typically used for rendering
-     * the mesh in a scene with the specified transformations.
-     *
-     * @param transformMatrix The transformation matrix to apply to the mesh.
-     * @param viewProjectionMatrix The combined view and projection matrix.
-     * @param shader Shared pointer to the shader used for rendering.
+     * This function binds the mesh, issues a draw call to the renderer
+     * using the number of indices in the mesh, and then unbinds the mesh.
+     * It encapsulates the rendering process for this mesh object.
      */
-    void Mesh::QuickRender(const glm::mat4& transformMatrix, const glm::mat4& viewProjectionMatrix, const std::shared_ptr<IShader>& shader) const noexcept
+    void Mesh::Render()
     {
-        if (!shader)
-            return;
+        auto& renderer = Renderer::GetInstance();
 
-        shader->Bind();
-        shader->SetUniform(UniformCache::GlobalAttri_ModelMatrix, transformMatrix);
-        shader->SetUniform(UniformCache::GlobalAttri_ViewProjMatrix, viewProjectionMatrix);
-
-        if (m_VertexArray)
-        {
-            m_VertexArray->Bind();
-            Renderer::GetInstance().DrawIndexed(m_IndicesCount);
-            m_VertexArray->Unbind();
-        }
+        Bind();
+        renderer.DrawIndexed(m_IndicesCount);
+        Unbind();
     }
 
     /**

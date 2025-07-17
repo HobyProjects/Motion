@@ -7,7 +7,6 @@
 #include <memory>
 
 #include "Base.hpp"
-#include "Texture.hpp"
 
 namespace Motion::Core
 {
@@ -140,10 +139,52 @@ namespace Motion::Core
         virtual void SetBufferData(std::uint32_t offset, std::uint32_t size, float data) = 0;
     };
 
+
+    enum class FrameBufferBlitMask : std::uint32_t
+    {
+        None = Bits<0>::value,
+        Color = Bits<1>::value,
+        Depth = Bits<2>::value,
+        Stencil = Bits<3>::value,
+        All = Color | Depth | Stencil
+    };
+
+    inline std::uint32_t operator|(FrameBufferBlitMask lhs, FrameBufferBlitMask rhs) { return static_cast<std::uint32_t>(lhs) | static_cast<std::uint32_t>(rhs); }
+    inline std::uint32_t operator&(FrameBufferBlitMask lhs, FrameBufferBlitMask rhs) { return static_cast<std::uint32_t>(lhs) & static_cast<std::uint32_t>(rhs); }
+
+    enum class FrameBufferBlitFilter : std::uint32_t
+    {
+        Nearest = Bits<1>::value,
+        Linear = Bits<2>::value
+    };
+
+    inline std::uint32_t operator|(FrameBufferBlitFilter lhs, FrameBufferBlitFilter rhs) { return static_cast<std::uint32_t>(lhs) | static_cast<std::uint32_t>(rhs); }
+    inline std::uint32_t operator&(FrameBufferBlitFilter lhs, FrameBufferBlitFilter rhs) { return static_cast<std::uint32_t>(lhs) & static_cast<std::uint32_t>(rhs); }
+
+    enum class FrameBufferTextureFormat : std::uint32_t
+    {
+        None = 0,
+        RGBA8,
+        RGB8,
+        R16F,
+        R32F,
+        R16I,
+        R32I,
+        Depth24Stencil8,
+        Depth32F,
+        Depth24,
+        Depth32
+    };
+
+    inline std::uint32_t operator|(FrameBufferTextureFormat lhs, FrameBufferTextureFormat rhs) { return static_cast<std::uint32_t>(lhs) | static_cast<std::uint32_t>(rhs); }
+    inline std::uint32_t operator&(FrameBufferTextureFormat lhs, FrameBufferTextureFormat rhs) { return static_cast<std::uint32_t>(lhs) & static_cast<std::uint32_t>(rhs); }
+
     struct FrameBufferSpecification
     {
+        std::string Name;
         std::vector<FrameBufferTextureFormat> Attachments;
         std::uint32_t Width{ 0 }, Height{ 0 };
+        std::uint32_t Samples{ 1 };
         bool SwapChainTarget{ false };
     };
 
@@ -157,10 +198,12 @@ namespace Motion::Core
         virtual void Unbind() = 0;
         virtual void ResizeFrame(std::uint32_t width, std::uint32_t height) = 0;
         virtual void ClearAttachment(std::uint32_t attachmentIndex, std::int32_t value) = 0;
+        virtual void BlitTo(IFrameBuffer* targetFrameBuffer, FrameBufferBlitMask mask, FrameBufferBlitFilter filter) = 0;
 
         [[nodiscard]] virtual BufferID GetFrameBufferID() const = 0;
         [[nodiscard]] virtual FrameBufferSpecification& GetFrameSpecification() = 0;
         [[nodiscard]] virtual FrameTextureID GetAttachmentID(std::uint32_t index) const = 0;
+        [[nodiscard]] virtual std::uint32_t GetAttachmentCount() const = 0;
         [[nodiscard]] virtual std::int32_t ReadPixel(std::uint32_t attachmentIndex, std::int32_t x, std::int32_t y) = 0;
     };
 

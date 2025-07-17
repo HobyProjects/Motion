@@ -2,6 +2,7 @@
 
 #include "Mesh.hpp"
 #include "Buffers.hpp"
+#include "GL_Texture.hpp"
 
 namespace Motion::Core
 {
@@ -99,9 +100,12 @@ namespace Motion::Core
         virtual void Unbind() override;
         virtual void ResizeFrame(std::uint32_t width, std::uint32_t Height) override;
         virtual void ClearAttachment(std::uint32_t attachmentIndex, std::int32_t value) override;
+        virtual void BlitTo(IFrameBuffer* targetFrameBuffer, FrameBufferBlitMask mask, FrameBufferBlitFilter filter) override;
 
         [[nodiscard]] virtual BufferID GetFrameBufferID() const override { return m_FrameBufferID; }
         [[nodiscard]] virtual FrameBufferSpecification& GetFrameSpecification() override { return m_Specification; }
+        [[nodiscard]] virtual FrameTextureID GetAttachmentID(std::uint32_t index) const override;
+        [[nodiscard]] virtual std::uint32_t GetAttachmentCount() const override { return static_cast<std::uint32_t>(m_Attachments.size()); }
         [[nodiscard]] virtual std::int32_t ReadPixel(std::uint32_t attachmentIndex, std::int32_t x, std::int32_t y) override;
 
     private:

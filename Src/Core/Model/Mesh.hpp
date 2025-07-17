@@ -29,7 +29,7 @@ namespace Motion::Core
 
         void Bind() const noexcept;
         void Unbind() const noexcept;
-        void QuickRender(const glm::mat4& transformMatrix, const glm::mat4& viewProjectionMatrix, const std::shared_ptr<IShader>& shader) const noexcept;
+        void Render();
         std::uint32_t GetIndicesCount() const noexcept;
         std::shared_ptr<StaticMesh> GetParentModel() const noexcept;
 

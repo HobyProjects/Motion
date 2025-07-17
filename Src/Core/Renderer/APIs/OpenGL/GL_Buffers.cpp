@@ -489,6 +489,7 @@ namespace Motion::Core
     void GL_FrameBuffer::Bind()
     {
         glBindFramebuffer(GL_FRAMEBUFFER, m_FrameBufferID);
+        glViewport(0, 0, m_Specification.Width, m_Specification.Height);
     }
 
     /**
@@ -534,6 +535,98 @@ namespace Motion::Core
         {
             glClearTexImage(m_Attachments[attachmentIndex], 0, GL_RED_INTEGER, GL_INT, &value);
         }
+    }
+
+    /**
+     * @brief Invalidates the current frame buffer and re-creates it based on the specification.
+     *
+     * This method deletes the existing frame buffer and its attachments, then re-creates them
+     * according to the current FrameBufferSpecification. It sets up color attachments, depth/stencil
+     * attachments, and multi-sampling if specified.
+     */
+    static GLbitfield GetBlitMask(FrameBufferBlitMask mask)
+    {
+        switch (mask)
+        {
+        case FrameBufferBlitMask::None: MOTION_ASSERT(false, "Blit mask cannot be None"); return 0; // No bits set
+        case FrameBufferBlitMask::Color: return GL_COLOR_BUFFER_BIT;
+        case FrameBufferBlitMask::Depth: return GL_DEPTH_BUFFER_BIT;
+        case FrameBufferBlitMask::Stencil: return GL_STENCIL_BUFFER_BIT;
+        case FrameBufferBlitMask::All: return GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT;
+        default: return GL_COLOR_BUFFER_BIT; // Default to color buffer if mask is not recognized
+        };
+    }
+
+    /**
+     * @brief Converts a FrameBufferBlitFilter enum value to the corresponding OpenGL filter constant.
+     *
+     * This function maps custom framebuffer blit filters to their equivalent OpenGL filter constants.
+     * It is typically used when performing blitting operations between framebuffers.
+     *
+     * @param filter The FrameBufferBlitFilter value to convert.
+     * @return GLenum The corresponding OpenGL filter constant.
+     *
+     * @note If an unsupported filter is provided, the function asserts and defaults to GL_NEAREST.
+     */
+    static GLenum GetBlitFilter(FrameBufferBlitFilter filter)
+    {
+        switch (filter)
+        {
+        case FrameBufferBlitFilter::Nearest: return GL_NEAREST;
+        case FrameBufferBlitFilter::Linear: return GL_LINEAR;
+        default: MOTION_ASSERT(false, "Unsupported blit filter"); return GL_NEAREST; // Default to nearest if not recognized
+        }
+    }
+
+    /**
+     * @brief Blits the contents of this framebuffer to another framebuffer.
+     *
+     * This function copies the contents of the current framebuffer to the target framebuffer
+     * using OpenGL's glBlitFramebuffer function. It allows for selective copying of color,
+     * depth, and stencil buffers based on the provided mask and filter.
+     *
+     * @param targetFrameBuffer The target framebuffer to which the contents will be copied.
+     * @param mask The FrameBufferBlitMask specifying which buffers to copy.
+     * @param filter The FrameBufferBlitFilter specifying the filtering method to use during blitting.
+     */
+    void GL_FrameBuffer::BlitTo(IFrameBuffer* targetFrameBuffer, FrameBufferBlitMask mask, FrameBufferBlitFilter filter)
+    {
+        auto* target = dynamic_cast<GL_FrameBuffer*>(targetFrameBuffer);
+        if (!target)
+        {
+            MOTION_ASSERT(false, "Target frame buffer is not a GL_FrameBuffer");
+            return;
+        }
+
+        glBindFramebuffer(GL_READ_FRAMEBUFFER, m_FrameBufferID);
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, target->m_FrameBufferID);
+
+        glBlitFramebuffer(
+            0, 0, m_Specification.Width, m_Specification.Height,
+            0, 0, target->m_Specification.Width, target->m_Specification.Height,
+            GetBlitMask(mask),
+            GetBlitFilter(filter)
+        );
+
+        glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+
+    }
+
+    /**
+     * @brief Retrieves the texture ID of the framebuffer attachment at the specified index.
+     *
+     * This function returns the texture ID associated with the framebuffer's attachment
+     * at the given index. It asserts that the index is within the bounds of the attachments vector.
+     *
+     * @param index The zero-based index of the attachment to retrieve.
+     * @return FrameTextureID The texture ID of the specified attachment.
+     * @throws Assertion failure if the index is out of bounds.
+     */
+    FrameTextureID GL_FrameBuffer::GetAttachmentID(std::uint32_t index) const
+    {
+        MOTION_ASSERT(index < m_Attachments.size(), "Attachment index out of bounds");
+        return m_Attachments[index];
     }
 
     /**
@@ -606,7 +699,8 @@ namespace Motion::Core
      */
     void GL_FrameBuffer::Invalidate()
     {
-        if (m_FrameBufferID) {
+        if (m_FrameBufferID)
+        {
             glDeleteFramebuffers(1, &m_FrameBufferID);
             glDeleteTextures(m_Attachments.size(), m_Attachments.data());
             glDeleteTextures(1, &m_DepthAttachment);
@@ -618,49 +712,72 @@ namespace Motion::Core
         glGenFramebuffers(1, &m_FrameBufferID);
         glBindFramebuffer(GL_FRAMEBUFFER, m_FrameBufferID);
 
-        const bool hasDepth = std::find(m_Specification.Attachments.begin(), m_Specification.Attachments.end(),
-            FrameBufferTextureFormat::Depth24Stencil8) != m_Specification.Attachments.end();
+        const bool hasDepth = std::find(m_Specification.Attachments.begin(), m_Specification.Attachments.end(), FrameBufferTextureFormat::Depth24Stencil8) != m_Specification.Attachments.end();
+        const bool useMultiSampling = m_Specification.Samples > 1;
 
-        for (auto format : m_Specification.Attachments) {
+        if (hasDepth)
+        {
+            glGenTextures(1, &m_DepthAttachment);
+            glBindTexture(GL_TEXTURE_2D, m_DepthAttachment);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH24_STENCIL8, m_Specification.Width, m_Specification.Height, 0, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, nullptr);
+            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_TEXTURE_2D, m_DepthAttachment, 0);
+        }
+
+
+        for (auto format : m_Specification.Attachments)
+        {
             if (format == FrameBufferTextureFormat::Depth24Stencil8)
                 continue;
 
             GLuint textureID;
             glGenTextures(1, &textureID);
             glBindTexture(GL_TEXTURE_2D, textureID);
-            glTexImage2D(GL_TEXTURE_2D, 0, ToGLFormat(format),
-                m_Specification.Width, m_Specification.Height, 0,
-                GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
 
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            if (useMultiSampling)
+            {
+                glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, m_Specification.Samples, ToGLFormat(format), m_Specification.Width, m_Specification.Height, GL_TRUE);
+                glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + m_Attachments.size(), GL_TEXTURE_2D_MULTISAMPLE, textureID, 0);
 
-            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + m_Attachments.size(),
-                GL_TEXTURE_2D, textureID, 0);
+                glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+                glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+                glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+                glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+                glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_MAX_LEVEL, 0);
+                glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_MIN_LOD, -1000);
+                glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_MAX_LOD, 1000);
+                glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_BASE_LEVEL, 0);
+
+            }
+            else
+            {
+                glTexImage2D(GL_TEXTURE_2D, 0, ToGLFormat(format), m_Specification.Width, m_Specification.Height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+                glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + m_Attachments.size(), GL_TEXTURE_2D, textureID, 0);
+
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_LOD, -1000);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LOD, 1000);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
+            }
 
             m_Attachments.push_back(textureID);
         }
 
-        if (hasDepth) {
-            glGenTextures(1, &m_DepthAttachment);
-            glBindTexture(GL_TEXTURE_2D, m_DepthAttachment);
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH24_STENCIL8,
-                m_Specification.Width, m_Specification.Height,
-                0, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, nullptr);
-            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT,
-                GL_TEXTURE_2D, m_DepthAttachment, 0);
-        }
-
-        if (m_Attachments.size() > 1) {
-            GLenum attachments[8];
+        if (m_Attachments.size() > 1)
+        {
+            std::vector<GLenum> drawBuffers;
             for (size_t i = 0; i < m_Attachments.size(); ++i)
-                attachments[i] = GL_COLOR_ATTACHMENT0 + i;
+                drawBuffers.push_back(GL_COLOR_ATTACHMENT0 + i);
 
-            glDrawBuffers(static_cast<GLsizei>(m_Attachments.size()), attachments);
+            glDrawBuffers((GLsizei)drawBuffers.size(), drawBuffers.data());
         }
-        else if (m_Attachments.empty()) {
-            // Depth-only framebuffer
+        else
+        {
             glDrawBuffer(GL_NONE);
+            glReadBuffer(GL_NONE);
         }
 
         MOTION_ASSERT(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE, "Framebuffer is not complete!");

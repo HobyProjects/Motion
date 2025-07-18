@@ -5,22 +5,22 @@
 #include <spdlog/spdlog.h>
 #include <spdlog/fmt/ostr.h>
 
-namespace Motion::Core 
+namespace Motion::Core
 {
     class Loggers
     {
-        private:
-            Loggers() = default;
-            ~Loggers() = default;
+    private:
+        Loggers() = default;
+        ~Loggers() = default;
 
-            Loggers(const Loggers&) = delete;
-            Loggers& operator=(const Loggers&) = delete;
-            Loggers(const Loggers&&) = delete;
-            Loggers&& operator=(const Loggers&&) = delete;
+        Loggers(const Loggers&) = delete;
+        Loggers& operator=(const Loggers&) = delete;
+        Loggers(const Loggers&&) = delete;
+        Loggers&& operator=(const Loggers&&) = delete;
 
-        public:
-            static std::shared_ptr<spdlog::logger>& CoreLogger();
-            static std::shared_ptr<spdlog::logger>& AppLogger();
+    public:
+        static std::shared_ptr<spdlog::logger>& CoreLogger();
+        static std::shared_ptr<spdlog::logger>& AppLogger();
     };
 }
 

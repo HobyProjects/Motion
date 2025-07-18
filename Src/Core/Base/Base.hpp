@@ -37,8 +37,8 @@
 template<uint32_t vShift>
 struct Bits
 {
-	static constexpr uint32_t value = 1 << vShift;
-	using type = uint32_t;
+    static constexpr uint32_t value = 1 << vShift;
+    using type = uint32_t;
 };
 
 #define MTION_MACRO_STR(xVal) #xVal 

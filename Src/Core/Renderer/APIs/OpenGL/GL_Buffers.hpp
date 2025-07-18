@@ -98,23 +98,26 @@ namespace Motion::Core
 
         virtual void Bind() override;
         virtual void Unbind() override;
+        virtual void BindTextureUnit(std::uint32_t slot, FrameTextureID textureID) override;
+        virtual void UnbindTextureUnit() override;
+
         virtual void ResizeFrame(std::uint32_t width, std::uint32_t Height) override;
-        virtual void ClearAttachment(std::uint32_t attachmentIndex, std::int32_t value) override;
         virtual void BlitTo(IFrameBuffer* targetFrameBuffer, FrameBufferBlitMask mask, FrameBufferBlitFilter filter) override;
 
         [[nodiscard]] virtual BufferID GetFrameBufferID() const override { return m_FrameBufferID; }
+        [[nodiscard]] virtual std::uint32_t GetAttachmentCount() const override { return static_cast<std::uint32_t>(m_ColorAttachments.size()); }
         [[nodiscard]] virtual FrameBufferSpecification& GetFrameSpecification() override { return m_Specification; }
-        [[nodiscard]] virtual FrameTextureID GetAttachmentID(std::uint32_t index) const override;
-        [[nodiscard]] virtual std::uint32_t GetAttachmentCount() const override { return static_cast<std::uint32_t>(m_Attachments.size()); }
-        [[nodiscard]] virtual std::int32_t ReadPixel(std::uint32_t attachmentIndex, std::int32_t x, std::int32_t y) override;
+        [[nodiscard]] virtual FrameTextureID ResolveTo(IFrameBuffer* target) override;
+        [[nodiscard]] virtual ColorAttachments GetAttachment(FrameBufferColorAttachments attachment) const override;
+        [[nodiscard]] virtual std::int32_t ReadPixel(FrameBufferColorAttachments attachment, std::int32_t x, std::int32_t y) override;
 
     private:
         void Invalidate();
 
     private:
         FrameBufferSpecification m_Specification{};
-        std::vector<FrameTextureID> m_Attachments{};
-        FrameTextureID m_DepthAttachment{ 0 };
+        std::unordered_map<std::uint32_t, ColorAttachments> m_ColorAttachments;
+        DepthAttachment m_DepthAttachment{ 0 };
         BufferID m_FrameBufferID{ 0 };
     };
 

@@ -92,6 +92,7 @@ set(
     ${MOTION_CORE_DIR}/Renderer/Thumbnail.hpp
     ${MOTION_CORE_DIR}/Renderer/GraphicSettings.hpp
     ${MOTION_CORE_DIR}/Renderer/SkyBox.hpp
+    ${MOTION_CORE_DIR}/Renderer/PostProcessor.hpp
 
     ${MOTION_CORE_DIR}/Model/Model.hpp
     ${MOTION_CORE_DIR}/Model/Mesh.hpp
@@ -134,6 +135,7 @@ set(
     ${MOTION_CORE_DIR}/Renderer/Thumbnail.cpp
     ${MOTION_CORE_DIR}/Renderer/GraphicSettings.cpp
     ${MOTION_CORE_DIR}/Renderer/SkyBox.cpp
+    ${MOTION_CORE_DIR}/Renderer/PostProcessor.cpp
 
     ${MOTION_CORE_DIR}/Model/Mesh.cpp
     ${MOTION_CORE_DIR}/Model/Importer.cpp

@@ -14,7 +14,8 @@ namespace Motion::Core
      */
     void ShaderBuilder::DeleteShaderProgram(ShaderProgramID programID)
     {
-        switch (Renderer::GetAPI())
+        auto& renderer = Renderer::GetInstance();
+        switch (renderer.GetAPI())
         {
         case RenderingAPI::OpenGL:         GL_ShaderFactory::DeleteShaderProgram(programID); break;
         case RenderingAPI::Vulkan:         MOTION_ASSERT(false, "Vulkan is not implemented yet!"); break;
@@ -37,7 +38,8 @@ namespace Motion::Core
      */
     ShaderProgramID ShaderBuilder::CreateShaderProgram()
     {
-        switch (Renderer::GetAPI())
+        auto& renderer = Renderer::GetInstance();
+        switch (renderer.GetAPI())
         {
         case RenderingAPI::OpenGL:         return GL_ShaderFactory::CreateShaderProgram();
         case RenderingAPI::Vulkan:         MOTION_ASSERT(false, "Vulkan is not implemented yet!"); return 0;
@@ -58,7 +60,8 @@ namespace Motion::Core
      */
     void ShaderBuilder::AttachShaderProgram(ShaderID shaderID, ShaderProgramID programID)
     {
-        switch (Renderer::GetAPI())
+        auto& renderer = Renderer::GetInstance();
+        switch (renderer.GetAPI())
         {
         case RenderingAPI::OpenGL:         GL_ShaderFactory::AttachShaderProgram(shaderID, programID); break;
         case RenderingAPI::Vulkan:         MOTION_ASSERT(false, "Vulkan is not implemented yet!"); break;
@@ -80,7 +83,8 @@ namespace Motion::Core
      */
     ShaderID ShaderBuilder::CompileShader(ShaderType shaderType, const std::string& sourceCode)
     {
-        switch (Renderer::GetAPI())
+        auto& renderer = Renderer::GetInstance();
+        switch (renderer.GetAPI())
         {
         case RenderingAPI::OpenGL:         return GL_ShaderFactory::CompileShader(shaderType, sourceCode);
         case RenderingAPI::Vulkan:         MOTION_ASSERT(false, "Vulkan is not implemented yet!"); return 0;
@@ -103,7 +107,8 @@ namespace Motion::Core
      */
     void ShaderBuilder::LinkShaderProgram(ShaderProgramID programID)
     {
-        switch (Renderer::GetAPI())
+        auto& renderer = Renderer::GetInstance();
+        switch (renderer.GetAPI())
         {
         case RenderingAPI::OpenGL:         GL_ShaderFactory::LinkShaderProgram(programID); break;
         case RenderingAPI::Vulkan:         MOTION_ASSERT(false, "Vulkan is not implemented yet!"); break;
@@ -125,7 +130,8 @@ namespace Motion::Core
      */
     void ShaderBuilder::ValidateShaderProgram(ShaderProgramID programID)
     {
-        switch (Renderer::GetAPI())
+        auto& renderer = Renderer::GetInstance();
+        switch (renderer.GetAPI())
         {
         case RenderingAPI::OpenGL:         GL_ShaderFactory::ValidateShaderProgram(programID); break;
         case RenderingAPI::Vulkan:         MOTION_ASSERT(false, "Vulkan is not implemented yet!"); break;

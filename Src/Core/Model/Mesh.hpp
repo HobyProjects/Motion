@@ -43,7 +43,6 @@ namespace Motion::Core
         friend class StaticMesh; // Allow StaticMesh to access private members
     };
 
-
     class QuickMesh
     {
     public:

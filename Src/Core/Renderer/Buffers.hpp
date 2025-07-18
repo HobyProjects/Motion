@@ -142,10 +142,10 @@ namespace Motion::Core
 
     enum class FrameBufferBlitMask : std::uint32_t
     {
-        None = Bits<0>::value,
-        Color = Bits<1>::value,
-        Depth = Bits<2>::value,
-        Stencil = Bits<3>::value,
+        None = 0,
+        Color = 1,
+        Depth = 2,
+        Stencil = 4,
         All = Color | Depth | Stencil
     };
 
@@ -154,38 +154,68 @@ namespace Motion::Core
 
     enum class FrameBufferBlitFilter : std::uint32_t
     {
-        Nearest = Bits<1>::value,
-        Linear = Bits<2>::value
+        Nearest = 1,
+        Linear = 2
     };
+
+    enum class FrameBufferColorAttachments : std::uint32_t
+    {
+        None = 0,
+        Standard = 1,
+        HighDynamicRange = 2,
+        LightweightHDR = 3,
+        SingleChannelFloat16 = 4,
+        SingleChannelFloat32 = 5,
+        MultiChannelFloat16 = 6,
+        MultiChannelFloat32 = 7,
+        ToneMapped = 8,
+    };
+
+    enum class FrameBufferDepthAttachments : std::uint32_t
+    {
+        None = 0,
+        Standard = 1,
+        StandardPrecision = 2,
+        HighPrecision = 3,
+        CommonCombined = 4,
+        HighPrecisionCombined = 5,
+    };
+
 
     inline std::uint32_t operator|(FrameBufferBlitFilter lhs, FrameBufferBlitFilter rhs) { return static_cast<std::uint32_t>(lhs) | static_cast<std::uint32_t>(rhs); }
     inline std::uint32_t operator&(FrameBufferBlitFilter lhs, FrameBufferBlitFilter rhs) { return static_cast<std::uint32_t>(lhs) & static_cast<std::uint32_t>(rhs); }
+    inline std::uint32_t operator|(FrameBufferColorAttachments lhs, FrameBufferColorAttachments rhs) { return static_cast<std::uint32_t>(lhs) | static_cast<std::uint32_t>(rhs); }
+    inline std::uint32_t operator&(FrameBufferColorAttachments lhs, FrameBufferColorAttachments rhs) { return static_cast<std::uint32_t>(lhs) & static_cast<std::uint32_t>(rhs); }
 
-    enum class FrameBufferTextureFormat : std::uint32_t
+    struct ColorAttachments
     {
-        None = 0,
-        RGBA8,
-        RGB8,
-        R16F,
-        R32F,
-        R16I,
-        R32I,
-        Depth24Stencil8,
-        Depth32F,
-        Depth24,
-        Depth32
+        FrameTextureID TextureID{ 0 };
+        std::uint32_t AttachmentPoint{ 0 };
+        FrameBufferColorAttachments Format{ FrameBufferColorAttachments::Standard };
     };
-
-    inline std::uint32_t operator|(FrameBufferTextureFormat lhs, FrameBufferTextureFormat rhs) { return static_cast<std::uint32_t>(lhs) | static_cast<std::uint32_t>(rhs); }
-    inline std::uint32_t operator&(FrameBufferTextureFormat lhs, FrameBufferTextureFormat rhs) { return static_cast<std::uint32_t>(lhs) & static_cast<std::uint32_t>(rhs); }
+    struct DepthAttachment
+    {
+        FrameTextureID TextureID{ 0 };
+        std::uint32_t AttachmentPoint{ 0 };
+        FrameBufferDepthAttachments Format{ FrameBufferDepthAttachments::CommonCombined };
+    };
 
     struct FrameBufferSpecification
     {
         std::string Name;
-        std::vector<FrameBufferTextureFormat> Attachments;
         std::uint32_t Width{ 0 }, Height{ 0 };
         std::uint32_t Samples{ 1 };
         bool SwapChainTarget{ false };
+
+        std::vector<ColorAttachments> Colors
+        {
+            { 0, 0, FrameBufferColorAttachments::Standard },
+            { 0, 1, FrameBufferColorAttachments::HighDynamicRange },
+            { 0, 2, FrameBufferColorAttachments::SingleChannelFloat16 },
+            { 0, 3, FrameBufferColorAttachments::MultiChannelFloat16 }
+        };
+
+        DepthAttachment Depth{ 0, 0, FrameBufferDepthAttachments::CommonCombined };
     };
 
     class IFrameBuffer
@@ -196,15 +226,18 @@ namespace Motion::Core
 
         virtual void Bind() = 0;
         virtual void Unbind() = 0;
+        virtual void BindTextureUnit(std::uint32_t slot, FrameTextureID textureID) = 0;
+        virtual void UnbindTextureUnit() = 0;
+
         virtual void ResizeFrame(std::uint32_t width, std::uint32_t height) = 0;
-        virtual void ClearAttachment(std::uint32_t attachmentIndex, std::int32_t value) = 0;
         virtual void BlitTo(IFrameBuffer* targetFrameBuffer, FrameBufferBlitMask mask, FrameBufferBlitFilter filter) = 0;
 
         [[nodiscard]] virtual BufferID GetFrameBufferID() const = 0;
-        [[nodiscard]] virtual FrameBufferSpecification& GetFrameSpecification() = 0;
-        [[nodiscard]] virtual FrameTextureID GetAttachmentID(std::uint32_t index) const = 0;
         [[nodiscard]] virtual std::uint32_t GetAttachmentCount() const = 0;
-        [[nodiscard]] virtual std::int32_t ReadPixel(std::uint32_t attachmentIndex, std::int32_t x, std::int32_t y) = 0;
+        [[nodiscard]] virtual FrameBufferSpecification& GetFrameSpecification() = 0;
+        [[nodiscard]] virtual FrameTextureID ResolveTo(IFrameBuffer* target) = 0;
+        [[nodiscard]] virtual ColorAttachments GetAttachment(FrameBufferColorAttachments attachment) const = 0;
+        [[nodiscard]] virtual std::int32_t ReadPixel(FrameBufferColorAttachments attachment, std::int32_t x, std::int32_t y) = 0;
     };
 
     class BufferFactory

@@ -54,13 +54,13 @@ namespace Motion::Core
 
         void BeginFrame();
         void Submit(const DrawCommand& drawCommand);
-        void Submit(const FrameDrawCommand& frameDrawCommand);
+
         void EndFrame();
 
         void DrawIndexed(std::uint32_t indicesCount);
 
         RenderingAPI GetAPI();
-        uint32_t GetDrawCalls();
+        std::uint32_t GetDrawCalls();
 
     private:
         void Flush(const DrawCommand& drawCommand);

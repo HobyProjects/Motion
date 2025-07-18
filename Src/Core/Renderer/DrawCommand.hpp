@@ -32,19 +32,6 @@ namespace Motion::Core
         }
     };
 
-    struct FrameDrawCommand
-    {
-        UUID SortKey{ 0 };
-        UUID MeshID{ 0 };
-        TextureID TextureID{ 0 };
-
-        bool operator<(const FrameDrawCommand& other) const
-        {
-            return std::tie(SortKey, MeshID, TextureID) <
-                std::tie(other.SortKey, other.MeshID, other.TextureID);
-        }
-    };
-
     class DrawCommandQueue
     {
     public:

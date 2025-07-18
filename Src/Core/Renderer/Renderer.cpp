@@ -247,11 +247,6 @@ namespace Motion::Core
         s_CommandQueue.Submit(drawCommand);
     }
 
-
-    void Renderer::Submit(const FrameDrawCommand& frameDrawCommand)
-    {
-    }
-
     /**
      * @brief Prepares the renderer for a new frame.
      *

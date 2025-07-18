@@ -3,25 +3,25 @@
 namespace Motion::Core
 {
     entt::registry EntityBuilder::Registry;
-	std::shared_ptr<Entity> EntityBuilder::ENULL = EntityBuilder::CreateEntity("Empty Entity");
+    std::shared_ptr<Entity> EntityBuilder::ENULL = EntityBuilder::CreateEntity("Empty Entity");
 
-	std::shared_ptr<Entity> EntityBuilder::CreateEntity(const std::string& name)
-	{
-		std::shared_ptr<Entity> entity = std::make_shared<Entity>(Registry.create());
-		auto& tag = entity->AddComponent<TagComponent>(name);
-		tag.Tag = name.empty() ? "unnamed" : name;
-		return entity;
-	}
+    std::shared_ptr<Entity> EntityBuilder::CreateEntity(const std::string& name)
+    {
+        std::shared_ptr<Entity> entity = std::make_shared<Entity>(Registry.create());
+        auto& tag = entity->AddComponent<TagComponent>(name);
+        tag.Tag = name.empty() ? "unnamed" : name;
+        return entity;
+    }
 
-	void EntityBuilder::DestroyEntity(const std::shared_ptr<Entity>& entity)
-	{
-		auto handle = entity->GetHandle();
-		Registry.destroy(handle);
-		entity->Destroy();
-	}
+    void EntityBuilder::DestroyEntity(const std::shared_ptr<Entity>& entity)
+    {
+        auto handle = entity->GetHandle();
+        Registry.destroy(handle);
+        entity->Destroy();
+    }
 
-	std::shared_ptr<Entity> EntityBuilder::Empty()
-	{
-		return ENULL;
-	}
+    std::shared_ptr<Entity> EntityBuilder::Empty()
+    {
+        return ENULL;
+    }
 }

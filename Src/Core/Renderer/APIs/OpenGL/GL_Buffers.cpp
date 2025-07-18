@@ -476,8 +476,17 @@ namespace Motion::Core
     GL_FrameBuffer::~GL_FrameBuffer()
     {
         glDeleteFramebuffers(1, &m_FrameBufferID);
-        glDeleteTextures(m_Attachments.size(), m_Attachments.data());
-        glDeleteTextures(1, &m_DepthAttachment);
+
+        for (const auto& [attachmentPoint, colorAttachment] : m_ColorAttachments)
+        {
+            glDeleteTextures(1, &colorAttachment.TextureID);
+        }
+
+        if (m_DepthAttachment.TextureID)
+            glDeleteTextures(1, &m_DepthAttachment.TextureID);
+
+        m_ColorAttachments.clear();
+        m_DepthAttachment = {};
     }
 
     /**
@@ -503,6 +512,27 @@ namespace Motion::Core
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
     }
 
+    void GL_FrameBuffer::BindTextureUnit(std::uint32_t slot, FrameTextureID textureID)
+    {
+        if (m_Specification.Samples > 1)
+        {
+            glActiveTexture(GL_TEXTURE0 + slot);
+            glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, textureID);
+        }
+        else
+        {
+            glActiveTexture(GL_TEXTURE0 + slot);
+            glBindTexture(GL_TEXTURE_2D, textureID);
+        }
+    }
+
+    void GL_FrameBuffer::UnbindTextureUnit()
+    {
+        glBindTexture(GL_TEXTURE_2D, 0);
+        glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, 0);
+    }
+
+
     /**
      * @brief Invalidates the current frame buffer and re-creates it based on the specification.
      *
@@ -516,25 +546,6 @@ namespace Motion::Core
         m_Specification.Height = Height;
 
         Invalidate();
-    }
-
-    /**
-     * @brief Clears a specific framebuffer attachment to a given integer value.
-     *
-     * This function clears the texture attached at the specified attachment index
-     * using the provided integer value. Currently, it supports attachments with
-     * the format FrameBufferTextureFormat::RedInteger.
-     *
-     * @param attachmentIndex The index of the attachment to clear.
-     * @param value The integer value to clear the attachment with.
-     */
-    void GL_FrameBuffer::ClearAttachment(std::uint32_t attachmentIndex, std::int32_t value)
-    {
-        auto& format = m_Specification.Attachments[attachmentIndex];
-        if (format == FrameBufferTextureFormat::R32I)
-        {
-            glClearTexImage(m_Attachments[attachmentIndex], 0, GL_RED_INTEGER, GL_INT, &value);
-        }
     }
 
     /**
@@ -614,72 +625,251 @@ namespace Motion::Core
     }
 
     /**
-     * @brief Retrieves the texture ID of the framebuffer attachment at the specified index.
+     * Resolves the contents of this framebuffer to the specified target framebuffer.
      *
-     * This function returns the texture ID associated with the framebuffer's attachment
-     * at the given index. It asserts that the index is within the bounds of the attachments vector.
+     * If the current framebuffer uses multisampling (i.e., m_Specification.Samples > 1),
+     * this function performs a blit operation to resolve the multisampled color buffer
+     * into the target framebuffer using the nearest filter. Otherwise, it simply returns
+     * the texture ID of the standard color attachment.
      *
-     * @param index The zero-based index of the attachment to retrieve.
-     * @return FrameTextureID The texture ID of the specified attachment.
-     * @throws Assertion failure if the index is out of bounds.
+     * @param target Pointer to the target IFrameBuffer to which the contents will be resolved.
+     * @return FrameTextureID The texture ID of the standard color attachment after resolving.
      */
-    FrameTextureID GL_FrameBuffer::GetAttachmentID(std::uint32_t index) const
+    FrameTextureID GL_FrameBuffer::ResolveTo(IFrameBuffer* target)
     {
-        MOTION_ASSERT(index < m_Attachments.size(), "Attachment index out of bounds");
-        return m_Attachments[index];
+        if (m_Specification.Samples > 1)
+        {
+            BlitTo(target, FrameBufferBlitMask::Color, FrameBufferBlitFilter::Nearest);
+            return GetAttachment(FrameBufferColorAttachments::Standard).TextureID;
+        }
+
+        return GetAttachment(FrameBufferColorAttachments::Standard).TextureID;
     }
+
+
+    /**
+     * @brief Retrieves the color attachment associated with the specified framebuffer color attachment format.
+     *
+     * Searches through the framebuffer's color attachments to find one that matches the given
+     * attachment format. If found, returns the corresponding ColorAttachments object.
+     * If not found, triggers an assertion and returns a default-constructed ColorAttachments object.
+     *
+     * @param attachment The framebuffer color attachment format to search for.
+     * @return The ColorAttachments object corresponding to the specified format.
+     * @note If the attachment is not found, an assertion will be triggered.
+     */
+    ColorAttachments GL_FrameBuffer::GetAttachment(FrameBufferColorAttachments attachment) const
+    {
+        auto it = std::find_if(
+            m_ColorAttachments.begin(), m_ColorAttachments.end(),
+            [&](ColorAttachments& colorAttachments) { return colorAttachments.Format == attachment; }
+        );
+
+        if (it != m_ColorAttachments.end())
+        {
+            return it->second;
+        }
+
+        MOTION_ASSERT(false, "Attachment not found in the framebuffer");
+        return ColorAttachments();
+    }
+
 
     /**
      * @brief Reads the value of a single pixel from a specified color attachment in the framebuffer.
      *
-     * This function sets the read buffer to the specified color attachment and reads the integer value
-     * of the pixel at the given (x, y) coordinates. The pixel data is read as a single integer value
-     * using the GL_RED_INTEGER format.
+     * This function searches for the given color attachment in the framebuffer's color attachments.
+     * If found, it sets the read buffer to the corresponding attachment point and reads the pixel value
+     * at the specified (x, y) coordinates using integer format. If the attachment is not found, an error
+     * is logged and 0 is returned.
      *
-     * @param attachmentIndex The index of the color attachment to read from.
+     * @param attachment The color attachment from which to read the pixel.
      * @param x The x-coordinate of the pixel to read.
      * @param y The y-coordinate of the pixel to read.
-     * @return The integer value of the pixel at the specified coordinates.
-     *
-     * @note The function asserts that the attachment index is within bounds.
+     * @return The integer value of the pixel at the specified coordinates, or 0 if the attachment is not found.
      */
-    std::int32_t GL_FrameBuffer::ReadPixel(std::uint32_t attachmentIndex, std::int32_t x, std::int32_t y)
+    std::int32_t GL_FrameBuffer::ReadPixel(FrameBufferColorAttachments attachment, std::int32_t x, std::int32_t y)
     {
-        MOTION_ASSERT(attachmentIndex < m_Attachments.size(), "Attachment index out of bounds");
-        glReadBuffer(GL_COLOR_ATTACHMENT0 + attachmentIndex);
+        auto it = std::find_if(
+            m_ColorAttachments.begin(), m_ColorAttachments.end(),
+            [&](ColorAttachments& colorAttachments) { return colorAttachments.Format == attachment; }
+        );
 
-        std::int32_t pixelData = 0;
-        glReadPixels(x, y, 1, 1, GL_RED_INTEGER, GL_INT, &pixelData);
+        if (it != m_ColorAttachments.end())
+        {
+            std::uint32_t attachmentPoint = it->second.AttachmentPoint;
+            glReadBuffer(GL_COLOR_ATTACHMENT0 + attachmentPoint);
 
-        return pixelData;
+            std::int32_t pixelData = 0;
+            glReadPixels(x, y, 1, 1, GL_RED_INTEGER, GL_INT, &pixelData);
+
+            return pixelData;
+        }
+
+        MOTION_CORE_ERROR("Attachment not found in the framebuffer");
+        return 0; // Return 0 or an appropriate error value if the attachment is not found
     }
 
     /**
-     * @brief Converts a FrameBufferTextureFormat enum value to the corresponding OpenGL internal format (GLenum).
+     * @brief Returns the OpenGL format for the specified color attachment type.
      *
-     * This function maps custom framebuffer texture formats to their equivalent OpenGL internal format constants.
-     * It is typically used when creating or configuring OpenGL textures or framebuffer attachments.
+     * This function maps the FrameBufferColorAttachments enum to the corresponding OpenGL
+     * format used for color attachments in a framebuffer.
      *
-     * @param format The FrameBufferTextureFormat value to convert.
-     * @return GLenum The corresponding OpenGL internal format constant.
-     *
-     * @note If an unsupported format is provided, the function triggers an assertion and returns GL_RGBA8 as a fallback.
+     * @param type The FrameBufferColorAttachments type to convert.
+     * @return GLenum The OpenGL format constant (e.g., GL_RGBA8, GL_RGBA16F).
      */
-    static GLenum ToGLFormat(FrameBufferTextureFormat format)
+    static GLenum GL_ColorAttachmentFormat(FrameBufferColorAttachments type)
     {
-        switch (format)
+        switch (type)
         {
-        case FrameBufferTextureFormat::RGBA8: return GL_RGBA8;
-        case FrameBufferTextureFormat::RGB8: return GL_RGB8;
-        case FrameBufferTextureFormat::R16F: return GL_R16F;
-        case FrameBufferTextureFormat::R32F: return GL_R32F;
-        case FrameBufferTextureFormat::R16I: return GL_R16I;
-        case FrameBufferTextureFormat::R32I: return GL_R32I;
-        case FrameBufferTextureFormat::Depth24Stencil8: return GL_DEPTH24_STENCIL8;
-        case FrameBufferTextureFormat::Depth32F: return GL_DEPTH_COMPONENT32F;
-        case FrameBufferTextureFormat::Depth24: return GL_DEPTH_COMPONENT24;
-        case FrameBufferTextureFormat::Depth32: return GL_DEPTH_COMPONENT32;
-        default: MOTION_ASSERT(false, "Unsupported FrameBufferTextureFormat"); return GL_RGBA8; // Fallback to RGBA8
+        case FrameBufferColorAttachments::Standard: return GL_RGBA8;
+        case FrameBufferColorAttachments::HighDynamicRange: return GL_RGBA16F;
+        case FrameBufferColorAttachments::LightweightHDR: return GL_RGB10_A2;
+        case FrameBufferColorAttachments::SingleChannelFloat16: return GL_R16F;
+        case FrameBufferColorAttachments::SingleChannelFloat32: return GL_R32F;
+        case FrameBufferColorAttachments::MultiChannelFloat16: return GL_RG16F;
+        case FrameBufferColorAttachments::MultiChannelFloat32: return GL_RG32F;
+        case FrameBufferColorAttachments::ToneMapped: return GL_RGB10_A2;
+        default: return GL_NONE;
+        }
+    }
+
+    /**
+     * @brief Returns the OpenGL format for the specified color attachment type.
+     *
+     * This function maps the FrameBufferColorAttachments enum to the corresponding OpenGL
+     * format used for color attachments in a framebuffer.
+     *
+     * @param type The FrameBufferColorAttachments type to convert.
+     * @return GLenum The OpenGL format constant (e.g., GL_RGBA8, GL_RGBA16F).
+     */
+    static GLenum GL_Texture2D_Format(FrameBufferColorAttachments type)
+    {
+        switch (type)
+        {
+        case FrameBufferColorAttachments::Standard: return GL_RGBA;
+        case FrameBufferColorAttachments::HighDynamicRange: return GL_RGBA;
+        case FrameBufferColorAttachments::LightweightHDR: return GL_RGB;
+        case FrameBufferColorAttachments::SingleChannelFloat16: return GL_RED;
+        case FrameBufferColorAttachments::SingleChannelFloat32: return GL_RED;
+        case FrameBufferColorAttachments::MultiChannelFloat16: return GL_RG;
+        case FrameBufferColorAttachments::MultiChannelFloat32: return GL_RG;
+        case FrameBufferColorAttachments::ToneMapped: return GL_RGB10_A2;
+        default: return GL_NONE;
+        }
+    }
+
+    /**
+     * @brief Returns the OpenGL type for the specified color attachment type.
+     *
+     * This function maps the FrameBufferColorAttachments enum to the corresponding OpenGL
+     * type used for color attachments in a framebuffer.
+     *
+     * @param type The FrameBufferColorAttachments type to convert.
+     * @return GLenum The OpenGL type constant (e.g., GL_UNSIGNED_BYTE, GL_HALF_FLOAT).
+     */
+    static  GLenum GL_Texture2D_Type(FrameBufferColorAttachments type)
+    {
+        switch (type)
+        {
+        case FrameBufferColorAttachments::Standard: return GL_UNSIGNED_BYTE;
+        case FrameBufferColorAttachments::HighDynamicRange: return GL_HALF_FLOAT;
+        case FrameBufferColorAttachments::LightweightHDR: return GL_UNSIGNED_INT_2_10_10_10_REV;
+        case FrameBufferColorAttachments::SingleChannelFloat16: return GL_HALF_FLOAT;
+        case FrameBufferColorAttachments::SingleChannelFloat32: return GL_FLOAT;
+        case FrameBufferColorAttachments::MultiChannelFloat16: return GL_HALF_FLOAT;
+        case FrameBufferColorAttachments::MultiChannelFloat32: return GL_FLOAT;
+        case FrameBufferColorAttachments::ToneMapped: return GL_UNSIGNED_INT_2_10_10_10_REV;
+        default: return GL_NONE;
+        }
+    }
+
+    /**
+     * @brief Returns the OpenGL format for the specified depth attachment type.
+     *
+     * This function maps the FrameBufferDepthAttachments enum to the corresponding OpenGL
+     * format used for depth or depth-stencil attachments in a framebuffer.
+     *
+     * @param type The FrameBufferDepthAttachments type to convert.
+     * @return GLenum The OpenGL format constant (e.g., GL_DEPTH_COMPONENT24, GL_DEPTH_COMPONENT32F).
+     */
+    static GLenum GL_DepthAttachmentFormat(FrameBufferDepthAttachments type)
+    {
+        switch (type)
+        {
+        case FrameBufferDepthAttachments::Standard:
+        case FrameBufferDepthAttachments::StandardPrecision: return GL_DEPTH_COMPONENT24;
+        case FrameBufferDepthAttachments::HighPrecision: return GL_DEPTH_COMPONENT32F;
+        case FrameBufferDepthAttachments::CommonCombined: return GL_DEPTH24_STENCIL8;
+        case FrameBufferDepthAttachments::HighPrecisionCombined: return GL_DEPTH32F_STENCIL8;
+        default: return GL_NONE;
+        }
+    }
+
+    /**
+     * @brief Returns the OpenGL type for the specified depth attachment type.
+     *
+     * This function maps the FrameBufferDepthAttachments enum to the corresponding OpenGL
+     * type used for depth or depth-stencil attachments in a framebuffer.
+     *
+     * @param type The FrameBufferDepthAttachments type to convert.
+     * @return GLenum The OpenGL type constant (e.g., GL_UNSIGNED_INT, GL_FLOAT).
+     */
+    static GLenum GL_Texture2D_DepthFormat(FrameBufferDepthAttachments type)
+    {
+        switch (type)
+        {
+        case FrameBufferDepthAttachments::Standard:
+        case FrameBufferDepthAttachments::StandardPrecision: return GL_DEPTH_COMPONENT;
+        case FrameBufferDepthAttachments::HighPrecision: return GL_DEPTH_COMPONENT;
+        case FrameBufferDepthAttachments::CommonCombined: return GL_DEPTH_STENCIL;
+        case FrameBufferDepthAttachments::HighPrecisionCombined: return GL_DEPTH_STENCIL;
+        default: return GL_NONE;
+        }
+    }
+
+    /**
+     * @brief Returns the OpenGL data type for the specified depth attachment type.
+     *
+     * This function maps the FrameBufferDepthAttachments enum to the corresponding OpenGL
+     * data type used for depth or depth-stencil attachments in a framebuffer.
+     *
+     * @param type The FrameBufferDepthAttachments type to convert.
+     * @return GLenum The OpenGL data type constant (e.g., GL_UNSIGNED_INT, GL_FLOAT).
+     */
+    static GLenum GL_Texture2D_DepthType(FrameBufferDepthAttachments type)
+    {
+        switch (type)
+        {
+        case FrameBufferDepthAttachments::Standard:
+        case FrameBufferDepthAttachments::StandardPrecision: return GL_UNSIGNED_INT;
+        case FrameBufferDepthAttachments::HighPrecision: return GL_FLOAT;
+        case FrameBufferDepthAttachments::CommonCombined: return GL_UNSIGNED_INT_24_8;
+        case FrameBufferDepthAttachments::HighPrecisionCombined: return GL_FLOAT_32_UNSIGNED_INT_24_8_REV;
+        default: return GL_NONE;
+        }
+    }
+
+    /**
+     * @brief Returns the OpenGL attachment point for the specified depth attachment type.
+     *
+     * This function maps the FrameBufferDepthAttachments enum to the corresponding OpenGL
+     * attachment point used for depth or depth-stencil attachments in a framebuffer.
+     *
+     * @param type The FrameBufferDepthAttachments type to convert.
+     * @return GLenum The OpenGL attachment point constant (e.g., GL_DEPTH_ATTACHMENT, GL_DEPTH_STENCIL_ATTACHMENT).
+     */
+    static GLenum GetDepthAttachmentPoint(FrameBufferDepthAttachments type)
+    {
+        switch (type)
+        {
+        case FrameBufferDepthAttachments::CommonCombined:
+        case FrameBufferDepthAttachments::HighPrecisionCombined: return GL_DEPTH_STENCIL_ATTACHMENT;
+        case FrameBufferDepthAttachments::Standard:
+        case FrameBufferDepthAttachments::StandardPrecision:
+        case FrameBufferDepthAttachments::HighPrecision: return GL_DEPTH_ATTACHMENT;
+        default: return GL_NONE;
         }
     }
 
@@ -702,42 +892,33 @@ namespace Motion::Core
         if (m_FrameBufferID)
         {
             glDeleteFramebuffers(1, &m_FrameBufferID);
-            glDeleteTextures(m_Attachments.size(), m_Attachments.data());
-            glDeleteTextures(1, &m_DepthAttachment);
 
-            m_Attachments.clear();
-            m_DepthAttachment = 0;
+            for (const auto& [attachmentPoint, colorAttachment] : m_ColorAttachments)
+            {
+                glDeleteTextures(1, &colorAttachment.TextureID);
+            }
+
+            if (m_DepthAttachment.TextureID)
+                glDeleteTextures(1, &m_DepthAttachment.TextureID);
+
+            m_ColorAttachments.clear();
+            m_DepthAttachment = {};
         }
 
         glGenFramebuffers(1, &m_FrameBufferID);
         glBindFramebuffer(GL_FRAMEBUFFER, m_FrameBufferID);
 
-        const bool hasDepth = std::find(m_Specification.Attachments.begin(), m_Specification.Attachments.end(), FrameBufferTextureFormat::Depth24Stencil8) != m_Specification.Attachments.end();
+        const bool hasDepth = m_Specification.Depth.Format != FrameBufferDepthAttachments::None;
         const bool useMultiSampling = m_Specification.Samples > 1;
 
-        if (hasDepth)
+        for (std::uint32_t i = 0; i < m_Specification.Colors.size(); i++)
         {
-            glGenTextures(1, &m_DepthAttachment);
-            glBindTexture(GL_TEXTURE_2D, m_DepthAttachment);
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH24_STENCIL8, m_Specification.Width, m_Specification.Height, 0, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, nullptr);
-            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_TEXTURE_2D, m_DepthAttachment, 0);
-        }
-
-
-        for (auto format : m_Specification.Attachments)
-        {
-            if (format == FrameBufferTextureFormat::Depth24Stencil8)
-                continue;
-
-            GLuint textureID;
-            glGenTextures(1, &textureID);
-            glBindTexture(GL_TEXTURE_2D, textureID);
-
+            auto colorAttachment = m_Specification.Colors[i];
             if (useMultiSampling)
             {
-                glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, m_Specification.Samples, ToGLFormat(format), m_Specification.Width, m_Specification.Height, GL_TRUE);
-                glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + m_Attachments.size(), GL_TEXTURE_2D_MULTISAMPLE, textureID, 0);
-
+                glGenTextures(1, &colorAttachment.TextureID);
+                glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, colorAttachment.TextureID);
+                glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, m_Specification.Samples, GL_ColorAttachmentFormat(colorAttachment.Format), m_Specification.Width, m_Specification.Height, GL_TRUE);
                 glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
                 glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
                 glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -746,13 +927,14 @@ namespace Motion::Core
                 glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_MIN_LOD, -1000);
                 glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_MAX_LOD, 1000);
                 glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_BASE_LEVEL, 0);
+                glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + colorAttachment.AttachmentPoint, GL_TEXTURE_2D_MULTISAMPLE, colorAttachment.TextureID, 0);
 
             }
             else
             {
-                glTexImage2D(GL_TEXTURE_2D, 0, ToGLFormat(format), m_Specification.Width, m_Specification.Height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
-                glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + m_Attachments.size(), GL_TEXTURE_2D, textureID, 0);
-
+                glGenTextures(1, &colorAttachment.TextureID);
+                glBindTexture(GL_TEXTURE_2D, colorAttachment.TextureID);
+                glTexImage2D(GL_TEXTURE_2D, 0, GL_ColorAttachmentFormat(colorAttachment.Format), m_Specification.Width, m_Specification.Height, 0, GL_Texture2D_Format(colorAttachment.Format), GL_Texture2D_Type(colorAttachment.Format), nullptr);
                 glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
                 glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
                 glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -761,24 +943,42 @@ namespace Motion::Core
                 glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_LOD, -1000);
                 glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LOD, 1000);
                 glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
+                glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + colorAttachment.AttachmentPoint, GL_TEXTURE_2D, colorAttachment.TextureID, 0);
             }
 
-            m_Attachments.push_back(textureID);
+            m_ColorAttachments[i] = colorAttachment;
         }
 
-        if (m_Attachments.size() > 1)
+        if (hasDepth)
+        {
+            glGenTextures(1, &m_DepthAttachment.TextureID);
+            glBindTexture(GL_TEXTURE_2D, m_DepthAttachment.TextureID);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_DepthAttachmentFormat(m_Specification.Depth.Format), m_Specification.Width, m_Specification.Height, 0, GL_Texture2D_DepthFormat(m_Specification.Depth.Format), GL_Texture2D_DepthType(m_Specification.Depth.Format), nullptr);
+            glFramebufferTexture2D(GL_FRAMEBUFFER, (m_DepthAttachment.AttachmentPoint = GetDepthAttachmentPoint(m_Specification.Depth.Format)), GL_TEXTURE_2D, m_DepthAttachment.TextureID, 0);
+        }
+
+        if (!m_ColorAttachments.empty())
         {
             std::vector<GLenum> drawBuffers;
-            for (size_t i = 0; i < m_Attachments.size(); ++i)
-                drawBuffers.push_back(GL_COLOR_ATTACHMENT0 + i);
 
-            glDrawBuffers((GLsizei)drawBuffers.size(), drawBuffers.data());
+            for (const auto& [index, attachment] : m_ColorAttachments)
+                drawBuffers.push_back(GL_COLOR_ATTACHMENT0 + attachment.AttachmentPoint);
+
+            if (drawBuffers.size() == 1)
+            {
+                glDrawBuffer(drawBuffers[0]);
+            }
+            else
+            {
+                glDrawBuffers(static_cast<GLsizei>(drawBuffers.size()), drawBuffers.data());
+            }
         }
         else
         {
             glDrawBuffer(GL_NONE);
             glReadBuffer(GL_NONE);
         }
+
 
         MOTION_ASSERT(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE, "Framebuffer is not complete!");
         glBindFramebuffer(GL_FRAMEBUFFER, 0);

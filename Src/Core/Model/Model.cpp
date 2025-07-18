@@ -29,7 +29,6 @@ namespace Motion::Core
                 drawCommand.MeshID = segments->MeshSelf->GetUUID();
                 drawCommand.ModelMatrix = modelTransForm;
                 drawCommand.ViewProjectionMatrix = cameraMatrix;
-                drawCommand.RenderPass = RenderPass::Opaque;
 
                 auto& renderer = Renderer::GetInstance();
                 renderer.Submit(drawCommand);

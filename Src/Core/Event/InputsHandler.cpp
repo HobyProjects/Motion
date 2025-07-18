@@ -2,18 +2,18 @@
 
 namespace Motion::Core
 {
-    KeyState InputsHandler::GetKeyState(WindowHandle whnd, KeyCode key)
+    KeyState InputsHandler::GetKeyState(WindowHandle windowHandle, KeyCode key)
     {
-        return GLFW3_InputsHandler::KeyState(whnd, key);
+        return GLFW_KeyState(windowHandle, key);
     }
 
-    MouseButtonState InputsHandler::GetMouseButtonState(WindowHandle whnd, MouseButton button)
+    MouseButtonState InputsHandler::GetMouseButtonState(WindowHandle windowHandle, MouseButton button)
     {
-        return GLFW3_InputsHandler::MouseButtonState(whnd, button);
+        return GLFW_MouseButtonState(windowHandle, button);
     }
 
-    glm::vec2 InputsHandler::GetCurrentMousePosition(WindowHandle whnd)
+    glm::vec2 InputsHandler::GetCurrentMousePosition(WindowHandle windowHandle)
     {
-        return GLFW3_InputsHandler::CurrentMousePosition(whnd);
+        return GLFW_CurrentMousePosition(windowHandle);
     }
 }

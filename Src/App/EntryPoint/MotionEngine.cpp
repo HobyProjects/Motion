@@ -1,13 +1,24 @@
-#include <iostream>
 #include "Application.hpp"
 
 
-int main(int argc, char* argv[]) 
+int main(int argc, char* argv[])
 {
-    Motion::App::Application* app = new Motion::App::Application();
-    app->Start();
-    delete app;
+    auto& logger = Motion::Core::Loggers::GetInstance();
+    logger.Initialize();
 
-    std::cin.get();
+    auto& coreAPI = Motion::Core::CoreAPI::GetInstance();
+    if (coreAPI.Init())
+    {
+        Motion::App::Application app;
+        app.Start();
+    }
+    else
+    {
+        MOTION_CORE_ERROR("Failed to initialize Core API!");
+        return -1;
+    }
+
+    coreAPI.Quit();
+    MOTION_CORE_INFO("Application exited successfully.");
     return 0;
 }

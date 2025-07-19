@@ -32,41 +32,65 @@ namespace Motion::Core
         SystemTimer() = default;
         ~SystemTimer() = default;
 
+        SystemTimer(const SystemTimer&) = delete;
+        SystemTimer& operator=(const SystemTimer&) = delete;
+        SystemTimer(SystemTimer&&) = delete;
+        SystemTimer& operator=(SystemTimer&&) = delete;
+
     public:
+
+        /**
+         * @brief Retrieves the current system ticks.
+         *
+         * This method returns the current system ticks based on the platform API used.
+         * It can return the time in seconds or milliseconds depending on the method called.
+         *
+         * @return T The current system ticks.
+         */
         static T GetSystemTicks()
         {
             switch (CoreAPI::GetBaseAPI()->API())
             {
-            case PlatformBaseAPIs::GLFW:
-                return static_cast<T>(glfwGetTime());
-            case PlatformBaseAPIs::Win32:
-                MOTION_ASSERT(false, "Win32 is not supported yet") return static_cast<T>(0);
+            case PlatformBaseAPIs::GLFW: return static_cast<T>(glfwGetTime());
+            case PlatformBaseAPIs::Win32: MOTION_ASSERT(false, "Win32 is not supported yet") return static_cast<T>(0);
             }
 
             return static_cast<T>(0);
         }
 
+
+        /**
+         * @brief Retrieves the current system ticks in seconds or milliseconds.
+         *
+         * This method returns the current system ticks in seconds or milliseconds based on the platform API used.
+         *
+         * @return T The current system ticks in seconds or milliseconds.
+         */
         static T GetSystemTicksSeconds()
         {
             switch (CoreAPI::GetBaseAPI()->API())
             {
-            case PlatformBaseAPIs::GLFW:
-                return static_cast<T>(glfwGetTime());
-            case PlatformBaseAPIs::Win32:
-                MOTION_ASSERT(false, "Win32 is not supported yet") return static_cast<T>(0);
+            case PlatformBaseAPIs::GLFW: return static_cast<T>(glfwGetTime());
+            case PlatformBaseAPIs::Win32: MOTION_ASSERT(false, "Win32 is not supported yet") return static_cast<T>(0);
             }
 
             return static_cast<T>(0);
         }
 
+
+        /**
+         * @brief Retrieves the current system ticks in milliseconds.
+         *
+         * This method returns the current system ticks in milliseconds based on the platform API used.
+         *
+         * @return T The current system ticks in milliseconds.
+         */
         static T GetSystemTicksMilliseconds()
         {
             switch (CoreAPI::GetBaseAPI()->API())
             {
-            case PlatformBaseAPIs::GLFW:
-                return static_cast<T>(glfwGetTime() * 1000.0f);
-            case PlatformBaseAPIs::Win32:
-                MOTION_ASSERT(false, "Win32 is not supported yet") return static_cast<T>(0);
+            case PlatformBaseAPIs::GLFW: return static_cast<T>(glfwGetTime() * 1000.0f);
+            case PlatformBaseAPIs::Win32: MOTION_ASSERT(false, "Win32 is not supported yet") return static_cast<T>(0);
             }
 
             return static_cast<T>(0);

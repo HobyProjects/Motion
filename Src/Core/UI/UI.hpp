@@ -19,11 +19,11 @@ namespace Motion::Core
         UserInterfaceInitializer& operator=(UserInterfaceInitializer&&) = delete;
 
     public:
-        void Init(WindowHandle windowHandle) noexcept;
-        void Quit() const noexcept;
+        static void Init(WindowHandle windowHandle) noexcept;
+        static void Quit() noexcept;
 
-        void UseColorDark() noexcept;
-        void UseColorLight() noexcept;
+        static void UseColorDark() noexcept;
+        static void UseColorLight() noexcept;
     };
 
     class CustomUIControl

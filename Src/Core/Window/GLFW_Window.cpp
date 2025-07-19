@@ -130,11 +130,14 @@ namespace Motion::Core
         m_Window = glfwCreateWindow(m_Properties.Width, m_Properties.Height, m_Properties.Title.c_str(), nullptr, nullptr);
         if (m_Window != nullptr)
         {
+            auto& coreAPI = CoreAPI::GetInstance();
+            m_Context = coreAPI.GetContext();
+
+            if (m_Context->IsContextCreated())
+                m_Context->Attach(m_Window);
+
             glfwSetWindowSizeLimits(m_Window, m_Properties.MinWidth, m_Properties.MinHeight, GLFW_DONT_CARE, GLFW_DONT_CARE);
             glfwGetFramebufferSize(m_Window, &m_Properties.PixelWidth, &m_Properties.PixelHeight);
-
-            if (m_Context != nullptr)
-                m_Context->Attach(m_Window);
 
             m_Properties.IsActive = true;
             m_Properties.IsFocused = glfwGetWindowAttrib(m_Window, GLFW_FOCUSED);
@@ -143,11 +146,6 @@ namespace Motion::Core
             glfwSetWindowUserPointer(m_Window, this);
             SetEventsCallBacks();
             RegisterEventsCallBacks();
-
-            if (m_Context != nullptr)
-            {
-                m_Context->Attach(m_Window);
-            }
         }
         else
         {
@@ -168,6 +166,9 @@ namespace Motion::Core
      */
     GLFW_Window::~GLFW_Window()
     {
+        if (m_Context->GetCurrentContext() == m_Window)
+            m_Context->Detach();
+
         glfwDestroyWindow(m_Window);
     }
 

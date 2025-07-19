@@ -42,13 +42,12 @@ namespace Motion::App
         void StartSimulation();
         void StopSimulation();
         void ManualSimulation();
-
         void SetSimulationMode(SimulationMode mode) { m_Environment.SimMode = mode; }
+
         SimulationMode GetSimulationMode() { return m_Environment.SimMode; }
 
     private:
         /* IMGUI RENDERINGS */
-        void RenderScene(Motion::Core::WindowHandle handle);
         void RenderEntities(Motion::Core::WindowHandle handle);
         void RenderComponents(Motion::Core::WindowHandle handle, const std::shared_ptr<Motion::Core::Entity>& entity);
 

@@ -16,7 +16,11 @@ namespace Motion::App
     void Scene::OnUpdate(Motion::Core::WindowHandle handle, Motion::Core::Timer deltaTime)
     {
         m_MainCamera->OnUpdate(handle, deltaTime);
-        RenderScene(handle);
+
+        if (m_SimulationStarted)
+        {
+            UpdatePhysicsComponents(deltaTime);
+        }
     }
 
     void Scene::OnEvent(Motion::Core::WindowHandle handle, Motion::Core::IEvent& e)
@@ -62,23 +66,6 @@ namespace Motion::App
         }
     }
 
-    void Scene::RenderScene(Motion::Core::WindowHandle handle)
-    {
-        SceneRenderer::BeginScene(this, m_MainCamera->GetCameraMatrix());
-
-        for (auto& entity : m_Entities)
-        {
-            if (entity->HasComponent<Motion::Core::MeshComponent>() && entity->HasComponent<Motion::Core::TransformComponent>())
-            {
-                auto& mesh = entity->GetComponent<Motion::Core::MeshComponent>();
-                auto& transform = entity->GetComponent<Motion::Core::TransformComponent>();
-                SceneRenderer::SubmitModel(mesh.Mesh, transform.GetTransform());
-            }
-        }
-
-        SceneRenderer::EndScene();
-    }
-
     void Scene::RenderEntities(Motion::Core::WindowHandle handle)
     {
         ImGui::Begin("Scene Entities");
@@ -88,7 +75,8 @@ namespace Motion::App
             if (m_SimulationStarted) ImGui::BeginDisabled();
             if (ImGui::MenuItem("Import StaticMesh"))
             {
-                std::weak_ptr<Motion::Core::IWindow> window = Motion::Core::WindowManager::GetWindow(handle);
+                auto& windowManager = Motion::Core::WindowManager::GetInstance();
+                std::weak_ptr<Motion::Core::IWindow> window = windowManager.GetWindow(handle);
                 if (!window.expired())
                 {
                     auto windowPtr = window.lock();
@@ -97,18 +85,20 @@ namespace Motion::App
                     {
                         auto& assetManager = Motion::Core::AssetManager::GetInstance();
                         std::string fileName = filePath.filename().string();
-                        std::shared_ptr<Motion::Core::StaticMesh> model = assetManager.Create<Motion::Core::StaticMesh>(fileName, filePath);
-                        if (model)
+
+                        std::shared_ptr<Motion::Core::StaticMesh> staticMesh = assetManager.Create<Motion::Core::StaticMesh>(fileName, filePath);
+                        if (staticMesh)
                         {
-                            std::shared_ptr<Motion::Core::Entity> entity = Motion::Core::EntityFactory::CreateEntity(filePath.filename().string());
+                            auto& entityFactory = Motion::Core::EntityFactory::GetInstance();
+                            std::shared_ptr<Motion::Core::Entity> entity = entityFactory.CreateEntity(filePath.filename().string());
                             entity->AddComponent<Motion::Core::TransformComponent>();
-                            entity->AddComponent<Motion::Core::MeshComponent>(filePath.filename().string(), model);
+                            entity->AddComponent<Motion::Core::MeshComponent>(filePath.filename().string(), staticMesh);
                             m_Entities.push_back(entity);
                             m_SelectedEntity = entity;
                         }
                         else
                         {
-                            MOTION_ERROR("Failed to load model from file: {0}", filePath.string());
+                            MOTION_ERROR("Failed to load staticMesh from file: {0}", filePath.string());
                         }
                     }
                 }
@@ -190,7 +180,8 @@ namespace Motion::App
             }
         }
 
-        DrawComponentControls<Motion::Core::TransformComponent>("Transform", entity, [](auto& component)
+        DrawComponentControls<Motion::Core::TransformComponent>("Transform", entity,
+            [](auto& component)
             {
                 ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, { 10.0f, 0.0f });
 
@@ -200,7 +191,8 @@ namespace Motion::App
 
                 ImGui::PopStyleVar();
 
-            }, !m_SimulationStarted);
+            }, !m_SimulationStarted
+        );
 
 
         //[TODO]: Other components can be added here

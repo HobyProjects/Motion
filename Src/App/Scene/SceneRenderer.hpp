@@ -20,16 +20,20 @@ namespace Motion::App
         glm::mat4 TransformMatrix{ 1.0f };
         glm::mat4 ViewProjectionMatrix{ 1.0f };
 
+        Scene* ScenePtr{ nullptr };
+
+        SceneDrawCommand() = default;
+        ~SceneDrawCommand() = default;
+
         bool operator<(const SceneDrawCommand& other) const
         {
-            return std::tie(SortKey, MaterialID, MeshID) <
-                std::tie(other.SortKey, other.MaterialID, other.MeshID);
+            return std::tie(SortKey, MaterialID, MeshID) < std::tie(other.SortKey, other.MaterialID, other.MeshID);
         }
     };
 
     class SceneRenderer
     {
-    public:
+    private:
         SceneRenderer() = default;
         ~SceneRenderer() = default;
 
@@ -39,18 +43,31 @@ namespace Motion::App
         SceneRenderer& operator=(SceneRenderer&&) = delete;
 
     public:
-        static SceneRenderer& GetInstance() noexcept
+        /**
+         * @brief Returns the singleton instance of SceneRenderer.
+         *
+         * This method ensures that only one instance of SceneRenderer exists throughout the application.
+         * It initializes the instance if it does not already exist.
+         *
+         * @return Reference to the singleton SceneRenderer instance.
+         */
+        [[nodiscard]] static SceneRenderer& GetInstance() noexcept
         {
             static SceneRenderer instance;
             return instance;
         }
 
     public:
-        void Submit(const std::shared_ptr<Motion::Core::Entity>& entity, const glm::mat4& viewProjectionMatrix);
-        void Flush();
+        void BeginScene() noexcept;
+        void Submit(Scene* scene, const glm::mat4& viewProjectionMatrix) noexcept;
+        void EndScene() noexcept;
+        void Flush() noexcept;
+
+        [[nodiscard]] std::uint32_t GetDrawCount() const noexcept { return m_DrawCount; }
 
     private:
         std::vector<SceneDrawCommand> m_DrawCommands;
+        std::uint32_t m_DrawCount{ 0 };
     };
 
 

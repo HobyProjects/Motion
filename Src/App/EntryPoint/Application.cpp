@@ -5,9 +5,10 @@ namespace Motion::App
 {
     Application::Application()
     {
-        Motion::Core::CoreAPI::Init();
-        m_Window = Motion::Core::WindowManager::Create("Motion Engine");
+        auto& windowManager = Motion::Core::WindowManager::GetInstance();
+        m_Window = windowManager.Create("Motion Engine");
         m_Window->SetEventsCallbackFunc(EVENT_CALLBACK(OnEvent));
+
         Motion::Core::Renderer::Init();
         Motion::Core::UserInterfaceInitializer::Init(m_Window->GetHandle());
 
@@ -23,8 +24,9 @@ namespace Motion::App
     {
         Motion::Core::UserInterfaceInitializer::Quit();
         Motion::Core::Renderer::Quit();
-        Motion::Core::WindowManager::Destroy(m_Window);
-        Motion::Core::CoreAPI::Quit();
+
+        auto& windowManager = Motion::Core::WindowManager::GetInstance();
+        windowManager.Destroy(m_Window->GetHandle());
     }
 
     void Application::Start()
@@ -41,15 +43,10 @@ namespace Motion::App
                 Motion::Core::Timer deltaTime = currentTime - m_LastFrameTime;
                 m_LastFrameTime = currentTime;
 
-
-                Motion::Core::Renderer::BeginFrame();
-
                 for (auto& layer : *m_LayersManager)
                 {
                     layer->OnUpdate(m_Window->GetHandle(), deltaTime);
                 }
-
-                Motion::Core::Renderer::EndFrame();
             }
 
             m_ImGuiLayer->Begin();

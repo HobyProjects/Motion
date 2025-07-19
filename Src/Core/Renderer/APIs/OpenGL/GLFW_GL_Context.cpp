@@ -3,6 +3,33 @@
 namespace Motion::Core
 {
     /**
+     * @brief Constructs a GLFW_GL_Context object and initializes the OpenGL context.
+     *
+     * This constructor initializes the OpenGL context using GLAD and sets the context version
+     * to 4.6. It also logs the OpenGL version if successful.
+     */
+    GLFW_GL_Context::GLFW_GL_Context()
+    {
+        if (!m_IsContextCreated)
+        {
+            std::int32_t glad_version = gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
+            if (glad_version == 0)
+            {
+                MOTION_CORE_CRITICAL("Failed to initialize GLAD");
+                return;
+            }
+
+            std::int32_t major{ 0 }, minor{ 0 };
+            glGetIntegerv(GL_MAJOR_VERSION, &major);
+            glGetIntegerv(GL_MINOR_VERSION, &minor);
+            MOTION_CORE_INFO("GLAD successfully initialized. OpenGL {0}.{1}", major, minor);
+
+
+            m_IsContextCreated = glad_version;
+        }
+    }
+
+    /**
      * @brief Attaches an OpenGL context to the specified native window using GLFW.
      *
      * This function sets the current OpenGL context to the provided native window,
@@ -19,16 +46,6 @@ namespace Motion::Core
     {
         MOTION_ASSERT(window, "The Native window is null");
         glfwMakeContextCurrent((GLFWwindow*)window);
-        glfwSwapInterval(1);
-
-        static bool glad_initialized = false;
-        if (!glad_initialized)
-        {
-            int32_t glLoading = gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
-            MOTION_ASSERT(glLoading, "Failed to load OpenGL!");
-            m_IsContextCreated = true;
-            MOTION_CORE_INFO("GLAD successfully initialized");
-        }
     }
 
     /**

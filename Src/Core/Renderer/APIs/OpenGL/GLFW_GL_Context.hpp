@@ -7,7 +7,7 @@ namespace Motion::Core
     class GLFW_GL_Context final : public IContext
     {
     public:
-        GLFW_GL_Context() = default;
+        GLFW_GL_Context();
         virtual ~GLFW_GL_Context() = default;
 
         virtual void Attach(NativeWindow window) noexcept override;

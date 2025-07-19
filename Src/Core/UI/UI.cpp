@@ -92,7 +92,7 @@ namespace Motion::Core
      * @warning If the specified API or renderer is not supported, this function will assert.
      * @warning If the IMGUI context fails to destroy, this function will assert.
      */
-    void UserInterfaceInitializer::Quit() const noexcept
+    void UserInterfaceInitializer::Quit() noexcept
     {
         switch (Renderer::GetAPI())
         {

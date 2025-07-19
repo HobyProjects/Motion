@@ -3,9 +3,11 @@
 
 namespace Motion::App
 {
-    Scene::Scene(const glm::vec2& viewportSize)
+    Scene::Scene(SceneHandle handle, const std::string& name, const glm::vec2& viewportSize)
     {
-        m_MainCamera = std::make_shared<MainCamera>(viewportSize.x, viewportSize.y, false);
+        m_SceneID = handle;
+        m_Name = name;
+        m_SceneCamera = std::make_unique<SceneCamera>(viewportSize.x, viewportSize.y, false);
     }
 
     Scene::~Scene()
@@ -15,7 +17,7 @@ namespace Motion::App
 
     void Scene::OnUpdate(Motion::Core::WindowHandle handle, Motion::Core::Timer deltaTime)
     {
-        m_MainCamera->OnUpdate(handle, deltaTime);
+        m_SceneCamera->OnUpdate(handle, deltaTime);
 
         if (m_SimulationStarted)
         {
@@ -25,7 +27,7 @@ namespace Motion::App
 
     void Scene::OnEvent(Motion::Core::WindowHandle handle, Motion::Core::IEvent& e)
     {
-        m_MainCamera->OnEvents(handle, e);
+        m_SceneCamera->OnEvents(handle, e);
     }
 
     void Scene::OnUIRenders(Motion::Core::WindowHandle handle)
@@ -35,7 +37,7 @@ namespace Motion::App
 
     void Scene::OnViewportSizeChanges(float width, float height)
     {
-        m_MainCamera->SetAspectRatio(width, height);
+        m_SceneCamera->SetAspectRatio(width, height);
     }
 
     void Scene::StartSimulation()

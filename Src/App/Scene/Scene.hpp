@@ -1,14 +1,17 @@
 #pragma once
 
-#include "MainCamera.hpp"
-#include "SceneRenderer.hpp"
 #include "Entity.hpp"
 #include "Components.hpp"
 #include "Buffers.hpp"
+
+#include "SceneCamera.hpp"
+#include "SceneRenderer.hpp"
 #include "SceneEnviroment.hpp"
 
 namespace Motion::App
 {
+    using SceneHandle = Motion::Core::UUID;
+
     struct SceneViewport
     {
         Motion::Core::FrameBufferSpecification FrameSpec{};
@@ -26,17 +29,24 @@ namespace Motion::App
         ~SceneViewport() = default;
     };
 
-
     class Scene
     {
     public:
-        Scene(const glm::vec2& viewportSize);
+        Scene(SceneHandle handle, const std::string& name, const glm::vec2& viewportSize);
         ~Scene();
 
         void OnUpdate(Motion::Core::WindowHandle handle, Motion::Core::Timer deltaTime);
         void OnEvent(Motion::Core::WindowHandle handle, Motion::Core::IEvent& e);
         void OnUIRenders(Motion::Core::WindowHandle handle);
         void OnViewportSizeChanges(float width, float height);
+        void SetName(const std::string& name) { m_Name = name; }
+        void SetActive(bool active) { m_IsActive = active; }
+
+        SceneHandle GetSceneID() const { return m_SceneID; }
+        std::string GetSceneName() const { return m_Name; }
+        bool IsActive() const { return m_IsActive; }
+
+
 
         /* SIMULATION */
         void StartSimulation();
@@ -55,7 +65,11 @@ namespace Motion::App
         void UpdatePhysicsComponents(Motion::Core::Timer deltaTime);
 
     private:
-        std::shared_ptr<MainCamera> m_MainCamera{ nullptr };
+        SceneHandle m_SceneID{ 0 };
+        std::string m_Name{ "Untitled Scene" };
+        bool m_IsActive{ false };
+
+        std::unique_ptr<SceneCamera> m_SceneCamera{ nullptr };
         std::vector<std::shared_ptr<Motion::Core::Entity>> m_Entities{};
         std::shared_ptr<Motion::Core::Entity> m_SelectedEntity{ Motion::Core::EntityFactory::EMPTYENTITY };
 

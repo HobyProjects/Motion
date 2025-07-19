@@ -192,8 +192,8 @@ set(
     ${MOTION_APP_DIR}/EntryPoint/Application.hpp
     ${MOTION_APP_DIR}/Layers/ImGuiLayer.hpp
     ${MOTION_APP_DIR}/Layers/SceneEditorLayer.hpp
-    ${MOTION_APP_DIR}/Camera/MainCamera.hpp
     ${MOTION_APP_DIR}/Scene/Scene.hpp
+    ${MOTION_APP_DIR}/Scene/SceneCamera.hpp
     ${MOTION_APP_DIR}/Scene/SceneRenderer.hpp
     ${MOTION_APP_DIR}/Scene/SceneEnviroment.hpp
 )
@@ -204,8 +204,8 @@ set(
     ${MOTION_APP_DIR}/EntryPoint/Application.cpp
     ${MOTION_APP_DIR}/Layers/ImGuiLayer.cpp
     ${MOTION_APP_DIR}/Layers/SceneEditorLayer.cpp
-    ${MOTION_APP_DIR}/Camera/MainCamera.cpp
     ${MOTION_APP_DIR}/Scene/Scene.cpp
+    ${MOTION_APP_DIR}/Scene/SceneCamera.cpp
     ${MOTION_APP_DIR}/Scene/SceneRenderer.cpp
     ${MOTION_APP_DIR}/Scene/SceneEnviroment.cpp
 )

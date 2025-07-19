@@ -3,103 +3,64 @@
 namespace Motion::Core
 {
     /**
-     * @brief Retrieves the current state of a specified key for a given window.
+     * @brief Retrieves the current state of a specific key for the given window.
      *
-     * This function queries the GLFW input system to determine the state of the specified key
-     * (pressed, released, repeated, or none) for the window identified by the provided handle.
-     * If the window is no longer valid or has been destroyed, a critical log message is generated
-     * and KeyState::KEY_NONE is returned.
+     * This function queries the state of the specified key (pressed, released, etc.)
+     * associated with the provided window handle.
      *
-     * @param windowHandle The handle identifying the window to query.
-     * @param key The key code to check the state for.
-     * @return KeyState The current state of the specified key (KEY_PRESSED, KEY_RELEASED, KEY_REPEAT, or KEY_NONE).
+     * @param nativeWindow The handle to the window for which the key state is queried.
+     * @param key The key code representing the key to check.
+     * @return KeyState The current state of the specified key.
      */
-    KeyState GLFW_KeyState(WindowHandle windowHandle, KeyCode key) noexcept
+    KeyState GLFW_KeyState(NativeWindow nativeWindow, KeyCode key) noexcept
     {
-        auto& windowManager = WindowManager::GetInstance();
-        std::weak_ptr<IWindow> window = windowManager.GetWindow(windowHandle);
+        std::int32_t state = glfwGetKey((GLFWwindow*)nativeWindow, static_cast<std::int32_t>(key));
 
-        if (!window.expired())
-        {
-            auto windowPtr = window.lock();
-            int state = glfwGetKey((GLFWwindow*)windowPtr->GetNativeWindow(), static_cast<int>(key));
+        if (state == GLFW_PRESS)
+            return KeyState::KEY_PRESSED;
+        if (state == GLFW_RELEASE)
+            return KeyState::KEY_RELEASED;
+        if (state == GLFW_REPEAT)
+            return KeyState::KEY_REPEAT;
 
-            if (state == GLFW_PRESS)
-                return KeyState::KEY_PRESSED;
-            if (state == GLFW_RELEASE)
-                return KeyState::KEY_RELEASED;
-            if (state == GLFW_REPEAT)
-                return KeyState::KEY_REPEAT;
-
-            return KeyState::KEY_NONE;
-        }
-
-        MOTION_CORE_CRITICAL("Input handling from destroyed window. HANDLE: {:X}", windowHandle);
         return KeyState::KEY_NONE;
     }
 
     /**
      * @brief Retrieves the current state of a specified mouse button for a given window.
      *
-     * This function queries the GLFW library to determine whether the specified mouse button
-     * is pressed, released, or in an undefined state for the window identified by the given handle.
-     * If the window associated with the handle has been destroyed or is otherwise unavailable,
-     * the function logs a critical error and returns MouseButtonState::MOUSE_BUTTON_NONE.
+     * This function queries the state (pressed, released, etc.) of the specified mouse button
+     * associated with the provided window handle.
      *
-     * @param windowHandle The handle identifying the window to query.
-     * @param button The mouse button to check (typically left, right, or middle).
-     * @return MouseButtonState The current state of the specified mouse button:
-     *         - MOUSE_BUTTON_PRESSED if the button is currently pressed,
-     *         - MOUSE_BUTTON_RELEASED if the button is currently released,
-     *         - MOUSE_BUTTON_NONE if the state is undefined or the window is invalid.
+     * @param nativeWindow The handle to the window for which the mouse button state is queried.
+     * @param button The mouse button whose state is to be retrieved.
+     * @return MouseButtonState The current state of the specified mouse button.
      */
-    MouseButtonState GLFW_MouseButtonState(WindowHandle windowHandle, MouseButton button) noexcept
+    MouseButtonState GLFW_MouseButtonState(NativeWindow nativeWindow, MouseButton button) noexcept
     {
-        auto& windowManager = WindowManager::GetInstance();
-        std::weak_ptr<IWindow> window = windowManager.GetWindow(windowHandle);
+        std::int32_t state = glfwGetMouseButton((GLFWwindow*)nativeWindow, static_cast<std::int32_t>(button));
 
-        if (!window.expired())
-        {
-            auto windowPtr = window.lock();
-            int state = glfwGetMouseButton((GLFWwindow*)windowPtr->GetNativeWindow(), static_cast<int>(button));
+        if (state == GLFW_PRESS)
+            return MouseButtonState::MOUSE_BUTTON_PRESSED;
+        if (state == GLFW_RELEASE)
+            return MouseButtonState::MOUSE_BUTTON_RELEASED;
 
-            if (state == GLFW_PRESS)
-                return MouseButtonState::MOUSE_BUTTON_PRESSED;
-            if (state == GLFW_RELEASE)
-                return MouseButtonState::MOUSE_BUTTON_RELEASED;
-
-            return MouseButtonState::MOUSE_BUTTON_NONE;
-        }
-
-        MOTION_CORE_CRITICAL("Input handling from destroyed window. HANDLE: {:X}", windowHandle);
         return MouseButtonState::MOUSE_BUTTON_NONE;
     }
 
     /**
-     * @brief Retrieves the current mouse cursor position for the specified window.
+     * @brief Retrieves the current mouse position relative to the specified window.
      *
-     * This function queries the current position of the mouse cursor relative to the client area
-     * of the window identified by the given window handle. If the window is valid, it returns
-     * the cursor position as a glm::vec2, where x and y are the cursor's coordinates in pixels.
-     * If the window is invalid or destroyed, it logs a critical error and returns (0.0f, 0.0f).
+     * This function queries the current position of the mouse cursor within the given window
+     * and returns it as a 2D vector (x, y) in screen coordinates.
      *
-     * @param windowHandle The handle identifying the window to query.
-     * @return glm::vec2 The current mouse position in window coordinates, or (0.0f, 0.0f) if the window is invalid.
+     * @param nativeWindow The handle to the window for which the mouse position is requested.
+     * @return glm::vec2 The current mouse position in screen coordinates.
      */
-    glm::vec2 GLFW_CurrentMousePosition(WindowHandle windowHandle) noexcept
+    glm::vec2 GLFW_CurrentMousePosition(NativeWindow nativeWindow) noexcept
     {
-        auto& windowManager = WindowManager::GetInstance();
-        std::weak_ptr<IWindow> window = windowManager.GetWindow(windowHandle);
-
-        if (!window.expired())
-        {
-            auto windowPtr = window.lock();
-            double posX{ 0.0 }, posY{ 0.0 };
-            glfwGetCursorPos((GLFWwindow*)windowPtr->GetNativeWindow(), &posX, &posY);
-            return glm::vec2(static_cast<float>(posX), static_cast<float>(posY));
-        }
-
-        MOTION_CORE_CRITICAL("Input handling from destroyed window. HANDLE: {:X}", windowHandle);
-        return glm::vec2(0.0f, 0.0f);
+        double posX{ 0.0 }, posY{ 0.0 };
+        glfwGetCursorPos((GLFWwindow*)nativeWindow, &posX, &posY);
+        return glm::vec2(static_cast<float>(posX), static_cast<float>(posY));
     }
 }

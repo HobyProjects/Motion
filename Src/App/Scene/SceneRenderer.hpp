@@ -3,7 +3,6 @@
 #include <glm/glm.hpp>
 
 #include "Entity.hpp"
-#include "MainCamera.hpp"
 #include "Model.hpp"
 #include "SceneEnviroment.hpp"
 
@@ -59,7 +58,7 @@ namespace Motion::App
 
     public:
         void BeginScene() noexcept;
-        void Submit(Scene* scene, const glm::mat4& viewProjectionMatrix) noexcept;
+        void Submit(Scene* scene) noexcept;
         void EndScene() noexcept;
         void Flush() noexcept;
 

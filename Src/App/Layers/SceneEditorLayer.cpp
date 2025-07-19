@@ -8,7 +8,6 @@ namespace Motion::App
 
     SceneEditorLayer::SceneEditorLayer(Motion::Core::WindowHandle handle, const std::shared_ptr<Motion::App::ImGuiLayer>& imguiLayer) : Motion::Core::Layer("EditorLayer")
     {
-        s_Window = Motion::Core::WindowManager::GetWindow(handle);
         s_ImGuiLayer = imguiLayer;
     }
 
@@ -18,22 +17,24 @@ namespace Motion::App
         m_Viewport.FrameSpec.Height = static_cast<uint32_t>(m_ViewportHeight);
         m_Viewport.Size = { m_ViewportWidth, m_ViewportHeight };
 
-        if (!s_Window.expired())
+        m_Framebuffer = Motion::Core::BufferFactory::CreateFrameBuffer(m_Viewport.FrameSpec);
+        m_PostProcessor = std::make_unique<Motion::Core::PostProcessor>(m_Framebuffer->GetFrameSpecification());
+
+        if (m_Scenes.empty())
         {
-            auto window = s_Window.lock();
-            Motion::Core::GraphicSettings& graphicSettings = window->GetGraphicSettings();
-            Motion::Core::GraphicSettings::AntiAliasingLevel aaLevel = graphicSettings.AntiAliasing;
-            m_Viewport.FrameSpec.MultiSampling = static_cast<uint32_t>(aaLevel);
+            //[TODO] : When scene serialization is implemented, load the default scene from a file or create a new one.
+            m_Scenes.push_back(std::make_shared<Scene>(Motion::Core::UniqueIdentity::GetUniqueID(), "Default Scene", glm::vec2(m_ViewportWidth, m_ViewportHeight)));
         }
 
-        m_Framebuffer = Motion::Core::BufferFactory::CreateFrameBuffer(m_Viewport.FrameSpec);
-        m_Scene = std::make_shared<Scene>(glm::vec2(m_ViewportWidth, m_ViewportHeight));
+        m_ActiveScene = m_Scenes[0];
+        m_ActiveScene->SetActive(true);
     }
 
     void SceneEditorLayer::OnDetach()
     {
         m_Framebuffer.reset();
-        m_Scene.reset();
+        m_PostProcessor.reset();
+        m_Scenes.clear();
     }
 
     void SceneEditorLayer::OnUpdate(Motion::Core::WindowHandle handle, Motion::Core::Timer deltaTime)
@@ -42,7 +43,9 @@ namespace Motion::App
         {
             m_Viewport.Update(glm::vec2(m_ViewportWidth, m_ViewportHeight));
             m_Framebuffer->ResizeFrame((uint32_t)m_ViewportWidth, (uint32_t)m_ViewportHeight);
-            m_Scene->OnViewportSizeChanges(m_ViewportWidth, m_ViewportHeight);
+
+            for (const auto& scene : m_Scenes)
+                scene->OnViewportSizeChanges(m_ViewportWidth, m_ViewportHeight);
         }
 
         m_Framebuffer->Bind();
@@ -50,25 +53,32 @@ namespace Motion::App
         Motion::Core::Renderer::ClearColor({ 0.243, 0.243, 0.243, 1.0f });
         Motion::Core::Renderer::Clear();
 
-        m_Scene->OnUpdate(handle, deltaTime);
+        auto& sceneRenderer = SceneRenderer::GetInstance();
+        sceneRenderer.BeginScene();
 
-        Motion::Core::Renderer::Flush();
+        m_ActiveScene->OnUpdate(handle, deltaTime);
+        sceneRenderer.Submit(m_ActiveScene.get());
+
+        sceneRenderer.EndScene();
+
         m_Framebuffer->Unbind();
+        m_PostProcessor->Process(m_Framebuffer->GetAttachment(Motion::Core::FrameBufferColorAttachments::Standard).TextureID);
+        m_SceneTextures[m_ActiveScene] = m_PostProcessor->GetOutputTextureID();
     }
 
     void SceneEditorLayer::OnEvent(Motion::Core::WindowHandle handle, Motion::Core::IEvent& e)
     {
-        m_Scene->OnEvent(handle, e);
+        m_ActiveScene->OnEvent(handle, e);
     }
 
     void SceneEditorLayer::OnUIRender(Motion::Core::WindowHandle handle)
     {
         DrawDockspace();
         ImGui::ShowDemoWindow();
-        m_Scene->OnUIRenders(handle);
+        m_ActiveScene->OnUIRenders(handle);
 
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
-        ImGui::Begin("Scene");
+        ImGui::Begin(m_ActiveScene->GetSceneName().c_str());
         if (!s_ImGuiLayer.expired())
         {
             auto imguiLayer = s_ImGuiLayer.lock();
@@ -80,10 +90,7 @@ namespace Motion::App
                 m_ViewportHeight = viewportPanelSize.y;
             }
 
-            if (m_Framebuffer->IsMSAA())
-                ImGui::Image((ImTextureID)m_Framebuffer->GetResolvedColorAttachment(), viewportPanelSize, { 0, 1 }, { 1, 0 });
-            else
-                ImGui::Image((ImTextureID)m_Framebuffer->GetColorAttachment(), viewportPanelSize, { 0, 1 }, { 1, 0 });
+            ImGui::Image((ImTextureID)m_SceneTextures[m_ActiveScene], viewportPanelSize, { 0, 1 }, { 1, 0 });
         }
         ImGui::End();
         ImGui::PopStyleVar();

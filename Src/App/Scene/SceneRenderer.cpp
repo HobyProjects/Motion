@@ -30,7 +30,7 @@ namespace Motion::App
      *       Entities without a MeshComponent or with invalid mesh data are skipped with a warning.
      *       If an entity lacks a TransformComponent, an identity matrix is used as its transform.
      */
-    void SceneRenderer::Submit(Scene* scene, const glm::mat4& viewProjectionMatrix) noexcept
+    void SceneRenderer::Submit(Scene* scene) noexcept
     {
         if (!scene)
         {
@@ -38,9 +38,9 @@ namespace Motion::App
             return;
         }
 
-        if (!scene->m_MainCamera)
+        if (scene->m_SceneCamera != nullptr)
         {
-            MOTION_CORE_ERROR("Main camera is not set in the scene >> SKIPPING SUBMISSION");
+            MOTION_CORE_ERROR("Scene camera is not set in the scene >> SKIPPING SUBMISSION");
             return;
         }
 
@@ -71,7 +71,7 @@ namespace Motion::App
                     continue;
                 }
 
-                command.SortKey = Motion::Core::UniqueIdentity::GetUniqueID();
+                command.SortKey = scene->GetSceneID();
                 command.MaterialID = meshSegment->Materials->GetUUID();
                 command.MeshID = meshSegment->MeshSelf->GetUUID();
 
@@ -86,7 +86,7 @@ namespace Motion::App
                     command.TransformMatrix = glm::mat4(1.0f);
                 }
 
-                command.ViewProjectionMatrix = viewProjectionMatrix;
+                command.ViewProjectionMatrix = scene->m_SceneCamera->GetCameraMatrix();
                 command.ScenePtr = scene;
 
                 m_DrawCommands.push_back(command);
@@ -135,7 +135,7 @@ namespace Motion::App
                 case Motion::Core::MaterialShadingMethod::PBR:      shader = assetManager.Get<Motion::Core::IShader>("PBRShader"); break;
                 case Motion::Core::MaterialShadingMethod::Phong:    shader = assetManager.Get<Motion::Core::IShader>("PhongShader"); break;
                 case Motion::Core::MaterialShadingMethod::Unlit:    shader = assetManager.Get<Motion::Core::IShader>("UnlitShader"); break;
-                case Motion::Core::MaterialShadingMethod::Auto:     shader = assetManager.Get<Motion::Core::IShader>("PBRShader"); break;
+                case Motion::Core::MaterialShadingMethod::Auto:     shader = assetManager.Get<Motion::Core::IShader>("UnlitShader"); break;
                 }
 
                 if (shader)

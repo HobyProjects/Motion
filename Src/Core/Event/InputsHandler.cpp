@@ -12,9 +12,17 @@ namespace Motion::Core
      * @param key The key code representing the key to check.
      * @return KeyState The current state of the specified key.
      */
-    KeyState InputsHandler::GetKeyState(WindowHandle windowHandle, KeyCode key) const noexcept
+    KeyState InputsHandler::GetKeyState(WindowHandle windowHandle, KeyCode key) noexcept
     {
-        return GLFW_KeyState(windowHandle, key);
+        auto& windowManager = WindowManager::GetInstance();
+        std::weak_ptr<IWindow> window = windowManager.GetWindow(windowHandle);
+        if (!window.expired())
+        {
+            return GLFW_KeyState(window.lock()->GetNativeWindow(), key);
+        }
+
+        MOTION_CORE_ERROR("Input handling from a non-existing window: {}", windowHandle);
+        return KeyState::KEY_NONE;
     }
 
     /**
@@ -27,9 +35,17 @@ namespace Motion::Core
      * @param button The mouse button whose state is to be retrieved.
      * @return MouseButtonState The current state of the specified mouse button.
      */
-    MouseButtonState InputsHandler::GetMouseButtonState(WindowHandle windowHandle, MouseButton button) const noexcept
+    MouseButtonState InputsHandler::GetMouseButtonState(WindowHandle windowHandle, MouseButton button) noexcept
     {
-        return GLFW_MouseButtonState(windowHandle, button);
+        auto& windowManager = WindowManager::GetInstance();
+        std::weak_ptr<IWindow> window = windowManager.GetWindow(windowHandle);
+        if (!window.expired())
+        {
+            return GLFW_MouseButtonState(window.lock()->GetNativeWindow(), button);
+        }
+
+        MOTION_CORE_ERROR("Input handling from a non-existing window: {}", windowHandle);
+        return MouseButtonState::MOUSE_BUTTON_NONE;
     }
 
     /**
@@ -41,8 +57,16 @@ namespace Motion::Core
      * @param windowHandle The handle to the window for which the mouse position is requested.
      * @return glm::vec2 The current mouse position in screen coordinates.
      */
-    glm::vec2 InputsHandler::GetCurrentMousePosition(WindowHandle windowHandle) const noexcept
+    glm::vec2 InputsHandler::GetCurrentMousePosition(WindowHandle windowHandle) noexcept
     {
-        return GLFW_CurrentMousePosition(windowHandle);
+        auto& windowManager = WindowManager::GetInstance();
+        std::weak_ptr<IWindow> window = windowManager.GetWindow(windowHandle);
+        if (!window.expired())
+        {
+            return GLFW_CurrentMousePosition(window.lock()->GetNativeWindow());
+        }
+
+        MOTION_CORE_ERROR("Input handling from a non-existing window: {}", windowHandle);
+        return glm::vec2(0.0f);
     }
 }

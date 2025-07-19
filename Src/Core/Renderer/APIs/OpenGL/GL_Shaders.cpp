@@ -36,7 +36,7 @@ namespace Motion::Core
      *
      * @throws Assertion failure if the shader program could not be created.
      */
-    ShaderProgramID GL_ShaderFactory::CreateShaderProgram()
+    ShaderProgramID GL_CreateShaderProgram()
     {
         ShaderProgramID programID = glCreateProgram();
         MOTION_ASSERT(programID, "Failed to create shader program");
@@ -52,7 +52,7 @@ namespace Motion::Core
      * @param shaderID The identifier of the compiled shader object to attach.
      * @param programID The identifier of the shader program to which the shader will be attached.
      */
-    void GL_ShaderFactory::AttachShaderProgram(ShaderID shaderID, ShaderProgramID programID)
+    void GL_AttachShaderProgram(ShaderID shaderID, ShaderProgramID programID)
     {
         glAttachShader(programID, shaderID);
     }
@@ -67,7 +67,7 @@ namespace Motion::Core
      * @param sourceCode The GLSL source code for the shader.
      * @return ShaderID The OpenGL identifier for the compiled shader.
      */
-    ShaderID GL_ShaderFactory::CompileShader(ShaderType shaderType, const std::string& sourceCode)
+    ShaderID GL_CompileShader(ShaderType shaderType, const std::string& sourceCode)
     {
         GLenum glShaderType = GetShaderType(shaderType);
         ShaderID shaderID = glCreateShader(glShaderType);
@@ -87,7 +87,7 @@ namespace Motion::Core
      *
      * @param programID The identifier of the shader program to link.
      */
-    void GL_ShaderFactory::LinkShaderProgram(ShaderProgramID programID)
+    void GL_LinkShaderProgram(ShaderProgramID programID)
     {
         glLinkProgram(programID);
     }
@@ -100,7 +100,7 @@ namespace Motion::Core
      *
      * @param programID The OpenGL identifier of the shader program to validate.
      */
-    void GL_ShaderFactory::ValidateShaderProgram(ShaderProgramID programID)
+    void GL_ValidateShaderProgram(ShaderProgramID programID)
     {
         glValidateProgram(programID);
     }
@@ -113,7 +113,7 @@ namespace Motion::Core
      *
      * @param programID The identifier of the shader program to delete.
      */
-    void GL_ShaderFactory::DeleteShaderProgram(ShaderProgramID programID)
+    void GL_DeleteShaderProgram(ShaderProgramID programID)
     {
         glDeleteProgram(programID);
     }
@@ -133,19 +133,19 @@ namespace Motion::Core
     GL_Shader::GL_Shader(const std::string& name, const std::unordered_map<ShaderType, std::string>& shaderSources, const std::filesystem::path& sourceFile) :
         AssetBase<IShader>(UniqueIdentity::GetUniqueID(), name, AssetType::Shader, sourceFile.string())
     {
-        m_ProgramID = GL_ShaderFactory::CreateShaderProgram();
+        m_ProgramID = GL_CreateShaderProgram();
 
         for (const auto& [type, source] : shaderSources)
         {
-            ShaderID compiledShaderID = GL_ShaderFactory::CompileShader(type, source);
-            GL_ShaderFactory::AttachShaderProgram(compiledShaderID, m_ProgramID);
+            ShaderID compiledShaderID = GL_CompileShader(type, source);
+            GL_AttachShaderProgram(compiledShaderID, m_ProgramID);
         }
 
-        GL_ShaderFactory::LinkShaderProgram(m_ProgramID);
-        GL_ShaderFactory::ValidateShaderProgram(m_ProgramID);
+        GL_LinkShaderProgram(m_ProgramID);
+        GL_ValidateShaderProgram(m_ProgramID);
         ReflectUniforms();
 
-        m_MetaData.IsAssetInitialized = true;
+        AssetInfo.IsAssetInitialized = true;
     }
 
     /**
@@ -163,19 +163,19 @@ namespace Motion::Core
     GL_Shader::GL_Shader(UUID uuid, const std::string& name, const std::unordered_map<ShaderType, std::string>& shaderSources, const std::filesystem::path& sourceFile) :
         AssetBase<IShader>(uuid, name, AssetType::Shader, sourceFile.string())
     {
-        m_ProgramID = GL_ShaderFactory::CreateShaderProgram();
+        m_ProgramID = GL_CreateShaderProgram();
 
         for (const auto& [type, source] : shaderSources)
         {
-            ShaderID compiledShaderID = GL_ShaderFactory::CompileShader(type, source);
-            GL_ShaderFactory::AttachShaderProgram(compiledShaderID, m_ProgramID);
+            ShaderID compiledShaderID = GL_CompileShader(type, source);
+            GL_AttachShaderProgram(compiledShaderID, m_ProgramID);
         }
 
-        GL_ShaderFactory::LinkShaderProgram(m_ProgramID);
-        GL_ShaderFactory::ValidateShaderProgram(m_ProgramID);
+        GL_LinkShaderProgram(m_ProgramID);
+        GL_ValidateShaderProgram(m_ProgramID);
         ReflectUniforms();
 
-        m_MetaData.IsAssetInitialized = true;
+        AssetInfo.IsAssetInitialized = true;
     }
 
     /**
@@ -187,7 +187,7 @@ namespace Motion::Core
      */
     GL_Shader::~GL_Shader()
     {
-        GL_ShaderFactory::DeleteShaderProgram(m_ProgramID);
+        GL_DeleteShaderProgram(m_ProgramID);
     }
 
     /**
@@ -212,7 +212,7 @@ namespace Motion::Core
         UniformLocation location = glGetUniformLocation(m_ProgramID, uniformName.data());
         if (location == INVALID_UNIFORM_LOCATION)
         {
-            MOTION_ASSERT(false, "Uniform '{0}' not found in shader program '{1}'", uniformName, m_MetaData.AssetName);
+            MOTION_ASSERT(false, "Uniform '{0}' not found in shader program '{1}'", uniformName, AssetInfo.AssetName);
             return INVALID_UNIFORM_LOCATION; // Return an invalid location if the uniform is not found
         }
 
@@ -251,7 +251,7 @@ namespace Motion::Core
             }
             else
             {
-                MOTION_CORE_ERROR("Uniform '{0}' not found in shader program '{1}'", uniformName, m_MetaData.AssetName);
+                MOTION_CORE_ERROR("Uniform '{0}' not found in shader program '{1}'", uniformName, AssetInfo.AssetName);
             }
         }
     }
@@ -287,7 +287,7 @@ namespace Motion::Core
             }
             else
             {
-                MOTION_CORE_ERROR("Uniform '{0}' not found in shader program '{1}'", uniformName, m_MetaData.AssetName);
+                MOTION_CORE_ERROR("Uniform '{0}' not found in shader program '{1}'", uniformName, AssetInfo.AssetName);
             }
         }
     }
@@ -323,7 +323,7 @@ namespace Motion::Core
             }
             else
             {
-                MOTION_CORE_ERROR("Uniform '{0}' not found in shader program '{1}'", uniformName, m_MetaData.AssetName);
+                MOTION_CORE_ERROR("Uniform '{0}' not found in shader program '{1}'", uniformName, AssetInfo.AssetName);
             }
         }
     }
@@ -359,7 +359,7 @@ namespace Motion::Core
             }
             else
             {
-                MOTION_CORE_ERROR("Uniform '{0}' not found in shader program '{1}'", uniformName, m_MetaData.AssetName);
+                MOTION_CORE_ERROR("Uniform '{0}' not found in shader program '{1}'", uniformName, AssetInfo.AssetName);
             }
         }
     }
@@ -395,7 +395,7 @@ namespace Motion::Core
             }
             else
             {
-                MOTION_CORE_ERROR("Uniform '{0}' not found in shader program '{1}'", uniformName, m_MetaData.AssetName);
+                MOTION_CORE_ERROR("Uniform '{0}' not found in shader program '{1}'", uniformName, AssetInfo.AssetName);
             }
         }
     }
@@ -431,7 +431,7 @@ namespace Motion::Core
             }
             else
             {
-                MOTION_CORE_ERROR("Uniform '{0}' not found in shader program '{1}'", uniformName, m_MetaData.AssetName);
+                MOTION_CORE_ERROR("Uniform '{0}' not found in shader program '{1}'", uniformName, AssetInfo.AssetName);
             }
         }
     }
@@ -466,7 +466,7 @@ namespace Motion::Core
             }
             else
             {
-                MOTION_CORE_ERROR("Uniform '{0}' not found in shader program '{1}'", uniformName, m_MetaData.AssetName);
+                MOTION_CORE_ERROR("Uniform '{0}' not found in shader program '{1}'", uniformName, AssetInfo.AssetName);
             }
         }
     }
@@ -502,7 +502,7 @@ namespace Motion::Core
             }
             else
             {
-                MOTION_CORE_ERROR("Uniform '{0}' not found in shader program '{1}'", uniformName, m_MetaData.AssetName);
+                MOTION_CORE_ERROR("Uniform '{0}' not found in shader program '{1}'", uniformName, AssetInfo.AssetName);
             }
         }
     }
@@ -538,7 +538,7 @@ namespace Motion::Core
             }
             else
             {
-                MOTION_CORE_ERROR("Uniform '{0}' not found in shader program '{1}'", uniformName, m_MetaData.AssetName);
+                MOTION_CORE_ERROR("Uniform '{0}' not found in shader program '{1}'", uniformName, AssetInfo.AssetName);
             }
         }
     }
@@ -610,14 +610,6 @@ namespace Motion::Core
         m_UniformInformationCache[UniformCache::Texture_SheenTexture] = { UniformCache::Texture_SheenTexture, UniformType::Sampler2D, GetUniformLocation(UniformCache::Texture_SheenTexture) };
         m_UniformInformationCache[UniformCache::Texture_TransmissionTexture] = { UniformCache::Texture_TransmissionTexture, UniformType::Sampler2D, GetUniformLocation(UniformCache::Texture_TransmissionTexture) };
     }
-
-    std::int32_t GL_Shader::GetMaxTextureUnits() const
-    {
-        std::int32_t maxTextureUnits = 0;
-        glGetIntegerv(GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS, &maxTextureUnits);
-        return maxTextureUnits;
-    }
-
 
     /**
      * @brief Binds the shader program for use in the current OpenGL context.

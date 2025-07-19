@@ -11,9 +11,25 @@ namespace Motion::App
 {
     class Scene; // forward declaration
 
+    struct SceneDrawCommand
+    {
+        Motion::Core::UUID SortKey{ 0 };
+        Motion::Core::UUID MaterialID{ 0 };
+        Motion::Core::UUID MeshID{ 0 };
+
+        glm::mat4 TransformMatrix{ 1.0f };
+        glm::mat4 ViewProjectionMatrix{ 1.0f };
+
+        bool operator<(const SceneDrawCommand& other) const
+        {
+            return std::tie(SortKey, MaterialID, MeshID) <
+                std::tie(other.SortKey, other.MaterialID, other.MeshID);
+        }
+    };
+
     class SceneRenderer
     {
-    private:
+    public:
         SceneRenderer() = default;
         ~SceneRenderer() = default;
 
@@ -23,9 +39,19 @@ namespace Motion::App
         SceneRenderer& operator=(SceneRenderer&&) = delete;
 
     public:
-        static void BeginScene(Scene* currentScene, const glm::mat4& cameraMatrix);
-        static void SubmitModel(const std::shared_ptr<Motion::Core::StaticMesh>& model, const glm::mat4& transform);
-        static void EndScene();
-        static void Flush();
+        static SceneRenderer& GetInstance() noexcept
+        {
+            static SceneRenderer instance;
+            return instance;
+        }
+
+    public:
+        void Submit(const std::shared_ptr<Motion::Core::Entity>& entity, const glm::mat4& viewProjectionMatrix);
+        void Flush();
+
+    private:
+        std::vector<SceneDrawCommand> m_DrawCommands;
     };
+
+
 }

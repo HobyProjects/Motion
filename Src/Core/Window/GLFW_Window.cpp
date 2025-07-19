@@ -5,16 +5,16 @@ namespace Motion::Core
     /**
      * Initializes the GLFW library for use within the application.
      *
-     * This function attempts to initialize the GLFW library. If successful, it logs 
+     * This function attempts to initialize the GLFW library. If successful, it logs
      * the GLFW version and sets the initialization flag to true.
      *
      * @return true if GLFW is initialized successfully; false if initialization fails.
      *
-     * This function is essential as it sets up the necessary environment for 
-     * creating windows and handling input using GLFW. Make sure to call this 
+     * This function is essential as it sets up the necessary environment for
+     * creating windows and handling input using GLFW. Make sure to call this
      * function before using any other GLFW-related functionalities.
      */
-    bool GLFW_BaseAPI::Init()
+    bool GLFW_BaseAPI::Init() noexcept
     {
         if (glfwInit() == GLFW_FALSE)
         {
@@ -39,7 +39,7 @@ namespace Motion::Core
      * and ensures proper cleanup. Make sure to call this function before the
      * application terminates.
      */
-    void GLFW_BaseAPI::Quit()
+    void GLFW_BaseAPI::Quit() noexcept
     {
         if (m_Initialized)
         {
@@ -104,78 +104,73 @@ namespace Motion::Core
         m_Properties.Title = title;
         m_Properties.Handle = windowHandle;
 
-        if( Renderer::GetAPI() & RenderingAPI::OpenGL)
-		{
-			glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
-			glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-			glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
-			glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-			glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE);
-			glfwWindowHint(GLFW_DOUBLEBUFFER, GLFW_TRUE);
+        if (Renderer::GetAPI() & RenderingAPI::OpenGL)
+        {
+            glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
+            glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+            glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
+            glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+            glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE);
+            glfwWindowHint(GLFW_DOUBLEBUFFER, GLFW_TRUE);
 
-			#if defined(MOTION_BUILD_DEBUG)
-				glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
-			#endif
-		}
+#if defined(MOTION_BUILD_DEBUG)
+            glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
+#endif
+        }
 
-		glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
-		glfwWindowHint(GLFW_RED_BITS, m_Properties.ColorBits.RedBit);
-		glfwWindowHint(GLFW_GREEN_BITS, m_Properties.ColorBits.GreenBit);
-		glfwWindowHint(GLFW_BLUE_BITS, m_Properties.ColorBits.BlueBit);
-		glfwWindowHint(GLFW_ALPHA_BITS, m_Properties.ColorBits.AlphaBit);
-		glfwWindowHint(GLFW_REFRESH_RATE, m_Properties.RefreshRate);
-		glfwWindowHint(GLFW_DEPTH_BITS, m_Properties.ColorBits.DepthBit);
-		glfwWindowHint(GLFW_STENCIL_BITS, m_Properties.ColorBits.DepthStencilBit);
+        glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
+        glfwWindowHint(GLFW_RED_BITS, m_Properties.ColorBits.RedBit);
+        glfwWindowHint(GLFW_GREEN_BITS, m_Properties.ColorBits.GreenBit);
+        glfwWindowHint(GLFW_BLUE_BITS, m_Properties.ColorBits.BlueBit);
+        glfwWindowHint(GLFW_ALPHA_BITS, m_Properties.ColorBits.AlphaBit);
+        glfwWindowHint(GLFW_REFRESH_RATE, m_Properties.RefreshRate);
+        glfwWindowHint(GLFW_DEPTH_BITS, m_Properties.ColorBits.DepthBit);
+        glfwWindowHint(GLFW_STENCIL_BITS, m_Properties.ColorBits.DepthStencilBit);
 
-		m_Window = glfwCreateWindow(m_Properties.Width, m_Properties.Height, m_Properties.Title.c_str(), nullptr, nullptr);
-		if( m_Window != nullptr )
-		{
-			glfwSetWindowSizeLimits(m_Window, m_Properties.MinWidth, m_Properties.MinHeight, GLFW_DONT_CARE, GLFW_DONT_CARE);
-			glfwGetFramebufferSize(m_Window, &m_Properties.PixelWidth, &m_Properties.PixelHeight);
+        m_Window = glfwCreateWindow(m_Properties.Width, m_Properties.Height, m_Properties.Title.c_str(), nullptr, nullptr);
+        if (m_Window != nullptr)
+        {
+            glfwSetWindowSizeLimits(m_Window, m_Properties.MinWidth, m_Properties.MinHeight, GLFW_DONT_CARE, GLFW_DONT_CARE);
+            glfwGetFramebufferSize(m_Window, &m_Properties.PixelWidth, &m_Properties.PixelHeight);
 
-            if(m_Context != nullptr)
+            if (m_Context != nullptr)
                 m_Context->Attach(m_Window);
 
-			m_Properties.IsActive = true;
-			m_Properties.IsFocused = glfwGetWindowAttrib(m_Window, GLFW_FOCUSED);
-			m_Properties.IsVSyncEnabled = true;
-
-            m_Graphic = GraphicFactory::CreateGraphic(GraphicSettingSerializer::Deserialize("Settings/GraphicSettings.yaml"));
+            m_Properties.IsActive = true;
+            m_Properties.IsFocused = glfwGetWindowAttrib(m_Window, GLFW_FOCUSED);
+            m_Properties.IsVSyncEnabled = true;
 
             glfwSetWindowUserPointer(m_Window, this);
             SetEventsCallBacks();
             RegisterEventsCallBacks();
 
-            if(m_Context != nullptr)
+            if (m_Context != nullptr)
             {
                 m_Context->Attach(m_Window);
             }
-		}
-		else
-		{
-			const char* lastError{ nullptr };
-			int32_t errorCode = glfwGetError(&lastError);
-			MOTION_ASSERT(m_Window, "Failed to create GLFW Window | GLFW Error Code:{0} | Error: {1}", errorCode, lastError);
-			return;
-		}
+        }
+        else
+        {
+            const char* lastError{ nullptr };
+            int32_t errorCode = glfwGetError(&lastError);
+            MOTION_ASSERT(m_Window, "Failed to create GLFW Window | GLFW Error Code:{0} | Error: {1}", errorCode, lastError);
+            return;
+        }
     }
 
     /**
-     * Destructor for GLFW_Window.
+     * @brief Destructor for the GLFW_Window class.
      *
-     * This destructor is essential as it releases any resources allocated by GLFW
-     * and ensures proper cleanup. It also saves the graphic settings to a file.
+     * This destructor is responsible for properly destroying the GLFW window
+     * associated with this object by calling glfwDestroyWindow on the internal
+     * window handle (m_Window). This ensures that all resources allocated for
+     * the window are released when the GLFW_Window object is destroyed.
      */
     GLFW_Window::~GLFW_Window()
     {
-        GraphicSettingSerializer::Serialize(m_Graphic->GetSettings(), "Settings/GraphicSettings.yaml");
-        
-        if( m_Window != nullptr )
-        {
-            glfwDestroyWindow(m_Window);
-            m_Window = nullptr;
-        }
+        glfwDestroyWindow(m_Window);
     }
+
 
     /**
      * GLFW callback function for window close events.
@@ -189,7 +184,8 @@ namespace Motion::Core
      */
     static void glfwWindowCloseEvent(GLFWwindow* window)
     {
-        EventRegistry<GLFWwindow*>::Invoke(EventType::WindowClose, window);
+        auto& eventRegistry = EventRegistry<GLFWwindow*>::GetInstance();
+        eventRegistry.Invoke(EventType::WindowClose, window);
     }
 
     /**
@@ -207,7 +203,8 @@ namespace Motion::Core
      */
     static void glfwWindowResizeEvent(GLFWwindow* window, int width, int height)
     {
-        EventRegistry<GLFWwindow*, int, int>::Invoke(EventType::WindowResize, window, width, height);
+        auto& eventRegistry = EventRegistry<GLFWwindow*, int, int>::GetInstance();
+        eventRegistry.Invoke(EventType::WindowResize, window, width, height);
     }
 
     /**
@@ -226,7 +223,8 @@ namespace Motion::Core
      */
     static void glfwWindowFocusEvent(GLFWwindow* window, int focused)
     {
-        EventRegistry<GLFWwindow*, int>::Invoke((focused) ? EventType::WindowFocusGain : EventType::WindowFocusLost, window, focused);
+        auto& eventRegistry = EventRegistry<GLFWwindow*, int>::GetInstance();
+        eventRegistry.Invoke((focused) ? EventType::WindowFocusGain : EventType::WindowFocusLost, window, focused);
     }
 
     /**
@@ -244,7 +242,8 @@ namespace Motion::Core
      */
     static void glfwWindowIconifyEvent(GLFWwindow* window, int iconified)
     {
-        EventRegistry<GLFWwindow*, int>::Invoke(EventType::WindowMinimize, window, iconified);
+        auto& eventRegistry = EventRegistry<GLFWwindow*, int>::GetInstance();
+        eventRegistry.Invoke(EventType::WindowMinimize, window, iconified);
     }
 
     /**
@@ -262,7 +261,8 @@ namespace Motion::Core
      */
     static void glfwWindowMaximizeEvent(GLFWwindow* window, int maximized)
     {
-        EventRegistry<GLFWwindow*, int>::Invoke(EventType::WindowMaximize, window, maximized);
+        auto& eventRegistry = EventRegistry<GLFWwindow*, int>::GetInstance();
+        eventRegistry.Invoke(EventType::WindowMaximize, window, maximized);
     }
 
     /**
@@ -280,7 +280,8 @@ namespace Motion::Core
      */
     static void glfwWindowPosEvent(GLFWwindow* window, int x, int y)
     {
-        EventRegistry<GLFWwindow*, int, int>::Invoke(EventType::WindowPosChange, window, x, y);
+        auto& eventRegistry = EventRegistry<GLFWwindow*, int, int>::GetInstance();
+        eventRegistry.Invoke(EventType::WindowPosChange, window, x, y);
     }
 
     /**
@@ -298,7 +299,8 @@ namespace Motion::Core
      */
     static void glfwWindowFrameBufferSizeEvent(GLFWwindow* window, int width, int height)
     {
-        EventRegistry<GLFWwindow*, int, int>::Invoke(EventType::WindowFrameBufferSizeChange, window, width, height);
+        auto& eventRegistry = EventRegistry<GLFWwindow*, int, int>::GetInstance();
+        eventRegistry.Invoke(EventType::WindowFrameBufferSizeChange, window, width, height);
     }
 
     /**
@@ -323,7 +325,8 @@ namespace Motion::Core
      */
     static void glfwKeyEvent(GLFWwindow* window, int key, int scancode, int action, int mods)
     {
-        EventRegistry<GLFWwindow*, int, int, int, int>::Invoke(EventType::KeyboardKeyPress, window, key, scancode, action, mods);
+        auto& eventRegistry = EventRegistry<GLFWwindow*, int, int, int, int>::GetInstance();
+        eventRegistry.Invoke(EventType::KeyboardKeyPress, window, key, scancode, action, mods);
     }
 
     /**
@@ -341,7 +344,8 @@ namespace Motion::Core
 
     static void glfwSetKeyCharEvent(GLFWwindow* window, unsigned int codepoint)
     {
-        EventRegistry<GLFWwindow*, unsigned int>::Invoke(EventType::KeybaordKeyChar, window, codepoint);
+        auto& eventRegistry = EventRegistry<GLFWwindow*, unsigned int>::GetInstance();
+        eventRegistry.Invoke(EventType::KeyboardKeyChar, window, codepoint);
     }
 
     /**
@@ -365,7 +369,8 @@ namespace Motion::Core
      */
     static void glfwMouseButtonEvent(GLFWwindow* window, int button, int action, int mods)
     {
-        EventRegistry<GLFWwindow*, int, int, int>::Invoke(EventType::MouseButtonDown, window, button, action, mods);
+        auto& eventRegistry = EventRegistry<GLFWwindow*, int, int, int>::GetInstance();
+        eventRegistry.Invoke(EventType::MouseButtonDown, window, button, action, mods);
     }
 
     /**
@@ -383,7 +388,8 @@ namespace Motion::Core
      */
     static void glfwMouseCursorPosEvent(GLFWwindow* window, double x, double y)
     {
-        EventRegistry<GLFWwindow*, double, double>::Invoke(EventType::MouseCursorPosChange, window, x, y);
+        auto& eventRegistry = EventRegistry<GLFWwindow*, double, double>::GetInstance();
+        eventRegistry.Invoke(EventType::MouseCursorPosChange, window, x, y);
     }
 
     /**
@@ -401,7 +407,8 @@ namespace Motion::Core
      */
     static void glfwMouseCursorEnterEvent(GLFWwindow* window, int entered)
     {
-        EventRegistry<GLFWwindow*, int>::Invoke(EventType::MouseCursorWindowEnter, window, entered);
+        auto& eventRegistry = EventRegistry<GLFWwindow*, int>::GetInstance();
+        eventRegistry.Invoke(EventType::MouseCursorWindowEnter, window, entered);
     }
 
     /**
@@ -421,7 +428,8 @@ namespace Motion::Core
      */
     static void glfwMouseScrollEvent(GLFWwindow* window, double x, double y)
     {
-        EventRegistry<GLFWwindow*, double, double>::Invoke(EventType::MouseWheelScroll, window, x, y);
+        auto& eventRegistry = EventRegistry<GLFWwindow*, double, double>::GetInstance();
+        eventRegistry.Invoke(EventType::MouseWheelScroll, window, x, y);
     }
 
     /**
@@ -430,7 +438,7 @@ namespace Motion::Core
      *
      * @ingroup window
      */
-    void GLFW_Window::SetEventsCallBacks() 
+    void GLFW_Window::SetEventsCallBacks()
     {
         glfwSetWindowCloseCallback(m_Window, glfwWindowCloseEvent);
         glfwSetWindowSizeCallback(m_Window, glfwWindowResizeEvent);
@@ -453,141 +461,167 @@ namespace Motion::Core
      *
      * @ingroup window
      */
-    void GLFW_Window::RegisterEventsCallBacks() 
+    void GLFW_Window::RegisterEventsCallBacks()
     {
-        EventRegistry<GLFWwindow*>::Register(EventType::WindowClose, [this](GLFWwindow* window)
-        {
-            EventWindowClose windowCloseEvent;
-            m_CallbackFunc(m_Properties.Handle, windowCloseEvent);
-        });
-
-        EventRegistry<GLFWwindow*, int, int>::Register(EventType::WindowResize, [this](GLFWwindow* window, int width, int height)
-        {
-            EventWindowResize windowResizeEvent(width, height);
-            m_Properties.Width = width;
-            m_Properties.Height = height;
-            m_CallbackFunc(m_Properties.Handle, windowResizeEvent);
-        });
-
-        EventRegistry<GLFWwindow*, int>::Register(EventType::WindowFocusGain, [this](GLFWwindow* window, int focused)
-        {
-            if(focused)
+        EventRegistry<GLFWwindow*>::GetInstance().Register(EventType::WindowClose,
+            [this](GLFWwindow* window)
             {
-                EventWindowFocusGain windowFocusEvent;
-                m_Properties.IsFocused = true;
-                m_CallbackFunc(m_Properties.Handle, windowFocusEvent);
+                EventWindowClose windowCloseEvent;
+                m_CallbackFunc(m_Properties.Handle, windowCloseEvent);
             }
-            else
+        );
+
+        EventRegistry<GLFWwindow*, int, int>::GetInstance().Register(EventType::WindowResize,
+            [this](GLFWwindow* window, int width, int height)
             {
-                EventWindowFocusLost windowLostFocusEvent;
-                m_Properties.IsFocused = false;
-                m_CallbackFunc(m_Properties.Handle, windowLostFocusEvent);
+                EventWindowResize windowResizeEvent(width, height);
+                m_Properties.Width = width;
+                m_Properties.Height = height;
+                m_CallbackFunc(m_Properties.Handle, windowResizeEvent);
             }
-        });
+        );
 
-        EventRegistry<GLFWwindow*, int>::Register(EventType::WindowMinimize, [this](GLFWwindow* window, int iconified)
-        {
-            if(iconified)
+        EventRegistry<GLFWwindow*, int>::GetInstance().Register(EventType::WindowFocusGain,
+            [this](GLFWwindow* window, int focused)
             {
-                EventWindowMinimized windowMinimizeEvent;
-                m_Properties.State = WindowState::Minimized;
-                m_CallbackFunc(m_Properties.Handle, windowMinimizeEvent);
+                if (focused)
+                {
+                    EventWindowFocusGain windowFocusEvent;
+                    m_Properties.IsFocused = true;
+                    m_CallbackFunc(m_Properties.Handle, windowFocusEvent);
+                }
+                else
+                {
+                    EventWindowFocusLost windowLostFocusEvent;
+                    m_Properties.IsFocused = false;
+                    m_CallbackFunc(m_Properties.Handle, windowLostFocusEvent);
+                }
             }
-        });
+        );
 
-        EventRegistry<GLFWwindow*, int>::Register(EventType::WindowMaximize, [this](GLFWwindow* window, int maximized)
-        {
-            if(maximized)
+        EventRegistry<GLFWwindow*, int>::GetInstance().Register(EventType::WindowMinimize,
+            [this](GLFWwindow* window, int iconified)
             {
-                EventWindowMaximized windowMaximizeEvent;
-                m_Properties.State = WindowState::Maximized;
-                m_CallbackFunc(m_Properties.Handle, windowMaximizeEvent);
+                if (iconified)
+                {
+                    EventWindowMinimized windowMinimizeEvent;
+                    m_Properties.State = WindowState::Minimized;
+                    m_CallbackFunc(m_Properties.Handle, windowMinimizeEvent);
+                }
             }
-        });
+        );
 
-        EventRegistry<GLFWwindow*, int, int>::Register(EventType::WindowPosChange, [this](GLFWwindow* window, int x, int y)
-        {
-            EventWindowPosChange windowMoveEvent(x, y);
-            m_Properties.PosX = x;
-            m_Properties.PosY = y;
-            m_CallbackFunc(m_Properties.Handle, windowMoveEvent);
-        });
-
-        EventRegistry<GLFWwindow*, int, int>::Register(EventType::WindowFrameBufferSizeChange, [this](GLFWwindow* window, int width, int height)
-        {
-            EventWindowFrameBufferSizeChange windowPixelSizeEvent(width, height);
-            m_Properties.PixelWidth = width;
-            m_Properties.PixelHeight = height;
-            m_CallbackFunc(m_Properties.Handle, windowPixelSizeEvent);
-        });
-
-        EventRegistry<GLFWwindow*, int, int, int, int>::Register(EventType::KeyboardKeyPress, [this](GLFWwindow* window, int key, int scancode, int action, int mods)
-        {
-            if(action == KeyState::KEY_PRESSED)
+        EventRegistry<GLFWwindow*, int>::GetInstance().Register(EventType::WindowMaximize,
+            [this](GLFWwindow* window, int maximized)
             {
-                EventKeyboardKeyPress<KeyCode> keyPressEvent(static_cast<KeyCode>(key));
-                m_CallbackFunc(m_Properties.Handle, keyPressEvent);
+                if (maximized)
+                {
+                    EventWindowMaximized windowMaximizeEvent;
+                    m_Properties.State = WindowState::Maximized;
+                    m_CallbackFunc(m_Properties.Handle, windowMaximizeEvent);
+                }
             }
+        );
 
-            if(action == KeyState::KEY_RELEASED)
+        EventRegistry<GLFWwindow*, int, int>::GetInstance().Register(EventType::WindowPosChange,
+            [this](GLFWwindow* window, int x, int y)
             {
-                EventKeyboardKeyRelease<KeyCode> keyReleaseEvent(static_cast<KeyCode>(key));
-                m_CallbackFunc(m_Properties.Handle, keyReleaseEvent);
+                EventWindowPosChange windowMoveEvent(x, y);
+                m_Properties.PosX = x;
+                m_Properties.PosY = y;
+                m_CallbackFunc(m_Properties.Handle, windowMoveEvent);
             }
+        );
 
-            if(action == KeyState::KEY_REPEAT)
+        EventRegistry<GLFWwindow*, int, int>::GetInstance().Register(EventType::WindowFrameBufferSizeChange,
+            [this](GLFWwindow* window, int width, int height)
             {
-                EventKeyboardKeyRepeate<KeyCode> keyPressEvent(static_cast<KeyCode>(key));
-                m_CallbackFunc(m_Properties.Handle, keyPressEvent);
+                EventWindowFrameBufferSizeChange windowPixelSizeEvent(width, height);
+                m_Properties.PixelWidth = width;
+                m_Properties.PixelHeight = height;
+                m_CallbackFunc(m_Properties.Handle, windowPixelSizeEvent);
             }
-        });
+        );
 
-        EventRegistry<GLFWwindow*, unsigned int>::Register(EventType::KeybaordKeyChar, [this](GLFWwindow* window, unsigned int codepoint)
-        {
-            EventKeyboardKeyChar keyCharEvent(codepoint);
-            m_CallbackFunc(m_Properties.Handle, keyCharEvent);
-        });
-
-        EventRegistry<GLFWwindow*, int, int, int>::Register(EventType::MouseButtonDown, [this](GLFWwindow* window, int button, int action, int mods)
-        {
-            if(action == MouseButtonState::MOUSE_BUTTON_PRESSED)
+        EventRegistry<GLFWwindow*, int, int, int, int>::GetInstance().Register(EventType::KeyboardKeyPress,
+            [this](GLFWwindow* window, int key, int scancode, int action, int mods)
             {
-                EventMouseButtonDown mouseButtonPressEvent(static_cast<MouseButton>(button));
-                m_CallbackFunc(m_Properties.Handle, mouseButtonPressEvent);
-            }
+                if (action == KeyState::KEY_PRESSED)
+                {
+                    EventKeyboardKeyPress<KeyCode> keyPressEvent(static_cast<KeyCode>(key));
+                    m_CallbackFunc(m_Properties.Handle, keyPressEvent);
+                }
 
-            if(action == MouseButtonState::MOUSE_BUTTON_RELEASED)
+                if (action == KeyState::KEY_RELEASED)
+                {
+                    EventKeyboardKeyRelease<KeyCode> keyReleaseEvent(static_cast<KeyCode>(key));
+                    m_CallbackFunc(m_Properties.Handle, keyReleaseEvent);
+                }
+
+                if (action == KeyState::KEY_REPEAT)
+                {
+                    EventKeyboardKeyRepeate<KeyCode> keyPressEvent(static_cast<KeyCode>(key));
+                    m_CallbackFunc(m_Properties.Handle, keyPressEvent);
+                }
+            }
+        );
+
+        EventRegistry<GLFWwindow*, unsigned int>::GetInstance().Register(EventType::KeyboardKeyChar,
+            [this](GLFWwindow* window, unsigned int codepoint)
             {
-                EventMouseButtonUp mouseButtonReleaseEvent(static_cast<MouseButton>(button));
-                m_CallbackFunc(m_Properties.Handle, mouseButtonReleaseEvent);
+                EventKeyboardKeyChar keyCharEvent(codepoint);
+                m_CallbackFunc(m_Properties.Handle, keyCharEvent);
             }
-        });
+        );
 
-        EventRegistry<GLFWwindow*, double, double>::Register(EventType::MouseCursorPosChange, [this](GLFWwindow* window, double x, double y)
-        {
-            EventMouseCursorMove<double> mouseCursorPosEvent(x, y);
-            m_CallbackFunc(m_Properties.Handle, mouseCursorPosEvent);
-        });
-
-        EventRegistry<GLFWwindow*, int>::Register(EventType::MouseCursorWindowEnter, [this](GLFWwindow* window, int entered)
-        {
-            if(entered)
+        EventRegistry<GLFWwindow*, int, int, int>::GetInstance().Register(EventType::MouseButtonDown,
+            [this](GLFWwindow* window, int button, int action, int mods)
             {
-                EventMouseCursorWindowEnter mouseCursorEnterEvent;
-                m_CallbackFunc(m_Properties.Handle, mouseCursorEnterEvent);
-            }
-            else
-            {
-                EventMouseCursorWindowLeave mouseCursorLeaveEvent;
-                m_CallbackFunc(m_Properties.Handle, mouseCursorLeaveEvent);
-            }
-        });
+                if (action == MouseButtonState::MOUSE_BUTTON_PRESSED)
+                {
+                    EventMouseButtonDown mouseButtonPressEvent(static_cast<MouseButton>(button));
+                    m_CallbackFunc(m_Properties.Handle, mouseButtonPressEvent);
+                }
 
-        EventRegistry<GLFWwindow*, double, double>::Register(EventType::MouseWheelScroll, [this](GLFWwindow* window, double x, double y)
-        {
-            EventMouseWheelScroll<double> mouseWheelScrollEvent(x, y);
-            m_CallbackFunc(m_Properties.Handle, mouseWheelScrollEvent);
-        });
+                if (action == MouseButtonState::MOUSE_BUTTON_RELEASED)
+                {
+                    EventMouseButtonUp mouseButtonReleaseEvent(static_cast<MouseButton>(button));
+                    m_CallbackFunc(m_Properties.Handle, mouseButtonReleaseEvent);
+                }
+            }
+        );
+
+        EventRegistry<GLFWwindow*, double, double>::GetInstance().Register(EventType::MouseCursorPosChange,
+            [this](GLFWwindow* window, double x, double y)
+            {
+                EventMouseCursorMove<double> mouseCursorPosEvent(x, y);
+                m_CallbackFunc(m_Properties.Handle, mouseCursorPosEvent);
+            }
+        );
+
+        EventRegistry<GLFWwindow*, int>::GetInstance().Register(EventType::MouseCursorWindowEnter,
+            [this](GLFWwindow* window, int entered)
+            {
+                if (entered)
+                {
+                    EventMouseCursorWindowEnter mouseCursorEnterEvent;
+                    m_CallbackFunc(m_Properties.Handle, mouseCursorEnterEvent);
+                }
+                else
+                {
+                    EventMouseCursorWindowLeave mouseCursorLeaveEvent;
+                    m_CallbackFunc(m_Properties.Handle, mouseCursorLeaveEvent);
+                }
+            }
+        );
+
+        EventRegistry<GLFWwindow*, double, double>::GetInstance().Register(EventType::MouseWheelScroll,
+            [this](GLFWwindow* window, double x, double y)
+            {
+                EventMouseWheelScroll<double> mouseWheelScrollEvent(x, y);
+                m_CallbackFunc(m_Properties.Handle, mouseWheelScrollEvent);
+            }
+        );
     }
 
     /**
@@ -601,7 +635,7 @@ namespace Motion::Core
      * @sa glfwWaitEvents
      * @sa SetEventsCallbackFunc
      */
-    void GLFW_Window::PollEvents()
+    void GLFW_Window::PollEvents() noexcept
     {
         glfwWaitEvents();
     }
@@ -619,7 +653,7 @@ namespace Motion::Core
      * @sa wglSwapLayerBuffers
      * @sa glXSwapBuffers
      */
-    void GLFW_Window::SwapBuffers()
+    void GLFW_Window::SwapBuffers() noexcept
     {
         if (m_Context != nullptr)
         {
@@ -636,7 +670,7 @@ namespace Motion::Core
      *
      * @param context A shared pointer to the IContext instance to be set.
      */
-    void GLFW_Window::SetContext(const std::shared_ptr<IContext>& context)
+    void GLFW_Window::SetContext(const std::shared_ptr<IContext>& context) noexcept
     {
         m_Context = context;
         if (m_Context != nullptr)
@@ -654,7 +688,7 @@ namespace Motion::Core
      *
      * @return A shared pointer to the IContext instance.
      */
-    std::shared_ptr<IContext> GLFW_Window::GetContext() const
+    std::shared_ptr<IContext> GLFW_Window::GetContext() const noexcept
     {
         return m_Context;
     }
@@ -670,7 +704,7 @@ namespace Motion::Core
      *
      * @param callbackFunc The callback function to be invoked when window events occur.
      */
-    void GLFW_Window::SetEventsCallbackFunc(const ApplicationCallbackFunction& callbackFunc)
+    void GLFW_Window::SetEventsCallbackFunc(const EventProcessingFunction& callbackFunc) noexcept
     {
         m_CallbackFunc = callbackFunc;
     }

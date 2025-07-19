@@ -6,73 +6,73 @@
 namespace Motion::Core
 {
     template<typename T>
-    requires std::is_enum_v<T> && std::is_convertible_v<T, KeyCode>
+        requires std::is_enum_v<T>&& std::is_convertible_v<T, KeyCode>
     class EventKeyboardKeyPress : public IEvent
     {
-        public:
-            EventKeyboardKeyPress(T keyCode) : m_KeyCode(keyCode) {}
-            virtual ~EventKeyboardKeyPress() = default;
+    public:
+        EventKeyboardKeyPress(T keyCode) : m_KeyCode(keyCode) {}
+        virtual ~EventKeyboardKeyPress() = default;
 
-            EVENT_CLASS_TYPE(EventType::KeyboardKeyPress);
-            EVENT_CLASS_CATEGORY(EventCategory::Keyboard);
+        EVENT_CLASS_TYPE(EventType::KeyboardKeyPress);
+        EVENT_CLASS_CATEGORY(EventCategory::Keyboard);
 
-            T KeyCode() const { return m_KeyCode; }
-            KeyState State() const { return KEY_PRESSED;}
+        T KeyCode() const { return m_KeyCode; }
+        KeyState State() const { return KEY_PRESSED; }
 
-        private:
-            T m_KeyCode{ static_cast<T>(KeyCode::Unknown) };
+    private:
+        T m_KeyCode{ static_cast<T>(KeyCode::Unknown) };
     };
 
     template<typename T>
-    requires std::is_enum_v<T> && std::is_convertible_v<T, KeyCode>
+        requires std::is_enum_v<T>&& std::is_convertible_v<T, KeyCode>
     class EventKeyboardKeyRelease : public IEvent
     {
-        public:
-            EventKeyboardKeyRelease(T keyCode) : m_KeyCode(keyCode) {}
-            virtual ~EventKeyboardKeyRelease() = default;
+    public:
+        EventKeyboardKeyRelease(T keyCode) : m_KeyCode(keyCode) {}
+        virtual ~EventKeyboardKeyRelease() = default;
 
-            EVENT_CLASS_TYPE(EventType::KeyboardKeyRelease);
-            EVENT_CLASS_CATEGORY(EventCategory::Keyboard);
+        EVENT_CLASS_TYPE(EventType::KeyboardKeyRelease);
+        EVENT_CLASS_CATEGORY(EventCategory::Keyboard);
 
-            T KeyCode() const { return m_KeyCode; }
-            KeyState State() const { return KEY_RELEASED;}
+        T KeyCode() const { return m_KeyCode; }
+        KeyState State() const { return KEY_RELEASED; }
 
-        private:
-            T m_KeyCode{ static_cast<T>(KeyCode::Unknown) };
+    private:
+        T m_KeyCode{ static_cast<T>(KeyCode::Unknown) };
     };
 
     template<typename T>
-    requires std::is_enum_v<T> && std::is_convertible_v<T, KeyCode>
+        requires std::is_enum_v<T>&& std::is_convertible_v<T, KeyCode>
     class EventKeyboardKeyRepeate : public IEvent
     {
-        public:
-            EventKeyboardKeyRepeate(T keyCode) : m_KeyCode(keyCode) {}
-            virtual ~EventKeyboardKeyRepeate() = default;
+    public:
+        EventKeyboardKeyRepeate(T keyCode) : m_KeyCode(keyCode) {}
+        virtual ~EventKeyboardKeyRepeate() = default;
 
-            EVENT_CLASS_TYPE(EventType::KeyboardKeyRepeate);
-            EVENT_CLASS_CATEGORY(EventCategory::Keyboard);
+        EVENT_CLASS_TYPE(EventType::KeyboardKeyRepeate);
+        EVENT_CLASS_CATEGORY(EventCategory::Keyboard);
 
-            T KeyCode() const { return m_KeyCode; }
-            KeyState State() const { return KEY_REPEAT;}
+        T KeyCode() const { return m_KeyCode; }
+        KeyState State() const { return KEY_REPEAT; }
 
-        private:
-            T m_KeyCode{ static_cast<T>(KeyCode::Unknown) };
+    private:
+        T m_KeyCode{ static_cast<T>(KeyCode::Unknown) };
     };
 
     class EventKeyboardKeyChar : public IEvent
     {
-        public:
-            EventKeyboardKeyChar(uint32_t character) : m_Character(character) {}
-            virtual ~EventKeyboardKeyChar() = default;
+    public:
+        EventKeyboardKeyChar(uint32_t character) : m_Character(character) {}
+        virtual ~EventKeyboardKeyChar() = default;
 
-            EVENT_CLASS_TYPE(EventType::KeybaordKeyChar);
-            EVENT_CLASS_CATEGORY(EventCategory::Keyboard);
+        EVENT_CLASS_TYPE(EventType::KeyboardKeyChar);
+        EVENT_CLASS_CATEGORY(EventCategory::Keyboard);
 
-            uint32_t CodePoint() const { return m_Character; }
-            KeyState State() const { return KEY_PRESSED; }
+        uint32_t CodePoint() const { return m_Character; }
+        KeyState State() const { return KEY_PRESSED; }
 
-        private:
-            uint32_t m_Character{ 0 };
+    private:
+        uint32_t m_Character{ 0 };
     };
 
 }

@@ -29,41 +29,41 @@ namespace Motion::App
 
     class Scene
     {
-        public:
-            Scene(const glm::vec2& viewportSize);
-            ~Scene();
+    public:
+        Scene(const glm::vec2& viewportSize);
+        ~Scene();
 
-            void OnUpdate(Motion::Core::WindowHandle handle, Motion::Core::Timer deltaTime);
-            void OnEvent(Motion::Core::WindowHandle handle, Motion::Core::IEvent& e);
-            void OnUIRenders(Motion::Core::WindowHandle handle);
-            void OnViewportSizeChanges(float width, float height);
+        void OnUpdate(Motion::Core::WindowHandle handle, Motion::Core::Timer deltaTime);
+        void OnEvent(Motion::Core::WindowHandle handle, Motion::Core::IEvent& e);
+        void OnUIRenders(Motion::Core::WindowHandle handle);
+        void OnViewportSizeChanges(float width, float height);
 
-            /* SIMULATION */
-            void StartSimulation();
-            void StopSimulation();
-            void ManualSimulation();
+        /* SIMULATION */
+        void StartSimulation();
+        void StopSimulation();
+        void ManualSimulation();
 
-            void SetSimulationMode(SimulationMode mode) { m_Enviroment.SimMode = mode; }
-            SimulationMode GetSimulationMode() { return m_Enviroment.SimMode; }
+        void SetSimulationMode(SimulationMode mode) { m_Environment.SimMode = mode; }
+        SimulationMode GetSimulationMode() { return m_Environment.SimMode; }
 
-        private:
-            /* IMGUI RENDERINGS */
-            void RenderScene(Motion::Core::WindowHandle handle);
-            void RenderEntities(Motion::Core::WindowHandle handle);
-            void RenderComponents(Motion::Core::WindowHandle handle, const std::shared_ptr<Motion::Core::Entity>& entity);
+    private:
+        /* IMGUI RENDERINGS */
+        void RenderScene(Motion::Core::WindowHandle handle);
+        void RenderEntities(Motion::Core::WindowHandle handle);
+        void RenderComponents(Motion::Core::WindowHandle handle, const std::shared_ptr<Motion::Core::Entity>& entity);
 
-            /* SIMULATION */
-            void UpdatePhysicsComponents(Motion::Core::Timer deltaTime);
+        /* SIMULATION */
+        void UpdatePhysicsComponents(Motion::Core::Timer deltaTime);
 
-        private:
-            std::shared_ptr<MainCamera> m_MainCamera{nullptr};
-            std::vector<std::shared_ptr<Motion::Core::Entity>> m_Entities{};
-            std::shared_ptr<Motion::Core::Entity> m_SelectedEntity{ Motion::Core::EntityBuilder::ENULL };
+    private:
+        std::shared_ptr<MainCamera> m_MainCamera{ nullptr };
+        std::vector<std::shared_ptr<Motion::Core::Entity>> m_Entities{};
+        std::shared_ptr<Motion::Core::Entity> m_SelectedEntity{ Motion::Core::EntityFactory::EMPTYENTITY };
 
-            /* SECENE ENVIROMENT */
-            SceneEnviroment m_Enviroment{};
-            bool m_SimulationStarted{ false };
+        /* SCENE ENVIRONMENT */
+        SceneEnvironment m_Environment{};
+        bool m_SimulationStarted{ false };
 
-            friend class SceneRenderer;
+        friend class SceneRenderer;
     };
 }

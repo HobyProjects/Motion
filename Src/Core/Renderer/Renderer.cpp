@@ -1,5 +1,4 @@
 #include "CorePCH.hpp"
-#include "Renderer.hpp"
 
 namespace Motion::Core
 {
@@ -12,15 +11,6 @@ namespace Motion::Core
 #else
 #error "Unknown platform!"
 #endif
-
-    static DrawCommandQueue s_CommandQueue;
-    static std::thread s_RenderThread;
-    static std::condition_variable s_RenderCV;
-    static std::mutex s_RenderMutex;
-    static bool s_FrameReady = false;
-    static bool s_Running = true;
-    static std::uint32_t s_DrawCalls = 0;
-
 
     /**
      * @brief Initializes the Renderer subsystem.
@@ -39,7 +29,7 @@ namespace Motion::Core
         switch (s_RenderingAPI)
         {
         case RenderingAPI::OpenGL:
-            GL_Renderer::Init();
+            GL_Init();
             break;
         case RenderingAPI::Vulkan:
             MOTION_ASSERT(false, "Vulkan is not implemented yet!");
@@ -51,27 +41,6 @@ namespace Motion::Core
             MOTION_ASSERT(false, "Unknown rendering API!");
             break;
         }
-
-
-        s_RenderThread = std::thread([this] {
-            while (s_Running) {
-                std::unique_lock lock(s_RenderMutex);
-                s_RenderCV.wait(lock, [] { return s_FrameReady; });
-
-                auto& commands = s_CommandQueue.Consume();
-                if (!commands.empty())
-                {
-                    std::sort(commands.begin(), commands.end(), [](const DrawCommand& a, const DrawCommand& b) { return a < b; });
-                    for (const auto& command : commands)
-                    {
-                        Flush(command);
-                        s_DrawCalls++;
-                    }
-                }
-
-                s_FrameReady = false;
-            }
-            });
     }
 
     /**
@@ -87,15 +56,10 @@ namespace Motion::Core
      */
     void Renderer::Quit()
     {
-        s_Running = false;
-        s_RenderCV.notify_one();
-        if (s_RenderThread.joinable())
-            s_RenderThread.join();
-
         switch (s_RenderingAPI)
         {
         case RenderingAPI::OpenGL:
-            GL_Renderer::Quit();
+            GL_Quit();
             break;
         case RenderingAPI::Vulkan:
             MOTION_ASSERT(false, "Vulkan is not implemented yet!");
@@ -114,7 +78,7 @@ namespace Motion::Core
      *
      * @return The currently selected RenderingAPI.
      */
-    RenderingAPI Renderer::GetAPI()
+    RenderingAPI Renderer::GetAPI() noexcept
     {
         return s_RenderingAPI;
     }
@@ -133,7 +97,7 @@ namespace Motion::Core
         switch (s_RenderingAPI)
         {
         case RenderingAPI::OpenGL:
-            GL_Renderer::Clear();
+            GL_Clear();
             break;
         case RenderingAPI::Vulkan:
             MOTION_ASSERT(false, "Vulkan is not implemented yet!");
@@ -161,7 +125,7 @@ namespace Motion::Core
         switch (s_RenderingAPI)
         {
         case RenderingAPI::OpenGL:
-            GL_Renderer::ClearColor(color);
+            GL_ClearColor(color);
             break;
         case RenderingAPI::Vulkan:
             MOTION_ASSERT(false, "Vulkan is not implemented yet!");
@@ -191,7 +155,7 @@ namespace Motion::Core
         switch (s_RenderingAPI)
         {
         case RenderingAPI::OpenGL:
-            GL_Renderer::SetViewport(x, y, width, height);
+            GL_SetViewport(x, y, width, height);
             break;
         case RenderingAPI::Vulkan:
             MOTION_ASSERT(false, "Vulkan is not implemented yet!");
@@ -219,7 +183,7 @@ namespace Motion::Core
         switch (s_RenderingAPI)
         {
         case RenderingAPI::OpenGL:
-            GL_Renderer::DrawIndexed(indicesCount);
+            GL_DrawIndexed(indicesCount);
             break;
         case RenderingAPI::Vulkan:
             MOTION_ASSERT(false, "Vulkan is not implemented yet!");
@@ -231,131 +195,6 @@ namespace Motion::Core
             MOTION_ASSERT(false, "Unknown rendering API!");
             break;
         }
-    }
-
-    /**
-     * @brief Submits a draw command to the renderer's command queue.
-     *
-     * This function enqueues the provided draw command so that it can be executed
-     * during the rendering process. The draw command encapsulates all necessary
-     * information required to render a specific object or set of objects.
-     *
-     * @param drawCommand A shared pointer to the DrawCommand to be submitted.
-     */
-    void Renderer::Submit(const DrawCommand& drawCommand)
-    {
-        s_CommandQueue.Submit(drawCommand);
-    }
-
-    /**
-     * @brief Prepares the renderer for a new frame.
-     *
-     * Resets the draw call counter to zero at the beginning of each frame.
-     * This should be called before any rendering operations for the current frame.
-     */
-    void Renderer::BeginFrame()
-    {
-        s_DrawCalls = 0;
-    }
-
-    /**
-     * @brief Signals the end of the current rendering frame.
-     *
-     * This function performs the following actions:
-     * - Swaps the draw buffers to present the rendered frame.
-     * - Sets the frame ready flag in a thread-safe manner.
-     * - Notifies one waiting thread that the frame is ready for further processing.
-     *
-     * Thread safety is ensured using a mutex lock when updating the frame ready flag.
-     */
-    void Renderer::EndFrame()
-    {
-
-
-
-        s_CommandQueue.SwapBuffers(); // Flip draw buffers
-        {
-            std::lock_guard lock(s_RenderMutex);
-            s_FrameReady = true;
-        }
-        s_RenderCV.notify_one();
-    }
-
-    /**
-     * @brief Executes the rendering of a draw command by binding the appropriate shader, material, and mesh.
-     *
-     * This function retrieves the material associated with the given draw command and selects the appropriate shader
-     * based on the material's shading method. It then binds the shader, sets the necessary uniform variables (such as
-     * model and view-projection matrices), binds the material and mesh, and issues a draw call. If the mesh or shader
-     * is not properly initialized, an error is logged.
-     *
-     * @param drawCommand The draw command containing references to the material, mesh, and transformation matrices to be used for rendering.
-     */
-    void Renderer::Flush(const DrawCommand& drawCommand)
-    {
-        std::shared_ptr<Material> material = AssetManager::GetInstance().Get<Material>(drawCommand.MaterialID);
-        std::shared_ptr<IShader> shader{ nullptr };
-
-        switch (material->GetShadingMethod())
-        {
-        case MaterialShadingMethod::Auto:
-            shader = AssetManager::GetInstance().Get<IShader>("DefaultShader");
-            break;
-        case MaterialShadingMethod::Phong:
-            shader = AssetManager::GetInstance().Get<IShader>("PhongShader");
-            break;
-        case MaterialShadingMethod::PBR:
-            shader = AssetManager::GetInstance().Get<IShader>("PBRShader");
-            break;
-        case MaterialShadingMethod::Unlit:
-            shader = AssetManager::GetInstance().Get<IShader>("UnlitShader");
-            break;
-        default:
-            MOTION_CORE_ERROR("Unknown shading method for material: {0}", material->GetName());
-            shader = AssetManager::GetInstance().Get<IShader>("DefaultShader");
-            break;
-        };
-
-        if (shader->IsAssetInitialized())
-        {
-            shader->Bind();
-            shader->SetUniform(UniformCache::GlobalAttri_ModelMatrix, drawCommand.ModelMatrix);
-            shader->SetUniform(UniformCache::GlobalAttri_ViewProjMatrix, drawCommand.ViewProjectionMatrix);
-
-            material->Bind(shader);
-            std::shared_ptr<Mesh> mesh = AssetManager::GetInstance().Get<Mesh>(drawCommand.MeshID);
-            if (mesh->IsAssetInitialized())
-            {
-                mesh->Bind();
-                DrawIndexed(mesh->GetIndicesCount());
-                mesh->Unbind();
-            }
-            else
-            {
-                MOTION_CORE_ERROR("Mesh with ID {0} is not initialized or does not exist.", drawCommand.MeshID);
-            }
-            material->Unbind();
-            shader->Unbind();
-        }
-    }
-
-    uint32_t Renderer::GetDrawCalls()
-    {
-        return s_DrawCalls;
-    }
-
-    /**
-     * @brief Retrieves the singleton instance of the Renderer.
-     *
-     * This static method ensures that only one instance of Renderer exists
-     * throughout the application's lifetime. It provides global access to that instance.
-     *
-     * @return Reference to the singleton Renderer instance.
-     */
-    Renderer& Renderer::GetInstance()
-    {
-        static Renderer instance;
-        return instance;
     }
 
     /**
@@ -371,7 +210,7 @@ namespace Motion::Core
         switch (s_RenderingAPI)
         {
         case RenderingAPI::OpenGL:
-            GL_Renderer::ApplyDrawFlags(flags);
+            GL_ApplyDrawFlags(flags);
             break;
         case RenderingAPI::Vulkan:
             MOTION_ASSERT(false, "Vulkan is not implemented yet!");
@@ -396,7 +235,7 @@ namespace Motion::Core
         switch (s_RenderingAPI)
         {
         case RenderingAPI::OpenGL:
-            GL_Renderer::ResetDrawFlags();
+            GL_ResetDrawFlags();
             break;
         case RenderingAPI::Vulkan:
             MOTION_ASSERT(false, "Vulkan is not implemented yet!");

@@ -9,14 +9,13 @@
 #include "Event.hpp"
 #include "Renderer.hpp"
 #include "UUID.hpp"
-#include "GraphicSettings.hpp"
 
 namespace Motion::Core
 {
     using WindowHandle = UUID;
     using NativeWindow = void*;
 
-    enum class WindowState : uint32_t
+    enum class WindowState : std::uint32_t
     {
         FullScreen = Bits<0>::value,
         Minimized = Bits<1>::value,
@@ -24,30 +23,25 @@ namespace Motion::Core
         Normal = Bits<3>::value
     };
 
-    inline uint32_t operator|(WindowState a, WindowState b) { return static_cast<uint32_t>(a) | static_cast<uint32_t>(b); }
-    inline uint32_t operator&(WindowState a, WindowState b) { return static_cast<uint32_t>(a) & static_cast<uint32_t>(b); }
-    inline uint32_t operator^(WindowState a, WindowState b) { return static_cast<uint32_t>(a) ^ static_cast<uint32_t>(b); }
-    inline uint32_t operator~(WindowState a) { return ~static_cast<uint32_t>(a); }
-
     struct WindowColorBit
     {
-        uint32_t RedBit{ 0 }, GreenBit{ 0 }, BlueBit{ 0 }, AlphaBit{ 0 };
-        uint32_t DepthBit{ 0 }, DepthStencilBit{ 0 };
+        std::uint32_t RedBit{ 0 }, GreenBit{ 0 }, BlueBit{ 0 }, AlphaBit{ 0 };
+        std::uint32_t DepthBit{ 0 }, DepthStencilBit{ 0 };
     };
 
     struct WindowProperties
     {
         std::string Title{ "" };
-        uint32_t Width{ 0 };
-        uint32_t Height{ 0 };
+        std::uint32_t Width{ 0 };
+        std::uint32_t Height{ 0 };
         WindowColorBit ColorBits;
-        uint32_t RefreshRate{ 60 };
-        uint32_t FixedWidth{ 0 };
-        uint32_t FixedHeight{ 0 };
-        uint32_t MinWidth{ 1280 };
-        uint32_t MinHeight{ 720 };
-        uint32_t PosX{ 0 };
-        uint32_t PosY{ 0 };
+        std::uint32_t RefreshRate{ 60 };
+        std::uint32_t FixedWidth{ 0 };
+        std::uint32_t FixedHeight{ 0 };
+        std::uint32_t MinWidth{ 1280 };
+        std::uint32_t MinHeight{ 720 };
+        std::uint32_t PosX{ 0 };
+        std::uint32_t PosY{ 0 };
         WindowHandle Handle{ 0 };
         int32_t PixelWidth{ 0 };
         int32_t PixelHeight{ 0 };
@@ -57,104 +51,144 @@ namespace Motion::Core
         bool IsFocused{ false };
     };
 
-    enum class BaseAPIs : uint32_t
+    enum class PlatformBaseAPIs : std::uint32_t
     {
         GLFW = Bits<1>::value,
         Win32 = Bits<2>::value
     };
 
-    inline uint32_t operator|(BaseAPIs a, BaseAPIs b) { return static_cast<uint32_t>(a) | static_cast<uint32_t>(b); }
-    inline uint32_t operator&(BaseAPIs a, BaseAPIs b) { return static_cast<uint32_t>(a) & static_cast<uint32_t>(b); }
-    inline uint32_t operator^(BaseAPIs a, BaseAPIs b) { return static_cast<uint32_t>(a) ^ static_cast<uint32_t>(b); }
-    inline uint32_t operator~(BaseAPIs a) { return ~static_cast<uint32_t>(a); }
-    
-    inline uint32_t operator|(BaseAPIs a, RenderingAPI b) { return static_cast<uint32_t>(a) | static_cast<uint32_t>(b); }
-    inline uint32_t operator&(BaseAPIs a, RenderingAPI b) { return static_cast<uint32_t>(a) & static_cast<uint32_t>(b); }
-    inline uint32_t operator^(BaseAPIs a, RenderingAPI b) { return static_cast<uint32_t>(a) ^ static_cast<uint32_t>(b); }
+    inline std::uint32_t operator|(WindowState a, WindowState b) { return static_cast<std::uint32_t>(a) | static_cast<std::uint32_t>(b); }
+    inline std::uint32_t operator&(WindowState a, WindowState b) { return static_cast<std::uint32_t>(a) & static_cast<std::uint32_t>(b); }
+
+    inline std::uint32_t operator|(PlatformBaseAPIs a, PlatformBaseAPIs b) { return static_cast<std::uint32_t>(a) | static_cast<std::uint32_t>(b); }
+    inline std::uint32_t operator&(PlatformBaseAPIs a, PlatformBaseAPIs b) { return static_cast<std::uint32_t>(a) & static_cast<std::uint32_t>(b); }
+
+    inline std::uint32_t operator|(PlatformBaseAPIs a, RenderingAPI b) { return static_cast<std::uint32_t>(a) | static_cast<std::uint32_t>(b); }
+    inline std::uint32_t operator&(PlatformBaseAPIs a, RenderingAPI b) { return static_cast<std::uint32_t>(a) & static_cast<std::uint32_t>(b); }
+    inline std::uint32_t operator|(RenderingAPI a, PlatformBaseAPIs b) { return static_cast<std::uint32_t>(a) | static_cast<std::uint32_t>(b); }
+    inline std::uint32_t operator&(RenderingAPI a, PlatformBaseAPIs b) { return static_cast<std::uint32_t>(a) & static_cast<std::uint32_t>(b); }
 
     class IPlatformBaseAPI
     {
-        public:
-            IPlatformBaseAPI() = default;
-            virtual ~IPlatformBaseAPI() = default;
+    public:
+        IPlatformBaseAPI() = default;
+        virtual ~IPlatformBaseAPI() = default;
 
-            virtual bool Init() = 0;
-            virtual void Quit() = 0;
-            virtual BaseAPIs API() = 0;
-            virtual bool IsInitialized() const = 0;
+        [[nodiscard]] virtual bool Init() noexcept = 0;
+        [[nodiscard]] virtual PlatformBaseAPIs API() const noexcept = 0;
+        [[nodiscard]] virtual bool IsInitialized() const noexcept = 0;
+
+        virtual void Quit() noexcept = 0;
     };
 
     class IContext
     {
-        public:
-            IContext() = default;
-            virtual ~IContext() = default;
+    public:
+        IContext() = default;
+        virtual ~IContext() = default;
 
-            virtual void Attach(NativeWindow) = 0;
-            virtual void Detach() = 0;
+        virtual void Attach(NativeWindow) noexcept = 0;
+        virtual void Detach() noexcept = 0;
+        virtual void SwapBuffers(NativeWindow) noexcept = 0;
 
-            virtual bool IsContextCreated() const = 0;
-            virtual NativeWindow GetCurrentContext() const = 0;
-            virtual void SwapBuffers(NativeWindow) = 0;
+        [[nodiscard]] virtual bool IsContextCreated() const noexcept = 0;
+        [[nodiscard]] virtual NativeWindow GetCurrentContext() const noexcept = 0;
     };
 
     class IWindow
     {
-        public:
-            IWindow() = default;
-            virtual ~IWindow() = default;
+    public:
+        IWindow() = default;
+        virtual ~IWindow() = default;
 
-            virtual bool IsActive() const = 0;
-            virtual bool IsFocused() const = 0;
-            virtual bool IsVSyncEnabled() const = 0;
-            virtual WindowHandle GetHandle() const = 0;
-            virtual NativeWindow GetNativeWindow() const = 0;
-            virtual WindowProperties& GetProperties() = 0;
-            virtual GraphicSettings& GetGraphicSettings() = 0;
-            virtual void PollEvents() = 0;
-            virtual void SwapBuffers() = 0;
-            virtual void SetEventsCallbackFunc(const ApplicationCallbackFunction&) = 0;
-            virtual void SetContext(const std::shared_ptr<IContext>& context) = 0;
-            virtual std::shared_ptr<IContext> GetContext() const = 0;
+        [[nodiscard]] virtual bool IsActive() const noexcept = 0;
+        [[nodiscard]] virtual bool IsFocused() const noexcept = 0;
+        [[nodiscard]] virtual bool IsVSyncEnabled() const noexcept = 0;
+        [[nodiscard]] virtual WindowHandle GetHandle() const noexcept = 0;
+        [[nodiscard]] virtual NativeWindow GetNativeWindow() const noexcept = 0;
+        [[nodiscard]] virtual WindowProperties& GetProperties() noexcept = 0;
+        [[nodiscard]] virtual std::shared_ptr<IContext> GetContext() const noexcept = 0;
+
+        virtual void PollEvents() = 0;
+        virtual void SwapBuffers() = 0;
+        virtual void SetEventsCallbackFunc(const EventProcessingFunction&) = 0;
+        virtual void SetContext(const std::shared_ptr<IContext>& context) = 0;
     };
 
     class CoreAPI
     {
-        private:
-            CoreAPI() = default;
-            ~CoreAPI() = default;
+    private:
+        CoreAPI() = default;
+        ~CoreAPI() = default;
 
-            CoreAPI(const CoreAPI&) = delete;
-            CoreAPI& operator=(const CoreAPI&) = delete;
-            CoreAPI(CoreAPI&&) = delete;
-            CoreAPI& operator=(CoreAPI&&) = delete;
+        CoreAPI(const CoreAPI&) = delete;
+        CoreAPI& operator=(const CoreAPI&) = delete;
+        CoreAPI(CoreAPI&&) = delete;
+        CoreAPI& operator=(CoreAPI&&) = delete;
 
-        public:
-            static bool Init();
-            static void Quit();
+    public:
+        /**
+         * @brief Returns the singleton instance of CoreAPI.
+         *
+         * This method ensures that only one instance of CoreAPI exists throughout the application.
+         * It initializes the instance if it does not already exist.
+         *
+         * @return Reference to the singleton CoreAPI instance.
+         */
+        [[nodiscard]] static CoreAPI& GetInstance() noexcept
+        {
+            static CoreAPI instance;
+            return instance;
+        }
 
-            static BaseAPIs API();
-            static std::shared_ptr<IPlatformBaseAPI> GetBaseAPI();
-            static std::shared_ptr<IContext> GetContext();
+    public:
+        [[nodiscard]] bool Init() noexcept;
+        [[nodiscard]] PlatformBaseAPIs API() const noexcept;
+        [[nodiscard]] std::shared_ptr<IPlatformBaseAPI> GetBaseAPI() const noexcept;
+        [[nodiscard]] std::shared_ptr<IContext> GetContext() const noexcept;
+
+        void Quit() noexcept;
+
+    private:
+        std::shared_ptr<IPlatformBaseAPI> m_PlatformBaseAPIService{ nullptr };
+        std::shared_ptr<IContext> m_ContextService{ nullptr };
     };
 
     class WindowManager
     {
-        private:
-            WindowManager() = default;
-            ~WindowManager() = default;
+    private:
+        WindowManager() = default;
+        ~WindowManager() = default;
 
-            WindowManager(const WindowManager&) = delete;
-            WindowManager& operator=(const WindowManager&) = delete;
-            WindowManager(WindowManager&&) = delete;
-            WindowManager& operator=(WindowManager&&) = delete;
+        WindowManager(const WindowManager&) = delete;
+        WindowManager& operator=(const WindowManager&) = delete;
+        WindowManager(WindowManager&&) = delete;
+        WindowManager& operator=(WindowManager&&) = delete;
 
-        public:
-            static WindowHandle UniqueHandle();
-            static std::shared_ptr<IWindow> Create(const std::string& title);
-            static void Destroy(std::shared_ptr<IWindow>& window);
-            static std::shared_ptr<IWindow> GetWindow(WindowHandle handle);
-            static std::shared_ptr<IWindow> GetActiveWindow();
+    public:
+        /**
+         * @brief Returns the singleton instance of WindowManager.
+         *
+         * This method ensures that only one instance of WindowManager exists throughout the application.
+         * It initializes the instance if it does not already exist.
+         *
+         * @return Reference to the singleton WindowManager instance.
+         */
+        [[nodiscard]] static WindowManager& GetInstance() noexcept
+        {
+            static WindowManager instance;
+            return instance;
+        }
+
+    public:
+        [[nodiscard]] std::shared_ptr<IWindow> Create(const std::string& title) noexcept;
+        [[nodiscard]] std::shared_ptr<IWindow> GetWindow(WindowHandle handle) const noexcept;
+        [[nodiscard]] std::shared_ptr<IWindow> GetActiveWindow() const noexcept;
+
+        void Destroy(WindowHandle windowHandle) noexcept;
+
+    private:
+        std::unordered_map<WindowHandle, std::shared_ptr<IWindow>> m_WindowManagementService;
     };
-    
+
 }

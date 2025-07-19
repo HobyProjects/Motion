@@ -984,42 +984,95 @@ namespace Motion::Core
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
     }
 
+    /******************************************************************************************
+     *                         GL_BufferFactory Implementation                                 *
+     *******************************************************************************************/
 
-
-
-
-
-
-
-
-
-
-
-    std::shared_ptr<GL_VertexBuffer> GL_CreateVertexBuffer(std::uint32_t alloca_size)
+     /**
+      * @brief Creates a shared pointer to a GL_VertexBuffer with the specified allocation size.
+      *
+      * This function allocates and returns a std::shared_ptr to a new GL_VertexBuffer object,
+      * initialized with the given allocation size in bytes.
+      *
+      * @param allocatorSize The size (in bytes) to allocate for the vertex buffer.
+      * @return std::shared_ptr<GL_VertexBuffer> A shared pointer to the created GL_VertexBuffer.
+      */
+    std::shared_ptr<GL_VertexBuffer> GL_CreateVertexBuffer(std::uint32_t allocatorSize)
     {
-        return std::make_shared<GL_VertexBuffer>(alloca_size);
+        return std::make_shared<GL_VertexBuffer>(allocatorSize);
     }
 
+    /**
+     * @brief Creates a shared pointer to a GL_VertexBuffer object initialized with the given data and size.
+     *
+     * This function allocates and constructs a GL_VertexBuffer using the provided vertex data and its size in bytes,
+     * and returns a std::shared_ptr managing the created buffer.
+     *
+     * @param data Pointer to the array of vertex data (float values).
+     * @param size The size of the vertex data in bytes.
+     * @return std::shared_ptr<GL_VertexBuffer> Shared pointer to the created GL_VertexBuffer.
+     */
     std::shared_ptr<GL_VertexBuffer> GL_CreateVertexBuffer(float* data, std::uint32_t size)
     {
         return std::make_shared<GL_VertexBuffer>(data, size);
     }
 
+    /**
+     * @brief Creates a shared pointer to a GL_ElementBuffer with the given data and size.
+     *
+     * This function constructs a new GL_ElementBuffer object using the provided data pointer and size,
+     * and returns it as a std::shared_ptr. The buffer is typically used for storing element (index) data
+     * for OpenGL rendering.
+     *
+     * @param data Pointer to the array of unsigned 32-bit integers representing the element data.
+     * @param size The number of elements in the data array.
+     * @return std::shared_ptr<GL_ElementBuffer> A shared pointer to the created GL_ElementBuffer.
+     */
     std::shared_ptr<GL_ElementBuffer> GL_CreateElementBuffer(std::uint32_t* data, std::uint32_t size)
     {
         return std::make_shared<GL_ElementBuffer>(data, size);
     }
 
+    /**
+     * @brief Creates a shared pointer to a GL_ShaderBuffer object.
+     *
+     * This function allocates and returns a std::shared_ptr to a new GL_ShaderBuffer
+     * with the specified size and binding point.
+     *
+     * @param size The size (in bytes) of the shader buffer to create.
+     * @param binding The binding point to which the shader buffer will be bound.
+     * @return std::shared_ptr<GL_ShaderBuffer> A shared pointer to the created GL_ShaderBuffer.
+     */
     std::shared_ptr<GL_ShaderBuffer> GL_CreateShaderBuffer(std::uint32_t size, BindingPoint binding)
     {
         return std::make_shared<GL_ShaderBuffer>(size, binding);
     }
 
+    /**
+     * @brief Creates a shared pointer to a GL_UniformBuffer object.
+     *
+     * This function allocates and returns a std::shared_ptr to a new GL_UniformBuffer
+     * with the specified size and binding point.
+     *
+     * @param size The size, in bytes, of the uniform buffer to create.
+     * @param binding The binding point to which the uniform buffer will be bound.
+     * @return std::shared_ptr<GL_UniformBuffer> A shared pointer to the created GL_UniformBuffer.
+     */
     std::shared_ptr<GL_UniformBuffer> GL_CreateUniformBuffer(std::uint32_t size, BindingPoint binding)
     {
         return std::make_shared<GL_UniformBuffer>(size, binding);
     }
 
+    /**
+     * @brief Creates a new OpenGL frame buffer object with the specified configuration.
+     *
+     * This function constructs and returns a shared pointer to a GL_FrameBuffer instance,
+     * initialized with the provided FrameBufferSpecification. The returned frame buffer
+     * can be used for off-screen rendering or as a render target in OpenGL.
+     *
+     * @param specification The configuration parameters for the frame buffer, such as size, attachments, and formats.
+     * @return std::shared_ptr<GL_FrameBuffer> A shared pointer to the newly created GL_FrameBuffer object.
+     */
     std::shared_ptr<GL_FrameBuffer> GL_CreateFrameBuffer(const FrameBufferSpecification& specification)
     {
         return std::make_shared<GL_FrameBuffer>(specification);

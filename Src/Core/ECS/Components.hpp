@@ -30,6 +30,17 @@ namespace Motion::Core
         TransformComponent() : ID(UniqueIdentity::GetUniqueID()) {};
         ~TransformComponent() = default;
 
+        /**
+         * @brief Computes the transformation matrix for the component.
+         *
+         * This function constructs a transformation matrix by combining translation, rotation, and scale.
+         * - Translation is applied first, using the `Translation` vector.
+         * - Rotation is applied next, converting the `Rotation` vector from degrees to radians and applying
+         *   rotations around the X, Y, and Z axes in that order.
+         * - Scaling is applied last, using the `Scale` vector.
+         *
+         * @return glm::mat4 The resulting transformation matrix (T * R * S).
+         */
         glm::mat4 GetTransform() const
         {
             glm::mat4 T{ glm::translate(glm::mat4(1.0f), Translation) };
@@ -53,10 +64,7 @@ namespace Motion::Core
         std::shared_ptr<StaticMesh> Mesh{ nullptr };
 
         MeshComponent() : ID(UniqueIdentity::GetUniqueID()) {};
-        MeshComponent(const std::string& name, const std::shared_ptr<StaticMesh>& mesh)
-            : Name(name), Mesh(mesh) {
-            ID = UniqueIdentity::GetUniqueID();
-        }
+        MeshComponent(const std::string& name, const std::shared_ptr<StaticMesh>& mesh) : Name(name), Mesh(mesh), ID(UniqueIdentity::GetUniqueID()) {}
         ~MeshComponent() = default;
     };
 
@@ -71,8 +79,7 @@ namespace Motion::Core
         glm::vec3 ForceAccum = glm::vec3(0.0f);
         bool Active = false;
 
-        PhysicsBodyComponent(float mass = 1.0f)
-            : Mass(mass)
+        PhysicsBodyComponent(float mass = 1.0f) : Mass(mass)
         {
             Type = (Mass <= 0.0f) ? BodyType::Static : BodyType::Dynamic;
         }

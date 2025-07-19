@@ -1,5 +1,4 @@
 #include "CorePCH.hpp"
-#include "Shaders.hpp"
 
 namespace Motion::Core
 {
@@ -12,12 +11,11 @@ namespace Motion::Core
      *
      * @param programID The identifier of the shader program to be deleted.
      */
-    void ShaderBuilder::DeleteShaderProgram(ShaderProgramID programID)
+    void ShaderCompiler::DeleteShaderProgram(ShaderProgramID programID)
     {
-        auto& renderer = Renderer::GetInstance();
-        switch (renderer.GetAPI())
+        switch (Renderer::GetAPI())
         {
-        case RenderingAPI::OpenGL:         GL_ShaderFactory::DeleteShaderProgram(programID); break;
+        case RenderingAPI::OpenGL:         GL_DeleteShaderProgram(programID); break;
         case RenderingAPI::Vulkan:         MOTION_ASSERT(false, "Vulkan is not implemented yet!"); break;
         case RenderingAPI::DirectX:        MOTION_ASSERT(false, "DirectX is not implemented yet!"); break;
         default:                           MOTION_ASSERT(false, "Unknown rendering API!"); break;
@@ -36,12 +34,11 @@ namespace Motion::Core
      *
      * @note Currently, only OpenGL is implemented. Vulkan and DirectX will trigger assertions.
      */
-    ShaderProgramID ShaderBuilder::CreateShaderProgram()
+    ShaderProgramID ShaderCompiler::CreateShaderProgram()
     {
-        auto& renderer = Renderer::GetInstance();
-        switch (renderer.GetAPI())
+        switch (Renderer::GetAPI())
         {
-        case RenderingAPI::OpenGL:         return GL_ShaderFactory::CreateShaderProgram();
+        case RenderingAPI::OpenGL:         return GL_CreateShaderProgram();
         case RenderingAPI::Vulkan:         MOTION_ASSERT(false, "Vulkan is not implemented yet!"); return 0;
         case RenderingAPI::DirectX:        MOTION_ASSERT(false, "DirectX is not implemented yet!"); return 0;
         default:                           MOTION_ASSERT(false, "Unknown rendering API!"); return 0;
@@ -58,12 +55,11 @@ namespace Motion::Core
      * @param shaderID    The identifier of the shader to attach.
      * @param programID   The identifier of the shader program to which the shader will be attached.
      */
-    void ShaderBuilder::AttachShaderProgram(ShaderID shaderID, ShaderProgramID programID)
+    void ShaderCompiler::AttachShaderProgram(ShaderID shaderID, ShaderProgramID programID)
     {
-        auto& renderer = Renderer::GetInstance();
-        switch (renderer.GetAPI())
+        switch (Renderer::GetAPI())
         {
-        case RenderingAPI::OpenGL:         GL_ShaderFactory::AttachShaderProgram(shaderID, programID); break;
+        case RenderingAPI::OpenGL:         GL_AttachShaderProgram(shaderID, programID); break;
         case RenderingAPI::Vulkan:         MOTION_ASSERT(false, "Vulkan is not implemented yet!"); break;
         case RenderingAPI::DirectX:        MOTION_ASSERT(false, "DirectX is not implemented yet!"); break;
         default:                           MOTION_ASSERT(false, "Unknown rendering API!"); break;
@@ -81,12 +77,11 @@ namespace Motion::Core
      * @param sourceCode The source code of the shader as a string.
      * @return ShaderID The identifier of the compiled shader, or 0 if compilation failed or the API is not implemented.
      */
-    ShaderID ShaderBuilder::CompileShader(ShaderType shaderType, const std::string& sourceCode)
+    ShaderID ShaderCompiler::CompileShader(ShaderType shaderType, const std::string& sourceCode)
     {
-        auto& renderer = Renderer::GetInstance();
-        switch (renderer.GetAPI())
+        switch (Renderer::GetAPI())
         {
-        case RenderingAPI::OpenGL:         return GL_ShaderFactory::CompileShader(shaderType, sourceCode);
+        case RenderingAPI::OpenGL:         return GL_CompileShader(shaderType, sourceCode);
         case RenderingAPI::Vulkan:         MOTION_ASSERT(false, "Vulkan is not implemented yet!"); return 0;
         case RenderingAPI::DirectX:        MOTION_ASSERT(false, "DirectX is not implemented yet!"); return 0;
         default:                           MOTION_ASSERT(false, "Unknown rendering API!"); return 0;
@@ -105,12 +100,11 @@ namespace Motion::Core
      * @note Currently, only the OpenGL backend is implemented. Vulkan and DirectX
      *       backends are not yet supported.
      */
-    void ShaderBuilder::LinkShaderProgram(ShaderProgramID programID)
+    void ShaderCompiler::LinkShaderProgram(ShaderProgramID programID)
     {
-        auto& renderer = Renderer::GetInstance();
-        switch (renderer.GetAPI())
+        switch (Renderer::GetAPI())
         {
-        case RenderingAPI::OpenGL:         GL_ShaderFactory::LinkShaderProgram(programID); break;
+        case RenderingAPI::OpenGL:         GL_LinkShaderProgram(programID); break;
         case RenderingAPI::Vulkan:         MOTION_ASSERT(false, "Vulkan is not implemented yet!"); break;
         case RenderingAPI::DirectX:        MOTION_ASSERT(false, "DirectX is not implemented yet!"); break;
         default:                           MOTION_ASSERT(false, "Unknown rendering API!"); break;
@@ -128,12 +122,11 @@ namespace Motion::Core
      *
      * @param programID The identifier of the shader program to validate.
      */
-    void ShaderBuilder::ValidateShaderProgram(ShaderProgramID programID)
+    void ShaderCompiler::ValidateShaderProgram(ShaderProgramID programID)
     {
-        auto& renderer = Renderer::GetInstance();
-        switch (renderer.GetAPI())
+        switch (Renderer::GetAPI())
         {
-        case RenderingAPI::OpenGL:         GL_ShaderFactory::ValidateShaderProgram(programID); break;
+        case RenderingAPI::OpenGL:         GL_ValidateShaderProgram(programID); break;
         case RenderingAPI::Vulkan:         MOTION_ASSERT(false, "Vulkan is not implemented yet!"); break;
         case RenderingAPI::DirectX:        MOTION_ASSERT(false, "DirectX is not implemented yet!"); break;
         default:                           MOTION_ASSERT(false, "Unknown rendering API!"); break;
@@ -171,7 +164,7 @@ namespace Motion::Core
      * @param filePath The path to the shader file to be read.
      * @return A std::string containing the contents of the shader file, or an empty string if the file does not exist or cannot be opened.
      */
-    std::string ShaderBuilder::ReadShaderFile(const std::filesystem::path& filePath)
+    std::string ShaderCompiler::ReadShaderFile(const std::filesystem::path& filePath)
     {
         if (!std::filesystem::exists(filePath))
         {
@@ -204,7 +197,7 @@ namespace Motion::Core
      *
      * @note If an unknown shader type is encountered, a warning is logged and that section is skipped.
      */
-    std::unordered_map<ShaderType, std::string> ShaderBuilder::ReadFullShaderFile(const std::filesystem::path& filePath)
+    std::unordered_map<ShaderType, std::string> ShaderCompiler::ReadFullShaderFile(const std::filesystem::path& filePath)
     {
         std::string source = ReadShaderFile(filePath);
         if (source.empty())
@@ -252,7 +245,7 @@ namespace Motion::Core
      * @return std::unordered_map<ShaderType, std::string> A map containing the shader source code
      *         for each shader type. Returns an empty map if files do not exist or cannot be read.
      */
-    std::unordered_map<ShaderType, std::string> ShaderBuilder::ReadShaderFiles(const std::filesystem::path& vertexPath, const std::filesystem::path& fragmentPath)
+    std::unordered_map<ShaderType, std::string> ShaderCompiler::ReadShaderFiles(const std::filesystem::path& vertexPath, const std::filesystem::path& fragmentPath)
     {
         if (!std::filesystem::exists(vertexPath) || !std::filesystem::exists(fragmentPath))
         {

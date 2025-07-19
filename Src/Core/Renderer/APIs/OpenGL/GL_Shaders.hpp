@@ -15,10 +15,6 @@ namespace Motion::Core
         virtual void Bind() const override;
         virtual void Unbind() const override;
 
-        virtual ShaderProgramID ProgramID() const override { return m_ProgramID; }
-        virtual std::string GetName() const override { return m_MetaData.AssetName; }
-        virtual UniformLocation GetUniformLocation(const std::string_view uniformName) override;
-
         virtual void SetUniform(const std::string_view uniformName, float value) override;
         virtual void SetUniform(const std::string_view uniformName, int32_t value) override;
         virtual void SetUniform(const std::string_view uniformName, uint32_t value) override;
@@ -30,8 +26,9 @@ namespace Motion::Core
         virtual void SetUniform(const std::string_view uniformName, const glm::mat4& value) override;
         virtual void ReflectUniforms() override;
 
-    public:
-        virtual std::int32_t GetMaxTextureUnits() const override;
+        [[nodiscard]] virtual ShaderProgramID ProgramID() const override { return m_ProgramID; }
+        [[nodiscard]] virtual std::string GetName() const override { return AssetInfo.AssetName; }
+        [[nodiscard]] virtual UniformLocation GetUniformLocation(const std::string_view uniformName) override;
 
     private:
         ShaderProgramID m_ProgramID{ 0 };
@@ -40,23 +37,11 @@ namespace Motion::Core
         std::unordered_map<std::string_view, UniformLocation> m_UniformLocationsCache{};
     };
 
-    class GL_ShaderFactory
-    {
-    private:
-        GL_ShaderFactory() = default;
-        ~GL_ShaderFactory() = default;
+    void GL_LinkShaderProgram(ShaderProgramID programID);
+    void GL_ValidateShaderProgram(ShaderProgramID programID);
+    void GL_AttachShaderProgram(ShaderID shaderID, ShaderProgramID programID);
+    void GL_DeleteShaderProgram(ShaderProgramID programID);
 
-        GL_ShaderFactory(const GL_ShaderFactory&) = delete;
-        GL_ShaderFactory& operator=(const GL_ShaderFactory&) = delete;
-        GL_ShaderFactory(GL_ShaderFactory&&) = delete;
-        GL_ShaderFactory& operator=(GL_ShaderFactory&&) = delete;
-
-    public:
-        static ShaderProgramID CreateShaderProgram();
-        static void AttachShaderProgram(ShaderID shaderID, ShaderProgramID programID);
-        static ShaderID CompileShader(ShaderType shaderType, const std::string& sourceCode);
-        static void LinkShaderProgram(ShaderProgramID programID);
-        static void ValidateShaderProgram(ShaderProgramID programID);
-        static void DeleteShaderProgram(ShaderProgramID programID);
-    };
+    [[nodiscard]] ShaderProgramID GL_CreateShaderProgram();
+    [[nodiscard]] ShaderID GL_CompileShader(ShaderType shaderType, const std::string& sourceCode);
 }

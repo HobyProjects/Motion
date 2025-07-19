@@ -9,48 +9,47 @@ namespace Motion::Core
 {
     class GLFW_BaseAPI final : public IPlatformBaseAPI
     {
-        public:
-            GLFW_BaseAPI() = default;
-            virtual ~GLFW_BaseAPI() = default;
+    public:
+        GLFW_BaseAPI() = default;
+        virtual ~GLFW_BaseAPI() = default;
 
-            virtual bool Init() override;
-            virtual void Quit() override;
-            virtual BaseAPIs API() override { return BaseAPIs::GLFW; }
-            virtual bool IsInitialized() const override { return m_Initialized; }
+        [[nodiscard]] virtual bool Init() noexcept override;
+        [[nodiscard]] virtual PlatformBaseAPIs API() const noexcept override { return PlatformBaseAPIs::GLFW; }
+        [[nodiscard]] virtual bool IsInitialized() const noexcept override { return m_Initialized; }
 
-        private:
-            bool m_Initialized{ false };    
+        virtual void Quit() noexcept override;
+
+    private:
+        bool m_Initialized{ false };
     };
 
     class GLFW_Window final : public IWindow
     {
-        public:
-            GLFW_Window(WindowHandle windowHandle, const std::string& title, const std::shared_ptr<IContext> context);
-            virtual ~GLFW_Window();
+    public:
+        GLFW_Window(WindowHandle windowHandle, const std::string& title, const std::shared_ptr<IContext> context);
+        virtual ~GLFW_Window();
 
-            virtual bool IsActive() const override { return m_Properties.IsActive; }
-            virtual bool IsFocused() const override { return m_Properties.IsFocused; }
-            virtual bool IsVSyncEnabled() const override { return m_Properties.IsVSyncEnabled; }
-            virtual WindowHandle GetHandle() const override { return m_Properties.Handle; }
-            
-            virtual NativeWindow GetNativeWindow() const override { return m_Window; }
-            virtual WindowProperties& GetProperties() override { return m_Properties; }
-            virtual GraphicSettings& GetGraphicSettings() override { return m_Graphic->GetSettings(); }
-            virtual void PollEvents() override;
-            virtual void SwapBuffers() override;
-            virtual void SetEventsCallbackFunc(const ApplicationCallbackFunction&) override;
-            virtual void SetContext(const std::shared_ptr<IContext>& context) override;
-            virtual std::shared_ptr<IContext> GetContext() const override;
+        [[nodiscard]] virtual bool IsActive() const noexcept override { return m_Properties.IsActive; }
+        [[nodiscard]] virtual bool IsFocused() const noexcept override { return m_Properties.IsFocused; }
+        [[nodiscard]] virtual bool IsVSyncEnabled() const noexcept override { return m_Properties.IsVSyncEnabled; }
+        [[nodiscard]] virtual WindowHandle GetHandle() const noexcept override { return m_Properties.Handle; }
+        [[nodiscard]] virtual NativeWindow GetNativeWindow() const noexcept override { return m_Window; }
+        [[nodiscard]] virtual WindowProperties& GetProperties() noexcept override { return m_Properties; }
+        [[nodiscard]] virtual std::shared_ptr<IContext> GetContext() const noexcept override;
 
-        private:
-            void SetEventsCallBacks();
-            void RegisterEventsCallBacks();
+        virtual void PollEvents() noexcept override;
+        virtual void SwapBuffers() noexcept override;
+        virtual void SetEventsCallbackFunc(const EventProcessingFunction&) noexcept override;
+        virtual void SetContext(const std::shared_ptr<IContext>& context) noexcept override;
 
-        private:
-            WindowProperties m_Properties{};
-            GLFWwindow* m_Window{ nullptr };
-            std::shared_ptr<IGraphic> m_Graphic{ nullptr };
-            std::shared_ptr<IContext> m_Context{ nullptr };
-            ApplicationCallbackFunction m_CallbackFunc{ nullptr };
+    private:
+        void SetEventsCallBacks();
+        void RegisterEventsCallBacks();
+
+    private:
+        WindowProperties m_Properties{};
+        GLFWwindow* m_Window{ nullptr };
+        std::shared_ptr<IContext> m_Context{ nullptr };
+        EventProcessingFunction m_CallbackFunc{ nullptr };
     };
 }

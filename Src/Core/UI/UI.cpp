@@ -5,7 +5,7 @@ namespace Motion::Core
     /**
      * @brief Initializes the IMGUI library and sets up the rendering backend.
      *
-     * @param[in] whnd The window handle to associate the IMGUI context with.
+     * @param[in] windowHandle The window handle to associate the IMGUI context with.
      *
      * @details This function will first check if the window handle is valid and if the window exists.
      * If the window exists, it will create the IMGUI context and associate it with the window.
@@ -16,9 +16,10 @@ namespace Motion::Core
      * @warning If the specified API or renderer is not supported, this function will assert.
      * @warning If the IMGUI context fails to initialize, this function will assert.
      */
-    void UI::Init(WindowHandle whnd)
+    void UserInterfaceInitializer::Init(WindowHandle windowHandle) noexcept
     {
-        std::weak_ptr<IWindow> window = WindowManager::GetWindow(whnd);
+        auto& windowManager = WindowManager::GetInstance();
+        std::weak_ptr<IWindow> window = windowManager.GetWindow(windowHandle);
         if (!window.expired())
         {
             auto windowPtr = window.lock();
@@ -29,12 +30,12 @@ namespace Motion::Core
             io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
             io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
 
-            switch (CoreAPI::API())
+            auto& coreAPI = CoreAPI::GetInstance();
+            switch (coreAPI.API())
             {
-            case BaseAPIs::GLFW:
+            case PlatformBaseAPIs::GLFW:
             {
-                auto& renderer = Renderer::GetInstance();
-                switch (renderer.GetAPI())
+                switch (Renderer::GetAPI())
                 {
                 case RenderingAPI::OpenGL:
                 {
@@ -61,7 +62,7 @@ namespace Motion::Core
 
                 break;
             }
-            case BaseAPIs::Win32:
+            case PlatformBaseAPIs::Win32:
             {
                 MOTION_ASSERT(false, "Win32 is not implemented yet!");
                 break;
@@ -91,10 +92,9 @@ namespace Motion::Core
      * @warning If the specified API or renderer is not supported, this function will assert.
      * @warning If the IMGUI context fails to destroy, this function will assert.
      */
-    void UI::Quit()
+    void UserInterfaceInitializer::Quit() const noexcept
     {
-        auto& renderer = Renderer::GetInstance();
-        switch (renderer.GetAPI())
+        switch (Renderer::GetAPI())
         {
         case RenderingAPI::OpenGL:      ImGui_ImplOpenGL3_Shutdown(); break;
         case RenderingAPI::Vulkan:      MOTION_ASSERT(false, "Vulkan is not implemented yet!"); break;
@@ -102,10 +102,11 @@ namespace Motion::Core
         default:                        MOTION_ASSERT(false, "Unknown rendering API!"); break;
         };
 
-        switch (CoreAPI::API())
+        auto& coreAPI = CoreAPI::GetInstance();
+        switch (coreAPI.API())
         {
-        case BaseAPIs::GLFW:        ImGui_ImplGlfw_Shutdown(); break;
-        case BaseAPIs::Win32:       MOTION_ASSERT(false, "Win32 is not implemented yet!"); break;
+        case PlatformBaseAPIs::GLFW:        ImGui_ImplGlfw_Shutdown(); break;
+        case PlatformBaseAPIs::Win32:       MOTION_ASSERT(false, "Win32 is not implemented yet!"); break;
         default:                    MOTION_ASSERT(false, "Unknown base API!"); break;
         };
 
@@ -119,7 +120,7 @@ namespace Motion::Core
      * modifying the colors of the ImGuiStyle structure. The colors are set to a dark theme, which is
      * a dark blue-gray color scheme.
      */
-    void UI::UseColorDark()
+    void UserInterfaceInitializer::UseColorDark()
     {
         auto& colors = ImGui::GetStyle().Colors;
         colors[ImGuiCol_WindowBg] = ImVec4{ 0.1f, 0.105f, 0.11f, 1.0f };
@@ -159,7 +160,7 @@ namespace Motion::Core
      * colors of the ImGuiStyle structure to a light color scheme and adjusts style properties such as
      * alpha and frame rounding. It also includes additional settings for when viewports are enabled.
      */
-    void UI::UseColorLight()
+    void UserInterfaceInitializer::UseColorLight()
     {
         ImGui::StyleColorsLight();
         ImGuiStyle& style = ImGui::GetStyle();
@@ -222,7 +223,7 @@ namespace Motion::Core
      * @param values The glm::vec3 to be edited.
      * @param resetValue The value to which the glm::vec3 should be reset when the reset button is clicked.
      */
-    void UI::CustomControl::DragControllerVec3(const char* label, glm::vec3& values, float resetValue)
+    void CustomUIControl::DragControllerVec3(const char* label, glm::vec3& values, float resetValue)
     {
         ImGui::PushID(label);
         ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, { 0.0f, 0.0f });

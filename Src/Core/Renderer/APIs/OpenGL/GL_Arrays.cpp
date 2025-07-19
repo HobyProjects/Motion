@@ -69,7 +69,6 @@ namespace Motion::Core
     {
         return m_IndexBuffer;
     }
-    
 
     std::shared_ptr<GL_VertexArray> GL_CreateVertexArray()
     {

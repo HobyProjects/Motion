@@ -22,9 +22,6 @@ namespace Motion::Core
         [[nodiscard]] virtual TextureSpecification& GetSpecification() noexcept override;
         [[nodiscard]] virtual TextureSource Source() const noexcept override;
 
-        virtual void SetGlobalAnisotropy(std::uint32_t level) const noexcept override;
-        [[nodiscard]] virtual std::uint32_t GetGlobalAnisotropy() const noexcept override;
-
     protected:
         [[nodiscard]] virtual bool LoadTextureFromFile(const std::filesystem::path& textureFile, bool flip) override;
         [[nodiscard]] virtual bool GenerateTexture2D(std::uint32_t width, std::uint32_t height) override;

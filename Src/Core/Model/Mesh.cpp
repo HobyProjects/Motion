@@ -36,12 +36,12 @@ namespace Motion::Core
         if (m_VertexBuffer && m_ElementBuffer && m_VertexArray)
         {
             MOTION_CORE_INFO("Mesh '{}' created successfully with {} vertices and {} indices.", name, verticesSize / sizeof(float), indicesCount);
-            m_MetaData.IsAssetInitialized = true;
+            AssetInfo.IsAssetInitialized = true;
         }
         else
         {
             MOTION_ASSERT(false, "Failed to create Mesh '{}': VertexBuffer, ElementBuffer, or VertexArray is null.", name);
-            m_MetaData.IsAssetInitialized = false;
+            AssetInfo.IsAssetInitialized = false;
         }
     }
 
@@ -79,12 +79,12 @@ namespace Motion::Core
         if (m_VertexBuffer && m_ElementBuffer && m_VertexArray)
         {
             MOTION_CORE_INFO("Mesh '{}' created successfully with {} vertices and {} indices.", name, verticesSize / sizeof(float), indicesCount);
-            m_MetaData.IsAssetInitialized = true;
+            AssetInfo.IsAssetInitialized = true;
         }
         else
         {
             MOTION_ASSERT(false, "Failed to create Mesh '{}': VertexBuffer, ElementBuffer, or VertexArray is null.", name);
-            m_MetaData.IsAssetInitialized = false;
+            AssetInfo.IsAssetInitialized = false;
         }
     }
 
@@ -123,10 +123,8 @@ namespace Motion::Core
      */
     void Mesh::Render()
     {
-        auto& renderer = Renderer::GetInstance();
-
         Bind();
-        renderer.DrawIndexed(m_IndicesCount);
+        Renderer::DrawIndexed(m_IndicesCount);
         Unbind();
     }
 

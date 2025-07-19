@@ -46,7 +46,7 @@ namespace Motion::App
         ManualStep
     };
 
-    struct SceneEnviroment
+    struct SceneEnvironment
     {
         DirectionalLight DirectionalLight{};
         PhysicsWorld Physics{};

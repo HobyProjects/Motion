@@ -72,7 +72,6 @@
 #include "GLFW_InputsHandler.hpp"
 
 //Renderer
-#include "DrawCommand.hpp"
 #include "Buffers.hpp"
 #include "Shaders.hpp"
 #include "Texture.hpp"
@@ -99,7 +98,7 @@
 #include "Window.hpp"
 #include "GLFW_Window.hpp"
 
-//UI
+//UserInterfaceInitializer
 #include "UI.hpp"
 
 //ECS
@@ -108,7 +107,3 @@
 
 //Platform
 #include "DialogBoxes.hpp"
-
-//Graphics
-#include "GraphicSettings.hpp"
-#include "GLFW_GL_GraphicSettings.hpp"

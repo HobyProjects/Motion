@@ -1,5 +1,4 @@
 #include "CorePCH.hpp"
-#include "Material.hpp"
 
 namespace Motion::Core
 {
@@ -13,7 +12,7 @@ namespace Motion::Core
     Material::Material(const UUID& uuid, const std::string& name) :
         AssetBase(uuid, name, AssetType::Material, "Undefined")
     {
-        m_MetaData.IsAssetInitialized = true;
+        AssetInfo.IsAssetInitialized = true;
         m_ShadingMethod = MaterialShadingMethod::Auto;
     }
 
@@ -29,7 +28,7 @@ namespace Motion::Core
     Material::Material(const std::string& name) :
         AssetBase(UniqueIdentity::GetUniqueID(), name, AssetType::Material, "Undefined")
     {
-        m_MetaData.IsAssetInitialized = true;
+        AssetInfo.IsAssetInitialized = true;
         m_ShadingMethod = MaterialShadingMethod::Auto;
     }
 
@@ -102,9 +101,6 @@ namespace Motion::Core
      */
     void Material::Bind(const std::shared_ptr<IShader>& shader) noexcept
     {
-        static std::once_flag flag;
-        std::call_once(flag, [this]() { DetermineShadingMethod(); });
-
         if (shader->IsAssetInitialized())
         {
             for (const auto& [uniformName, value] : m_FloatParameters)
@@ -126,16 +122,10 @@ namespace Motion::Core
             {
                 if (texture->IsAssetInitialized())
                 {
-                    static std::uint32_t bindingPoint = 0;
-
-                    if (bindingPoint >= shader->GetMaxTextureUnits())
-                    {
-                        MOTION_CORE_ERROR("Exceeded maximum texture units in shader: {0}", shader->GetName());
-                        return;
-                    }
+                    std::uint32_t bindingPoint{ 0 };
 
                     texture->Bind(bindingPoint);
-                    shader->SetUniform(uniformName, bindingPoint);
+                    shader->SetUniform(uniformName, bindingPoint++);
                 }
             }
         }

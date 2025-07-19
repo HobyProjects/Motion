@@ -84,13 +84,11 @@ set(
     ${MOTION_CORE_DIR}/Renderer/Buffers.hpp
     ${MOTION_CORE_DIR}/Renderer/Shaders.hpp
     ${MOTION_CORE_DIR}/Renderer/Renderer.hpp
-    ${MOTION_CORE_DIR}/Renderer/DrawCommand.hpp
     ${MOTION_CORE_DIR}/Renderer/Texture.hpp
     ${MOTION_CORE_DIR}/Renderer/Arrays.hpp
     ${MOTION_CORE_DIR}/Renderer/Camera.hpp
     ${MOTION_CORE_DIR}/Renderer/Camera3D.hpp
     ${MOTION_CORE_DIR}/Renderer/Thumbnail.hpp
-    ${MOTION_CORE_DIR}/Renderer/GraphicSettings.hpp
     ${MOTION_CORE_DIR}/Renderer/SkyBox.hpp
     ${MOTION_CORE_DIR}/Renderer/PostProcessor.hpp
 
@@ -107,7 +105,6 @@ set(
     ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL/GL_Texture.hpp
     ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL/GL_Arrays.hpp
     ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL/GLFW_GL_Context.hpp
-    ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL/GLFW_GL_GraphicSettings.hpp
 
     ${MOTION_CORE_DIR}/Window/Window.hpp
     ${MOTION_CORE_DIR}/Window/GLFW_Window.hpp
@@ -129,11 +126,9 @@ set(
     ${MOTION_CORE_DIR}/Renderer/Shaders.cpp
     ${MOTION_CORE_DIR}/Renderer/Texture.cpp
     ${MOTION_CORE_DIR}/Renderer/Renderer.cpp
-    ${MOTION_CORE_DIR}/Renderer/DrawCommand.cpp
     ${MOTION_CORE_DIR}/Renderer/Arrays.cpp
     ${MOTION_CORE_DIR}/Renderer/Camera3D.cpp
     ${MOTION_CORE_DIR}/Renderer/Thumbnail.cpp
-    ${MOTION_CORE_DIR}/Renderer/GraphicSettings.cpp
     ${MOTION_CORE_DIR}/Renderer/SkyBox.cpp
     ${MOTION_CORE_DIR}/Renderer/PostProcessor.cpp
 
@@ -153,7 +148,6 @@ set(
     ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL/GL_Texture.cpp
     ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL/GL_Arrays.cpp
     ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL/GLFW_GL_Context.cpp
-    ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL/GLFW_GL_GraphicSettings.cpp
 
     ${MOTION_CORE_DIR}/Window/Window.cpp
     ${MOTION_CORE_DIR}/Window/GLFW_Window.cpp

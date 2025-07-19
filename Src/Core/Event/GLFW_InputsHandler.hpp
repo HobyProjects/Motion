@@ -6,7 +6,7 @@
 
 namespace Motion::Core
 {
-    KeyState GLFW_KeyState(WindowHandle windowHandle, KeyCode key);
-    MouseButtonState GLFW_MouseButtonState(WindowHandle windowHandle, MouseButton button);
-    glm::vec2 GLFW_CurrentMousePosition(WindowHandle windowHandle);
+    [[nodiscard]] KeyState GLFW_KeyState(WindowHandle windowHandle, KeyCode key) noexcept;
+    [[nodiscard]] MouseButtonState GLFW_MouseButtonState(WindowHandle windowHandle, MouseButton button) noexcept;
+    [[nodiscard]] glm::vec2 GLFW_CurrentMousePosition(WindowHandle windowHandle) noexcept;
 }

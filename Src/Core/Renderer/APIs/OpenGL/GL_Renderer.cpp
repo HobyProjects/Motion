@@ -3,7 +3,7 @@
 
 namespace Motion::Core
 {
-    void GL_Renderer::Init()
+    void GL_Init()
     {
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -19,32 +19,32 @@ namespace Motion::Core
 #endif
     }
 
-    void GL_Renderer::Quit()
+    void GL_Quit()
     {
 
     }
 
-    void GL_Renderer::Clear()
+    void GL_Clear()
     {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     }
 
-    void GL_Renderer::ClearColor(const glm::vec4& color)
+    void GL_ClearColor(const glm::vec4& color)
     {
         glClearColor(color.r, color.g, color.b, color.a);
     }
 
-    void GL_Renderer::SetViewport(int32_t x, int32_t y, int32_t width, int32_t height)
+    void GL_SetViewport(int32_t x, int32_t y, int32_t width, int32_t height)
     {
         glViewport(x, y, width, height);
     }
 
-    void GL_Renderer::DrawIndexed(uint32_t indicesCount)
+    void GL_DrawIndexed(uint32_t indicesCount)
     {
         glDrawElements(GL_TRIANGLES, indicesCount, GL_UNSIGNED_INT, NULL);
     }
 
-    void GL_Renderer::ApplyDrawFlags(DrawFlags flags)
+    void GL_ApplyDrawFlags(DrawFlags flags)
     {
         switch (flags)
         {
@@ -64,16 +64,13 @@ namespace Motion::Core
             glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
             break;
         }
-        case DrawFlags::Instanced:
-        {
-            // Instancing is not yet implemented
-            MOTION_ASSERT(false, "Instancing is not yet implemented!");
+        default:
+            MOTION_CORE_WARN("Unknown draw flag: {0}", static_cast<std::uint8_t>(flags));
             break;
-        }
         };
     }
 
-    void GL_Renderer::ResetDrawFlags()
+    void GL_ResetDrawFlags()
     {
         glDepthMask(GL_TRUE);
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);

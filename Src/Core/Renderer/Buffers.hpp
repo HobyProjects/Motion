@@ -252,7 +252,7 @@ namespace Motion::Core
         BufferFactory& operator=(BufferFactory&&) = delete;
 
     public:
-        static std::shared_ptr<IVertexBuffer> CreateVertexBuffer(std::uint32_t alloca_size);
+        static std::shared_ptr<IVertexBuffer> CreateVertexBuffer(std::uint32_t allocatorSize);
         static std::shared_ptr<IVertexBuffer> CreateVertexBuffer(float* data, std::uint32_t size);
         static std::shared_ptr<IElementBuffer> CreateElementBuffer(std::uint32_t* data, std::uint32_t size);
         static std::shared_ptr<IShaderBuffer> CreateShaderBuffer(std::uint32_t size, BindingPoint binding);

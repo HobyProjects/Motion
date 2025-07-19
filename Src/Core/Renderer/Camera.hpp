@@ -5,7 +5,7 @@
 
 namespace Motion::Core
 {
-    enum class CamerType
+    enum class CameraType
     {
         Camera2D = 0,
         Camera3D = 1
@@ -17,7 +17,8 @@ namespace Motion::Core
 
         CameraBounds() = default;
         CameraBounds(float left, float right, float bottom, float top)
-            : Left(left), Right(right), Top(top), Bottom(bottom) {}
+            : Left(left), Right(right), Top(top), Bottom(bottom) {
+        }
         ~CameraBounds() = default;
 
         float Width() const { return Right - Left; }

@@ -36,12 +36,12 @@ namespace Motion::Core
          */
         static std::shared_ptr<IShader> Create(const std::string& name, const std::filesystem::path& sourceFile)
         {
-            auto& renderer = Renderer::GetInstance();
-            switch (renderer.GetAPI())
+            switch (Renderer::GetAPI())
             {
             case RenderingAPI::OpenGL:
             {
-                auto shaderSources = ShaderBuilder::ReadFullShaderFile(sourceFile);
+                auto shaderSources = ShaderCompiler::ReadFullShaderFile(sourceFile);
+
                 if (shaderSources.empty())
                 {
                     MOTION_CORE_ERROR("No valid shader sources found in file: {0}", sourceFile.string());
@@ -86,12 +86,12 @@ namespace Motion::Core
          */
         static std::shared_ptr<IShader> Create(const UUID& uuid, const std::string& name, const std::filesystem::path& sourceFile)
         {
-            auto& renderer = Renderer::GetInstance();
-            switch (renderer.GetAPI())
+            switch (Renderer::GetAPI())
             {
             case RenderingAPI::OpenGL:
             {
-                auto shaderSources = ShaderBuilder::ReadFullShaderFile(sourceFile);
+                auto shaderSources = ShaderCompiler::ReadFullShaderFile(sourceFile);
+
                 if (shaderSources.empty())
                 {
                     MOTION_CORE_ERROR("No valid shader sources found in file: {0}", sourceFile.string());
@@ -133,12 +133,12 @@ namespace Motion::Core
          */
         static std::shared_ptr<IShader> Create(const std::string& name, const std::filesystem::path& vertexPath, const std::filesystem::path& fragmentPath)
         {
-            auto& renderer = Renderer::GetInstance();
-            switch (renderer.GetAPI())
+            switch (Renderer::GetAPI())
             {
             case RenderingAPI::OpenGL:
             {
-                auto shaderSources = ShaderBuilder::ReadShaderFiles(vertexPath, fragmentPath);
+                auto shaderSources = ShaderCompiler::ReadShaderFiles(vertexPath, fragmentPath);
+
                 if (shaderSources.empty())
                 {
                     MOTION_CORE_ERROR("No valid shader sources found in files: {0} and {1}", vertexPath.string(), fragmentPath.string());
@@ -183,12 +183,12 @@ namespace Motion::Core
          */
         static std::shared_ptr<IShader> Create(const UUID& uuid, const std::string& name, const std::filesystem::path& vertexPath, const std::filesystem::path& fragmentPath)
         {
-            auto& renderer = Renderer::GetInstance();
-            switch (renderer.GetAPI())
+            switch (Renderer::GetAPI())
             {
             case RenderingAPI::OpenGL:
             {
-                auto shaderSources = ShaderBuilder::ReadShaderFiles(vertexPath, fragmentPath);
+                auto shaderSources = ShaderCompiler::ReadShaderFiles(vertexPath, fragmentPath);
+
                 if (shaderSources.empty())
                 {
                     MOTION_CORE_ERROR("No valid shader sources found in files: {0} and {1}", vertexPath.string(), fragmentPath.string());
@@ -233,8 +233,7 @@ namespace Motion::Core
          */
         static std::shared_ptr<ITexture> Create(const std::string& name, std::uint32_t width, std::uint32_t height)
         {
-            auto& renderer = Renderer::GetInstance();
-            switch (renderer.GetAPI())
+            switch (Renderer::GetAPI())
             {
             case RenderingAPI::OpenGL:
             {
@@ -274,8 +273,7 @@ namespace Motion::Core
          */
         static std::shared_ptr<ITexture> Create(const UUID& uuid, const std::string& name, std::uint32_t width, std::uint32_t height)
         {
-            auto& renderer = Renderer::GetInstance();
-            switch (renderer.GetAPI())
+            switch (Renderer::GetAPI())
             {
             case RenderingAPI::OpenGL:
             {
@@ -315,8 +313,7 @@ namespace Motion::Core
          */
         static std::shared_ptr<ITexture> Create(const std::string& name, const std::filesystem::path& textureFile, TextureType type, bool flip = true)
         {
-            auto& renderer = Renderer::GetInstance();
-            switch (renderer.GetAPI())
+            switch (Renderer::GetAPI())
             {
             case RenderingAPI::OpenGL:
             {
@@ -359,8 +356,7 @@ namespace Motion::Core
          */
         static std::shared_ptr<ITexture> Create(const UUID& uuid, const std::string& name, const std::filesystem::path& textureFile, TextureType type, bool flip = true)
         {
-            auto& renderer = Renderer::GetInstance();
-            switch (renderer.GetAPI())
+            switch (Renderer::GetAPI())
             {
             case RenderingAPI::OpenGL:
             {
@@ -403,8 +399,7 @@ namespace Motion::Core
          */
         static std::shared_ptr<ICubeMapTexture> Create(const std::string& name, const std::filesystem::path& textureFile)
         {
-            auto& renderer = Renderer::GetInstance();
-            switch (renderer.GetAPI())
+            switch (Renderer::GetAPI())
             {
             case RenderingAPI::OpenGL:
             {
@@ -445,8 +440,7 @@ namespace Motion::Core
          */
         static std::shared_ptr<ICubeMapTexture> Create(const UUID& uuid, const std::string& name, const std::filesystem::path& textureFile)
         {
-            auto& renderer = Renderer::GetInstance();
-            switch (renderer.GetAPI())
+            switch (Renderer::GetAPI())
             {
             case RenderingAPI::OpenGL:
             {

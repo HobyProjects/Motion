@@ -15,6 +15,11 @@ namespace Motion::Core
         Importer() = default;
         ~Importer() = default;
 
+        Importer(const Importer&) = delete;
+        Importer& operator=(const Importer&) = delete;
+        Importer(Importer&&) = delete;
+        Importer& operator=(Importer&&) = delete;
+
     public:
         static std::shared_ptr<StaticMesh> ImportModel(const std::string& modelName, const std::filesystem::path& path);
         static std::shared_ptr<StaticMesh> ImportModel(UUID uuid, const std::string& modelName, const std::filesystem::path& path);

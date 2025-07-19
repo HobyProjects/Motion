@@ -41,4 +41,4 @@ struct Bits
     using type = uint32_t;
 };
 
-#define MTION_MACRO_STR(xVal) #xVal 
+#define MOTION_TOSTR(xVal) #xVal 

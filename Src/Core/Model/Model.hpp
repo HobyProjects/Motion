@@ -2,8 +2,9 @@
 
 #include <vector>
 #include <string>
-#include <glm/glm.hpp>
 #include <filesystem>
+
+#include <glm/glm.hpp>
 
 #include "Mesh.hpp"
 #include "Asset.hpp"
@@ -36,8 +37,6 @@ namespace Motion::Core
         std::vector<std::shared_ptr<MeshSegment>>::iterator end() { return m_Meshes.end(); }
         std::vector<std::shared_ptr<MeshSegment>>::const_iterator cbegin() const { return m_Meshes.cbegin(); }
         std::vector<std::shared_ptr<MeshSegment>>::const_iterator cend() const { return m_Meshes.cend(); }
-
-        void Render(const glm::mat4& modelTransForm, const glm::mat4& cameraMatrix);
 
     private:
         std::vector<std::shared_ptr<MeshSegment>> m_Meshes;

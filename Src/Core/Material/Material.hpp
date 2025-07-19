@@ -38,10 +38,9 @@ namespace Motion::Core
         void SetUniform(const std::string_view uniformName, const glm::vec3& value);
         void SetUniform(const std::string_view uniformName, const glm::vec4& value);
         void SetTexture(const std::string_view uniformName, const std::shared_ptr<ITexture>& texture);
-        MaterialShadingMethod GetShadingMethod() const noexcept { return m_ShadingMethod; }
-
-    private:
         void DetermineShadingMethod() noexcept;
+
+        [[nodiscard]] MaterialShadingMethod GetShadingMethod() const noexcept { return m_ShadingMethod; }
 
     private:
         std::unordered_map<std::string_view, float> m_FloatParameters;

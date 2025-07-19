@@ -36,28 +36,28 @@ namespace Motion::App
 
     void Scene::StartSimulation()
     {
-        auto& physicsAttri = m_Enviroment.Physics.GetSettings();
+        auto& physicsAttri = m_Environment.Physics.GetSettings();
         physicsAttri.IsEnabled = true;
-        m_Enviroment.StepModeEnabled = false;
+        m_Environment.StepModeEnabled = false;
         m_SimulationStarted = true;
 
     }
 
     void Scene::StopSimulation()
     {
-        auto& physicsAttri = m_Enviroment.Physics.GetSettings();
+        auto& physicsAttri = m_Environment.Physics.GetSettings();
         physicsAttri.IsEnabled = false;
-        m_Enviroment.StepModeEnabled = false;
+        m_Environment.StepModeEnabled = false;
         m_SimulationStarted = false;
     }
 
     void Scene::ManualSimulation()
     {
-        if (m_Enviroment.SimMode == SimulationMode::ManualStep)
+        if (m_Environment.SimMode == SimulationMode::ManualStep)
         {
-            auto& physicsAttri = m_Enviroment.Physics.GetSettings();
+            auto& physicsAttri = m_Environment.Physics.GetSettings();
             physicsAttri.IsEnabled = true;
-            m_Enviroment.StepModeEnabled = true;
+            m_Environment.StepModeEnabled = true;
             m_SimulationStarted = true;
         }
     }
@@ -95,10 +95,12 @@ namespace Motion::App
                     std::filesystem::path filePath = Motion::Core::DialogBoxes::OpenFileDialog(windowPtr->GetNativeWindow(), "Import StaticMesh", Motion::Core::DialogBoxes::FileType::ModelFile);
                     if (!filePath.empty())
                     {
-                        std::shared_ptr<Motion::Core::StaticMesh> model = Motion::Core::AssetManager::LoadModel(filePath.filename().string(), filePath);
+                        auto& assetManager = Motion::Core::AssetManager::GetInstance();
+                        std::string fileName = filePath.filename().string();
+                        std::shared_ptr<Motion::Core::StaticMesh> model = assetManager.Create<Motion::Core::StaticMesh>(fileName, filePath);
                         if (model)
                         {
-                            std::shared_ptr<Motion::Core::Entity> entity = Motion::Core::EntityBuilder::CreateEntity(filePath.filename().string());
+                            std::shared_ptr<Motion::Core::Entity> entity = Motion::Core::EntityFactory::CreateEntity(filePath.filename().string());
                             entity->AddComponent<Motion::Core::TransformComponent>();
                             entity->AddComponent<Motion::Core::MeshComponent>(filePath.filename().string(), model);
                             m_Entities.push_back(entity);
@@ -118,7 +120,7 @@ namespace Motion::App
 
         if (ImGui::IsMouseDown(ImGuiMouseButton_Left) && ImGui::IsWindowHovered())
         {
-            m_SelectedEntity = Motion::Core::EntityBuilder::ENULL;
+            m_SelectedEntity = Motion::Core::EntityFactory::EMPTYENTITY;
         }
 
         for (uint32_t i = 0; i < m_Entities.size(); i++)
@@ -143,7 +145,7 @@ namespace Motion::App
         }
 
         ImGui::Begin("Properties");
-        if (m_SelectedEntity && m_SelectedEntity != Motion::Core::EntityBuilder::ENULL)
+        if (m_SelectedEntity && m_SelectedEntity != Motion::Core::EntityFactory::EMPTYENTITY)
         {
             RenderComponents(handle, m_SelectedEntity);
         }
@@ -192,9 +194,9 @@ namespace Motion::App
             {
                 ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, { 10.0f, 0.0f });
 
-                Motion::Core::UI::CustomControl::DragControllerVec3("Translation", component.Translation, 0.0f);
-                Motion::Core::UI::CustomControl::DragControllerVec3("Rotation", component.Rotation, 0.0f);
-                Motion::Core::UI::CustomControl::DragControllerVec3("Scale", component.Scale, 1.0f);
+                Motion::Core::UserInterfaceInitializer::CustomUIControl::DragControllerVec3("Translation", component.Translation, 0.0f);
+                Motion::Core::UserInterfaceInitializer::CustomUIControl::DragControllerVec3("Rotation", component.Rotation, 0.0f);
+                Motion::Core::UserInterfaceInitializer::CustomUIControl::DragControllerVec3("Scale", component.Scale, 1.0f);
 
                 ImGui::PopStyleVar();
 
@@ -208,23 +210,23 @@ namespace Motion::App
     {
         if (m_SimulationStarted)
         {
-            auto& physicsAttri = m_Enviroment.Physics.GetSettings();
+            auto& physicsAttri = m_Environment.Physics.GetSettings();
             if (!physicsAttri.IsEnabled)
                 return;
 
-            switch (m_Enviroment.SimMode)
+            switch (m_Environment.SimMode)
             {
             case SimulationMode::Realtime:
             {
                 for (auto& entity : m_Entities)
-                    m_Enviroment.Physics.Update(entity, deltaTime);
+                    m_Environment.Physics.Update(entity, deltaTime);
 
                 break;
             }
             case SimulationMode::ManualStep:
             {
                 for (auto& entity : m_Entities)
-                    m_Enviroment.Physics.Update(entity, physicsAttri.FixedTimeStep);
+                    m_Environment.Physics.Update(entity, physicsAttri.FixedTimeStep);
 
                 break;
             }

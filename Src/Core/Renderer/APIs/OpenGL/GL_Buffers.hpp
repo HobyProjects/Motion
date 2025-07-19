@@ -121,7 +121,7 @@ namespace Motion::Core
         BufferID m_FrameBufferID{ 0 };
     };
 
-    std::shared_ptr<GL_VertexBuffer> GL_CreateVertexBuffer(std::uint32_t alloca_size);
+    std::shared_ptr<GL_VertexBuffer> GL_CreateVertexBuffer(std::uint32_t allocatorSize);
     std::shared_ptr<GL_VertexBuffer> GL_CreateVertexBuffer(float* data, std::uint32_t size);
     std::shared_ptr<GL_ElementBuffer> GL_CreateElementBuffer(std::uint32_t* data, std::uint32_t size);
     std::shared_ptr<GL_ShaderBuffer> GL_CreateShaderBuffer(std::uint32_t size, BindingPoint binding);

@@ -1,5 +1,4 @@
 #include "CorePCH.hpp"
-#include "GL_Texture.hpp"
 
 namespace Motion::Core
 {
@@ -22,7 +21,7 @@ namespace Motion::Core
 
         m_Specification.Type = TextureType::BaseColorMapsTexture;
         m_Specification.Source = TextureSource::GeneratedTexture;
-        m_MetaData.IsAssetInitialized = true;
+        AssetInfo.IsAssetInitialized = true;
     }
 
     /**
@@ -45,7 +44,7 @@ namespace Motion::Core
 
         m_Specification.Type = TextureType::BaseColorMapsTexture;
         m_Specification.Source = TextureSource::GeneratedTexture;
-        m_MetaData.IsAssetInitialized = true;
+        AssetInfo.IsAssetInitialized = true;
     }
 
     /**
@@ -69,7 +68,7 @@ namespace Motion::Core
 
         m_Specification.Type = type;
         m_Specification.Source = TextureSource::TextureFile;
-        m_MetaData.IsAssetInitialized = true;
+        AssetInfo.IsAssetInitialized = true;
     }
 
     /**
@@ -94,7 +93,7 @@ namespace Motion::Core
 
         m_Specification.Type = type;
         m_Specification.Source = TextureSource::TextureFile;
-        m_MetaData.IsAssetInitialized = true;
+        AssetInfo.IsAssetInitialized = true;
     }
 
     /**
@@ -199,41 +198,6 @@ namespace Motion::Core
     }
 
     /**
-     * @brief Sets the global anisotropic filtering level for the texture.
-     *
-     * This function updates the anisotropy level in the texture specification and, if the
-     * OpenGL extension GL_EXT_texture_filter_anisotropic is available, applies the anisotropy
-     * level to the currently bound 2D texture. The level is clamped to the maximum supported
-     * by the hardware.
-     *
-     * @param level The desired anisotropy level to set.
-     */
-    void GL_Texture::SetGlobalAnisotropy(uint32_t level) const
-    {
-        TextureSpecification::AnisotropyLevel = level;
-        if (GL_EXT_texture_filter_anisotropic)
-        {
-            float maxAniso = 0.0f;
-            glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &maxAniso);
-            float targetAniso = std::min((float)TextureSpecification::AnisotropyLevel, maxAniso);
-            glBindTexture(GL_TEXTURE_2D, m_Specification.TexID);
-            glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, targetAniso);
-        }
-    }
-
-    /**
-     * @brief Gets the current global anisotropy level for the texture.
-     *
-     * This function retrieves the currently set anisotropy level from the texture specification.
-     *
-     * @return The current anisotropy level.
-     */
-    std::uint32_t GL_Texture::GetGlobalAnisotropy() const noexcept
-    {
-        return TextureSpecification::AnisotropyLevel;
-    }
-
-    /**
      * Loads a texture from the given file using SOIL
      *
      * @param[in] textureFile The path to the texture file to load
@@ -255,9 +219,9 @@ namespace Motion::Core
         m_FromFile = true;
         if (m_Specification.TextureData)
         {
-            m_MetaData.AssetName = textureFile.filename().string();
-            m_MetaData.AssetSource = textureFile.string();
-            m_MetaData.IsAssetInitialized = true;
+            AssetInfo.AssetName = textureFile.filename().string();
+            AssetInfo.AssetSource = textureFile.string();
+            AssetInfo.IsAssetInitialized = true;
             return true;
         }
 
@@ -319,7 +283,7 @@ namespace Motion::Core
             return;
         }
 
-        m_MetaData.IsAssetInitialized = true;
+        AssetInfo.IsAssetInitialized = true;
     }
 
     /**
@@ -342,7 +306,7 @@ namespace Motion::Core
             return;
         }
 
-        m_MetaData.IsAssetInitialized = true;
+        AssetInfo.IsAssetInitialized = true;
     }
 
     /**
@@ -456,9 +420,9 @@ namespace Motion::Core
         m_Specification.TextureData.reset(SOIL_load_image(textureFile.string().c_str(), &m_Specification.Width, &m_Specification.Height, &m_Specification.NumberOfChannels, SOIL_LOAD_AUTO | SOIL_FLAG_TEXTURE_REPEATS | SOIL_FLAG_MIPMAPS | SOIL_FLAG_INVERT_Y));
         MOTION_ASSERT(m_Specification.TextureData, "Unable to load cube map texture file {0}; {1}", textureFile.string(), SOIL_last_result());
 
-        m_MetaData.AssetName = textureFile.filename().string();
-        m_MetaData.AssetSource = textureFile.string();
-        m_MetaData.IsAssetInitialized = true;
+        AssetInfo.AssetName = textureFile.filename().string();
+        AssetInfo.AssetSource = textureFile.string();
+        AssetInfo.IsAssetInitialized = true;
 
         m_Specification.InternalDataFormat = GL_RGBA16F;
         m_Specification.TextureDataFormat = GL_RGBA16F;

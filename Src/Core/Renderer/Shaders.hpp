@@ -11,23 +11,23 @@
 #include "Asset.hpp"
 #include "UUID.hpp"
 
+#define INVALID_UNIFORM_LOCATION  -1
+
 namespace Motion::Core
 {
     using ShaderID = uint32_t;
     using ShaderProgramID = uint32_t;
     using UniformLocation = uint32_t;
 
-    constexpr std::uint32_t INVALID_UNIFORM_LOCATION = static_cast<std::uint32_t>(-1);
-
     enum class ShaderType : uint32_t
     {
         None = 0,
-        Vertex,
-        Fragment,
-        Geometry,
-        Compute,
-        TessellationControl,
-        TessellationEvaluation
+        Vertex = 1,
+        Fragment = 2,
+        Geometry = 3,
+        Compute = 4,
+        TessellationControl = 5,
+        TessellationEvaluation = 6
     };
 
     inline uint32_t operator|(ShaderType a, ShaderType b) { return static_cast<uint32_t>(a) | static_cast<uint32_t>(b); }
@@ -36,17 +36,17 @@ namespace Motion::Core
     enum class UniformType : std::uint32_t
     {
         None = 0,
-        Float,
-        Int,
-        UInt,
-        Vec2,
-        Vec3,
-        Vec4,
-        Mat2,
-        Mat3,
-        Mat4,
-        Sampler2D,
-        SamplerCube,
+        Float = 1,
+        Int = 2,
+        UInt = 3,
+        Vec2 = 4,
+        Vec3 = 5,
+        Vec4 = 6,
+        Mat2 = 7,
+        Mat3 = 8,
+        Mat4 = 9,
+        Sampler2D = 10,
+        SamplerCube = 11,
     };
 
     struct UniformInfomation
@@ -57,8 +57,8 @@ namespace Motion::Core
         bool IsValid{ false };
 
         UniformInfomation() = default;
-        UniformInfomation(std::string_view name, UniformType type, UniformLocation location) : UniformName(name), Type(type), Location(location)
-        {
+        UniformInfomation(std::string_view name, UniformType type, UniformLocation location) :
+            UniformName(name), Type(type), Location(location) {
             IsValid = (location != -1) ? true : false;
         }
         ~UniformInfomation() = default;
@@ -136,10 +136,6 @@ namespace Motion::Core
         virtual void Bind() const = 0;
         virtual void Unbind() const = 0;
 
-        virtual ShaderProgramID ProgramID() const = 0;
-        virtual std::string GetName() const = 0;
-        virtual UniformLocation GetUniformLocation(const std::string_view uniformName) = 0;
-
         virtual void SetUniform(const std::string_view uniformName, float value) = 0;
         virtual void SetUniform(const std::string_view uniformName, std::int32_t value) = 0;
         virtual void SetUniform(const std::string_view uniformName, std::uint32_t value) = 0;
@@ -151,25 +147,33 @@ namespace Motion::Core
         virtual void SetUniform(const std::string_view uniformName, const glm::mat4& value) = 0;
         virtual void ReflectUniforms() = 0;
 
-    public:
-        virtual std::int32_t GetMaxTextureUnits() const = 0;
+        [[nodiscard]] virtual ShaderProgramID ProgramID() const = 0;
+        [[nodiscard]] virtual std::string GetName() const = 0;
+        [[nodiscard]] virtual UniformLocation GetUniformLocation(const std::string_view uniformName) = 0;
     };
 
-    class ShaderBuilder
+    class ShaderCompiler
     {
-    public:
-        ShaderBuilder() = default;
-        ~ShaderBuilder() = default;
+    private:
+        ShaderCompiler() = default;
+        ~ShaderCompiler() = default;
 
-        static ShaderProgramID CreateShaderProgram();
+        ShaderCompiler(const ShaderCompiler&) = delete;
+        ShaderCompiler& operator=(const ShaderCompiler&) = delete;
+        ShaderCompiler(ShaderCompiler&&) = delete;
+        ShaderCompiler& operator=(ShaderCompiler&&) = delete;
+
+    public:
         static void AttachShaderProgram(ShaderID shaderID, ShaderProgramID programID);
-        static ShaderID CompileShader(ShaderType shaderType, const std::string& sourceCode);
         static void LinkShaderProgram(ShaderProgramID programID);
         static void ValidateShaderProgram(ShaderProgramID programID);
         static void DeleteShaderProgram(ShaderProgramID programID);
-        static std::string ReadShaderFile(const std::filesystem::path& filePath);
-        static std::unordered_map<ShaderType, std::string> ReadFullShaderFile(const std::filesystem::path& filePath);
-        static std::unordered_map<ShaderType, std::string> ReadShaderFiles(const std::filesystem::path& vertexPath, const std::filesystem::path& fragmentPath);
+
+        [[nodiscard]] static ShaderID CompileShader(ShaderType shaderType, const std::string& sourceCode);
+        [[nodiscard]] static std::string ReadShaderFile(const std::filesystem::path& filePath);
+        [[nodiscard]] static std::unordered_map<ShaderType, std::string> ReadFullShaderFile(const std::filesystem::path& filePath);
+        [[nodiscard]] static ShaderProgramID CreateShaderProgram();
+        [[nodiscard]] static std::unordered_map<ShaderType, std::string> ReadShaderFiles(const std::filesystem::path& vertexPath, const std::filesystem::path& fragmentPath);
     };
 }
 

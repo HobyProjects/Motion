@@ -59,8 +59,6 @@ namespace Motion::Core
         std::uint32_t InternalDataFormat{ 0 }, TextureDataFormat{ 0 }, TexID{ 0 };
         TextureType Type{ TextureType::BaseColorMapsTexture };
         TextureSource Source{ TextureSource::Undefined };
-
-        static uint32_t AnisotropyLevel;
     };
 
     class ITexture : public IAsset
@@ -76,9 +74,6 @@ namespace Motion::Core
         [[nodiscard]] virtual TextureID GetID() const noexcept = 0;
         [[nodiscard]] virtual TextureSpecification& GetSpecification() noexcept = 0;
         [[nodiscard]] virtual TextureSource Source() const noexcept = 0;
-
-        virtual void SetGlobalAnisotropy(std::uint32_t level) const noexcept = 0;
-        [[nodiscard]] virtual std::uint32_t GetGlobalAnisotropy() const noexcept = 0;
 
     protected:
         [[nodiscard]] virtual bool LoadTextureFromFile(const std::filesystem::path& textureFile, bool flip) = 0;
@@ -102,8 +97,6 @@ namespace Motion::Core
     protected:
         [[nodiscard]] virtual bool LoadCubeMapTextureHDR(const std::filesystem::path& textureFile) = 0;
     };
-
-
 
     template<typename T>
     concept TextureExpected = requires(T texture)

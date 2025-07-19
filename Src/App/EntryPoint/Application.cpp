@@ -9,7 +9,7 @@ namespace Motion::App
         m_Window = Motion::Core::WindowManager::Create("Motion Engine");
         m_Window->SetEventsCallbackFunc(EVENT_CALLBACK(OnEvent));
         Motion::Core::Renderer::Init();
-        Motion::Core::UI::Init(m_Window->GetHandle());
+        Motion::Core::UserInterfaceInitializer::Init(m_Window->GetHandle());
 
         m_LayersManager = std::make_shared<Motion::Core::LayersManager>();
         m_ImGuiLayer = std::make_shared<ImGuiLayer>(m_Window->GetHandle(), ImGuiColorScheme::Dark);
@@ -21,7 +21,7 @@ namespace Motion::App
 
     Application::~Application()
     {
-        Motion::Core::UI::Quit();
+        Motion::Core::UserInterfaceInitializer::Quit();
         Motion::Core::Renderer::Quit();
         Motion::Core::WindowManager::Destroy(m_Window);
         Motion::Core::CoreAPI::Quit();
@@ -29,13 +29,13 @@ namespace Motion::App
 
     void Application::Start()
     {
-        while(m_Window->IsActive())
+        while (m_Window->IsActive())
         {
             m_Window->PollEvents();
 
-            if(m_Window->GetProperties().State != Motion::Core::WindowState::Minimized)
+            if (m_Window->GetProperties().State != Motion::Core::WindowState::Minimized)
             {
-                float currentTime{0.0f};
+                float currentTime{ 0.0f };
                 currentTime = Motion::Core::SystemTimer<float>::GetSystemTicks();
 
                 Motion::Core::Timer deltaTime = currentTime - m_LastFrameTime;
@@ -44,17 +44,17 @@ namespace Motion::App
 
                 Motion::Core::Renderer::BeginFrame();
 
-                for(auto& layer : *m_LayersManager)
+                for (auto& layer : *m_LayersManager)
                 {
                     layer->OnUpdate(m_Window->GetHandle(), deltaTime);
                 }
-                
+
                 Motion::Core::Renderer::EndFrame();
             }
 
             m_ImGuiLayer->Begin();
 
-            for(auto& layer : *m_LayersManager)
+            for (auto& layer : *m_LayersManager)
             {
                 layer->OnUIRender(m_Window->GetHandle());
             }
@@ -82,18 +82,18 @@ namespace Motion::App
         handler.Dispatch<Motion::Core::EventWindowClose>(EVENT_CALLBACK(OnWindowClose));
         handler.Dispatch<Motion::Core::EventWindowResize<uint32_t>>(EVENT_CALLBACK(OnWindowResize));
 
-        for( std::vector<std::shared_ptr<Motion::Core::Layer>>::reverse_iterator it = m_LayersManager->rbegin(); it != m_LayersManager->rend(); ++it )
-		{
-			if( handler.IsHandled() )
-				break;
+        for (std::vector<std::shared_ptr<Motion::Core::Layer>>::reverse_iterator it = m_LayersManager->rbegin(); it != m_LayersManager->rend(); ++it)
+        {
+            if (handler.IsHandled())
+                break;
 
-			( *it )->OnEvent(handle, e);
-		}
+            (*it)->OnEvent(handle, e);
+        }
     }
 
     bool Application::OnWindowClose(Motion::Core::WindowHandle handle, Motion::Core::EventWindowClose& e)
     {
-        if(m_Window->IsActive())
+        if (m_Window->IsActive())
             m_Window->GetProperties().IsActive = false;
 
         return false;
@@ -102,7 +102,7 @@ namespace Motion::App
 
     bool Application::OnWindowResize(Motion::Core::WindowHandle handle, Motion::Core::EventWindowResize<uint32_t>& e)
     {
-        if(m_Window->GetProperties().State != Motion::Core::WindowState::Minimized)
+        if (m_Window->GetProperties().State != Motion::Core::WindowState::Minimized)
             Motion::Core::Renderer::SetViewport(0, 0, e.Width(), e.Height());
 
         return false;

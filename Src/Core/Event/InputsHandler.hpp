@@ -18,14 +18,8 @@ namespace Motion::Core
         InputsHandler& operator=(InputsHandler&&) = delete;
 
     public:
-        static InputsHandler& GetInstance()
-        {
-            static InputsHandler instance;
-            return instance;
-        }
-
-        KeyState GetKeyState(WindowHandle windowHandle, KeyCode key);
-        MouseButtonState GetMouseButtonState(WindowHandle windowHandle, MouseButton button);
-        glm::vec2 GetCurrentMousePosition(WindowHandle windowHandle);
+        [[nodiscard]] KeyState GetKeyState(WindowHandle windowHandle, KeyCode key) const noexcept;
+        [[nodiscard]] MouseButtonState GetMouseButtonState(WindowHandle windowHandle, MouseButton button) const noexcept;
+        [[nodiscard]] glm::vec2 GetCurrentMousePosition(WindowHandle windowHandle) const noexcept;
     };
 }

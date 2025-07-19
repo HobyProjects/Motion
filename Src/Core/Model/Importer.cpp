@@ -1,5 +1,4 @@
 #include "CorePCH.hpp"
-#include "Importer.hpp"
 
 #define AI_MATKEY_CLEARCOAT_ROUGHNESS_FACTOR "$mat.clearcoat.roughnessFactor", 0, 0
 #define AI_MATKEY_IOR "$mat.ior", 0, 0
@@ -8,6 +7,19 @@
 
 namespace Motion::Core
 {
+    /**
+     * @brief Imports a 3D model from the specified file path and creates a StaticMesh asset.
+     *
+     * This function uses the Assimp library to read and process the 3D model file located at the given path.
+     * It creates a StaticMesh asset using the AssetManager and populates it with the imported mesh data.
+     * If the import fails, an error is logged and the returned StaticMesh asset is marked as uninitialized.
+     * On success, the mesh is loaded and the asset is marked as initialized.
+     *
+     * @param modelName The name to assign to the imported StaticMesh asset.
+     * @param path The filesystem path to the 3D model file to import.
+     * @return std::shared_ptr<StaticMesh> A shared pointer to the created StaticMesh asset. The asset's
+     *         initialization status can be checked via its metadata.
+     */
     std::shared_ptr<StaticMesh> Importer::ImportModel(const std::string& modelName, const std::filesystem::path& path)
     {
         auto& assetManager = AssetManager::GetInstance();
@@ -18,7 +30,7 @@ namespace Motion::Core
         if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)
         {
             MOTION_CORE_ERROR("Assimp Importer Error: {0}", importer.GetErrorString());
-            staticMeshPtr->m_MetaData.IsAssetInitialized = false;
+            staticMeshPtr->AssetInfo.IsAssetInitialized = false;
             return staticMeshPtr;
         }
         else
@@ -26,14 +38,27 @@ namespace Motion::Core
             MOTION_CORE_INFO("Assimp Importer: StaticMesh {0} loaded successfully from {1}", modelName, path.string());
             LoadNode(staticMeshPtr, scene->mRootNode, scene);
 
-            staticMeshPtr->m_MetaData.IsAssetInitialized = true;
+            staticMeshPtr->AssetInfo.IsAssetInitialized = true;
             return staticMeshPtr;
         }
 
         return nullptr;
     }
 
-
+    /**
+     * @brief Imports a 3D model from the specified file path and creates a StaticMesh asset with a unique UUID.
+     *
+     * This function uses the Assimp library to read and process the 3D model file located at the given path.
+     * It creates a StaticMesh asset using the AssetManager and populates it with the imported mesh data.
+     * If the import fails, an error is logged and the returned StaticMesh asset is marked as uninitialized.
+     * On success, the mesh is loaded and the asset is marked as initialized.
+     *
+     * @param uuid The unique identifier for the imported StaticMesh asset.
+     * @param modelName The name to assign to the imported StaticMesh asset.
+     * @param path The filesystem path to the 3D model file to import.
+     * @return std::shared_ptr<StaticMesh> A shared pointer to the created StaticMesh asset. The asset's
+     *         initialization status can be checked via its metadata.
+     */
     std::shared_ptr<StaticMesh> Importer::ImportModel(UUID uuid, const std::string& modelName, const std::filesystem::path& path)
     {
         auto& assetManager = AssetManager::GetInstance();
@@ -44,7 +69,7 @@ namespace Motion::Core
         if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)
         {
             MOTION_CORE_ERROR("Assimp Importer Error: {0}", importer.GetErrorString());
-            staticMeshPtr->m_MetaData.IsAssetInitialized = false;
+            staticMeshPtr->AssetInfo.IsAssetInitialized = false;
             return staticMeshPtr;
         }
         else
@@ -52,13 +77,25 @@ namespace Motion::Core
             MOTION_CORE_INFO("Assimp Importer: StaticMesh {0} loaded successfully from {1}", modelName, path.string());
             LoadNode(staticMeshPtr, scene->mRootNode, scene);
 
-            staticMeshPtr->m_MetaData.IsAssetInitialized = true;
+            staticMeshPtr->AssetInfo.IsAssetInitialized = true;
             return staticMeshPtr;
         }
 
         return nullptr;
     }
 
+    /**
+     * @brief Loads a texture from the given aiMaterial based on the specified aiTextureType.
+     *
+     * This function attempts to load a texture from the provided Assimp material. If the texture is found and loaded successfully,
+     * it returns a shared pointer to the loaded ITexture. If the texture cannot be loaded, it attempts to create a default texture.
+     * If both loading and creation fail, it returns nullptr.
+     *
+     * @param aiTexType The Assimp texture type to look for (e.g., aiTextureType_DIFFUSE).
+     * @param aiMaterial Pointer to the Assimp material from which to load the texture.
+     * @param textureType The application's texture type to be associated with the loaded texture.
+     * @return std::shared_ptr<ITexture> Shared pointer to the loaded or default texture, or nullptr if loading fails.
+     */
     static std::shared_ptr<ITexture> LoadTextures(aiTextureType aiTexType, aiMaterial* aiMaterial, TextureType textureType)
     {
         aiString property{};
@@ -103,6 +140,20 @@ namespace Motion::Core
         return nullptr;
     }
 
+    /**
+     * @brief Loads a float value from an Assimp material property.
+     *
+     * This function attempts to retrieve a float value from the specified material property
+     * using the provided data type, type, and index. If the property is found, its value is returned.
+     * Otherwise, a default value of 0.0f is returned. Logging is performed to indicate whether
+     * the property was found or not.
+     *
+     * @param currentMaterial Pointer to the aiMaterial from which to load the data.
+     * @param dataType The name of the material property to retrieve.
+     * @param type The type of the material property (e.g., aiTextureType).
+     * @param idx The index of the property if there are multiple entries.
+     * @return The float value of the requested material property, or 0.0f if not found.
+     */
     static float LoadMaterialFloatData(aiMaterial* currentMaterial, const char* dataType, uint32_t type, uint32_t idx)
     {
         MOTION_CORE_INFO("Looking for data type {0}", dataType);
@@ -120,6 +171,19 @@ namespace Motion::Core
         }
     }
 
+    /**
+     * @brief Loads a glm::vec3 value from an Assimp material property.
+     *
+     * This function attempts to retrieve a 3-component vector (vec3) from the specified
+     * material property of an Assimp material. If the property is found, its value is returned.
+     * Otherwise, a default vector (0.0f, 0.0f, 0.0f) is returned.
+     *
+     * @param currentMaterial Pointer to the aiMaterial from which to load the property.
+     * @param dataType The name of the material property to retrieve (e.g., AI_MATKEY_COLOR_DIFFUSE).
+     * @param type The type of the property (usually aiTextureType_NONE for colors).
+     * @param idx The index of the property (usually 0).
+     * @return glm::vec3 The loaded vector value, or (0.0f, 0.0f, 0.0f) if not found.
+     */
     static glm::vec3 LoadMaterialVec3Data(aiMaterial* currentMaterial, const char* dataType, uint32_t type, uint32_t idx)
     {
         MOTION_CORE_INFO("Looking for data type {0}", dataType);
@@ -137,6 +201,17 @@ namespace Motion::Core
         }
     }
 
+    /**
+     * @brief Loads mesh data from an Assimp aiMesh into a StaticMesh object.
+     *
+     * This function extracts vertex attributes (positions, texture coordinates, normals, tangents, and bitangents)
+     * and face indices from the provided aiMesh, and constructs a MeshSegment that is added to the given StaticMesh.
+     * It also handles the creation of the underlying Mesh resource and associates it with the appropriate material.
+     *
+     * @param staticMeshPtr Shared pointer to the StaticMesh object to which the mesh data will be added.
+     * @param mesh Pointer to the aiMesh structure containing the mesh data to import.
+     * @param scene Pointer to the aiScene containing the mesh and its associated materials.
+     */
     void Importer::LoadMesh(const std::shared_ptr<StaticMesh>& staticMeshPtr, aiMesh* mesh, const aiScene* scene)
     {
         static uint32_t meshIndex = 0;
@@ -210,6 +285,17 @@ namespace Motion::Core
         staticMeshPtr->m_Meshes.emplace_back(std::move(meshSegment));
     }
 
+    /**
+     * @brief Recursively loads meshes from an Assimp node and its children into a StaticMesh object.
+     *
+     * This function traverses the given Assimp node, loads all meshes associated with the node,
+     * and then recursively processes all child nodes. Each mesh is loaded into the provided
+     * StaticMesh instance using the LoadMesh function.
+     *
+     * @param staticMeshPtr Shared pointer to the StaticMesh object where the meshes will be loaded.
+     * @param node Pointer to the current Assimp node (aiNode) to process.
+     * @param scene Pointer to the Assimp scene (aiScene) containing the node and mesh data.
+     */
     void Importer::LoadNode(const std::shared_ptr<StaticMesh>& staticMeshPtr, aiNode* node, const aiScene* scene)
     {
         for (uint32_t i = 0; i < node->mNumMeshes; i++)
@@ -223,6 +309,17 @@ namespace Motion::Core
         }
     }
 
+    /**
+     * @brief Loads and assigns material properties and textures to a given mesh segment from an Assimp scene.
+     *
+     * This function extracts material information from the specified mesh segment's material index in the provided
+     * Assimp scene. It creates a Material instance, sets various color and property uniforms, and loads both legacy
+     * and modern texture types into the material. If the material cannot be found or created, the mesh segment is
+     * reset and an error is logged.
+     *
+     * @param meshSegment Shared pointer to the StaticMesh::MeshSegment to which materials will be assigned.
+     * @param scene Pointer to the Assimp aiScene containing the material data.
+     */
     void Motion::Core::Importer::LoadMaterials(const std::shared_ptr<StaticMesh::MeshSegment>& meshSegment, const aiScene* scene)
     {
         MOTION_CORE_INFO("Extracting StaticMesh - SubMesh {0} Materials", meshSegment->MeshIndex);
@@ -291,5 +388,8 @@ namespace Motion::Core
         meshSegment->Materials->SetTexture(UniformCache::Texture_ClearCoatTexture, LoadTextures(aiTextureType_CLEARCOAT, currentMaterial, TextureType::ClearCoatMapsTexture));
         meshSegment->Materials->SetTexture(UniformCache::Texture_SheenTexture, LoadTextures(aiTextureType_SHEEN, currentMaterial, TextureType::SheenMapsTexture));
         meshSegment->Materials->SetTexture(UniformCache::Texture_TransmissionTexture, LoadTextures(aiTextureType_TRANSMISSION, currentMaterial, TextureType::TransmissionMapsTexture));
+
+        // Determine the shading method based on the material properties
+        meshSegment->Materials->DetermineShadingMethod();
     }
 }

@@ -24,6 +24,7 @@ namespace Motion::Core
         virtual void SetUniform(const std::string_view uniformName, const glm::mat2& value) override;
         virtual void SetUniform(const std::string_view uniformName, const glm::mat3& value) override;
         virtual void SetUniform(const std::string_view uniformName, const glm::mat4& value) override;
+        virtual void SetUniform(const std::string_view uniformName, std::uint32_t size, std::uint32_t* values) override;
         virtual void ReflectUniforms() override;
 
         [[nodiscard]] virtual ShaderProgramID ProgramID() const override { return m_ProgramID; }

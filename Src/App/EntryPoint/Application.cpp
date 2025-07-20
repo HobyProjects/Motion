@@ -12,7 +12,6 @@ namespace Motion::App
         Motion::Core::Renderer::Init();
         Motion::Core::UserInterfaceInitializer::Init(m_Window->GetHandle());
 
-        m_LayersManager = std::make_shared<Motion::Core::LayersManager>();
         m_ImGuiLayer = std::make_shared<ImGuiLayer>(m_Window->GetHandle(), ImGuiColorScheme::Dark);
         m_EditorLayer = std::make_shared<SceneEditorLayer>(m_Window->GetHandle(), m_ImGuiLayer);
 
@@ -34,6 +33,7 @@ namespace Motion::App
         while (m_Window->IsActive())
         {
             m_Window->PollEvents();
+            auto& layersManager = Motion::Core::LayersManager::GetInstance();
 
             if (m_Window->GetProperties().State != Motion::Core::WindowState::Minimized)
             {
@@ -43,7 +43,7 @@ namespace Motion::App
                 Motion::Core::Timer deltaTime = currentTime - m_LastFrameTime;
                 m_LastFrameTime = currentTime;
 
-                for (auto& layer : *m_LayersManager)
+                for (auto& layer : layersManager)
                 {
                     layer->OnUpdate(m_Window->GetHandle(), deltaTime);
                 }
@@ -51,7 +51,7 @@ namespace Motion::App
 
             m_ImGuiLayer->Begin();
 
-            for (auto& layer : *m_LayersManager)
+            for (auto& layer : layersManager)
             {
                 layer->OnUIRender(m_Window->GetHandle());
             }
@@ -64,13 +64,13 @@ namespace Motion::App
     void Application::PushLayer(const std::shared_ptr<Motion::Core::Layer>& layer)
     {
         layer->OnAttach();
-        m_LayersManager->PushLayer(layer);
+        Motion::Core::LayersManager::GetInstance().PushLayer(layer);
     }
 
     void Application::PushOverlay(const std::shared_ptr<Motion::Core::Layer>& layer)
     {
         layer->OnAttach();
-        m_LayersManager->PushOverlay(layer);
+        Motion::Core::LayersManager::GetInstance().PushOverlay(layer);
     }
 
     void Application::OnEvent(Motion::Core::WindowHandle handle, Motion::Core::IEvent& e)
@@ -79,7 +79,8 @@ namespace Motion::App
         handler.Dispatch<Motion::Core::EventWindowClose>(EVENT_CALLBACK(OnWindowClose));
         handler.Dispatch<Motion::Core::EventWindowResize<uint32_t>>(EVENT_CALLBACK(OnWindowResize));
 
-        for (std::vector<std::shared_ptr<Motion::Core::Layer>>::reverse_iterator it = m_LayersManager->rbegin(); it != m_LayersManager->rend(); ++it)
+        auto& layersManager = Motion::Core::LayersManager::GetInstance();
+        for (std::vector<std::shared_ptr<Motion::Core::Layer>>::reverse_iterator it = layersManager.rbegin(); it != layersManager.rend(); ++it)
         {
             if (handler.IsHandled())
                 break;

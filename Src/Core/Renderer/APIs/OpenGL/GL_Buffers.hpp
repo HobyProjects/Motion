@@ -98,8 +98,6 @@ namespace Motion::Core
 
         virtual void Bind() override;
         virtual void Unbind() override;
-        virtual void BindTextureUnit(std::uint32_t slot, FrameTextureID textureID) override;
-        virtual void UnbindTextureUnit() override;
 
         virtual void ResizeFrame(std::uint32_t width, std::uint32_t Height) override;
         virtual void BlitTo(IFrameBuffer* targetFrameBuffer, FrameBufferBlitMask mask, FrameBufferBlitFilter filter) override;

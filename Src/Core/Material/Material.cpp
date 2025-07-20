@@ -118,15 +118,40 @@ namespace Motion::Core
                 shader->SetUniform(uniformName, value);
             }
 
-            for (const auto& [uniformName, texture] : m_Textures)
+            if (!m_Textures.empty())
             {
-                if (texture->IsAssetInitialized())
+                if (!m_Textures.size() > Renderer::GetMaxTextureSlots())
                 {
-                    std::uint32_t bindingPoint{ 0 };
+                    std::uint32_t samples[32] = { 0,  1,  2,  3,  4,  5,  6,  7,
+                                                   8,  9, 10, 11, 12, 13, 14, 15,
+                                                  16, 17, 18, 19, 20, 21, 22, 23,
+                                                  24, 25, 26, 27, 28, 29, 30, 31 };
 
-                    texture->Bind(bindingPoint);
-                    shader->SetUniform(uniformName, bindingPoint++);
+                    shader->SetUniform(UniformCache::GlobalAttri_Sampler2DArray, 32, samples);
+
+                    std::uint32_t slot = 0;
+                    for (const auto& [uniformName, texture] : m_Textures)
+                    {
+                        if (texture->IsAssetInitialized())
+                        {
+                            texture->Bind(slot++);
+                        }
+                        else
+                        {
+                            MOTION_CORE_ERROR("Texture {0} is not initialized in material {1}", uniformName, GetName());
+                        }
+                    }
                 }
+                else
+                {
+                    MOTION_CORE_ERROR("Too many textures bound to the material {0}", GetName());
+                    return;
+                }
+            }
+            else
+            {
+                MOTION_CORE_ERROR("No textures bound to the material {0}", GetName());
+                return;
             }
         }
     }

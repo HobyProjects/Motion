@@ -1,4 +1,5 @@
 #include "CorePCH.hpp"
+#include "Renderer.hpp"
 
 namespace Motion::Core
 {
@@ -168,6 +169,90 @@ namespace Motion::Core
             break;
         }
     }
+
+    /**
+     * @brief Retrieves the maximum number of texture slots available for the current rendering API.
+     *
+     * This function queries the rendering backend to determine how many texture units can be used.
+     * The implementation varies based on the selected rendering API.
+     *
+     * @return The maximum number of texture slots available.
+     */
+    std::int32_t Renderer::GetMaxTextureSlots() noexcept
+    {
+        switch (s_RenderingAPI)
+        {
+        case RenderingAPI::OpenGL:
+            return GL_GetMaxTextureSlots();
+        case RenderingAPI::Vulkan:
+            MOTION_ASSERT(false, "Vulkan is not implemented yet!");
+            return 0;
+        case RenderingAPI::DirectX:
+            MOTION_ASSERT(false, "DirectX is not implemented yet!");
+            return 0;
+        default:
+            MOTION_ASSERT(false, "Unknown rendering API!");
+            return 0;
+        }
+    }
+
+    /**
+         * @brief Binds a texture to a specified texture unit slot for the active rendering API.
+         *
+         * This function binds the given texture (identified by textureID) to the specified slot,
+         * depending on the currently selected rendering API. If the rendering API is not implemented,
+         * an assertion will be triggered.
+         *
+         * @param slot The texture unit slot to bind the texture to.
+         * @param textureID The identifier of the texture to bind.
+         */
+    void Renderer::BindTextureUnit(std::uint32_t slot, TextureID textureID)
+    {
+        switch (s_RenderingAPI)
+        {
+        case RenderingAPI::OpenGL:
+            GL_BindTextureUnit(slot, textureID);
+            break;
+        case RenderingAPI::Vulkan:
+            MOTION_ASSERT(false, "Vulkan is not implemented yet!");
+            break;
+        case RenderingAPI::DirectX:
+            MOTION_ASSERT(false, "DirectX is not implemented yet!");
+            break;
+        default:
+            MOTION_ASSERT(false, "Unknown rendering API!");
+            break;
+        }
+    }
+
+    /**
+     * @brief Unbinds the currently bound texture unit for the active rendering API.
+     *
+     * This function abstracts the process of unbinding a texture unit across different rendering APIs.
+     * For OpenGL, it calls the appropriate unbind function. For Vulkan and DirectX, this function is
+     * not yet implemented and will trigger an assertion failure.
+     *
+     * @note If an unknown or unsupported rendering API is selected, an assertion will be triggered.
+     */
+    void Renderer::UnbindTextureUnit()
+    {
+        switch (s_RenderingAPI)
+        {
+        case RenderingAPI::OpenGL:
+            GL_UnbindTextureUnit();
+            break;
+        case RenderingAPI::Vulkan:
+            MOTION_ASSERT(false, "Vulkan is not implemented yet!");
+            break;
+        case RenderingAPI::DirectX:
+            MOTION_ASSERT(false, "DirectX is not implemented yet!");
+            break;
+        default:
+            MOTION_ASSERT(false, "Unknown rendering API!");
+            break;
+        }
+    }
+
 
     /**
      * @brief Draws indexed geometry using the currently selected rendering API.

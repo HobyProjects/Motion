@@ -209,9 +209,9 @@ namespace Motion::Core
     {
         MOTION_ASSERT(std::filesystem::exists(textureFile), "Unable to load texture file {0}", textureFile.string());
 
-        std::int32_t loaderFlags = (flip) ? (SOIL_LOAD_RGBA | SOIL_FLAG_INVERT_Y | SOIL_FLAG_DDS_LOAD_DIRECT |
-            SOIL_FLAG_MULTIPLY_ALPHA | SOIL_FLAG_COMPRESS_TO_DXT) : (SOIL_LOAD_RGBA | SOIL_FLAG_DDS_LOAD_DIRECT |
-                SOIL_FLAG_MULTIPLY_ALPHA | SOIL_FLAG_COMPRESS_TO_DXT);
+        std::int32_t loaderFlags = (flip) ?
+            (SOIL_LOAD_RGBA | SOIL_FLAG_INVERT_Y | SOIL_FLAG_DDS_LOAD_DIRECT | SOIL_FLAG_MULTIPLY_ALPHA | SOIL_FLAG_COMPRESS_TO_DXT) :
+            (SOIL_LOAD_RGBA | SOIL_FLAG_DDS_LOAD_DIRECT | SOIL_FLAG_MULTIPLY_ALPHA | SOIL_FLAG_COMPRESS_TO_DXT);
 
         m_Specification.TexID = SOIL_load_OGL_texture(textureFile.string().c_str(), SOIL_LOAD_RGBA, SOIL_CREATE_NEW_ID, loaderFlags);
         MOTION_ASSERT(m_Specification.TexID, "Unable to load texture file {0}; {1}", textureFile.string(), SOIL_last_result());
@@ -255,8 +255,7 @@ namespace Motion::Core
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-        glTexImage2D(GL_TEXTURE_2D, 0, m_Specification.InternalDataFormat, m_Specification.Width, m_Specification.Height, 0,
-            m_Specification.TextureDataFormat, GL_UNSIGNED_BYTE, m_Specification.TextureData.get());
+        glTexImage2D(GL_TEXTURE_2D, 0, m_Specification.InternalDataFormat, m_Specification.Width, m_Specification.Height, 0, m_Specification.TextureDataFormat, GL_UNSIGNED_BYTE, m_Specification.TextureData.get());
         glGenerateMipmap(GL_TEXTURE_2D);
 
         return true;
@@ -277,7 +276,7 @@ namespace Motion::Core
      */
     GL_CubeMapTexture::GL_CubeMapTexture(const std::string& name, const std::filesystem::path& textureFile) : AssetBase<ICubeMapTexture>(UniqueIdentity::GetUniqueID(), name, AssetType::Texture, textureFile.string())
     {
-        if (!LoadCubeMapTextureHDR(textureFile))
+        if (!LoadCubeMapTexture(textureFile))
         {
             MOTION_ASSERT(false, "Unable to load cube map texture file {0}", textureFile.string());
             return;
@@ -300,7 +299,7 @@ namespace Motion::Core
      */
     GL_CubeMapTexture::GL_CubeMapTexture(UUID uuid, const std::string& name, const std::filesystem::path& textureFile) : AssetBase<ICubeMapTexture>(uuid, name, AssetType::Texture, textureFile.string())
     {
-        if (!LoadCubeMapTextureHDR(textureFile))
+        if (!LoadCubeMapTexture(textureFile))
         {
             MOTION_ASSERT(false, "Unable to load cube map texture file {0}", textureFile.string());
             return;
@@ -339,7 +338,7 @@ namespace Motion::Core
      */
     void GL_CubeMapTexture::Bind() const noexcept
     {
-        glBindTexture(GL_TEXTURE_CUBE_MAP, m_Specification.TexID);
+        glBindTextureUnit(0, m_Specification.TexID);
     }
 
     /**
@@ -414,26 +413,35 @@ namespace Motion::Core
      * @param textureFile The filesystem path to the cube map texture file.
      * @return True if the texture was loaded successfully, false otherwise.
      */
-    bool GL_CubeMapTexture::LoadCubeMapTextureHDR(const std::filesystem::path& textureFile)
+    bool GL_CubeMapTexture::LoadCubeMapTexture(const std::filesystem::path& textureFile)
     {
-        MOTION_ASSERT(std::filesystem::exists(textureFile), "Unable to load cube map texture file {0}", textureFile.string());
+        if (!std::filesystem::exists(textureFile))
+        {
+            MOTION_CORE_ERROR("Cube map texture file {0} does not exist", textureFile.string());
+            return false;
+        }
+
         m_Specification.TextureData.reset(SOIL_load_image(textureFile.string().c_str(), &m_Specification.Width, &m_Specification.Height, &m_Specification.NumberOfChannels, SOIL_LOAD_AUTO | SOIL_FLAG_TEXTURE_REPEATS | SOIL_FLAG_MIPMAPS | SOIL_FLAG_INVERT_Y));
-        MOTION_ASSERT(m_Specification.TextureData, "Unable to load cube map texture file {0}; {1}", textureFile.string(), SOIL_last_result());
+        if (!m_Specification.TextureData)
+        {
+            MOTION_CORE_ERROR("Failed to load cube map texture from file {0}: {1}", textureFile.string(), SOIL_last_result());
+            return false;
+        }
 
         AssetInfo.AssetName = textureFile.filename().string();
         AssetInfo.AssetSource = textureFile.string();
         AssetInfo.IsAssetInitialized = true;
 
-        m_Specification.InternalDataFormat = GL_RGBA16F;
-        m_Specification.TextureDataFormat = GL_RGBA16F;
+        m_Specification.InternalDataFormat = GL_RGBA;
+        m_Specification.TextureDataFormat = GL_RGBA;
 
         glCreateTextures(GL_TEXTURE_CUBE_MAP, 1, &m_Specification.TexID);
         glBindTexture(GL_TEXTURE_CUBE_MAP, m_Specification.TexID);
-        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
 
         for (std::uint32_t face = 0; face < 6; ++face)
         {

@@ -4,6 +4,7 @@
 
 #include "Base.hpp"
 #include "Window.hpp"
+#include "Texture.hpp"
 
 namespace Motion::Core
 {
@@ -17,7 +18,7 @@ namespace Motion::Core
     enum DrawFlags : std::uint8_t
     {
         None = 0,
-        SkipDepthWrite = Bits<1>::value,
+        SkipDepthMask = Bits<1>::value,
         Wireframe = Bits<2>::value,
     };
 
@@ -46,6 +47,10 @@ namespace Motion::Core
         static void ClearColor(const glm::vec4& color);
         static void DrawIndexed(std::uint32_t indicesCount);
         static void SetViewport(std::int32_t x, std::int32_t y, std::int32_t width, std::int32_t height);
+
+        static std::int32_t GetMaxTextureSlots() noexcept;
+        static void BindTextureUnit(std::uint32_t slot, TextureID textureID);
+        static void UnbindTextureUnit();
 
         [[nodiscard]] static RenderingAPI GetAPI() noexcept;
     };

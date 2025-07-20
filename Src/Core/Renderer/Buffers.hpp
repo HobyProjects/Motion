@@ -226,8 +226,6 @@ namespace Motion::Core
 
         virtual void Bind() = 0;
         virtual void Unbind() = 0;
-        virtual void BindTextureUnit(std::uint32_t slot, FrameTextureID textureID) = 0;
-        virtual void UnbindTextureUnit() = 0;
 
         virtual void ResizeFrame(std::uint32_t width, std::uint32_t height) = 0;
         virtual void BlitTo(IFrameBuffer* targetFrameBuffer, FrameBufferBlitMask mask, FrameBufferBlitFilter filter) = 0;

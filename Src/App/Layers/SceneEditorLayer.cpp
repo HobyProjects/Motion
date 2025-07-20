@@ -18,7 +18,7 @@ namespace Motion::App
         m_Viewport.Size = { m_ViewportWidth, m_ViewportHeight };
 
         m_Framebuffer = Motion::Core::BufferFactory::CreateFrameBuffer(m_Viewport.FrameSpec);
-        m_PostProcessor = std::make_unique<Motion::Core::PostProcessor>(m_Framebuffer->GetFrameSpecification());
+        m_PostProcessor = std::make_unique<Motion::Core::PostProcessor>(m_Framebuffer->GetFrameSpecification(), Motion::Core::UUID()); //<-- Include the post-processing shader here
 
         if (m_Scenes.empty())
         {

@@ -95,7 +95,7 @@ namespace Motion::Core
         virtual void SetFace(std::uint32_t face, std::int32_t mipLevel, std::uint32_t width, std::uint32_t height, std::uint32_t format, const void* data) = 0;
 
     protected:
-        [[nodiscard]] virtual bool LoadCubeMapTextureHDR(const std::filesystem::path& textureFile) = 0;
+        [[nodiscard]] virtual bool LoadCubeMapTexture(const std::filesystem::path& textureFile) = 0;
     };
 
     template<typename T>

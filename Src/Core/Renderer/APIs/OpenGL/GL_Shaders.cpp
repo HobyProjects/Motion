@@ -543,6 +543,34 @@ namespace Motion::Core
         }
     }
 
+    void GL_Shader::SetUniform(const std::string_view uniformName, std::uint32_t size, std::uint32_t* values)
+    {
+        auto uniformInfoIterator = m_UniformInformationCache.find(uniformName);
+        if (uniformInfoIterator != m_UniformInformationCache.end())
+        {
+            const UniformInfomation& uniformInfo = uniformInfoIterator->second;
+            if (uniformInfo.IsValid && uniformInfo.Type == UniformType::UInt)
+            {
+                glUniform1uiv(uniformInfo.Location, size, values);
+            }
+        }
+        else
+        {
+            MOTION_CORE_WARN("Uniform '{0}' is not of type UInt or is invalid", uniformName);
+            UniformLocation location = GetUniformLocation(uniformName);
+            if (location != INVALID_UNIFORM_LOCATION)
+            {
+                //[FIXME]: Hmm... Sampler2DArray, This isn't make any sense, but it works for now
+                m_UniformInformationCache[uniformName] = UniformInfomation(uniformName, UniformType::Sampler2DArray, location);
+                glUniform1uiv(location, size, values);
+            }
+            else
+            {
+                MOTION_CORE_ERROR("Uniform '{0}' not found in shader program '{1}'", uniformName, AssetInfo.AssetName);
+            }
+        }
+    }
+
 
     /**
      * @brief Reflects and caches the locations and types of all relevant shader uniforms.
@@ -587,6 +615,7 @@ namespace Motion::Core
 
         m_UniformInformationCache[UniformCache::GlobalAttri_ModelMatrix] = { UniformCache::GlobalAttri_ModelMatrix, UniformType::Mat4, GetUniformLocation(UniformCache::GlobalAttri_ModelMatrix) };
         m_UniformInformationCache[UniformCache::GlobalAttri_ViewProjMatrix] = { UniformCache::GlobalAttri_ViewProjMatrix, UniformType::Mat4, GetUniformLocation(UniformCache::GlobalAttri_ViewProjMatrix) };
+        m_UniformInformationCache[UniformCache::GlobalAttri_Sampler2DArray] = { UniformCache::GlobalAttri_Sampler2DArray, UniformType::Sampler2DArray, GetUniformLocation(UniformCache::GlobalAttri_Sampler2DArray) };
 
         m_UniformInformationCache[UniformCache::LightAttri_Position] = { UniformCache::LightAttri_Position, UniformType::Vec3, GetUniformLocation(UniformCache::LightAttri_Position) };
         m_UniformInformationCache[UniformCache::LightAttri_Color] = { UniformCache::LightAttri_Color, UniformType::Vec3, GetUniformLocation(UniformCache::LightAttri_Color) };

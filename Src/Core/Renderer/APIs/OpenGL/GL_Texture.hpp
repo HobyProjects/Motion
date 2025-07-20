@@ -47,7 +47,7 @@ namespace Motion::Core
         virtual void SetFace(std::uint32_t face, std::int32_t mipLevel, std::uint32_t width, std::uint32_t height, std::uint32_t format, const void* data) override;
 
     protected:
-        [[nodiscard]] virtual bool LoadCubeMapTextureHDR(const std::filesystem::path& textureFile) override;
+        [[nodiscard]] virtual bool LoadCubeMapTexture(const std::filesystem::path& textureFile) override;
 
     private:
         TextureSpecification m_Specification{};

@@ -512,26 +512,6 @@ namespace Motion::Core
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
     }
 
-    void GL_FrameBuffer::BindTextureUnit(std::uint32_t slot, FrameTextureID textureID)
-    {
-        if (m_Specification.Samples > 1)
-        {
-            glActiveTexture(GL_TEXTURE0 + slot);
-            glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, textureID);
-        }
-        else
-        {
-            glActiveTexture(GL_TEXTURE0 + slot);
-            glBindTexture(GL_TEXTURE_2D, textureID);
-        }
-    }
-
-    void GL_FrameBuffer::UnbindTextureUnit()
-    {
-        glBindTexture(GL_TEXTURE_2D, 0);
-        glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, 0);
-    }
-
 
     /**
      * @brief Invalidates the current frame buffer and re-creates it based on the specification.

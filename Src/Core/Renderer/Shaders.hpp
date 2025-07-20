@@ -46,7 +46,8 @@ namespace Motion::Core
         Mat3 = 8,
         Mat4 = 9,
         Sampler2D = 10,
-        SamplerCube = 11,
+        Sampler2DArray = 11,
+        SamplerCube = 12,
     };
 
     struct UniformInfomation
@@ -74,6 +75,7 @@ namespace Motion::Core
 
         inline static constexpr std::string_view GlobalAttri_ModelMatrix = "u_ModelMatrix";
         inline static constexpr std::string_view GlobalAttri_ViewProjMatrix = "u_ViewProjMatrix";
+        inline static constexpr std::string_view GlobalAttri_Sampler2DArray = "u_Sampler2DArray";
 
         inline static constexpr std::string_view LightAttri_Position = "u_LightPosition";
         inline static constexpr std::string_view LightAttri_Color = "u_LightColor";
@@ -122,6 +124,7 @@ namespace Motion::Core
         inline static constexpr std::string_view Texture_SheenTexture = "u_SheenTexture";
         inline static constexpr std::string_view Texture_TransmissionTexture = "u_TransmissionTexture";
 
+
         UniformCache() = default;
         ~UniformCache() = default;
 
@@ -145,6 +148,7 @@ namespace Motion::Core
         virtual void SetUniform(const std::string_view uniformName, const glm::mat2& value) = 0;
         virtual void SetUniform(const std::string_view uniformName, const glm::mat3& value) = 0;
         virtual void SetUniform(const std::string_view uniformName, const glm::mat4& value) = 0;
+        virtual void SetUniform(const std::string_view uniformName, std::uint32_t size, std::uint32_t* values) = 0;
         virtual void ReflectUniforms() = 0;
 
         [[nodiscard]] virtual ShaderProgramID ProgramID() const = 0;

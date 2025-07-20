@@ -11,9 +11,6 @@ from dataclasses import dataclass
 
 # ===================== Logger =====================
 class Color:
-    """
-    ANSI escape code constants for colored logging.
-    """
     RESET = "\033[0m"           # Reset text color
     RED = "\033[91m"            # Red text color
     GREEN = "\033[92m"          # Green text color
@@ -22,73 +19,30 @@ class Color:
     BOLD = "\033[1m"            # Bold text style
 
 class Logger:
-    """Colored logger class for pretty-printing messages.
-
-    Attributes:
-        info (staticmethod): Info message
-        success (staticmethod): Success message
-        warn (staticmethod): Warning message
-        error (staticmethod): Error message
-        command (staticmethod): Command message
-    """
     @staticmethod
     def info(msg):
-        """Prints an info message.
-
-        Args:
-            msg (str): Message to print.
-        """
         print(f"{Color.CYAN}[INFO]{Color.RESET} {msg}")
 
     @staticmethod
     def success(msg):
-        """Prints a success message.
-
-        Args:
-            msg (str): Message to print.
-        """
         print(f"{Color.GREEN}[OK]{Color.RESET} {msg}")
 
     @staticmethod
     def warn(msg):
-        """Prints a warning message.
-
-        Args:
-            msg (str): Message to print.
-        """
         print(f"{Color.YELLOW}[WARN]{Color.RESET} {msg}")
 
     @staticmethod
     def error(msg):
-        """Prints an error message.
-
-        Args:
-            msg (str): Message to print.
-        """
         print(f"{Color.RED}[ERROR]{Color.RESET} {msg}")
 
     @staticmethod
     def command(msg):
-        """Prints a command message.
-
-        Args:
-            msg (str): Message to print.
-        """
         print(f"{Color.BOLD}{Color.CYAN}>> {msg}{Color.RESET}")
 
 
 # ===================== Data Structures =====================
 @dataclass
 class Package:
-    """Represents a package to be built.
-
-    Attributes:
-        name: The name of the package.
-        source_directory: The directory containing the package source code.
-        build_directory: The directory where the package build will be stored.
-        prefix_directory: The directory where the package will be installed.
-        options: Additional build options.
-    """
     name: str
     source_directory: str
     build_directory: str
@@ -97,14 +51,6 @@ class Package:
 
 # ===================== Helpers =====================
 def run_cmd(command: str):
-    """Runs a shell command and logs the output.
-
-    Args:
-        command (str): The command to run.
-
-    Raises:
-        subprocess.CalledProcessError: If the command fails.
-    """
     try:
         Logger.command(command)
         subprocess.run(command, shell=True, check=True, text=True)
@@ -113,18 +59,6 @@ def run_cmd(command: str):
         sys.exit(1)
 
 def check_cmake():
-    """
-    Checks if CMake is installed and logs its version.
-
-    This function attempts to run the 'cmake --version' command to verify
-    the presence of CMake in the system's PATH. If CMake is found, it logs
-    the version information. If CMake is not found, it logs an error and
-    terminates the program.
-
-    Raises:
-        SystemExit: If CMake is not found or an error occurs during execution.
-    """
-
     try:
         result = subprocess.run(["cmake", "--version"], capture_output=True, text=True, check=True)
         Logger.success(f"CMake version: {result.stdout.strip()}")
@@ -133,19 +67,6 @@ def check_cmake():
         sys.exit(1)
 
 def detect_generator():
-    """Detects available CMake generators and returns the most preferred one.
-
-    This function runs each generator command with the '--version' or '/?' flag to
-    detect if the generator is installed in the system's PATH. It logs the generators
-    that are found and returns the most preferred one based on the following order:
-    Ninja, NMake Makefiles, Unix Makefiles.
-
-    If none of the preferred generators are found, it falls back to the first one
-    listed in the CMake help output. If no generator is found, it returns None.
-
-    Returns:
-        str: The name of the most preferred available generator, or None if none is found.
-    """
     Logger.info("Detecting available generators...")
     preferred = ["Ninja", "NMake Makefiles", "Unix Makefiles"]
     found = {}
@@ -180,68 +101,10 @@ def detect_generator():
     return None
 
 def generate_presets(dir_path: str, build_type: str, generator: str, packages: list[Package]):
-    """
-    Generates a CMakePresets.json file based on the given list of packages and the
-    preferred generator.
-
-    The generated file contains the following presets:
-
-    - 8 configure presets (base, Debug-x64, Debug-x86, RelWithDebInfo-x64, RelWithDebInfo-x86, Release-x64, Release-x86, MinSizeRel-x64, MinSizeRel-x86)
-    - 8 build presets (base, Debug-x64, Debug-x86, RelWithDebInfo-x64, RelWithDebInfo-x86, Release-x64, Release-x86, MinSizeRel-x64, MinSizeRel-x86)
-    - 8 test presets (base, Debug-x64, Debug-x86, RelWithDebInfo-x64, RelWithDebInfo-x86, Release-x64, Release-x86, MinSizeRel-x64, MinSizeRel-x86)
-
-    Each preset inherits from the base preset and has the following settings:
-
-    - The appropriate build type (Debug, Release, RelWithDebInfo, MinSizeRel)
-    - The appropriate architecture (x64, x86)
-    - The appropriate CMAKE_PREFIX_PATH, CMAKE_INSTALL_PREFIX, and CMAKE_FIND_ROOT_PATH
-    - The appropriate CMAKE_CXX_FLAGS and CMAKE_C_FLAGS
-
-    The generated file is written to the current working directory and is named
-    "CMakePresets.json". If the file already exists, it is overwritten only if the
-    contents are different.
-
-    :param packages: A list of packages to generate the presets for.
-    :type packages: list[Package]
-    :param generator: The preferred generator to use.
-    :type generator: str
-    """
     def hash_data(data):
-        """
-        Returns a hash of the given data.
-
-        This function takes a dictionary or other JSON-serializable data structure
-        and returns a hexadecimal string representation of its MD5 hash.
-
-        :param data: The data to hash
-        :return: A hexadecimal string representation of the MD5 hash of the data
-        :rtype: str
-        """
         return hashlib.md5(json.dumps(data, indent=2).encode()).hexdigest()
 
     def get_platform_flags():
-        """
-        Returns a dictionary of platform-specific CMake flags for the given configuration type.
-
-        On Windows, the dictionary is:
-        {
-            "DEBUG": "/Zi /Ob0 /Od /RTC1",
-            "RELEASE": "/O2",
-            "RELWITHDEBINFO": "/O2 /Zi",
-            "MINSIZEREL": "/O1"
-        }
-
-        On other platforms, the dictionary is:
-        {
-            "DEBUG": "-g -O0",
-            "RELEASE": "-O3",
-            "RELWITHDEBINFO": "-O2 -g",
-            "MINSIZEREL": "-Os"
-        }
-
-        :return: A dictionary of platform-specific CMake flags
-        :rtype: dict
-        """
         system = platform.system()
         if system == "Windows":
             return {
@@ -259,28 +122,6 @@ def generate_presets(dir_path: str, build_type: str, generator: str, packages: l
             }
 
     def common_vars():
-        """
-        Returns a dictionary of common CMake variables that are used across all
-        build configurations.
-
-        These variables are:
-        - C++ Standard: C++20 with no extensions
-        - C Standard: C17 with no extensions
-        - Build Behavior:
-            - Export compile commands
-            - Build with Position Independent Code (PIC)
-        - Prefix and Find Paths: CMAKE_PREFIX_PATH, CMAKE_INSTALL_PREFIX, and
-            CMAKE_FIND_ROOT_PATH are all set to the same prefix path
-        - Debug/Release Flags: Debug, Release, RelWithDebInfo, and MinSizeRel flags
-            are set with sensible defaults
-        - System Info: CMAKE_SYSTEM_NAME, CMAKE_SYSTEM_VERSION, CMAKE_SYSTEM_PROCESSOR,
-            CMAKE_SYSTEM_PROCESSOR_ARCHITECTURE, and CMAKE_SYSTEM_PROCESSOR_ARCHITECTURE_VENDOR
-            are set with information about the build system
-        - Common Flags: CMAKE_VERBOSE_MAKEFILE, BUILD_SHARED_LIBS, and
-            CMAKE_SUPPRESS_REGENERATION are set with sensible defaults
-
-        :return: A dictionary of common CMake variables
-        """
         flags = get_platform_flags()
         system_name = platform.system()
         system_version = platform.release()
@@ -359,17 +200,6 @@ def generate_presets(dir_path: str, build_type: str, generator: str, packages: l
             "binaryDir": "${sourceDir}/build/Debug-x64"
         },
         {
-            "name": "Debug-x86",
-            "inherits": "base",
-            "displayName": "Debug x86",
-            "description": "Debug configuration for x86",
-            "architecture": { "value": "x86", "strategy": "external" },
-            "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Debug"
-            },
-            "binaryDir": "${sourceDir}/build/Debug-x86"
-        },
-        {
             "name": "RelWithDebInfo-x64",
             "inherits": "base",
             "displayName": "RelWithDebInfo x64",
@@ -379,17 +209,6 @@ def generate_presets(dir_path: str, build_type: str, generator: str, packages: l
                 "CMAKE_BUILD_TYPE": "RelWithDebInfo"
             },
             "binaryDir": "${sourceDir}/build/RelWithDebInfo-x64"
-        },
-        {
-            "name": "RelWithDebInfo-x86",
-            "inherits": "base",
-            "displayName": "RelWithDebInfo x86",
-            "description": "RelWithDebInfo configuration for x86",
-            "architecture": { "value": "x86", "strategy": "external" },
-            "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "RelWithDebInfo"
-            },
-            "binaryDir": "${sourceDir}/build/RelWithDebInfo-x86"
         },
         {
             "name": "Release-x64",
@@ -403,17 +222,6 @@ def generate_presets(dir_path: str, build_type: str, generator: str, packages: l
             "binaryDir": "${sourceDir}/build/Release-x64"
         },
         {
-            "name": "Release-x86",
-            "inherits": "base",
-            "displayName": "Release x86",
-            "description": "Release configuration for x86",
-            "architecture": { "value": "x86", "strategy": "external" },
-            "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Release"
-            },
-            "binaryDir": "${sourceDir}/build/Release-x86"
-        },
-        {
             "name": "MinSizeRel-x64",
             "inherits": "base",
             "displayName": "MinSizeRel x64",
@@ -423,17 +231,6 @@ def generate_presets(dir_path: str, build_type: str, generator: str, packages: l
                 "CMAKE_BUILD_TYPE": "MinSizeRel"
             },
             "binaryDir": "${sourceDir}/build/MinSizeRel-x64"
-        },
-        {
-            "name": "MinSizeRel-x86",
-            "inherits": "base",
-            "displayName": "MinSizeRel x86",
-            "description": "MinSizeRel configuration for x86",
-            "architecture": { "value": "x86", "strategy": "external" },
-            "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "MinSizeRel"
-            },
-            "binaryDir": "${sourceDir}/build/MinSizeRel-x86"
         }
     ]
 
@@ -451,19 +248,9 @@ def generate_presets(dir_path: str, build_type: str, generator: str, packages: l
             "configurePreset": "Debug-x64"
         },
         {
-            "name": "Debug-x86",
-            "inherits": "base",
-            "configurePreset": "Debug-x86"
-        },
-        {
             "name": "RelWithDebInfo-x64",
             "inherits": "base",
             "configurePreset": "RelWithDebInfo-x64"
-        },
-        {
-            "name": "RelWithDebInfo-x86",
-            "inherits": "base",
-            "configurePreset": "RelWithDebInfo-x86"
         },
         {
             "name": "Release-x64",
@@ -471,19 +258,9 @@ def generate_presets(dir_path: str, build_type: str, generator: str, packages: l
             "configurePreset": "Release-x64"
         },
         {
-            "name": "Release-x86",
-            "inherits": "base",
-            "configurePreset": "Release-x86"
-        },
-        {
             "name": "MinSizeRel-x64",
             "inherits": "base",
             "configurePreset": "MinSizeRel-x64"
-        },
-        {
-            "name": "MinSizeRel-x86",
-            "inherits": "base",
-            "configurePreset": "MinSizeRel-x86"
         }
     ]
 
@@ -506,19 +283,9 @@ def generate_presets(dir_path: str, build_type: str, generator: str, packages: l
             "configurePreset": "Debug-x64"
         },
         {
-            "name": "Debug-x86",
-            "inherits": "base",
-            "configurePreset": "Debug-x86"
-        },
-        {
             "name": "RelWithDebInfo-x64",
             "inherits": "base",
             "configurePreset": "RelWithDebInfo-x64"
-        },
-        {
-            "name": "RelWithDebInfo-x86",
-            "inherits": "base",
-            "configurePreset": "RelWithDebInfo-x86"
         },
         {
             "name": "Release-x64",
@@ -526,19 +293,9 @@ def generate_presets(dir_path: str, build_type: str, generator: str, packages: l
             "configurePreset": "Release-x64"
         },
         {
-            "name": "Release-x86",
-            "inherits": "base",
-            "configurePreset": "Release-x86"
-        },
-        {
             "name": "MinSizeRel-x64",
             "inherits": "base",
             "configurePreset": "MinSizeRel-x64"
-        },
-        {
-            "name": "MinSizeRel-x86",
-            "inherits": "base",
-            "configurePreset": "MinSizeRel-x86"
         }
     ]
 
@@ -566,22 +323,6 @@ def generate_presets(dir_path: str, build_type: str, generator: str, packages: l
 
 # ===================== Main =====================
 def main():
-    """
-    Main entry point for the build script.
-
-    This script is used to build the Motion Engine and its dependencies.
-
-    It can be used to build a single package or all packages.
-
-    Args:
-        --config (str): The build configuration to use (Debug, Release, RelWithDebInfo, MinSizeRel)
-        --arch (str): The build architecture to use (x86, x86_64)
-        --pkg (str): The package to build (optional)
-        --generate-presets (bool): Generate CMakePresets.json and exit (optional)
-
-    Returns:
-        int: The exit code of the script
-    """
     check_cmake()
 
     packages = [
@@ -597,8 +338,7 @@ def main():
     ]
 
     parser = argparse.ArgumentParser(description="Motion Engine Build Script")
-    parser.add_argument("--config", required=True, choices=["Debug", "Release", "RelWithDebInfo", "MinSizeRel"], help="Build configuration")
-    parser.add_argument("--arch", required=True, choices=["x86", "x86_64"], help="Build architecture")
+    parser.add_argument("--config", choices=["Debug", "Release", "RelWithDebInfo", "MinSizeRel"], help="packages build configuration")
     parser.add_argument("--pkg", help="Specific package to build", choices=[pkg.name for pkg in packages])
     parser.add_argument("--presets", action="store_true", help="Generate CMakePresets.json and exit")
     args = parser.parse_args()
@@ -607,7 +347,6 @@ def main():
     Logger.info("     Motion Engine Build Script v1.0.0    ")
     Logger.info("==========================================")
     Logger.info(f"Build Configuration: {args.config}")
-    Logger.info(f"Build Architecture: {args.arch}")
     Logger.info(f"Build Packages : {', '.join([pkg.name for pkg in packages])}")
     Logger.info(f"System Name: {platform.system()}")
     Logger.info("==========================================")
@@ -638,7 +377,8 @@ def main():
     if platform.system() != "Windows":
         prefix_path = ":".join(os.path.abspath(pkg.prefix_directory ) for pkg in build_list)
     else:
-        prefix_path = ";".join(os.path.abspath(pkg.prefix_directory) for pkg in build_list)                                                                                                                                
+        prefix_path = ";".join(os.path.abspath(pkg.prefix_directory) for pkg in build_list)   
+
 
     for pkg in build_list:
         Logger.info(f"Building: {Color.BOLD}{pkg.name}{Color.RESET}")

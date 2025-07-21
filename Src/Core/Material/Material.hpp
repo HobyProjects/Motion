@@ -23,7 +23,7 @@ namespace Motion::Core
         Unlit
     };
 
-    struct MaterialDefaults
+    struct StandardMaterialConfig
     {
         // Surface Colors (legacy/compatibility with older formats)
         static constexpr glm::vec3 AmbientColor = { 0.0f, 0.0f, 0.0f };         // Typically ignored in modern PBR
@@ -52,6 +52,14 @@ namespace Motion::Core
         static constexpr float SheenRoughnessFactor = 0.3f;                     // Slightly blurred sheen (if used)
         static constexpr float AmbientOcclusionFactor = 1.0f;                   // Fully lit (no occlusion loss)
         static constexpr float IndexOfRefractionFactor = 1.5f;                  // Used in transmission/refraction models
+    };
+
+    struct MaterialFallbackTextures
+    {
+        static std::shared_ptr<ITexture> White;
+        static std::shared_ptr<ITexture> Black;
+        static std::shared_ptr<ITexture> Grey;
+        static std::shared_ptr<ITexture> Normal;
     };
 
     class Material final : public AssetBase<IAsset>

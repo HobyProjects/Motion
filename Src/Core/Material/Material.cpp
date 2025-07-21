@@ -3,6 +3,38 @@
 namespace Motion::Core
 {
     /**
+     * @brief Initializes the static fallback textures for materials.
+     *
+     * This function creates and assigns default textures used as fallbacks for materials.
+     * These textures are typically used when no specific texture is provided for a material.
+     */
+    std::shared_ptr<ITexture> MaterialFallbackTextures::White = CreateUnregisteredPlainTexture("White", 10, 10, { 1.0f, 1.0f, 1.0f });
+
+    /**
+     * @brief Initializes the static fallback textures for materials.
+     *
+     * This function creates and assigns default textures used as fallbacks for materials.
+     * These textures are typically used when no specific texture is provided for a material.
+     */
+    std::shared_ptr<ITexture> MaterialFallbackTextures::Black = CreateUnregisteredPlainTexture("Black", 10, 10, { 0.0f, 0.0f, 0.0f });
+
+    /**
+     * @brief Initializes the static fallback textures for materials.
+     *
+     * This function creates and assigns default textures used as fallbacks for materials.
+     * These textures are typically used when no specific texture is provided for a material.
+     */
+    std::shared_ptr<ITexture> MaterialFallbackTextures::Grey = CreateUnregisteredPlainTexture("Grey", 10, 10, { 0.8f, 0.8f, 0.8f });
+
+    /**
+     * @brief Initializes the static fallback normal texture for materials.
+     *
+     * This function creates and assigns a default normal texture used as a fallback for materials.
+     * The normal texture is typically used to provide surface detail without additional geometry.
+     */
+    std::shared_ptr<ITexture> MaterialFallbackTextures::Normal = CreateUnregisteredPlainTexture("Normal", 10, 10, { 0.5f, 0.5f, 1.0f });
+
+    /**
      * @brief Constructs a Material object with the specified UUID, name, and shading method.
      *
      * @param uuid The universally unique identifier for the material.

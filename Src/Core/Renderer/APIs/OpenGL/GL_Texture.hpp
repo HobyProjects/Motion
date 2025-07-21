@@ -52,4 +52,8 @@ namespace Motion::Core
     private:
         TextureSpecification m_Specification{};
     };
+
+    [[nodiscard]] std::shared_ptr<GL_Texture> GL_CreateUnregisteredPlainTexture(const std::string& name, std::uint32_t width = 100, std::uint32_t height = 100) noexcept;
+    [[nodiscard]] std::shared_ptr<GL_Texture> GL_CreateUnregisteredTextureFromFile(const std::string& name, const std::filesystem::path& textureFile, TextureType type = TextureType::BaseColorMapsTexture, bool flip = true) noexcept;
+    [[nodiscard]] std::shared_ptr<GL_CubeMapTexture> GL_CreateUnregisteredCubeMapTexture(const std::string& name, const std::filesystem::path& textureFile) noexcept;
 }

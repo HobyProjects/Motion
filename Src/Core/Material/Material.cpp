@@ -12,7 +12,7 @@ namespace Motion::Core
     Material::Material(const UUID& uuid, const std::string& name) :
         AssetBase(uuid, name, AssetType::Material, "Undefined")
     {
-        AssetInfo.IsAssetInitialized = true;
+        AssetInfo.IsInitialized = true;
         m_ShadingMethod = MaterialShadingMethod::Auto;
     }
 
@@ -28,7 +28,7 @@ namespace Motion::Core
     Material::Material(const std::string& name) :
         AssetBase(UniqueIdentity::GetUniqueID(), name, AssetType::Material, "Undefined")
     {
-        AssetInfo.IsAssetInitialized = true;
+        AssetInfo.IsInitialized = true;
         m_ShadingMethod = MaterialShadingMethod::Auto;
     }
 
@@ -101,7 +101,7 @@ namespace Motion::Core
      */
     void Material::Bind(const std::shared_ptr<IShader>& shader) noexcept
     {
-        if (shader->IsAssetInitialized())
+        if (shader->IsInitialized())
         {
             for (const auto& [uniformName, value] : m_FloatParameters)
             {
@@ -132,7 +132,7 @@ namespace Motion::Core
                     std::uint32_t slot = 0;
                     for (const auto& [uniformName, texture] : m_Textures)
                     {
-                        if (texture->IsAssetInitialized())
+                        if (texture->IsInitialized())
                         {
                             texture->Bind(slot++);
                         }
@@ -169,7 +169,7 @@ namespace Motion::Core
     {
         for (const auto& [uniformName, texture] : m_Textures)
         {
-            if (texture->IsAssetInitialized())
+            if (texture->IsInitialized())
             {
                 texture->Unbind();
             }

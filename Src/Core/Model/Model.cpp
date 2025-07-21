@@ -16,7 +16,7 @@ namespace Motion::Core
         AssetBase<IAsset>(UniqueIdentity::GetUniqueID(), name, AssetType::StaticMesh, modelFile.string())
     {
         AssetInfo.AssetSource = modelFile.string();
-        AssetInfo.IsAssetInitialized = false;
+        AssetInfo.IsInitialized = false;
     }
 
     /**
@@ -34,7 +34,7 @@ namespace Motion::Core
         AssetBase<IAsset>(uuid, name, AssetType::StaticMesh, modelFile.string())
     {
         AssetInfo.AssetSource = modelFile.string();
-        AssetInfo.IsAssetInitialized = false;
+        AssetInfo.IsInitialized = false;
     }
 
 }

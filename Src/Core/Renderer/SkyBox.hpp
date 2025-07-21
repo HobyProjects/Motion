@@ -6,13 +6,15 @@
 
 namespace Motion::Core
 {
-    class ISkyBox
+    class SkyBox
     {
     public:
-        ISkyBox() = default;
-        ~ISkyBox() = default;
+        SkyBox() = default;
+        ~SkyBox() = default;
 
-        virtual void Load(const std::filesystem::path& textureFile) noexcept = 0;
-        virtual void Render(const glm::mat4& viewMatrix, const glm::mat4 projectionMatrix) noexcept = 0;
+        void Load(const std::filesystem::path& textureFile) noexcept;
+        void Render(const glm::mat4& viewMatrix, const glm::mat4 projectionMatrix) noexcept;
+
+    private:
     };
 }

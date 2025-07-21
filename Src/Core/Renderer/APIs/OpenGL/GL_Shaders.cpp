@@ -145,7 +145,7 @@ namespace Motion::Core
         GL_ValidateShaderProgram(m_ProgramID);
         ReflectUniforms();
 
-        AssetInfo.IsAssetInitialized = true;
+        AssetInfo.IsInitialized = true;
     }
 
     /**
@@ -175,7 +175,7 @@ namespace Motion::Core
         GL_ValidateShaderProgram(m_ProgramID);
         ReflectUniforms();
 
-        AssetInfo.IsAssetInitialized = true;
+        AssetInfo.IsInitialized = true;
     }
 
     /**

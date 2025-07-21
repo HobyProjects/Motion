@@ -20,7 +20,7 @@ namespace Motion::Core
         std::string AssetName{ "Unnamed Asset" };
         std::string AssetSource{ "Unknown" };
         AssetType Type{ AssetType::None };
-        bool IsAssetInitialized{ false };
+        bool IsInitialized{ false };
 
         AssetProperties() = default;
         ~AssetProperties() = default;
@@ -37,7 +37,7 @@ namespace Motion::Core
         [[nodiscard]] virtual UUID GetUUID() const = 0;
         [[nodiscard]] virtual std::string& GetName() = 0;
         [[nodiscard]] virtual std::string& GetSource() const = 0;
-        [[nodiscard]] virtual bool IsAssetInitialized() const = 0;
+        [[nodiscard]] virtual bool IsInitialized() const = 0;
     };
 
     template<typename T>
@@ -61,7 +61,7 @@ namespace Motion::Core
             AssetInfo.AssetName = name;
             AssetInfo.Type = type;
             AssetInfo.AssetSource = filePath;
-            AssetInfo.IsAssetInitialized = false;
+            AssetInfo.IsInitialized = false;
         }
 
         virtual ~AssetBase() = default;
@@ -125,7 +125,7 @@ namespace Motion::Core
          *
          * @return bool True if the asset is initialized, false otherwise.
          */
-        [[nodiscard]] virtual bool IsAssetInitialized() const override { return AssetInfo.IsAssetInitialized; }
+        [[nodiscard]] virtual bool IsInitialized() const override { return AssetInfo.IsInitialized; }
 
     protected:
         AssetProperties AssetInfo{};

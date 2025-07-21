@@ -1,4 +1,5 @@
 #include "CorePCH.hpp"
+#include "GL_Texture.hpp"
 
 namespace Motion::Core
 {
@@ -21,7 +22,7 @@ namespace Motion::Core
 
         m_Specification.Type = TextureType::BaseColorMapsTexture;
         m_Specification.Source = TextureSource::GeneratedTexture;
-        AssetInfo.IsAssetInitialized = true;
+        AssetInfo.IsInitialized = true;
     }
 
     /**
@@ -44,7 +45,7 @@ namespace Motion::Core
 
         m_Specification.Type = TextureType::BaseColorMapsTexture;
         m_Specification.Source = TextureSource::GeneratedTexture;
-        AssetInfo.IsAssetInitialized = true;
+        AssetInfo.IsInitialized = true;
     }
 
     /**
@@ -68,7 +69,7 @@ namespace Motion::Core
 
         m_Specification.Type = type;
         m_Specification.Source = TextureSource::TextureFile;
-        AssetInfo.IsAssetInitialized = true;
+        AssetInfo.IsInitialized = true;
     }
 
     /**
@@ -93,7 +94,7 @@ namespace Motion::Core
 
         m_Specification.Type = type;
         m_Specification.Source = TextureSource::TextureFile;
-        AssetInfo.IsAssetInitialized = true;
+        AssetInfo.IsInitialized = true;
     }
 
     /**
@@ -221,7 +222,7 @@ namespace Motion::Core
         {
             AssetInfo.AssetName = textureFile.filename().string();
             AssetInfo.AssetSource = textureFile.string();
-            AssetInfo.IsAssetInitialized = true;
+            AssetInfo.IsInitialized = true;
             return true;
         }
 
@@ -282,7 +283,7 @@ namespace Motion::Core
             return;
         }
 
-        AssetInfo.IsAssetInitialized = true;
+        AssetInfo.IsInitialized = true;
     }
 
     /**
@@ -305,7 +306,7 @@ namespace Motion::Core
             return;
         }
 
-        AssetInfo.IsAssetInitialized = true;
+        AssetInfo.IsInitialized = true;
     }
 
     /**
@@ -430,7 +431,7 @@ namespace Motion::Core
 
         AssetInfo.AssetName = textureFile.filename().string();
         AssetInfo.AssetSource = textureFile.string();
-        AssetInfo.IsAssetInitialized = true;
+        AssetInfo.IsInitialized = true;
 
         m_Specification.InternalDataFormat = GL_RGBA;
         m_Specification.TextureDataFormat = GL_RGBA;
@@ -455,4 +456,54 @@ namespace Motion::Core
         return true;
     }
 
+    /**
+     * @brief Creates an unregistered plain OpenGL texture.
+     *
+     * This function constructs a shared pointer to a GL_Texture object with the specified name, width, and height.
+     * The created texture is not registered with any texture manager or resource system.
+     *
+     * @param name The name to assign to the texture.
+     * @param width The width of the texture in pixels.
+     * @param height The height of the texture in pixels.
+     * @return std::shared_ptr<GL_Texture> A shared pointer to the newly created GL_Texture object.
+     * @note This function is noexcept and guarantees not to throw exceptions.
+     */
+    std::shared_ptr<GL_Texture> GL_CreateUnregisteredPlainTexture(const std::string& name, std::uint32_t width, std::uint32_t height) noexcept
+    {
+        return std::make_shared<GL_Texture>(name, width, height);
+    }
+
+    /**
+     * @brief Creates an unregistered OpenGL texture from a file.
+     *
+     * This function constructs a shared pointer to a GL_Texture object using the specified parameters.
+     * The texture is not registered with any texture manager or resource system.
+     *
+     * @param name        The name to assign to the texture.
+     * @param textureFile The filesystem path to the texture file.
+     * @param type        The type of texture (e.g., 2D).
+     * @param flip        Whether to vertically flip the texture during loading.
+     * @return std::shared_ptr<GL_Texture> A shared pointer to the created GL_Texture object.
+     * @note The function is noexcept and will not throw exceptions.
+     */
+    std::shared_ptr<GL_Texture> GL_CreateUnregisteredTextureFromFile(const std::string& name, const std::filesystem::path& textureFile, TextureType type, bool flip) noexcept
+    {
+        return std::make_shared<GL_Texture>(name, textureFile, type, flip);
+    }
+
+    /**
+     * @brief Creates an unregistered OpenGL cube map texture from a file.
+     *
+     * This function constructs a shared pointer to a GL_CubeMapTexture object using the specified name and texture file.
+     * The created cube map texture is not registered with any texture manager or resource system.
+     *
+     * @param name        The name to assign to the cube map texture.
+     * @param textureFile The filesystem path to the cube map texture file.
+     * @return std::shared_ptr<GL_CubeMapTexture> A shared pointer to the newly created GL_CubeMapTexture object.
+     * @note This function is noexcept and guarantees not to throw exceptions.
+     */
+    std::shared_ptr<GL_CubeMapTexture> GL_CreateUnregisteredCubeMapTexture(const std::string& name, const std::filesystem::path& textureFile) noexcept
+    {
+        return std::make_shared<GL_CubeMapTexture>(name, textureFile);
+    }
 }

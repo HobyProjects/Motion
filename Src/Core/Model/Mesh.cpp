@@ -36,12 +36,12 @@ namespace Motion::Core
         if (m_VertexBuffer && m_ElementBuffer && m_VertexArray)
         {
             MOTION_CORE_INFO("Mesh '{}' created successfully with {} vertices and {} indices.", name, verticesSize / sizeof(float), indicesCount);
-            AssetInfo.IsAssetInitialized = true;
+            AssetInfo.IsInitialized = true;
         }
         else
         {
             MOTION_ASSERT(false, "Failed to create Mesh '{}': VertexBuffer, ElementBuffer, or VertexArray is null.", name);
-            AssetInfo.IsAssetInitialized = false;
+            AssetInfo.IsInitialized = false;
         }
     }
 
@@ -79,12 +79,12 @@ namespace Motion::Core
         if (m_VertexBuffer && m_ElementBuffer && m_VertexArray)
         {
             MOTION_CORE_INFO("Mesh '{}' created successfully with {} vertices and {} indices.", name, verticesSize / sizeof(float), indicesCount);
-            AssetInfo.IsAssetInitialized = true;
+            AssetInfo.IsInitialized = true;
         }
         else
         {
             MOTION_ASSERT(false, "Failed to create Mesh '{}': VertexBuffer, ElementBuffer, or VertexArray is null.", name);
-            AssetInfo.IsAssetInitialized = false;
+            AssetInfo.IsInitialized = false;
         }
     }
 
@@ -162,6 +162,7 @@ namespace Motion::Core
      * vertex positions, normals, texture coordinates, tangents, and bitangents for each vertex.
      * The mesh is constructed as a grid of quads, each split into two triangles.
      *
+     * @param isRegistered Indicates whether the mesh should be registered with the AssetManager.
      * @param name The name to assign to the mesh asset.
      * @param width The total width of the plane along the X axis.
      * @param height The total height of the plane along the Z axis.
@@ -172,7 +173,7 @@ namespace Motion::Core
      * @note The mesh is registered with the AssetManager and uses a generated name if creation succeeds.
      * @note Tangents and bitangents are calculated per triangle and accumulated per vertex, then normalized.
      */
-    std::shared_ptr<Mesh> QuickMesh::CreatePlane(const std::string name, float width, float height, std::uint32_t widthSegments, std::uint32_t heightSegments)
+    std::shared_ptr<Mesh> QuickMesh::CreatePlane(bool isRegistered, const std::string name, float width, float height, std::uint32_t widthSegments, std::uint32_t heightSegments)
     {
         std::vector<Vertex> vertices;
         std::vector<std::uint32_t> indices;
@@ -284,12 +285,28 @@ namespace Motion::Core
             });
 
         static std::uint32_t meshCount = 0;
-        auto mesh = AssetManager::GetInstance().Create<Mesh>(
-            std::format("{}_{}", name, meshCount++).c_str(),
-            vertexData.data(), vertexData.size(),
-            indices.data(), indices.size(),
-            layout, nullptr
-        );
+        std::shared_ptr<Mesh> mesh = nullptr;
+
+        if (isRegistered)
+        {
+            mesh = AssetManager::GetInstance().Create<Mesh>(
+                std::format("{}_{}", name, meshCount++).c_str(),
+                vertexData.data(), vertexData.size(),
+                indices.data(), indices.size(),
+                layout, nullptr
+            );
+        }
+        else
+        {
+            mesh = std::make_shared<Mesh>(
+                UniqueIdentity::GetUniqueID(),
+                std::format("{}_{}", name, meshCount++),
+                vertexData.data(), vertexData.size(),
+                indices.data(), indices.size(),
+                layout, nullptr
+            );
+        }
+
 
         if (mesh)
         {
@@ -309,13 +326,14 @@ namespace Motion::Core
      * for each face, which is important for proper lighting and normal mapping. The function also sets up texture
      * coordinates for each face.
      *
+     * @param isRegistered Indicates whether the mesh should be registered with the AssetManager.
      * @param name The name to assign to the mesh asset.
      * @param width The width of the cube along the X axis.
      * @param height The height of the cube along the Y axis.
      * @param depth The depth of the cube along the Z axis.
      * @return std::shared_ptr<Mesh> A shared pointer to the created Mesh object, or nullptr if creation failed.
      */
-    std::shared_ptr<Mesh> QuickMesh::CreateCube(const std::string name, float width, float height, float depth)
+    std::shared_ptr<Mesh> QuickMesh::CreateCube(bool isRegistered, const std::string name, float width, float height, float depth)
     {
         // Half dimensions
         float hw = width * 0.5f;
@@ -415,12 +433,27 @@ namespace Motion::Core
             });
 
         static std::uint32_t meshCount = 0;
-        auto mesh = AssetManager::GetInstance().Create<Mesh>(
-            std::format("{}_{}", name, meshCount++).c_str(),
-            vertexData.data(), static_cast<std::uint32_t>(vertexData.size()),
-            indices.data(), static_cast<std::uint32_t>(indices.size()),
-            layout, nullptr
-        );
+        std::shared_ptr<Mesh> mesh = nullptr;
+
+        if (isRegistered)
+        {
+            mesh = AssetManager::GetInstance().Create<Mesh>(
+                std::format("{}_{}", name, meshCount++).c_str(),
+                vertexData.data(), static_cast<std::uint32_t>(vertexData.size()),
+                indices.data(), static_cast<std::uint32_t>(indices.size()),
+                layout, nullptr
+            );
+        }
+        else
+        {
+            mesh = std::make_shared<Mesh>(
+                UniqueIdentity::GetUniqueID(),
+                std::format("{}_{}", name, meshCount++),
+                vertexData.data(), static_cast<std::uint32_t>(vertexData.size()),
+                indices.data(), static_cast<std::uint32_t>(indices.size()),
+                layout, nullptr
+            );
+        }
 
         if (mesh)
         {
@@ -439,12 +472,13 @@ namespace Motion::Core
      * sector (longitude) and stack (latitude) subdivisions. The sphere has a radius of 1.0.
      * Vertex positions, normals, texture coordinates, tangents, and bitangents are computed.
      *
+     * @param isRegistered Indicates whether the mesh should be registered with the AssetManager.
      * @param name The name to assign to the mesh asset.
      * @param sectorCount Number of longitudinal slices (minimum 3).
      * @param stackCount Number of latitudinal slices (minimum 2).
      * @return std::shared_ptr<Mesh> A shared pointer to the created Mesh object, or nullptr if creation failed.
      */
-    std::shared_ptr<Mesh> QuickMesh::CreateSphere(const std::string name, std::uint32_t sectorCount, std::uint32_t stackCount)
+    std::shared_ptr<Mesh> QuickMesh::CreateSphere(bool isRegistered, const std::string name, std::uint32_t sectorCount, std::uint32_t stackCount)
     {
         if (sectorCount < 3) sectorCount = 3;
         if (stackCount < 2) stackCount = 2;
@@ -535,12 +569,27 @@ namespace Motion::Core
             });
 
         static std::uint32_t meshCount = 0;
-        auto mesh = AssetManager::GetInstance().Create<Mesh>(
-            std::format("{}_{}", name, meshCount++).c_str(),
-            vertexData.data(), static_cast<std::uint32_t>(vertexData.size()),
-            indices.data(), static_cast<std::uint32_t>(indices.size()),
-            layout, nullptr
-        );
+        std::shared_ptr<Mesh> mesh = nullptr;
+
+        if (isRegistered)
+        {
+            mesh = AssetManager::GetInstance().Create<Mesh>(
+                std::format("{}_{}", name, meshCount++).c_str(),
+                vertexData.data(), static_cast<std::uint32_t>(vertexData.size()),
+                indices.data(), static_cast<std::uint32_t>(indices.size()),
+                layout, nullptr
+            );
+        }
+        else
+        {
+            mesh = std::make_shared<Mesh>(
+                UniqueIdentity::GetUniqueID(),
+                std::format("{}_{}", name, meshCount++),
+                vertexData.data(), static_cast<std::uint32_t>(vertexData.size()),
+                indices.data(), static_cast<std::uint32_t>(indices.size()),
+                layout, nullptr
+            );
+        }
 
         if (mesh)
         {
@@ -558,12 +607,13 @@ namespace Motion::Core
      * This static function generates a quad mesh centered at the origin, with the given width and height.
      * The quad is constructed with 4 vertices and 6 indices to form two triangles.
      *
+     * @param isRegistered Indicates whether the mesh should be registered with the AssetManager.
      * @param name The name to assign to the mesh asset.
      * @param width The width of the quad along the X axis.
      * @param height The height of the quad along the Z axis.
      * @return std::shared_ptr<Mesh> A shared pointer to the created Mesh object, or nullptr if creation failed.
      */
-    std::shared_ptr<Mesh> QuickMesh::CreateQuad(const std::string name, std::uint32_t width, std::uint32_t height)
+    std::shared_ptr<Mesh> QuickMesh::CreateQuad(bool isRegistered, const std::string name, std::uint32_t width, std::uint32_t height)
     {
         std::vector<Vertex> vertices(4);
         float halfWidth = static_cast<float>(width) * 0.5f;
@@ -624,12 +674,27 @@ namespace Motion::Core
             });
 
         static std::uint32_t meshCount = 0;
-        auto mesh = AssetManager::GetInstance().Create<Mesh>(
-            std::format("{}_{}", name, meshCount++).c_str(),
-            vertexData.data(), static_cast<std::uint32_t>(vertexData.size()),
-            indices.data(), static_cast<std::uint32_t>(indices.size()),
-            layout, nullptr
-        );
+        std::shared_ptr<Mesh> mesh = nullptr;
+
+        if (isRegistered)
+        {
+            mesh = AssetManager::GetInstance().Create<Mesh>(
+                std::format("{}_{}", name, meshCount++),
+                vertexData.data(), static_cast<std::uint32_t>(vertexData.size()),
+                indices.data(), static_cast<std::uint32_t>(indices.size()),
+                layout, nullptr
+            );
+        }
+        else
+        {
+            mesh = std::make_shared<Mesh>(
+                UniqueIdentity::GetUniqueID(),
+                std::format("{}_{}", name, meshCount++),
+                vertexData.data(), static_cast<std::uint32_t>(vertexData.size()),
+                indices.data(), static_cast<std::uint32_t>(indices.size()),
+                layout, nullptr
+            );
+        }
 
         if (mesh)
         {

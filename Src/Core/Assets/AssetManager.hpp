@@ -36,37 +36,7 @@ namespace Motion::Core
          */
         static std::shared_ptr<IShader> Create(const std::string& name, const std::filesystem::path& sourceFile)
         {
-            switch (Renderer::GetAPI())
-            {
-            case RenderingAPI::OpenGL:
-            {
-                auto shaderSources = ShaderCompiler::ReadFullShaderFile(sourceFile);
-
-                if (shaderSources.empty())
-                {
-                    MOTION_CORE_ERROR("No valid shader sources found in file: {0}", sourceFile.string());
-                    return nullptr;
-                }
-
-                UUID uuid = UniqueIdentity::GetUniqueID();
-                return std::make_shared<GL_Shader>(uuid, name, shaderSources, sourceFile);
-            }
-            case RenderingAPI::Vulkan:
-            {
-                MOTION_CORE_ERROR("Vulkan API is not yet supported for shader creation!");
-                return nullptr;
-            }
-            case RenderingAPI::DirectX:
-            {
-                MOTION_CORE_ERROR("DirectX API is not yet supported for shader creation!");
-                return nullptr;
-            }
-            default:
-            {
-                MOTION_CORE_ERROR("Unsupported rendering API for shader creation!");
-                return nullptr;
-            }
-            }
+            return Create(UniqueIdentity::GetUniqueID(), name, sourceFile);
         }
 
 
@@ -133,37 +103,7 @@ namespace Motion::Core
          */
         static std::shared_ptr<IShader> Create(const std::string& name, const std::filesystem::path& vertexPath, const std::filesystem::path& fragmentPath)
         {
-            switch (Renderer::GetAPI())
-            {
-            case RenderingAPI::OpenGL:
-            {
-                auto shaderSources = ShaderCompiler::ReadShaderFiles(vertexPath, fragmentPath);
-
-                if (shaderSources.empty())
-                {
-                    MOTION_CORE_ERROR("No valid shader sources found in files: {0} and {1}", vertexPath.string(), fragmentPath.string());
-                    return nullptr;
-                }
-
-                UUID uuid = UniqueIdentity::GetUniqueID();
-                return std::make_shared<GL_Shader>(uuid, name, shaderSources, vertexPath);
-            }
-            case RenderingAPI::Vulkan:
-            {
-                MOTION_CORE_ERROR("Vulkan API is not yet supported for shader creation!");
-                return nullptr;
-            }
-            case RenderingAPI::DirectX:
-            {
-                MOTION_CORE_ERROR("DirectX API is not yet supported for shader creation!");
-                return nullptr;
-            }
-            default:
-            {
-                MOTION_CORE_ERROR("Unsupported rendering API for shader creation!");
-                return nullptr;
-            }
-            }
+            return Create(UniqueIdentity::GetUniqueID(), name, vertexPath, fragmentPath);
         }
 
         /**
@@ -233,29 +173,7 @@ namespace Motion::Core
          */
         static std::shared_ptr<ITexture> Create(const std::string& name, std::uint32_t width, std::uint32_t height)
         {
-            switch (Renderer::GetAPI())
-            {
-            case RenderingAPI::OpenGL:
-            {
-                UUID uuid = UniqueIdentity::GetUniqueID();
-                return std::make_shared<GL_Texture>(uuid, name, width, height);
-            }
-            case RenderingAPI::Vulkan:
-            {
-                MOTION_CORE_ERROR("Vulkan API is not yet supported for texture creation!");
-                return nullptr;
-            }
-            case RenderingAPI::DirectX:
-            {
-                MOTION_CORE_ERROR("DirectX API is not yet supported for texture creation!");
-                return nullptr;
-            }
-            default:
-            {
-                MOTION_CORE_ERROR("Unsupported rendering API for texture creation!");
-                return nullptr;
-            }
-            }
+            return Create(UniqueIdentity::GetUniqueID(), name, width, height);
         }
 
         /**
@@ -313,29 +231,7 @@ namespace Motion::Core
          */
         static std::shared_ptr<ITexture> Create(const std::string& name, const std::filesystem::path& textureFile, TextureType type, bool flip = true)
         {
-            switch (Renderer::GetAPI())
-            {
-            case RenderingAPI::OpenGL:
-            {
-                UUID uuid = UniqueIdentity::GetUniqueID();
-                return std::make_shared<GL_Texture>(uuid, name, textureFile, type, flip);
-            }
-            case RenderingAPI::Vulkan:
-            {
-                MOTION_CORE_ERROR("Vulkan API is not yet supported for texture creation!");
-                return nullptr;
-            }
-            case RenderingAPI::DirectX:
-            {
-                MOTION_CORE_ERROR("DirectX API is not yet supported for texture creation!");
-                return nullptr;
-            }
-            default:
-            {
-                MOTION_CORE_ERROR("Unsupported rendering API for texture creation!");
-                return nullptr;
-            }
-            }
+            return Create(UniqueIdentity::GetUniqueID(), name, textureFile, type, flip);
         }
 
         /**
@@ -399,29 +295,7 @@ namespace Motion::Core
          */
         static std::shared_ptr<ICubeMapTexture> Create(const std::string& name, const std::filesystem::path& textureFile)
         {
-            switch (Renderer::GetAPI())
-            {
-            case RenderingAPI::OpenGL:
-            {
-                UUID uuid = UniqueIdentity::GetUniqueID();
-                return std::make_shared<GL_CubeMapTexture>(uuid, name, textureFile);
-            }
-            case RenderingAPI::Vulkan:
-            {
-                MOTION_CORE_ERROR("Vulkan API is not yet supported for cube map texture creation!");
-                return nullptr;
-            }
-            case RenderingAPI::DirectX:
-            {
-                MOTION_CORE_ERROR("DirectX API is not yet supported for cube map texture creation!");
-                return nullptr;
-            }
-            default:
-            {
-                MOTION_CORE_ERROR("Unsupported rendering API for cube map texture creation!");
-                return nullptr;
-            }
-            }
+            return Create(UniqueIdentity::GetUniqueID(), name, textureFile);
         }
 
         /**
@@ -523,8 +397,7 @@ namespace Motion::Core
          */
         static std::shared_ptr<Material> Create(const std::string& name)
         {
-            UUID uuid = UniqueIdentity::GetUniqueID();
-            return std::make_shared<Material>(uuid, name);
+            return Create(UniqueIdentity::GetUniqueID(), name);
         }
 
         /**
@@ -558,8 +431,7 @@ namespace Motion::Core
          */
         static std::shared_ptr<StaticMesh> Create(const std::string& name, const std::filesystem::path& modelFile)
         {
-            UUID uuid = UniqueIdentity::GetUniqueID();
-            return std::make_shared<StaticMesh>(uuid, name, modelFile);
+            return Create(UniqueIdentity::GetUniqueID(), name, modelFile);
         }
 
         /**
@@ -626,11 +498,9 @@ namespace Motion::Core
                 return Get<T>(name);
             }
 
-            UUID uuid = UniqueIdentity::GetUniqueID();
             auto asset = AssetBackendsBuilder<T>::Create(name, std::forward<Args>(args)...);
-
             if (asset)
-                Register(uuid, name, asset);
+                Register(asset->GetUUID(), asset->GetName(), asset);
 
             return asset;
         }
@@ -657,9 +527,8 @@ namespace Motion::Core
             }
 
             auto asset = AssetBackendsBuilder<T>::Create(uuid, name, std::forward<Args>(args)...);
-
             if (asset)
-                Register(uuid, name, asset);
+                Register(asset->GetUUID(), asset->GetName(), asset);
 
             return asset;
         }

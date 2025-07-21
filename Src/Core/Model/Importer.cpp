@@ -30,7 +30,7 @@ namespace Motion::Core
         if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)
         {
             MOTION_CORE_ERROR("Assimp Importer Error: {0}", importer.GetErrorString());
-            staticMeshPtr->AssetInfo.IsAssetInitialized = false;
+            staticMeshPtr->AssetInfo.IsInitialized = false;
             return staticMeshPtr;
         }
         else
@@ -38,7 +38,7 @@ namespace Motion::Core
             MOTION_CORE_INFO("Assimp Importer: StaticMesh {0} loaded successfully from {1}", modelName, path.string());
             LoadNode(staticMeshPtr, scene->mRootNode, scene);
 
-            staticMeshPtr->AssetInfo.IsAssetInitialized = true;
+            staticMeshPtr->AssetInfo.IsInitialized = true;
             return staticMeshPtr;
         }
 
@@ -69,7 +69,7 @@ namespace Motion::Core
         if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)
         {
             MOTION_CORE_ERROR("Assimp Importer Error: {0}", importer.GetErrorString());
-            staticMeshPtr->AssetInfo.IsAssetInitialized = false;
+            staticMeshPtr->AssetInfo.IsInitialized = false;
             return staticMeshPtr;
         }
         else
@@ -77,7 +77,7 @@ namespace Motion::Core
             MOTION_CORE_INFO("Assimp Importer: StaticMesh {0} loaded successfully from {1}", modelName, path.string());
             LoadNode(staticMeshPtr, scene->mRootNode, scene);
 
-            staticMeshPtr->AssetInfo.IsAssetInitialized = true;
+            staticMeshPtr->AssetInfo.IsInitialized = true;
             return staticMeshPtr;
         }
 

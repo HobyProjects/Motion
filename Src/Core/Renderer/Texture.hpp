@@ -104,4 +104,8 @@ namespace Motion::Core
         { texture.Bind() } -> std::same_as<void>;
         { texture.GetID() } -> std::same_as<std::uint32_t>;
     };
+
+    [[nodiscard]] std::shared_ptr<ITexture> CreateUnregisteredPlainTexture(const std::string& name, std::uint32_t width = 100, std::uint32_t height = 100) noexcept;
+    [[nodiscard]] std::shared_ptr<ITexture> CreateUnregisteredTextureFromFile(const std::string& name, const std::filesystem::path& textureFile, TextureType type = TextureType::BaseColorMapsTexture, bool flip = true) noexcept;
+    [[nodiscard]] std::shared_ptr<ICubeMapTexture> CreateUnregisteredCubeMapTexture(const std::string& name, const std::filesystem::path& textureFile) noexcept;
 }

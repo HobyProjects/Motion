@@ -13,15 +13,16 @@ namespace Motion::Core
      * @param name The name of the texture.
      * @param width The width of the texture in pixels.
      * @param height The height of the texture in pixels.
+     * @param color The color to fill the texture with (default is white).
      * @return std::shared_ptr<ITexture> A shared pointer to the created texture, or nullptr if the API is unsupported.
      * @note Currently, only the OpenGL API is implemented. Vulkan and DirectX will assert and return nullptr.
      */
-    std::shared_ptr<ITexture> CreateUnregisteredPlainTexture(const std::string& name, std::uint32_t width, std::uint32_t height) noexcept
+    std::shared_ptr<ITexture> CreateUnregisteredPlainTexture(const std::string& name, std::uint32_t width = 100, std::uint32_t height = 100, const glm::vec3& color = { 1.0f, 1.0f, 1.0f }) noexcept
     {
         switch (Renderer::GetAPI())
         {
         case RenderingAPI::OpenGL:
-            return GL_CreateUnregisteredPlainTexture(name, width, height);
+            return GL_CreateUnregisteredPlainTexture(name, width, height, color);
         case RenderingAPI::Vulkan:
             MOTION_ASSERT(false, "Vulkan API is not yet implemented for plain textures.");
             return nullptr;

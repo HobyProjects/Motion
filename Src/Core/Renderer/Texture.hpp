@@ -77,7 +77,7 @@ namespace Motion::Core
 
     protected:
         [[nodiscard]] virtual bool LoadTextureFromFile(const std::filesystem::path& textureFile, bool flip) = 0;
-        [[nodiscard]] virtual bool GenerateTexture2D(std::uint32_t width, std::uint32_t height) = 0;
+        [[nodiscard]] virtual bool GenerateTexture2D(std::uint32_t width, std::uint32_t height, const glm::vec3& color) = 0;
     };
 
     class ICubeMapTexture : public IAsset
@@ -105,7 +105,7 @@ namespace Motion::Core
         { texture.GetID() } -> std::same_as<std::uint32_t>;
     };
 
-    [[nodiscard]] std::shared_ptr<ITexture> CreateUnregisteredPlainTexture(const std::string& name, std::uint32_t width = 100, std::uint32_t height = 100) noexcept;
+    [[nodiscard]] std::shared_ptr<ITexture> CreateUnregisteredPlainTexture(const std::string& name, std::uint32_t width = 100, std::uint32_t height = 100, const glm::vec3& color = { 1.0f, 1.0f, 1.0f }) noexcept;
     [[nodiscard]] std::shared_ptr<ITexture> CreateUnregisteredTextureFromFile(const std::string& name, const std::filesystem::path& textureFile, TextureType type = TextureType::BaseColorMapsTexture, bool flip = true) noexcept;
     [[nodiscard]] std::shared_ptr<ICubeMapTexture> CreateUnregisteredCubeMapTexture(const std::string& name, const std::filesystem::path& textureFile) noexcept;
 }

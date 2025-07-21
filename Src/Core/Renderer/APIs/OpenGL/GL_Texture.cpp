@@ -9,18 +9,20 @@ namespace Motion::Core
      * @param[in] name   The name of the texture
      * @param[in] width  The width of the texture
      * @param[in] height The height of the texture
+     * @param[in] color  The color to fill the texture
      *
      * @return A new GL_Texture object
      */
-    GL_Texture::GL_Texture(const std::string& name, uint32_t width, uint32_t height) : AssetBase<ITexture>(UniqueIdentity::GetUniqueID(), name, AssetType::Texture, "PlainTexture")
+    GL_Texture::GL_Texture(const std::string& name, uint32_t width, uint32_t height, const glm::vec3& color)
+        : AssetBase<ITexture>(UniqueIdentity::GetUniqueID(), name, AssetType::Texture, "PlainTexture")
     {
-        if (!GenerateTexture2D(width, height))
+        if (!GenerateTexture2D(width, height, color))
         {
             MOTION_ASSERT(false, "Unable to generate texture of size {0}x{1}", width, height);
             return;
         }
 
-        m_Specification.Type = TextureType::BaseColorMapsTexture;
+        m_Specification.Type = TextureType::DiffuseTexture;
         m_Specification.Source = TextureSource::GeneratedTexture;
         AssetInfo.IsInitialized = true;
     }
@@ -28,22 +30,24 @@ namespace Motion::Core
     /**
      * Constructs a new GL_Texture object with the specified UUID, name, width, and height. This
      * will generate a plain 2D texture with the specified width and height, and assign it the
-     * specified UUID and name. The texture will be of type TextureType::BaseColorMapsTexture.
+     * specified UUID and name. The texture will be of type TextureType::DiffuseTexture.
      *
      * @param[in] uuid   The UUID of the texture
      * @param[in] name   The name of the texture
      * @param[in] width  The width of the texture
      * @param[in] height The height of the texture
+     * @param[in] color  The color to fill the texture
      */
-    GL_Texture::GL_Texture(UUID uuid, const std::string& name, uint32_t width, uint32_t height) : AssetBase<ITexture>(uuid, name, AssetType::Texture, "PlainTexture")
+    GL_Texture::GL_Texture(UUID uuid, const std::string& name, uint32_t width, uint32_t height, const glm::vec3& color)
+        : AssetBase<ITexture>(uuid, name, AssetType::Texture, "PlainTexture")
     {
-        if (!GenerateTexture2D(width, height))
+        if (!GenerateTexture2D(width, height, color))
         {
             MOTION_ASSERT(false, "Unable to generate texture of size {0}x{1}", width, height);
             return;
         }
 
-        m_Specification.Type = TextureType::BaseColorMapsTexture;
+        m_Specification.Type = TextureType::DiffuseTexture;
         m_Specification.Source = TextureSource::GeneratedTexture;
         AssetInfo.IsInitialized = true;
     }
@@ -235,20 +239,36 @@ namespace Motion::Core
      *
      * @param[in] width  The width of the texture
      * @param[in] height The height of the texture
+     * @param[in] color  The color to fill the texture
      *
      * @return Whether the texture could be generated successfully
      */
-    bool GL_Texture::GenerateTexture2D(std::uint32_t width, std::uint32_t height)
+    bool GL_Texture::GenerateTexture2D(std::uint32_t width, std::uint32_t height, const glm::vec3& color)
     {
         m_Specification.Width = width;
         m_Specification.Height = height;
-        m_Specification.NumberOfChannels = GL_RGBA;
+        m_Specification.NumberOfChannels = 4; // RGBA
         m_Specification.InternalDataFormat = GL_RGBA8;
         m_Specification.TextureDataFormat = GL_RGBA;
 
         uint32_t textureAllocateSize = m_Specification.Width * m_Specification.Height * m_Specification.NumberOfChannels;
         m_Specification.TextureData = std::make_unique<std::uint8_t[]>(textureAllocateSize);
-        std::memset(m_Specification.TextureData.get(), 255, textureAllocateSize);
+
+        // Convert glm::vec3 (0.0f - 1.0f) to uint8_t (0 - 255)
+        std::uint8_t r = static_cast<std::uint8_t>(glm::clamp(color.r, 0.0f, 1.0f) * 255.0f);
+        std::uint8_t g = static_cast<std::uint8_t>(glm::clamp(color.g, 0.0f, 1.0f) * 255.0f);
+        std::uint8_t b = static_cast<std::uint8_t>(glm::clamp(color.b, 0.0f, 1.0f) * 255.0f);
+        std::uint8_t a = 255; // Fully opaque
+
+        // Fill the texture buffer with RGBA
+        for (std::uint32_t i = 0; i < width * height; ++i)
+        {
+            std::uint32_t index = i * 4;
+            m_Specification.TextureData[index + 0] = r;
+            m_Specification.TextureData[index + 1] = g;
+            m_Specification.TextureData[index + 2] = b;
+            m_Specification.TextureData[index + 3] = a;
+        }
 
         glCreateTextures(GL_TEXTURE_2D, 1, &m_Specification.TexID);
         glBindTexture(GL_TEXTURE_2D, m_Specification.TexID);
@@ -465,12 +485,13 @@ namespace Motion::Core
      * @param name The name to assign to the texture.
      * @param width The width of the texture in pixels.
      * @param height The height of the texture in pixels.
+     * @param color The color to fill the texture.
      * @return std::shared_ptr<GL_Texture> A shared pointer to the newly created GL_Texture object.
      * @note This function is noexcept and guarantees not to throw exceptions.
      */
-    std::shared_ptr<GL_Texture> GL_CreateUnregisteredPlainTexture(const std::string& name, std::uint32_t width, std::uint32_t height) noexcept
+    std::shared_ptr<GL_Texture> GL_CreateUnregisteredPlainTexture(const std::string& name, std::uint32_t width, std::uint32_t height, const glm::vec3& color) noexcept
     {
-        return std::make_shared<GL_Texture>(name, width, height);
+        return std::make_shared<GL_Texture>(name, width, height, color);
     }
 
     /**

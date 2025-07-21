@@ -8,8 +8,8 @@ namespace Motion::Core
     class GL_Texture final : public AssetBase<ITexture>
     {
     public:
-        GL_Texture(const std::string& name, std::uint32_t width, std::uint32_t height);
-        GL_Texture(UUID uuid, const std::string& name, std::uint32_t width, std::uint32_t height);
+        GL_Texture(const std::string& name, std::uint32_t width, std::uint32_t height, const glm::vec3& color);
+        GL_Texture(UUID uuid, const std::string& name, std::uint32_t width, std::uint32_t height, const glm::vec3& color);
         GL_Texture(const std::string& name, const std::filesystem::path& textureFile, TextureType type, bool flip = true);
         GL_Texture(UUID uuid, const std::string& name, const std::filesystem::path& textureFile, TextureType type, bool flip = true);
         virtual ~GL_Texture();
@@ -24,7 +24,7 @@ namespace Motion::Core
 
     protected:
         [[nodiscard]] virtual bool LoadTextureFromFile(const std::filesystem::path& textureFile, bool flip) override;
-        [[nodiscard]] virtual bool GenerateTexture2D(std::uint32_t width, std::uint32_t height) override;
+        [[nodiscard]] virtual bool GenerateTexture2D(std::uint32_t width, std::uint32_t height, const glm::vec3& color) override;
 
     private:
         TextureSpecification m_Specification{};
@@ -53,7 +53,7 @@ namespace Motion::Core
         TextureSpecification m_Specification{};
     };
 
-    [[nodiscard]] std::shared_ptr<GL_Texture> GL_CreateUnregisteredPlainTexture(const std::string& name, std::uint32_t width = 100, std::uint32_t height = 100) noexcept;
+    [[nodiscard]] std::shared_ptr<GL_Texture> GL_CreateUnregisteredPlainTexture(const std::string& name, std::uint32_t width = 100, std::uint32_t height = 100, const glm::vec3& color = { 1.0f, 1.0f, 1.0f }) noexcept;
     [[nodiscard]] std::shared_ptr<GL_Texture> GL_CreateUnregisteredTextureFromFile(const std::string& name, const std::filesystem::path& textureFile, TextureType type = TextureType::BaseColorMapsTexture, bool flip = true) noexcept;
     [[nodiscard]] std::shared_ptr<GL_CubeMapTexture> GL_CreateUnregisteredCubeMapTexture(const std::string& name, const std::filesystem::path& textureFile) noexcept;
 }

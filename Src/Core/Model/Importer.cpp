@@ -22,27 +22,7 @@ namespace Motion::Core
      */
     std::shared_ptr<StaticMesh> Importer::ImportModel(const std::string& modelName, const std::filesystem::path& path)
     {
-        auto& assetManager = AssetManager::GetInstance();
-        std::shared_ptr<StaticMesh> staticMeshPtr = assetManager.Create<StaticMesh>(modelName, path);
-
-        Assimp::Importer importer;
-        const aiScene* scene = importer.ReadFile(path.string(), aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_GenSmoothNormals | aiProcess_JoinIdenticalVertices | aiProcess_CalcTangentSpace);
-        if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)
-        {
-            MOTION_CORE_ERROR("Assimp Importer Error: {0}", importer.GetErrorString());
-            staticMeshPtr->AssetInfo.IsInitialized = false;
-            return staticMeshPtr;
-        }
-        else
-        {
-            MOTION_CORE_INFO("Assimp Importer: StaticMesh {0} loaded successfully from {1}", modelName, path.string());
-            LoadNode(staticMeshPtr, scene->mRootNode, scene);
-
-            staticMeshPtr->AssetInfo.IsInitialized = true;
-            return staticMeshPtr;
-        }
-
-        return nullptr;
+        return ImportModel(UniqueIdentity::GetUniqueID(), modelName, path);
     }
 
     /**
@@ -154,11 +134,11 @@ namespace Motion::Core
      * @param idx The index of the property if there are multiple entries.
      * @return The float value of the requested material property, or 0.0f if not found.
      */
-    static float LoadMaterialFloatData(aiMaterial* currentMaterial, const char* dataType, uint32_t type, uint32_t idx)
+    static float LoadMaterialFloatData(aiMaterial* currentMaterial, const char* dataType, uint32_t type, uint32_t idx, float defaultValue = 0.0f)
     {
         MOTION_CORE_INFO("Looking for data type {0}", dataType);
 
-        float data{ 0.0f };
+        float data{ defaultValue };
         if (currentMaterial->Get(dataType, type, idx, data) == AI_SUCCESS)
         {
             MOTION_CORE_INFO("Found data type {0} with value {1}", dataType, data);
@@ -166,8 +146,8 @@ namespace Motion::Core
         }
         else
         {
-            MOTION_CORE_WARN("Data type {0} not found, returning default value 0.0f", dataType);
-            return 0.0f;
+            MOTION_CORE_WARN("Data type {0} not found, returning default value {1}", dataType, defaultValue);
+            return defaultValue;
         }
     }
 
@@ -184,11 +164,11 @@ namespace Motion::Core
      * @param idx The index of the property (usually 0).
      * @return glm::vec3 The loaded vector value, or (0.0f, 0.0f, 0.0f) if not found.
      */
-    static glm::vec3 LoadMaterialVec3Data(aiMaterial* currentMaterial, const char* dataType, uint32_t type, uint32_t idx)
+    static glm::vec3 LoadMaterialVec3Data(aiMaterial* currentMaterial, const char* dataType, uint32_t type, uint32_t idx, glm::vec3 defaultValue = { 0.0f, 0.0f, 0.0f })
     {
         MOTION_CORE_INFO("Looking for data type {0}", dataType);
 
-        glm::vec3 data{ 0.0f, 0.0f, 0.0f };
+        glm::vec3 data{ defaultValue };
         if (currentMaterial->Get(dataType, type, idx, data) == AI_SUCCESS)
         {
             MOTION_CORE_INFO("Found data type {0} with value {1}, {2}, {3}", dataType, data.x, data.y, data.z);
@@ -196,8 +176,8 @@ namespace Motion::Core
         }
         else
         {
-            MOTION_CORE_WARN("Data type {0} not found, returning default value {1}, {2}, {3}", dataType, 0.0f, 0.0f, 0.0f);
-            return { 0.0f, 0.0f, 0.0f };
+            MOTION_CORE_WARN("Data type {0} not found, returning default value {1}, {2}, {3}", dataType, defaultValue.x, defaultValue.y, defaultValue.z);
+            return defaultValue;
         }
     }
 
@@ -343,32 +323,32 @@ namespace Motion::Core
         }
 
         // Surface Colors
-        meshSegment->Materials->SetUniform(UniformCache::Color_AmbientColor, LoadMaterialVec3Data(currentMaterial, AI_MATKEY_COLOR_AMBIENT));
-        meshSegment->Materials->SetUniform(UniformCache::Color_DiffuseColor, LoadMaterialVec3Data(currentMaterial, AI_MATKEY_COLOR_DIFFUSE));
-        meshSegment->Materials->SetUniform(UniformCache::Color_SpecularColor, LoadMaterialVec3Data(currentMaterial, AI_MATKEY_COLOR_SPECULAR));
-        meshSegment->Materials->SetUniform(UniformCache::Color_EmissiveColor, LoadMaterialVec3Data(currentMaterial, AI_MATKEY_COLOR_EMISSIVE));
-        meshSegment->Materials->SetUniform(UniformCache::Color_ReflectiveColor, LoadMaterialVec3Data(currentMaterial, AI_MATKEY_COLOR_REFLECTIVE));
-        meshSegment->Materials->SetUniform(UniformCache::Color_TransparentColor, LoadMaterialVec3Data(currentMaterial, AI_MATKEY_COLOR_TRANSPARENT));
+        meshSegment->Materials->SetUniform(UniformCache::Color_AmbientColor, LoadMaterialVec3Data(currentMaterial, AI_MATKEY_COLOR_AMBIENT, MaterialDefaults::AmbientColor));
+        meshSegment->Materials->SetUniform(UniformCache::Color_DiffuseColor, LoadMaterialVec3Data(currentMaterial, AI_MATKEY_COLOR_DIFFUSE, MaterialDefaults::DiffuseColor));
+        meshSegment->Materials->SetUniform(UniformCache::Color_SpecularColor, LoadMaterialVec3Data(currentMaterial, AI_MATKEY_COLOR_SPECULAR, MaterialDefaults::SpecularColor));
+        meshSegment->Materials->SetUniform(UniformCache::Color_EmissiveColor, LoadMaterialVec3Data(currentMaterial, AI_MATKEY_COLOR_EMISSIVE, MaterialDefaults::EmissiveColor));
+        meshSegment->Materials->SetUniform(UniformCache::Color_ReflectiveColor, LoadMaterialVec3Data(currentMaterial, AI_MATKEY_COLOR_REFLECTIVE, MaterialDefaults::ReflectiveColor));
+        meshSegment->Materials->SetUniform(UniformCache::Color_TransparentColor, LoadMaterialVec3Data(currentMaterial, AI_MATKEY_COLOR_TRANSPARENT, MaterialDefaults::TransparentColor));
 
         //Material properties
-        meshSegment->Materials->SetUniform(UniformCache::Property_Shininess, LoadMaterialFloatData(currentMaterial, AI_MATKEY_SHININESS));
-        meshSegment->Materials->SetUniform(UniformCache::Property_ShininessStrength, LoadMaterialFloatData(currentMaterial, AI_MATKEY_SHININESS_STRENGTH));
-        meshSegment->Materials->SetUniform(UniformCache::Property_Opacity, LoadMaterialFloatData(currentMaterial, AI_MATKEY_OPACITY));
-        meshSegment->Materials->SetUniform(UniformCache::Property_IndexOfRefraction, LoadMaterialFloatData(currentMaterial, AI_MATKEY_IOR));
-        meshSegment->Materials->SetUniform(UniformCache::Property_BumpScaling, LoadMaterialFloatData(currentMaterial, AI_MATKEY_BUMPSCALING));
-        meshSegment->Materials->SetUniform(UniformCache::Property_Reflectivity, LoadMaterialFloatData(currentMaterial, AI_MATKEY_REFLECTIVITY));
+        meshSegment->Materials->SetUniform(UniformCache::Property_Shininess, LoadMaterialFloatData(currentMaterial, AI_MATKEY_SHININESS, MaterialDefaults::Shininess));
+        meshSegment->Materials->SetUniform(UniformCache::Property_ShininessStrength, LoadMaterialFloatData(currentMaterial, AI_MATKEY_SHININESS_STRENGTH, MaterialDefaults::ShininessStrength));
+        meshSegment->Materials->SetUniform(UniformCache::Property_Opacity, LoadMaterialFloatData(currentMaterial, AI_MATKEY_OPACITY, MaterialDefaults::Opacity));
+        meshSegment->Materials->SetUniform(UniformCache::Property_IndexOfRefraction, LoadMaterialFloatData(currentMaterial, AI_MATKEY_IOR, MaterialDefaults::IndexOfRefraction));
+        meshSegment->Materials->SetUniform(UniformCache::Property_BumpScaling, LoadMaterialFloatData(currentMaterial, AI_MATKEY_BUMPSCALING, MaterialDefaults::BumpScaling));
+        meshSegment->Materials->SetUniform(UniformCache::Property_Reflectivity, LoadMaterialFloatData(currentMaterial, AI_MATKEY_REFLECTIVITY, MaterialDefaults::Reflectivity));
 
         //Material Factors
-        meshSegment->Materials->SetUniform(UniformCache::Factor_BaseColorFactor, LoadMaterialVec3Data(currentMaterial, AI_MATKEY_BASE_COLOR));
-        meshSegment->Materials->SetUniform(UniformCache::Factor_MetallicFactor, LoadMaterialFloatData(currentMaterial, AI_MATKEY_METALLIC_FACTOR));
-        meshSegment->Materials->SetUniform(UniformCache::Factor_RoughnessFactor, LoadMaterialFloatData(currentMaterial, AI_MATKEY_ROUGHNESS_FACTOR));
-        meshSegment->Materials->SetUniform(UniformCache::Factor_TransmissionFactor, LoadMaterialFloatData(currentMaterial, AI_MATKEY_TRANSMISSION_FACTOR));
-        meshSegment->Materials->SetUniform(UniformCache::Factor_ClearCoatFactor, LoadMaterialFloatData(currentMaterial, AI_MATKEY_CLEARCOAT_FACTOR));
-        meshSegment->Materials->SetUniform(UniformCache::Factor_ClearCoatFactor, LoadMaterialFloatData(currentMaterial, AI_MATKEY_CLEARCOAT_ROUGHNESS_FACTOR));
-        meshSegment->Materials->SetUniform(UniformCache::Factor_SheenFactor, LoadMaterialFloatData(currentMaterial, AI_MATKEY_SHEEN_COLOR_FACTOR));
-        meshSegment->Materials->SetUniform(UniformCache::Factor_SheenFactor, LoadMaterialFloatData(currentMaterial, AI_MATKEY_SHEEN_ROUGHNESS_FACTOR));
-        meshSegment->Materials->SetUniform(UniformCache::Factor_IndexOfRefraction, LoadMaterialFloatData(currentMaterial, AI_MATKEY_REFRACTI));
-        meshSegment->Materials->SetUniform(UniformCache::Factor_AmbientOcclusionFactor, LoadMaterialFloatData(currentMaterial, AI_MATKEY_AMBIENT_OCCLUISION_FACTOR));
+        meshSegment->Materials->SetUniform(UniformCache::Factor_BaseColorFactor, LoadMaterialVec3Data(currentMaterial, AI_MATKEY_BASE_COLOR, MaterialDefaults::BaseColorFactor));
+        meshSegment->Materials->SetUniform(UniformCache::Factor_MetallicFactor, LoadMaterialFloatData(currentMaterial, AI_MATKEY_METALLIC_FACTOR, MaterialDefaults::MetallicFactor));
+        meshSegment->Materials->SetUniform(UniformCache::Factor_RoughnessFactor, LoadMaterialFloatData(currentMaterial, AI_MATKEY_ROUGHNESS_FACTOR, MaterialDefaults::RoughnessFactor));
+        meshSegment->Materials->SetUniform(UniformCache::Factor_TransmissionFactor, LoadMaterialFloatData(currentMaterial, AI_MATKEY_TRANSMISSION_FACTOR, MaterialDefaults::TransmissionFactor));
+        meshSegment->Materials->SetUniform(UniformCache::Factor_ClearCoatFactor, LoadMaterialFloatData(currentMaterial, AI_MATKEY_CLEARCOAT_FACTOR, MaterialDefaults::ClearCoatFactor));
+        meshSegment->Materials->SetUniform(UniformCache::Factor_ClearCoatRoughnessFactor, LoadMaterialFloatData(currentMaterial, AI_MATKEY_CLEARCOAT_ROUGHNESS_FACTOR, MaterialDefaults::ClearCoatRoughnessFactor));
+        meshSegment->Materials->SetUniform(UniformCache::Factor_SheenFactor, LoadMaterialFloatData(currentMaterial, AI_MATKEY_SHEEN_COLOR_FACTOR, MaterialDefaults::SheenFactor));
+        meshSegment->Materials->SetUniform(UniformCache::Factor_SheenRoughnessFactor, LoadMaterialFloatData(currentMaterial, AI_MATKEY_SHEEN_ROUGHNESS_FACTOR, MaterialDefaults::SheenRoughnessFactor));
+        meshSegment->Materials->SetUniform(UniformCache::Factor_IndexOfRefraction, LoadMaterialFloatData(currentMaterial, AI_MATKEY_REFRACTI, MaterialDefaults::IndexOfRefraction));
+        meshSegment->Materials->SetUniform(UniformCache::Factor_AmbientOcclusionFactor, LoadMaterialFloatData(currentMaterial, AI_MATKEY_AMBIENT_OCCLUISION_FACTOR, MaterialDefaults::AmbientOcclusionFactor));
 
         // ********************************* legacy textures types ******************************************** //
         meshSegment->Materials->SetTexture(UniformCache::Texture_DiffuseTexture, LoadTextures(aiTextureType_DIFFUSE, currentMaterial, TextureType::DiffuseTexture));

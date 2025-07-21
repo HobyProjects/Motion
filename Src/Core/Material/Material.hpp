@@ -23,6 +23,37 @@ namespace Motion::Core
         Unlit
     };
 
+    struct MaterialDefaults
+    {
+        // Surface Colors (legacy/compatibility with older formats)
+        static constexpr glm::vec3 AmbientColor = { 0.0f, 0.0f, 0.0f };         // Typically ignored in modern PBR
+        static constexpr glm::vec3 DiffuseColor = { 0.8f, 0.8f, 0.8f };         // Neutral gray
+        static constexpr glm::vec3 SpecularColor = { 0.5f, 0.5f, 0.5f };        // F0 reflectance for dielectrics
+        static constexpr glm::vec3 EmissiveColor = { 0.0f, 0.0f, 0.0f };        // No emission by default
+        static constexpr glm::vec3 ReflectiveColor = { 0.0f, 0.0f, 0.0f };
+        static constexpr glm::vec3 TransparentColor = { 0.0f, 0.0f, 0.0f };
+
+        // Material properties (legacy/Blinn-Phong)
+        static constexpr float Shininess = 32.0f;                               // Moderate gloss
+        static constexpr float ShininessStrength = 1.0f;
+        static constexpr float Opacity = 1.0f;                                  // Fully opaque
+        static constexpr float IndexOfRefraction = 1.5f;                        // Glass-like IOR
+        static constexpr float Reflectivity = 0.0f;                             // Non-metallic
+        static constexpr float BumpScaling = 1.0f;
+
+        // PBR Factors
+        static constexpr glm::vec3 BaseColorFactor = { 1.0f, 1.0f, 1.0f };      // White albedo
+        static constexpr float MetallicFactor = 0.0f;                           // Non-metallic by default
+        static constexpr float RoughnessFactor = 0.8f;                          // Rough (not glossy)
+        static constexpr float TransmissionFactor = 0.0f;                       // Opaque
+        static constexpr float ClearCoatFactor = 0.0f;                          // No clearcoat by default
+        static constexpr float ClearCoatRoughnessFactor = 0.1f;                 // Slightly smooth clearcoat (if used)
+        static constexpr float SheenFactor = 0.0f;                              // Disabled by default
+        static constexpr float SheenRoughnessFactor = 0.3f;                     // Slightly blurred sheen (if used)
+        static constexpr float AmbientOcclusionFactor = 1.0f;                   // Fully lit (no occlusion loss)
+        static constexpr float IndexOfRefractionFactor = 1.5f;                  // Used in transmission/refraction models
+    };
+
     class Material final : public AssetBase<IAsset>
     {
     public:

@@ -226,13 +226,6 @@ namespace Motion::Core
                 return;
             }
 
-            glm::vec3 emissiveColor = m_Vec3Parameters[UniformCache::Color_EmissiveColor];
-            if (emissiveColor != glm::vec3(0.0f) && m_Textures.contains(UniformCache::Texture_EmissiveTexture))
-            {
-                m_ShadingMethod = MaterialShadingMethod::Unlit;
-                return;
-            }
-
             MOTION_CORE_WARN("Material shading method could not be determined, defaulting to Unlit.");
             m_ShadingMethod = MaterialShadingMethod::Unlit;
         }

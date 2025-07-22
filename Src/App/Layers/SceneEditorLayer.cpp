@@ -62,7 +62,7 @@ namespace Motion::App
         sceneRenderer.EndScene();
 
         m_Framebuffer->Unbind();
-        m_PostProcessor->Process(m_Framebuffer->GetAttachment(Motion::Core::FrameBufferColorAttachments::Standard).TextureID);
+        m_PostProcessor->Process(m_Framebuffer->GetAttachment(Motion::Core::FrameBufferColorAttachmentStandards::Standard).TextureID);
         m_SceneTextures[m_ActiveScene] = m_PostProcessor->GetOutputTextureID();
     }
 

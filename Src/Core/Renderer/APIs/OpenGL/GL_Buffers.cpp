@@ -620,10 +620,10 @@ namespace Motion::Core
         if (m_Specification.Samples > 1)
         {
             BlitTo(target, FrameBufferBlitMask::Color, FrameBufferBlitFilter::Nearest);
-            return GetAttachment(FrameBufferColorAttachments::Standard).TextureID;
+            return GetAttachment(FrameBufferColorAttachmentStandards::Standard).TextureID;
         }
 
-        return GetAttachment(FrameBufferColorAttachments::Standard).TextureID;
+        return GetAttachment(FrameBufferColorAttachmentStandards::Standard).TextureID;
     }
 
 
@@ -638,7 +638,7 @@ namespace Motion::Core
      * @return The ColorAttachments object corresponding to the specified format.
      * @note If the attachment is not found, an assertion will be triggered.
      */
-    ColorAttachments GL_FrameBuffer::GetAttachment(FrameBufferColorAttachments attachment) const
+    ColorAttachments GL_FrameBuffer::GetAttachment(FrameBufferColorAttachmentStandards attachment) const
     {
         auto it = std::find_if(
             m_ColorAttachments.begin(), m_ColorAttachments.end(),
@@ -668,7 +668,7 @@ namespace Motion::Core
      * @param y The y-coordinate of the pixel to read.
      * @return The integer value of the pixel at the specified coordinates, or 0 if the attachment is not found.
      */
-    std::int32_t GL_FrameBuffer::ReadPixel(FrameBufferColorAttachments attachment, std::int32_t x, std::int32_t y)
+    std::int32_t GL_FrameBuffer::ReadPixel(FrameBufferColorAttachmentStandards attachment, std::int32_t x, std::int32_t y)
     {
         auto it = std::find_if(
             m_ColorAttachments.begin(), m_ColorAttachments.end(),
@@ -693,24 +693,23 @@ namespace Motion::Core
     /**
      * @brief Returns the OpenGL format for the specified color attachment type.
      *
-     * This function maps the FrameBufferColorAttachments enum to the corresponding OpenGL
+     * This function maps the FrameBufferColorAttachmentStandards enum to the corresponding OpenGL
      * format used for color attachments in a framebuffer.
      *
-     * @param type The FrameBufferColorAttachments type to convert.
+     * @param type The FrameBufferColorAttachmentStandards type to convert.
      * @return GLenum The OpenGL format constant (e.g., GL_RGBA8, GL_RGBA16F).
      */
-    static GLenum GL_ColorAttachmentFormat(FrameBufferColorAttachments type)
+    static GLenum GL_ColorAttachmentFormat(FrameBufferColorAttachmentStandards type)
     {
         switch (type)
         {
-        case FrameBufferColorAttachments::Standard: return GL_RGBA8;
-        case FrameBufferColorAttachments::HighDynamicRange: return GL_RGBA16F;
-        case FrameBufferColorAttachments::LightweightHDR: return GL_RGB10_A2;
-        case FrameBufferColorAttachments::SingleChannelFloat16: return GL_R16F;
-        case FrameBufferColorAttachments::SingleChannelFloat32: return GL_R32F;
-        case FrameBufferColorAttachments::MultiChannelFloat16: return GL_RG16F;
-        case FrameBufferColorAttachments::MultiChannelFloat32: return GL_RG32F;
-        case FrameBufferColorAttachments::ToneMapped: return GL_RGB10_A2;
+        case FrameBufferColorAttachmentStandards::Standard: return GL_RGBA8;
+        case FrameBufferColorAttachmentStandards::HighDynamicRange: return GL_RGBA16F;
+        case FrameBufferColorAttachmentStandards::LightweightHDR: return GL_RGB10_A2;
+        case FrameBufferColorAttachmentStandards::SingleChannelFloat16: return GL_R16F;
+        case FrameBufferColorAttachmentStandards::SingleChannelFloat32: return GL_R32F;
+        case FrameBufferColorAttachmentStandards::MultiChannelFloat16: return GL_RG16F;
+        case FrameBufferColorAttachmentStandards::MultiChannelFloat32: return GL_RG32F;
         default: return GL_NONE;
         }
     }
@@ -718,24 +717,23 @@ namespace Motion::Core
     /**
      * @brief Returns the OpenGL format for the specified color attachment type.
      *
-     * This function maps the FrameBufferColorAttachments enum to the corresponding OpenGL
+     * This function maps the FrameBufferColorAttachmentStandards enum to the corresponding OpenGL
      * format used for color attachments in a framebuffer.
      *
-     * @param type The FrameBufferColorAttachments type to convert.
+     * @param type The FrameBufferColorAttachmentStandards type to convert.
      * @return GLenum The OpenGL format constant (e.g., GL_RGBA8, GL_RGBA16F).
      */
-    static GLenum GL_Texture2D_Format(FrameBufferColorAttachments type)
+    static GLenum GL_Texture2D_Format(FrameBufferColorAttachmentStandards type)
     {
         switch (type)
         {
-        case FrameBufferColorAttachments::Standard: return GL_RGBA;
-        case FrameBufferColorAttachments::HighDynamicRange: return GL_RGBA;
-        case FrameBufferColorAttachments::LightweightHDR: return GL_RGB;
-        case FrameBufferColorAttachments::SingleChannelFloat16: return GL_RED;
-        case FrameBufferColorAttachments::SingleChannelFloat32: return GL_RED;
-        case FrameBufferColorAttachments::MultiChannelFloat16: return GL_RG;
-        case FrameBufferColorAttachments::MultiChannelFloat32: return GL_RG;
-        case FrameBufferColorAttachments::ToneMapped: return GL_RGB10_A2;
+        case FrameBufferColorAttachmentStandards::Standard: return GL_RGBA;
+        case FrameBufferColorAttachmentStandards::HighDynamicRange: return GL_RGBA;
+        case FrameBufferColorAttachmentStandards::LightweightHDR: return GL_RGB;
+        case FrameBufferColorAttachmentStandards::SingleChannelFloat16: return GL_RED;
+        case FrameBufferColorAttachmentStandards::SingleChannelFloat32: return GL_RED;
+        case FrameBufferColorAttachmentStandards::MultiChannelFloat16: return GL_RG;
+        case FrameBufferColorAttachmentStandards::MultiChannelFloat32: return GL_RG;
         default: return GL_NONE;
         }
     }
@@ -743,24 +741,23 @@ namespace Motion::Core
     /**
      * @brief Returns the OpenGL type for the specified color attachment type.
      *
-     * This function maps the FrameBufferColorAttachments enum to the corresponding OpenGL
+     * This function maps the FrameBufferColorAttachmentStandards enum to the corresponding OpenGL
      * type used for color attachments in a framebuffer.
      *
-     * @param type The FrameBufferColorAttachments type to convert.
+     * @param type The FrameBufferColorAttachmentStandards type to convert.
      * @return GLenum The OpenGL type constant (e.g., GL_UNSIGNED_BYTE, GL_HALF_FLOAT).
      */
-    static  GLenum GL_Texture2D_Type(FrameBufferColorAttachments type)
+    static  GLenum GL_Texture2D_Type(FrameBufferColorAttachmentStandards type)
     {
         switch (type)
         {
-        case FrameBufferColorAttachments::Standard: return GL_UNSIGNED_BYTE;
-        case FrameBufferColorAttachments::HighDynamicRange: return GL_HALF_FLOAT;
-        case FrameBufferColorAttachments::LightweightHDR: return GL_UNSIGNED_INT_2_10_10_10_REV;
-        case FrameBufferColorAttachments::SingleChannelFloat16: return GL_HALF_FLOAT;
-        case FrameBufferColorAttachments::SingleChannelFloat32: return GL_FLOAT;
-        case FrameBufferColorAttachments::MultiChannelFloat16: return GL_HALF_FLOAT;
-        case FrameBufferColorAttachments::MultiChannelFloat32: return GL_FLOAT;
-        case FrameBufferColorAttachments::ToneMapped: return GL_UNSIGNED_INT_2_10_10_10_REV;
+        case FrameBufferColorAttachmentStandards::Standard: return GL_UNSIGNED_BYTE;
+        case FrameBufferColorAttachmentStandards::HighDynamicRange: return GL_HALF_FLOAT;
+        case FrameBufferColorAttachmentStandards::LightweightHDR: return GL_UNSIGNED_INT_2_10_10_10_REV;
+        case FrameBufferColorAttachmentStandards::SingleChannelFloat16: return GL_HALF_FLOAT;
+        case FrameBufferColorAttachmentStandards::SingleChannelFloat32: return GL_FLOAT;
+        case FrameBufferColorAttachmentStandards::MultiChannelFloat16: return GL_HALF_FLOAT;
+        case FrameBufferColorAttachmentStandards::MultiChannelFloat32: return GL_FLOAT;
         default: return GL_NONE;
         }
     }
@@ -768,21 +765,21 @@ namespace Motion::Core
     /**
      * @brief Returns the OpenGL format for the specified depth attachment type.
      *
-     * This function maps the FrameBufferDepthAttachments enum to the corresponding OpenGL
+     * This function maps the FrameBufferDepthAttachmentStandards enum to the corresponding OpenGL
      * format used for depth or depth-stencil attachments in a framebuffer.
      *
-     * @param type The FrameBufferDepthAttachments type to convert.
+     * @param type The FrameBufferDepthAttachmentStandards type to convert.
      * @return GLenum The OpenGL format constant (e.g., GL_DEPTH_COMPONENT24, GL_DEPTH_COMPONENT32F).
      */
-    static GLenum GL_DepthAttachmentFormat(FrameBufferDepthAttachments type)
+    static GLenum GL_DepthAttachmentFormat(FrameBufferDepthAttachmentStandards type)
     {
         switch (type)
         {
-        case FrameBufferDepthAttachments::Standard:
-        case FrameBufferDepthAttachments::StandardPrecision: return GL_DEPTH_COMPONENT24;
-        case FrameBufferDepthAttachments::HighPrecision: return GL_DEPTH_COMPONENT32F;
-        case FrameBufferDepthAttachments::CommonCombined: return GL_DEPTH24_STENCIL8;
-        case FrameBufferDepthAttachments::HighPrecisionCombined: return GL_DEPTH32F_STENCIL8;
+        case FrameBufferDepthAttachmentStandards::Standard:
+        case FrameBufferDepthAttachmentStandards::StandardPrecision: return GL_DEPTH_COMPONENT24;
+        case FrameBufferDepthAttachmentStandards::HighPrecision: return GL_DEPTH_COMPONENT32F;
+        case FrameBufferDepthAttachmentStandards::CommonCombined: return GL_DEPTH24_STENCIL8;
+        case FrameBufferDepthAttachmentStandards::HighPrecisionCombined: return GL_DEPTH32F_STENCIL8;
         default: return GL_NONE;
         }
     }
@@ -790,21 +787,21 @@ namespace Motion::Core
     /**
      * @brief Returns the OpenGL type for the specified depth attachment type.
      *
-     * This function maps the FrameBufferDepthAttachments enum to the corresponding OpenGL
+     * This function maps the FrameBufferDepthAttachmentStandards enum to the corresponding OpenGL
      * type used for depth or depth-stencil attachments in a framebuffer.
      *
-     * @param type The FrameBufferDepthAttachments type to convert.
+     * @param type The FrameBufferDepthAttachmentStandards type to convert.
      * @return GLenum The OpenGL type constant (e.g., GL_UNSIGNED_INT, GL_FLOAT).
      */
-    static GLenum GL_Texture2D_DepthFormat(FrameBufferDepthAttachments type)
+    static GLenum GL_Texture2D_DepthFormat(FrameBufferDepthAttachmentStandards type)
     {
         switch (type)
         {
-        case FrameBufferDepthAttachments::Standard:
-        case FrameBufferDepthAttachments::StandardPrecision: return GL_DEPTH_COMPONENT;
-        case FrameBufferDepthAttachments::HighPrecision: return GL_DEPTH_COMPONENT;
-        case FrameBufferDepthAttachments::CommonCombined: return GL_DEPTH_STENCIL;
-        case FrameBufferDepthAttachments::HighPrecisionCombined: return GL_DEPTH_STENCIL;
+        case FrameBufferDepthAttachmentStandards::Standard:
+        case FrameBufferDepthAttachmentStandards::StandardPrecision: return GL_DEPTH_COMPONENT;
+        case FrameBufferDepthAttachmentStandards::HighPrecision: return GL_DEPTH_COMPONENT;
+        case FrameBufferDepthAttachmentStandards::CommonCombined: return GL_DEPTH_STENCIL;
+        case FrameBufferDepthAttachmentStandards::HighPrecisionCombined: return GL_DEPTH_STENCIL;
         default: return GL_NONE;
         }
     }
@@ -812,21 +809,21 @@ namespace Motion::Core
     /**
      * @brief Returns the OpenGL data type for the specified depth attachment type.
      *
-     * This function maps the FrameBufferDepthAttachments enum to the corresponding OpenGL
+     * This function maps the FrameBufferDepthAttachmentStandards enum to the corresponding OpenGL
      * data type used for depth or depth-stencil attachments in a framebuffer.
      *
-     * @param type The FrameBufferDepthAttachments type to convert.
+     * @param type The FrameBufferDepthAttachmentStandards type to convert.
      * @return GLenum The OpenGL data type constant (e.g., GL_UNSIGNED_INT, GL_FLOAT).
      */
-    static GLenum GL_Texture2D_DepthType(FrameBufferDepthAttachments type)
+    static GLenum GL_Texture2D_DepthType(FrameBufferDepthAttachmentStandards type)
     {
         switch (type)
         {
-        case FrameBufferDepthAttachments::Standard:
-        case FrameBufferDepthAttachments::StandardPrecision: return GL_UNSIGNED_INT;
-        case FrameBufferDepthAttachments::HighPrecision: return GL_FLOAT;
-        case FrameBufferDepthAttachments::CommonCombined: return GL_UNSIGNED_INT_24_8;
-        case FrameBufferDepthAttachments::HighPrecisionCombined: return GL_FLOAT_32_UNSIGNED_INT_24_8_REV;
+        case FrameBufferDepthAttachmentStandards::Standard:
+        case FrameBufferDepthAttachmentStandards::StandardPrecision: return GL_UNSIGNED_INT;
+        case FrameBufferDepthAttachmentStandards::HighPrecision: return GL_FLOAT;
+        case FrameBufferDepthAttachmentStandards::CommonCombined: return GL_UNSIGNED_INT_24_8;
+        case FrameBufferDepthAttachmentStandards::HighPrecisionCombined: return GL_FLOAT_32_UNSIGNED_INT_24_8_REV;
         default: return GL_NONE;
         }
     }
@@ -834,21 +831,21 @@ namespace Motion::Core
     /**
      * @brief Returns the OpenGL attachment point for the specified depth attachment type.
      *
-     * This function maps the FrameBufferDepthAttachments enum to the corresponding OpenGL
+     * This function maps the FrameBufferDepthAttachmentStandards enum to the corresponding OpenGL
      * attachment point used for depth or depth-stencil attachments in a framebuffer.
      *
-     * @param type The FrameBufferDepthAttachments type to convert.
+     * @param type The FrameBufferDepthAttachmentStandards type to convert.
      * @return GLenum The OpenGL attachment point constant (e.g., GL_DEPTH_ATTACHMENT, GL_DEPTH_STENCIL_ATTACHMENT).
      */
-    static GLenum GetDepthAttachmentPoint(FrameBufferDepthAttachments type)
+    static GLenum GetDepthAttachmentPoint(FrameBufferDepthAttachmentStandards type)
     {
         switch (type)
         {
-        case FrameBufferDepthAttachments::CommonCombined:
-        case FrameBufferDepthAttachments::HighPrecisionCombined: return GL_DEPTH_STENCIL_ATTACHMENT;
-        case FrameBufferDepthAttachments::Standard:
-        case FrameBufferDepthAttachments::StandardPrecision:
-        case FrameBufferDepthAttachments::HighPrecision: return GL_DEPTH_ATTACHMENT;
+        case FrameBufferDepthAttachmentStandards::CommonCombined:
+        case FrameBufferDepthAttachmentStandards::HighPrecisionCombined: return GL_DEPTH_STENCIL_ATTACHMENT;
+        case FrameBufferDepthAttachmentStandards::Standard:
+        case FrameBufferDepthAttachmentStandards::StandardPrecision:
+        case FrameBufferDepthAttachmentStandards::HighPrecision: return GL_DEPTH_ATTACHMENT;
         default: return GL_NONE;
         }
     }
@@ -888,7 +885,7 @@ namespace Motion::Core
         glGenFramebuffers(1, &m_FrameBufferID);
         glBindFramebuffer(GL_FRAMEBUFFER, m_FrameBufferID);
 
-        const bool hasDepth = m_Specification.Depth.Format != FrameBufferDepthAttachments::None;
+        const bool hasDepth = m_Specification.Depth.Format != FrameBufferDepthAttachmentStandards::None;
         const bool useMultiSampling = m_Specification.Samples > 1;
 
         for (std::uint32_t i = 0; i < m_Specification.Colors.size(); i++)

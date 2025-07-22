@@ -10,7 +10,7 @@ namespace Motion::Core
     class PostProcessor
     {
     public:
-        PostProcessor(const FrameBufferSpecification& spec, const UUID& shaderAssetID);
+        PostProcessor(const FrameBufferSpecification& spec);
         ~PostProcessor() = default;
 
         void Process(FrameTextureID inputTextureID);

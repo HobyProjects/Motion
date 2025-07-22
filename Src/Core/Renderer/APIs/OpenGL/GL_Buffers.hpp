@@ -106,8 +106,8 @@ namespace Motion::Core
         [[nodiscard]] virtual std::uint32_t GetAttachmentCount() const override { return static_cast<std::uint32_t>(m_ColorAttachments.size()); }
         [[nodiscard]] virtual FrameBufferSpecification& GetFrameSpecification() override { return m_Specification; }
         [[nodiscard]] virtual FrameTextureID ResolveTo(IFrameBuffer* target) override;
-        [[nodiscard]] virtual ColorAttachments GetAttachment(FrameBufferColorAttachments attachment) const override;
-        [[nodiscard]] virtual std::int32_t ReadPixel(FrameBufferColorAttachments attachment, std::int32_t x, std::int32_t y) override;
+        [[nodiscard]] virtual ColorAttachments GetAttachment(FrameBufferColorAttachmentStandards attachment) const override;
+        [[nodiscard]] virtual std::int32_t ReadPixel(FrameBufferColorAttachmentStandards attachment, std::int32_t x, std::int32_t y) override;
 
     private:
         void Invalidate();

@@ -2,25 +2,22 @@
 
 namespace Motion::Core
 {
+
     /**
-     * @brief Constructs a PostProcessor object with the specified framebuffer configuration and shader asset.
+     * @brief Constructs a PostProcessor with the specified framebuffer specification.
      *
-     * This constructor initializes the framebuffer using the provided specification,
-     * retrieves the shader asset using the given shader asset ID, and creates a screen quad
-     * mesh for post-processing operations.
+     * This constructor initializes the framebuffer, shader, and screen quad for post-processing.
+     * It retrieves the shader from the asset manager and creates a screen quad mesh for rendering.
      *
-     * @param spec The specification for the framebuffer to be created.
-     * @param shaderAssetID The unique identifier for the shader asset to be used in post-processing.
+     * @param spec The specification for the framebuffer, including size and color attachments.
      */
-    PostProcessor::PostProcessor(const FrameBufferSpecification& spec, const UUID& shaderAssetID)
+    PostProcessor::PostProcessor(const FrameBufferSpecification& spec)
     {
         m_FrameBuffer = BufferFactory::CreateFrameBuffer(spec);
 
         auto& assetManager = AssetManager::GetInstance();
-        m_Shader = assetManager.Get<IShader>(shaderAssetID);
-
-        auto& quickMesh = QuickMesh::GetInstance();
-        m_ScreenQuad = quickMesh.CreateQuad(spec.Name, spec.Width, spec.Height);
+        m_Shader = assetManager.Get<IShader>("PostProcessingShader");
+        m_ScreenQuad = QuickMesh::CreateQuad(false, "Name", spec.Width, spec.Height);
     }
 
     /**
@@ -65,7 +62,7 @@ namespace Motion::Core
     {
         if (m_FrameBuffer)
         {
-            return m_FrameBuffer->GetAttachment(FrameBufferColorAttachments::Standard).TextureID;
+            return m_FrameBuffer->GetAttachment(FrameBufferColorAttachmentStandards::Standard).TextureID;
         }
 
         MOTION_CORE_ERROR("PostProcessor FrameBuffer is not initialized!");

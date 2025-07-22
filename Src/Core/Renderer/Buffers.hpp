@@ -158,7 +158,7 @@ namespace Motion::Core
         Linear = 2
     };
 
-    enum class FrameBufferColorAttachments : std::uint32_t
+    enum class FrameBufferColorAttachmentStandards : std::uint32_t
     {
         None = 0,
         Standard = 1,
@@ -168,10 +168,9 @@ namespace Motion::Core
         SingleChannelFloat32 = 5,
         MultiChannelFloat16 = 6,
         MultiChannelFloat32 = 7,
-        ToneMapped = 8,
     };
 
-    enum class FrameBufferDepthAttachments : std::uint32_t
+    enum class FrameBufferDepthAttachmentStandards : std::uint32_t
     {
         None = 0,
         Standard = 1,
@@ -184,20 +183,20 @@ namespace Motion::Core
 
     inline std::uint32_t operator|(FrameBufferBlitFilter lhs, FrameBufferBlitFilter rhs) { return static_cast<std::uint32_t>(lhs) | static_cast<std::uint32_t>(rhs); }
     inline std::uint32_t operator&(FrameBufferBlitFilter lhs, FrameBufferBlitFilter rhs) { return static_cast<std::uint32_t>(lhs) & static_cast<std::uint32_t>(rhs); }
-    inline std::uint32_t operator|(FrameBufferColorAttachments lhs, FrameBufferColorAttachments rhs) { return static_cast<std::uint32_t>(lhs) | static_cast<std::uint32_t>(rhs); }
-    inline std::uint32_t operator&(FrameBufferColorAttachments lhs, FrameBufferColorAttachments rhs) { return static_cast<std::uint32_t>(lhs) & static_cast<std::uint32_t>(rhs); }
+    inline std::uint32_t operator|(FrameBufferColorAttachmentStandards lhs, FrameBufferColorAttachmentStandards rhs) { return static_cast<std::uint32_t>(lhs) | static_cast<std::uint32_t>(rhs); }
+    inline std::uint32_t operator&(FrameBufferColorAttachmentStandards lhs, FrameBufferColorAttachmentStandards rhs) { return static_cast<std::uint32_t>(lhs) & static_cast<std::uint32_t>(rhs); }
 
     struct ColorAttachments
     {
         FrameTextureID TextureID{ 0 };
         std::uint32_t AttachmentPoint{ 0 };
-        FrameBufferColorAttachments Format{ FrameBufferColorAttachments::Standard };
+        FrameBufferColorAttachmentStandards Format{ FrameBufferColorAttachmentStandards::Standard };
     };
     struct DepthAttachment
     {
         FrameTextureID TextureID{ 0 };
         std::uint32_t AttachmentPoint{ 0 };
-        FrameBufferDepthAttachments Format{ FrameBufferDepthAttachments::CommonCombined };
+        FrameBufferDepthAttachmentStandards Format{ FrameBufferDepthAttachmentStandards::CommonCombined };
     };
 
     struct FrameBufferSpecification
@@ -209,13 +208,13 @@ namespace Motion::Core
 
         std::vector<ColorAttachments> Colors
         {
-            { 0, 0, FrameBufferColorAttachments::Standard },
-            { 0, 1, FrameBufferColorAttachments::HighDynamicRange },
-            { 0, 2, FrameBufferColorAttachments::SingleChannelFloat16 },
-            { 0, 3, FrameBufferColorAttachments::MultiChannelFloat16 }
+            { 0, 0, FrameBufferColorAttachmentStandards::Standard },
+            { 0, 1, FrameBufferColorAttachmentStandards::HighDynamicRange },
+            { 0, 2, FrameBufferColorAttachmentStandards::SingleChannelFloat16 },
+            { 0, 3, FrameBufferColorAttachmentStandards::MultiChannelFloat16 }
         };
 
-        DepthAttachment Depth{ 0, 0, FrameBufferDepthAttachments::CommonCombined };
+        DepthAttachment Depth{ 0, 0, FrameBufferDepthAttachmentStandards::CommonCombined };
     };
 
     class IFrameBuffer
@@ -234,8 +233,8 @@ namespace Motion::Core
         [[nodiscard]] virtual std::uint32_t GetAttachmentCount() const = 0;
         [[nodiscard]] virtual FrameBufferSpecification& GetFrameSpecification() = 0;
         [[nodiscard]] virtual FrameTextureID ResolveTo(IFrameBuffer* target) = 0;
-        [[nodiscard]] virtual ColorAttachments GetAttachment(FrameBufferColorAttachments attachment) const = 0;
-        [[nodiscard]] virtual std::int32_t ReadPixel(FrameBufferColorAttachments attachment, std::int32_t x, std::int32_t y) = 0;
+        [[nodiscard]] virtual ColorAttachments GetAttachment(FrameBufferColorAttachmentStandards attachment) const = 0;
+        [[nodiscard]] virtual std::int32_t ReadPixel(FrameBufferColorAttachmentStandards attachment, std::int32_t x, std::int32_t y) = 0;
     };
 
     class BufferFactory

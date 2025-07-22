@@ -1,12 +1,11 @@
 #include "CorePCH.hpp"
-#include "SkyBox.hpp"
 
 namespace Motion::Core
 {
     SkyBox::SkyBox()
     {
         auto& assetManager = AssetManager::GetInstance();
-        m_CubeMapTexture = CreateUnregisteredCubeMapTexture("SkyBoxTexture", "Assets/SkyBox/SkyBox_Texture_1.jpg");
+        m_CubeMapTexture = CreateUnregisteredCubeMapTexture("Assets/SkyBox/SkyBox_Texture_1.jpg");
         if (!m_CubeMapTexture)
         {
             MOTION_CORE_ERROR("Failed to create CubeMapTexture for SkyBox");

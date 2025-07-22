@@ -29,7 +29,6 @@ namespace Motion::Core
 
     public:
         StaticMesh() = default;
-        StaticMesh(const std::string& name, const std::filesystem::path& modelFile);
         StaticMesh(UUID uuid, const std::string& name, const std::filesystem::path& modelFile);
         virtual ~StaticMesh() = default;
 

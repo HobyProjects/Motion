@@ -70,7 +70,10 @@ namespace Motion::Core
         bool HasComponent() const
         {
             if (m_IsAlive)
-                return EntityFactory::Registry.any_of<T>(m_EntityHandle);
+            {
+                auto& entityFactory = EntityFactory::GetInstance();
+                return entityFactory.Registry.any_of<T>(m_EntityHandle);
+            }
 
             MOTION_ASSERT(false, "Entity already been destroyed");
             return false;
@@ -94,7 +97,11 @@ namespace Motion::Core
         {
             MOTION_ASSERT(!HasComponent<T>(), "Entity already has component!");
             if (m_IsAlive)
-                return EntityFactory::Registry.emplace<T>(m_EntityHandle, std::forward<Args>(args)...);
+            {
+                auto& entityFactory = EntityFactory::GetInstance();
+                auto& component = entityFactory.Registry.emplace<T>(m_EntityHandle, std::forward<Args>(args)...);
+                return component;
+            }
 
             MOTION_ASSERT(false, "Entity already been destroyed");
 
@@ -119,7 +126,10 @@ namespace Motion::Core
         {
             MOTION_ASSERT(HasComponent<T>(), "Entity does not have component!");
             if (m_IsAlive)
-                return EntityFactory::Registry.get<T>(m_EntityHandle);
+            {
+                auto& entityFactory = EntityFactory::GetInstance();
+                return entityFactory.Registry.get<T>(m_EntityHandle);
+            }
 
             MOTION_ASSERT(false, "Entity already been destroyed");
 

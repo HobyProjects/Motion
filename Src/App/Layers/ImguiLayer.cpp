@@ -35,8 +35,8 @@ namespace Motion::App
 
     void ImGuiLayer::Begin()
     {
-        if (Motion::Core::CoreAPI::API() & Motion::Core::PlatformBaseAPIs::GLFW &&
-            Motion::Core::Renderer::GetAPI() & Motion::Core::RenderingAPI::OpenGL)
+        auto& coreAPI = Motion::Core::CoreAPI::GetInstance();
+        if (coreAPI.API() & Motion::Core::PlatformBaseAPIs::GLFW && Motion::Core::Renderer::GetAPI() & Motion::Core::RenderingAPI::OpenGL)
         {
             ImGui_ImplOpenGL3_NewFrame();
             ImGui_ImplGlfw_NewFrame();
@@ -49,15 +49,17 @@ namespace Motion::App
     void ImGuiLayer::End()
     {
         ImGuiIO& io = ImGui::GetIO();
-        std::weak_ptr<Motion::Core::IWindow> window = Motion::Core::WindowManager::GetWindow(m_WindowHandle);
+        auto& coreAPI = Motion::Core::CoreAPI::GetInstance();
+        auto& windowManager = Motion::Core::WindowManager::GetInstance();
+
+        std::weak_ptr<Motion::Core::IWindow> window = windowManager.GetWindow(m_WindowHandle);
         if (!window.expired())
         {
             auto windowPtr = window.lock();
             io.DisplaySize = ImVec2(static_cast<float>(windowPtr->GetProperties().Width), static_cast<float>(windowPtr->GetProperties().Height));
         }
 
-        if (Motion::Core::CoreAPI::API() & Motion::Core::PlatformBaseAPIs::GLFW &&
-            Motion::Core::Renderer::GetAPI() & Motion::Core::RenderingAPI::OpenGL)
+        if (coreAPI.API() & Motion::Core::PlatformBaseAPIs::GLFW && Motion::Core::Renderer::GetAPI() & Motion::Core::RenderingAPI::OpenGL)
         {
             ImGui::EndFrame();
             ImGui::Render();

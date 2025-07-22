@@ -640,9 +640,11 @@ namespace Motion::Core
      */
     ColorAttachments GL_FrameBuffer::GetAttachment(FrameBufferColorAttachmentStandards attachment) const
     {
-        auto it = std::find_if(
-            m_ColorAttachments.begin(), m_ColorAttachments.end(),
-            [&](ColorAttachments& colorAttachments) { return colorAttachments.Format == attachment; }
+        auto it = std::find_if(m_ColorAttachments.begin(), m_ColorAttachments.end(),
+            [&](const std::pair<const std::uint32_t, ColorAttachments>& pair)
+            {
+                return pair.second.Format == attachment;
+            }
         );
 
         if (it != m_ColorAttachments.end())
@@ -670,9 +672,11 @@ namespace Motion::Core
      */
     std::int32_t GL_FrameBuffer::ReadPixel(FrameBufferColorAttachmentStandards attachment, std::int32_t x, std::int32_t y)
     {
-        auto it = std::find_if(
-            m_ColorAttachments.begin(), m_ColorAttachments.end(),
-            [&](ColorAttachments& colorAttachments) { return colorAttachments.Format == attachment; }
+        auto it = std::find_if(m_ColorAttachments.begin(), m_ColorAttachments.end(),
+            [&](const std::pair<const std::uint32_t, ColorAttachments>& pair)
+            {
+                return pair.second.Format == attachment;
+            }
         );
 
         if (it != m_ColorAttachments.end())

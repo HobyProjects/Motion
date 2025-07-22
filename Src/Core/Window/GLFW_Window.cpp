@@ -561,7 +561,7 @@ namespace Motion::Core
 
                 if (action == KeyState::KEY_REPEAT)
                 {
-                    EventKeyboardKeyRepeate<KeyCode> keyPressEvent(static_cast<KeyCode>(key));
+                    EventKeyboardKeyRepeat<KeyCode> keyPressEvent(static_cast<KeyCode>(key));
                     m_CallbackFunc(m_Properties.Handle, keyPressEvent);
                 }
             }

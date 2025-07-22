@@ -1,5 +1,4 @@
 #include "CorePCH.hpp"
-#include "Texture.hpp"
 
 namespace Motion::Core
 {
@@ -17,12 +16,12 @@ namespace Motion::Core
      * @return std::shared_ptr<ITexture> A shared pointer to the created texture, or nullptr if the API is unsupported.
      * @note Currently, only the OpenGL API is implemented. Vulkan and DirectX will assert and return nullptr.
      */
-    std::shared_ptr<ITexture> CreateUnregisteredPlainTexture(const std::string& name, std::uint32_t width = 100, std::uint32_t height = 100, const glm::vec3& color = { 1.0f, 1.0f, 1.0f }) noexcept
+    std::shared_ptr<ITexture> CreateUnregisteredPlainTexture(std::uint32_t width, std::uint32_t height, const glm::vec3& color) noexcept
     {
         switch (Renderer::GetAPI())
         {
         case RenderingAPI::OpenGL:
-            return GL_CreateUnregisteredPlainTexture(name, width, height, color);
+            return GL_CreateUnregisteredPlainTexture(width, height, color);
         case RenderingAPI::Vulkan:
             MOTION_ASSERT(false, "Vulkan API is not yet implemented for plain textures.");
             return nullptr;
@@ -49,12 +48,12 @@ namespace Motion::Core
      * @return std::shared_ptr<ITexture> A shared pointer to the created texture, or nullptr if the API is unsupported.
      * @note Vulkan and DirectX implementations are not yet available.
      */
-    std::shared_ptr<ITexture> CreateUnregisteredTextureFromFile(const std::string& name, const std::filesystem::path& textureFile, TextureType type, bool flip) noexcept
+    std::shared_ptr<ITexture> CreateUnregisteredTextureFromFile(const std::filesystem::path& textureFile, TextureType type, bool flip) noexcept
     {
         switch (Renderer::GetAPI())
         {
         case RenderingAPI::OpenGL:
-            return GL_CreateUnregisteredTextureFromFile(name, textureFile, type, flip);
+            return GL_CreateUnregisteredTextureFromFile(textureFile, type, flip);
         case RenderingAPI::Vulkan:
             MOTION_ASSERT(false, "Vulkan API is not yet implemented for texture files.");
             return nullptr;
@@ -80,12 +79,12 @@ namespace Motion::Core
      *
      * @note Currently, only the OpenGL API is implemented for cube map textures.
      */
-    std::shared_ptr<ICubeMapTexture> CreateUnregisteredCubeMapTexture(const std::string& name, const std::filesystem::path& textureFile) noexcept
+    std::shared_ptr<ICubeMapTexture> CreateUnregisteredCubeMapTexture(const std::filesystem::path& textureFile) noexcept
     {
         switch (Renderer::GetAPI())
         {
         case RenderingAPI::OpenGL:
-            return GL_CreateUnregisteredCubeMapTexture(name, textureFile);
+            return GL_CreateUnregisteredCubeMapTexture(textureFile);
         case RenderingAPI::Vulkan:
             MOTION_ASSERT(false, "Vulkan API is not yet implemented for cube map textures.");
             return nullptr;

@@ -35,8 +35,8 @@ namespace Motion::Core
         [[nodiscard]] virtual AssetProperties& GetMetaData() = 0;
         [[nodiscard]] virtual AssetType GetType() const = 0;
         [[nodiscard]] virtual UUID GetUUID() const = 0;
-        [[nodiscard]] virtual std::string& GetName() = 0;
-        [[nodiscard]] virtual std::string& GetSource() const = 0;
+        [[nodiscard]] virtual std::string GetName() = 0;
+        [[nodiscard]] virtual std::string GetSource() const = 0;
         [[nodiscard]] virtual bool IsInitialized() const = 0;
     };
 
@@ -103,9 +103,9 @@ namespace Motion::Core
          * This function retrieves the name assigned to the asset, which is used for identification
          * and display purposes within the application.
          *
-         * @return std::string& Reference to the asset's name.
+         * @return std::string to the asset's name.
          */
-        [[nodiscard]] virtual std::string& GetName() override { return AssetInfo.AssetName; }
+        [[nodiscard]] virtual std::string GetName() override { return AssetInfo.AssetName; }
 
         /**
          * @brief Returns the source file path of the asset.
@@ -113,9 +113,9 @@ namespace Motion::Core
          * This function provides the filesystem path to the asset's source file, which can be used
          * for loading or referencing the asset in the application.
          *
-         * @return std::string& Reference to the asset's source file path.
+         * @return std::string to the asset's source file path.
          */
-        [[nodiscard]] virtual std::string& GetSource() const override { return AssetInfo.AssetSource; }
+        [[nodiscard]] virtual std::string GetSource() const override { return AssetInfo.AssetSource; }
 
         /**
          * @brief Checks if the asset has been initialized.

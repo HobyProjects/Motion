@@ -83,6 +83,7 @@
 #include "Importer.hpp"
 #include "Thumbnail.hpp"
 #include "PostProcessor.hpp"
+#include "SkyBox.hpp"
 #include "Renderer.hpp"
 
 //Renderer - OpenGL

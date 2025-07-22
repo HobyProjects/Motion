@@ -1,32 +1,7 @@
 #include "CorePCH.hpp"
-#include "GL_Texture.hpp"
 
 namespace Motion::Core
 {
-    /**
-     * Generates a plain 2D texture with the specified name, width, and height.
-     *
-     * @param[in] name   The name of the texture
-     * @param[in] width  The width of the texture
-     * @param[in] height The height of the texture
-     * @param[in] color  The color to fill the texture
-     *
-     * @return A new GL_Texture object
-     */
-    GL_Texture::GL_Texture(const std::string& name, uint32_t width, uint32_t height, const glm::vec3& color)
-        : AssetBase<ITexture>(UniqueIdentity::GetUniqueID(), name, AssetType::Texture, "PlainTexture")
-    {
-        if (!GenerateTexture2D(width, height, color))
-        {
-            MOTION_ASSERT(false, "Unable to generate texture of size {0}x{1}", width, height);
-            return;
-        }
-
-        m_Specification.Type = TextureType::DiffuseTexture;
-        m_Specification.Source = TextureSource::GeneratedTexture;
-        AssetInfo.IsInitialized = true;
-    }
-
     /**
      * Constructs a new GL_Texture object with the specified UUID, name, width, and height. This
      * will generate a plain 2D texture with the specified width and height, and assign it the
@@ -53,30 +28,6 @@ namespace Motion::Core
     }
 
     /**
-    * Constructs a new GL_Texture object using the specified name and texture file path.
-    * Loads the texture from the given file and sets its type and flip option as specified.
-    *
-    * @param[in] name        The name of the texture
-    * @param[in] textureFile The filesystem path to the texture file
-    * @param[in] type        The type of the texture (e.g., diffuse, specular)
-    * @param[in] flip        Whether to flip the texture vertically during loading
-    *
-    * @note If the texture cannot be loaded from the file, an assertion will be triggered.
-    */
-    GL_Texture::GL_Texture(const std::string& name, const std::filesystem::path& textureFile, TextureType type, bool flip) : AssetBase<ITexture>(UniqueIdentity::GetUniqueID(), name, AssetType::Texture, textureFile.string())
-    {
-        if (!LoadTextureFromFile(textureFile, flip))
-        {
-            MOTION_ASSERT(false, "Unable to load texture file {0}", textureFile.string());
-            return;
-        }
-
-        m_Specification.Type = type;
-        m_Specification.Source = TextureSource::TextureFile;
-        AssetInfo.IsInitialized = true;
-    }
-
-    /**
      * Constructs a new GL_Texture object using the specified UUID, name, and texture file path.
      * Loads the texture from the given file and sets its type and flip option as specified.
      *
@@ -88,7 +39,8 @@ namespace Motion::Core
      *
      * @note If the texture cannot be loaded from the file, an assertion will be triggered.
      */
-    GL_Texture::GL_Texture(UUID uuid, const std::string& name, const std::filesystem::path& textureFile, TextureType type, bool flip) : AssetBase<ITexture>(uuid, name, AssetType::Texture, textureFile.string())
+    GL_Texture::GL_Texture(UUID uuid, const std::string& name, const std::filesystem::path& textureFile, TextureType type, bool flip)
+        : AssetBase<ITexture>(uuid, name, AssetType::Texture, textureFile.string())
     {
         if (!LoadTextureFromFile(textureFile, flip))
         {
@@ -283,29 +235,6 @@ namespace Motion::Core
     }
 
 
-
-    /**
-     * @brief Constructs a GL_CubeMapTexture object by loading a cube map texture from the specified file.
-     *
-     * @param name The name to assign to the cube map texture asset.
-     * @param textureFile The filesystem path to the cube map texture file.
-     *
-     * This constructor initializes the cube map texture asset with a unique ID, name, asset type, and file path.
-     * It attempts to load the cube map texture from the provided file path using LoadCubeMapTextureHDR().
-     * If loading fails, an assertion is triggered and the constructor returns early.
-     * On successful load, the texture's metadata is marked as loaded.
-     */
-    GL_CubeMapTexture::GL_CubeMapTexture(const std::string& name, const std::filesystem::path& textureFile) : AssetBase<ICubeMapTexture>(UniqueIdentity::GetUniqueID(), name, AssetType::Texture, textureFile.string())
-    {
-        if (!LoadCubeMapTexture(textureFile))
-        {
-            MOTION_ASSERT(false, "Unable to load cube map texture file {0}", textureFile.string());
-            return;
-        }
-
-        AssetInfo.IsInitialized = true;
-    }
-
     /**
      * @brief Constructs a GL_CubeMapTexture object and attempts to load a cube map texture from the specified file.
      *
@@ -318,7 +247,8 @@ namespace Motion::Core
      * an assertion is triggered and the constructor returns early. On successful load, the texture's metadata
      * is marked as loaded.
      */
-    GL_CubeMapTexture::GL_CubeMapTexture(UUID uuid, const std::string& name, const std::filesystem::path& textureFile) : AssetBase<ICubeMapTexture>(uuid, name, AssetType::Texture, textureFile.string())
+    GL_CubeMapTexture::GL_CubeMapTexture(UUID uuid, const std::string& name, const std::filesystem::path& textureFile)
+        : AssetBase<ICubeMapTexture>(uuid, name, AssetType::Texture, textureFile.string())
     {
         if (!LoadCubeMapTexture(textureFile))
         {
@@ -482,16 +412,15 @@ namespace Motion::Core
      * This function constructs a shared pointer to a GL_Texture object with the specified name, width, and height.
      * The created texture is not registered with any texture manager or resource system.
      *
-     * @param name The name to assign to the texture.
      * @param width The width of the texture in pixels.
      * @param height The height of the texture in pixels.
      * @param color The color to fill the texture.
      * @return std::shared_ptr<GL_Texture> A shared pointer to the newly created GL_Texture object.
      * @note This function is noexcept and guarantees not to throw exceptions.
      */
-    std::shared_ptr<GL_Texture> GL_CreateUnregisteredPlainTexture(const std::string& name, std::uint32_t width, std::uint32_t height, const glm::vec3& color) noexcept
+    std::shared_ptr<GL_Texture> GL_CreateUnregisteredPlainTexture(std::uint32_t width, std::uint32_t height, const glm::vec3& color) noexcept
     {
-        return std::make_shared<GL_Texture>(name, width, height, color);
+        return std::make_shared<GL_Texture>(UniqueIdentity::GetUniqueID(), "PlainTexture", width, height, color);
     }
 
     /**
@@ -507,9 +436,10 @@ namespace Motion::Core
      * @return std::shared_ptr<GL_Texture> A shared pointer to the created GL_Texture object.
      * @note The function is noexcept and will not throw exceptions.
      */
-    std::shared_ptr<GL_Texture> GL_CreateUnregisteredTextureFromFile(const std::string& name, const std::filesystem::path& textureFile, TextureType type, bool flip) noexcept
+    std::shared_ptr<GL_Texture> GL_CreateUnregisteredTextureFromFile(const std::filesystem::path& textureFile, TextureType type, bool flip) noexcept
     {
-        return std::make_shared<GL_Texture>(name, textureFile, type, flip);
+        std::string name = textureFile.filename().string();
+        return std::make_shared<GL_Texture>(UniqueIdentity::GetUniqueID(), name, textureFile, type, flip);
     }
 
     /**
@@ -523,8 +453,9 @@ namespace Motion::Core
      * @return std::shared_ptr<GL_CubeMapTexture> A shared pointer to the newly created GL_CubeMapTexture object.
      * @note This function is noexcept and guarantees not to throw exceptions.
      */
-    std::shared_ptr<GL_CubeMapTexture> GL_CreateUnregisteredCubeMapTexture(const std::string& name, const std::filesystem::path& textureFile) noexcept
+    std::shared_ptr<GL_CubeMapTexture> GL_CreateUnregisteredCubeMapTexture(const std::filesystem::path& textureFile) noexcept
     {
-        return std::make_shared<GL_CubeMapTexture>(name, textureFile);
+        std::string name = textureFile.filename().string();
+        return std::make_shared<GL_CubeMapTexture>(UniqueIdentity::GetUniqueID(), name, textureFile);
     }
 }

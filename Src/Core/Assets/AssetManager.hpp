@@ -22,25 +22,6 @@ namespace Motion::Core
     struct AssetBackendsBuilder<IShader>
     {
         /**
-         * @brief Creates a shader instance based on the current rendering API.
-         *
-         * This static function attempts to create a shader object using the specified shader name and source file path.
-         * The creation process depends on the rendering API currently in use (e.g., OpenGL, Vulkan, DirectX).
-         *
-         * @param name The name to assign to the shader.
-         * @param sourceFile The filesystem path to the shader source file.
-         * @return std::shared_ptr<IShader> A shared pointer to the created shader instance, or nullptr if creation fails or the API is unsupported.
-         *
-         * @note Currently, only the OpenGL API is supported. For other APIs, an error is logged and nullptr is returned.
-         * @note If the shader source file is invalid or empty, an error is logged and nullptr is returned.
-         */
-        static std::shared_ptr<IShader> Create(const std::string& name, const std::filesystem::path& sourceFile)
-        {
-            return Create(UniqueIdentity::GetUniqueID(), name, sourceFile);
-        }
-
-
-        /**
          * @brief Creates a shader object based on the current rendering API.
          *
          * This static function attempts to create a shader object using the specified UUID, name, and source file path.
@@ -54,7 +35,7 @@ namespace Motion::Core
          * @note Currently, only the OpenGL API is supported. For other APIs, an error is logged and nullptr is returned.
          * @note If the shader source file is invalid or empty, an error is logged and nullptr is returned.
          */
-        static std::shared_ptr<IShader> Create(const UUID& uuid, const std::string& name, const std::filesystem::path& sourceFile)
+        static std::shared_ptr<IShader> Create(UUID uuid, const std::string& name, const std::filesystem::path& sourceFile)
         {
             switch (Renderer::GetAPI())
             {
@@ -91,24 +72,6 @@ namespace Motion::Core
         /**
          * @brief Creates a shader object based on the current rendering API.
          *
-         * This static function attempts to create and return a shared pointer to an IShader implementation,
-         * using the provided shader name and file paths for the vertex and fragment shader source files.
-         * The function supports different rendering APIs (OpenGL, Vulkan, DirectX), but currently only
-         * OpenGL is implemented. For unsupported APIs, an error is logged and nullptr is returned.
-         *
-         * @param name The name to assign to the shader.
-         * @param vertexPath The filesystem path to the vertex shader source file.
-         * @param fragmentPath The filesystem path to the fragment shader source file.
-         * @return std::shared_ptr<IShader> A shared pointer to the created shader object, or nullptr if creation failed or the API is unsupported.
-         */
-        static std::shared_ptr<IShader> Create(const std::string& name, const std::filesystem::path& vertexPath, const std::filesystem::path& fragmentPath)
-        {
-            return Create(UniqueIdentity::GetUniqueID(), name, vertexPath, fragmentPath);
-        }
-
-        /**
-         * @brief Creates a shader object based on the current rendering API.
-         *
          * This static function attempts to create a shader object using the specified UUID, name,
          * vertex shader source file path, and fragment shader source file path.
          * The creation process depends on the rendering API currently in use (e.g., OpenGL, Vulkan, DirectX).
@@ -121,7 +84,7 @@ namespace Motion::Core
          *
          * @note Currently, only the OpenGL API is supported. For other APIs, an error is logged and nullptr is returned.
          */
-        static std::shared_ptr<IShader> Create(const UUID& uuid, const std::string& name, const std::filesystem::path& vertexPath, const std::filesystem::path& fragmentPath)
+        static std::shared_ptr<IShader> Create(UUID uuid, const std::string& name, const std::filesystem::path& vertexPath, const std::filesystem::path& fragmentPath)
         {
             switch (Renderer::GetAPI())
             {
@@ -162,23 +125,6 @@ namespace Motion::Core
         /**
          * @brief Creates a texture object based on the current rendering API.
          *
-         * This static function instantiates a texture object with the specified name, width, and height.
-         * The type of texture created depends on the active rendering API (OpenGL, Vulkan, or DirectX).
-         * Currently, only OpenGL is supported; Vulkan and DirectX will log an error and return nullptr.
-         *
-         * @param name The name to assign to the texture.
-         * @param width The width of the texture in pixels.
-         * @param height The height of the texture in pixels.
-         * @return std::shared_ptr<ITexture> A shared pointer to the created texture object, or nullptr if the API is unsupported.
-         */
-        static std::shared_ptr<ITexture> Create(const std::string& name, std::uint32_t width, std::uint32_t height)
-        {
-            return Create(UniqueIdentity::GetUniqueID(), name, width, height);
-        }
-
-        /**
-         * @brief Creates a texture object based on the current rendering API.
-         *
          * This static function instantiates a texture object with the specified UUID, name, width, and height.
          * The type of texture created depends on the active rendering API (OpenGL, Vulkan, or DirectX).
          * Currently, only OpenGL is supported; Vulkan and DirectX will log an error and return nullptr.
@@ -189,13 +135,13 @@ namespace Motion::Core
          * @param height The height of the texture in pixels.
          * @return std::shared_ptr<ITexture> A shared pointer to the created texture object, or nullptr if the API is unsupported.
          */
-        static std::shared_ptr<ITexture> Create(const UUID& uuid, const std::string& name, std::uint32_t width, std::uint32_t height)
+        static std::shared_ptr<ITexture> Create(UUID uuid, const std::string& name, std::uint32_t width, std::uint32_t height, const glm::vec3& color)
         {
             switch (Renderer::GetAPI())
             {
             case RenderingAPI::OpenGL:
             {
-                return std::make_shared<GL_Texture>(uuid, name, width, height);
+                return std::make_shared<GL_Texture>(uuid, name, width, height, color);
             }
             case RenderingAPI::Vulkan:
             {
@@ -218,25 +164,6 @@ namespace Motion::Core
         /**
          * @brief Creates a texture object based on the current rendering API.
          *
-         * This static function instantiates a texture object of the appropriate type
-         * (e.g., OpenGL, Vulkan, DirectX) depending on the active rendering API.
-         * For unsupported APIs, an error is logged and nullptr is returned.
-         *
-         * @param name        The name identifier for the texture.
-         * @param textureFile The file path to the texture resource.
-         * @param type        The type of the texture (e.g., diffuse, specular).
-         * @param flip        Whether to vertically flip the texture on load (default: true).
-         * @return std::shared_ptr<ITexture> A shared pointer to the created texture object,
-         *         or nullptr if the API is unsupported.
-         */
-        static std::shared_ptr<ITexture> Create(const std::string& name, const std::filesystem::path& textureFile, TextureType type, bool flip = true)
-        {
-            return Create(UniqueIdentity::GetUniqueID(), name, textureFile, type, flip);
-        }
-
-        /**
-         * @brief Creates a texture object based on the current rendering API.
-         *
          * This static function instantiates a texture object with the specified UUID, name,
          * texture file path, type, and flip option. The type of texture created depends on the
          * active rendering API (OpenGL, Vulkan, or DirectX). Currently, only OpenGL is supported;
@@ -250,7 +177,7 @@ namespace Motion::Core
          * @return std::shared_ptr<ITexture> A shared pointer to the created texture object,
          *         or nullptr if the API is unsupported.
          */
-        static std::shared_ptr<ITexture> Create(const UUID& uuid, const std::string& name, const std::filesystem::path& textureFile, TextureType type, bool flip = true)
+        static std::shared_ptr<ITexture> Create(UUID uuid, const std::string& name, const std::filesystem::path& textureFile, TextureType type, bool flip = true)
         {
             switch (Renderer::GetAPI())
             {
@@ -283,24 +210,6 @@ namespace Motion::Core
         /**
          * @brief Creates a cube map texture object based on the current rendering API.
          *
-         * This static function instantiates a cube map texture object with the specified name
-         * and source file path. The type of texture created depends on the active rendering API
-         * (OpenGL, Vulkan, or DirectX). Currently, only OpenGL is supported; Vulkan and DirectX
-         * will log an error and return nullptr.
-         *
-         * @param name The name to assign to the cube map texture.
-         * @param textureFile The filesystem path to the cube map texture source file.
-         * @return std::shared_ptr<ICubeMapTexture> A shared pointer to the created cube map texture object,
-         *         or nullptr if the API is unsupported.
-         */
-        static std::shared_ptr<ICubeMapTexture> Create(const std::string& name, const std::filesystem::path& textureFile)
-        {
-            return Create(UniqueIdentity::GetUniqueID(), name, textureFile);
-        }
-
-        /**
-         * @brief Creates a cube map texture object based on the current rendering API.
-         *
          * This static function instantiates a cube map texture object with the specified UUID,
          * name, and source file path. The type of texture created depends on the active rendering API
          * (OpenGL, Vulkan, or DirectX). Currently, only OpenGL is supported; Vulkan and DirectX
@@ -312,7 +221,7 @@ namespace Motion::Core
          * @return std::shared_ptr<ICubeMapTexture> A shared pointer to the created cube map texture object,
          *         or nullptr if the API is unsupported.
          */
-        static std::shared_ptr<ICubeMapTexture> Create(const UUID& uuid, const std::string& name, const std::filesystem::path& textureFile)
+        static std::shared_ptr<ICubeMapTexture> Create(UUID uuid, const std::string& name, const std::filesystem::path& textureFile)
         {
             switch (Renderer::GetAPI())
             {
@@ -344,27 +253,6 @@ namespace Motion::Core
     struct AssetBackendsBuilder<Mesh>
     {
         /**
-         * @brief Creates a new Mesh instance and returns a shared pointer to it.
-         *
-         * This function constructs a Mesh object with a unique identifier, the specified name,
-         * vertex and index data, buffer layout, and an optional parent model. The Mesh is managed
-         * by a std::shared_ptr for automatic memory management.
-         *
-         * @param name The name of the mesh.
-         * @param vertices Pointer to the array of vertex data.
-         * @param verticesSize The size (in bytes or elements, as required by Mesh) of the vertex data array.
-         * @param indices Pointer to the array of index data.
-         * @param indicesCount The number of indices in the index data array.
-         * @param layout The buffer layout describing the structure of the vertex data.
-         * @param parentModel Shared pointer to the parent StaticMesh, or nullptr if there is no parent.
-         * @return std::shared_ptr<Mesh> A shared pointer to the newly created Mesh instance.
-         */
-        std::shared_ptr<Mesh> Create(const std::string& name, float* vertices, std::uint32_t verticesSize, std::uint32_t* indices, std::uint32_t indicesCount, const BufferLayout& layout, const std::shared_ptr<StaticMesh>& parentModel)
-        {
-            return std::make_shared<Mesh>(UniqueIdentity::GetUniqueID(), name, vertices, verticesSize, indices, indicesCount, layout, parentModel);
-        }
-
-        /**
          * @brief Creates a new Mesh object and returns a shared pointer to it.
          *
          * @param uuid Unique identifier for the mesh.
@@ -377,7 +265,7 @@ namespace Motion::Core
          * @param parentModel Shared pointer to the parent StaticMesh object.
          * @return std::shared_ptr<Mesh> Shared pointer to the newly created Mesh object.
          */
-        std::shared_ptr<Mesh> Create(const UUID& uuid, const std::string& name, float* vertices, std::uint32_t verticesSize, std::uint32_t* indices, std::uint32_t indicesCount, const BufferLayout& layout, const std::shared_ptr<StaticMesh>& parentModel)
+        static std::shared_ptr<Mesh> Create(UUID uuid, const std::string& name, float* vertices, std::uint32_t verticesSize, std::uint32_t* indices, std::uint32_t indicesCount, const BufferLayout& layout, const std::shared_ptr<StaticMesh>& parentModel)
         {
             return std::make_shared<Mesh>(uuid, name, vertices, verticesSize, indices, indicesCount, layout, parentModel);
         }
@@ -386,20 +274,6 @@ namespace Motion::Core
     template<>
     struct AssetBackendsBuilder<Material>
     {
-        /**
-         * @brief Creates a new Material instance and returns a shared pointer to it.
-         *
-         * This function constructs a Material object with a unique identifier, the specified name,
-         * and an optional shading method. The Material is managed by a std::shared_ptr for automatic memory management.
-         *
-         * @param name The name of the material.
-         * @return std::shared_ptr<Material> A shared pointer to the newly created Material instance.
-         */
-        static std::shared_ptr<Material> Create(const std::string& name)
-        {
-            return Create(UniqueIdentity::GetUniqueID(), name);
-        }
-
         /**
          * @brief Creates a new Material instance with a specified UUID and returns a shared pointer to it.
          *
@@ -410,7 +284,7 @@ namespace Motion::Core
          * @param name The name of the material.
          * @return std::shared_ptr<Material> A shared pointer to the newly created Material instance.
          */
-        static std::shared_ptr<Material> Create(const UUID& uuid, const std::string& name)
+        static std::shared_ptr<Material> Create(UUID uuid, const std::string& name)
         {
             return std::make_shared<Material>(uuid, name);
         }
@@ -419,21 +293,6 @@ namespace Motion::Core
     template<>
     struct AssetBackendsBuilder<StaticMesh>
     {
-        /**
-         * @brief Creates a new StaticMesh instance and returns a shared pointer to it.
-         *
-         * This function constructs a StaticMesh object with a unique identifier, the specified name,
-         * and the path to the model file. The StaticMesh is managed by a std::shared_ptr for automatic memory management.
-         *
-         * @param name The name of the static mesh.
-         * @param modelFile The filesystem path to the model file.
-         * @return std::shared_ptr<StaticMesh> A shared pointer to the newly created StaticMesh instance.
-         */
-        static std::shared_ptr<StaticMesh> Create(const std::string& name, const std::filesystem::path& modelFile)
-        {
-            return Create(UniqueIdentity::GetUniqueID(), name, modelFile);
-        }
-
         /**
          * @brief Creates a new StaticMesh instance with a specified UUID and returns a shared pointer to it.
          *
@@ -445,7 +304,7 @@ namespace Motion::Core
          * @param modelFile The filesystem path to the model file.
          * @return std::shared_ptr<StaticMesh> A shared pointer to the newly created StaticMesh instance.
          */
-        static std::shared_ptr<StaticMesh> Create(const UUID& uuid, const std::string& name, const std::filesystem::path& modelFile)
+        static std::shared_ptr<StaticMesh> Create(UUID uuid, const std::string& name, const std::filesystem::path& modelFile)
         {
             return std::make_shared<StaticMesh>(uuid, name, modelFile);
         }
@@ -498,35 +357,8 @@ namespace Motion::Core
                 return Get<T>(name);
             }
 
-            auto asset = AssetBackendsBuilder<T>::Create(name, std::forward<Args>(args)...);
-            if (asset)
-                Register(asset->GetUUID(), asset->GetName(), asset);
-
-            return asset;
-        }
-
-        /**
-         * @brief Creates a new asset of type T with the specified UUID, name, and constructor arguments.
-         *
-         * If an asset with the given UUID already exists, a warning is logged and the existing asset is returned.
-         * Otherwise, a new asset is constructed using the provided arguments, registered, and returned.
-         *
-         * @tparam T The asset type to create. Must satisfy the AssetExpected concept.
-         * @tparam Args Variadic template parameters for the constructor arguments of T.
-         * @param uuid The unique identifier for the asset.
-         * @param name The unique name for the asset.
-         * @param args Arguments to forward to the constructor of T.
-         * @return std::shared_ptr<T> A shared pointer to the created or existing asset.
-         */
-        template<AssetExpected T, typename... Args>
-        std::shared_ptr<T> Create(const UUID& uuid, const std::string& name, Args&&... args)
-        {
-            if (Exists(uuid)) {
-                MOTION_CORE_WARN("Asset with UUID {} already exists!", uuid);
-                return Get<T>(uuid);
-            }
-
-            auto asset = AssetBackendsBuilder<T>::Create(uuid, name, std::forward<Args>(args)...);
+            UUID uuid = UniqueIdentity::GetUniqueID();
+            std::shared_ptr<T> asset = AssetBackendsBuilder<T>::Create(uuid, name, std::forward<Args>(args)...);
             if (asset)
                 Register(asset->GetUUID(), asset->GetName(), asset);
 

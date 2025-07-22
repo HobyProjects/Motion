@@ -122,7 +122,6 @@ namespace Motion::Core
         inline static constexpr std::string_view Texture_MetallicTexture = "u_MetallicTexture";
         inline static constexpr std::string_view Texture_RoughnessTexture = "u_RoughnessTexture";
         inline static constexpr std::string_view Texture_AmbientOcclusionTexture = "u_AmbientOcclusionTexture";
-        inline static constexpr std::string_view Texture_EmissiveTexture = "u_EmissiveTexture";
         inline static constexpr std::string_view Texture_ClearCoatTexture = "u_ClearCoatTexture";
         inline static constexpr std::string_view Texture_SheenTexture = "u_SheenTexture";
         inline static constexpr std::string_view Texture_TransmissionTexture = "u_TransmissionTexture";

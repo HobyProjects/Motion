@@ -187,9 +187,9 @@ namespace Motion::App
             {
                 ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, { 10.0f, 0.0f });
 
-                Motion::Core::UserInterfaceInitializer::CustomUIControl::DragControllerVec3("Translation", component.Translation, 0.0f);
-                Motion::Core::UserInterfaceInitializer::CustomUIControl::DragControllerVec3("Rotation", component.Rotation, 0.0f);
-                Motion::Core::UserInterfaceInitializer::CustomUIControl::DragControllerVec3("Scale", component.Scale, 1.0f);
+                Motion::Core::CustomUIControl::DragControllerVec3("Translation", component.Translation, 0.0f);
+                Motion::Core::CustomUIControl::DragControllerVec3("Rotation", component.Rotation, 0.0f);
+                Motion::Core::CustomUIControl::DragControllerVec3("Scale", component.Scale, 1.0f);
 
                 ImGui::PopStyleVar();
 

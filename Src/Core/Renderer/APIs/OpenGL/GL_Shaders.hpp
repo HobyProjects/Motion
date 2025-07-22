@@ -8,7 +8,6 @@ namespace Motion::Core
     class GL_Shader final : public AssetBase<IShader>
     {
     public:
-        GL_Shader(const std::string& name, const std::unordered_map<ShaderType, std::string>& shaderSources, const std::filesystem::path& sourceFile);
         GL_Shader(UUID uuid, const std::string& name, const std::unordered_map<ShaderType, std::string>& shaderSources, const std::filesystem::path& sourceFile);
         virtual ~GL_Shader();
 

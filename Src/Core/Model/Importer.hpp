@@ -22,7 +22,6 @@ namespace Motion::Core
 
     public:
         static std::shared_ptr<StaticMesh> ImportModel(const std::string& modelName, const std::filesystem::path& path);
-        static std::shared_ptr<StaticMesh> ImportModel(UUID uuid, const std::string& modelName, const std::filesystem::path& path);
 
     private:
         static void LoadMesh(const std::shared_ptr<StaticMesh>& modelPtr, aiMesh* mesh, const aiScene* scene);

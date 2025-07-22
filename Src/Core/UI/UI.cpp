@@ -120,7 +120,7 @@ namespace Motion::Core
      * modifying the colors of the ImGuiStyle structure. The colors are set to a dark theme, which is
      * a dark blue-gray color scheme.
      */
-    void UserInterfaceInitializer::UseColorDark()
+    void UserInterfaceInitializer::UseColorDark() noexcept
     {
         auto& colors = ImGui::GetStyle().Colors;
         colors[ImGuiCol_WindowBg] = ImVec4{ 0.1f, 0.105f, 0.11f, 1.0f };
@@ -160,7 +160,7 @@ namespace Motion::Core
      * colors of the ImGuiStyle structure to a light color scheme and adjusts style properties such as
      * alpha and frame rounding. It also includes additional settings for when viewports are enabled.
      */
-    void UserInterfaceInitializer::UseColorLight()
+    void UserInterfaceInitializer::UseColorLight() noexcept
     {
         ImGui::StyleColorsLight();
         ImGuiStyle& style = ImGui::GetStyle();

@@ -79,7 +79,6 @@ namespace Motion::Core
     public:
         Material() = default;
         Material(const UUID& uuid, const std::string& name);
-        Material(const std::string& name);
         virtual ~Material() = default;
 
         void Bind(const std::shared_ptr<IShader>& shader) noexcept;

@@ -49,7 +49,8 @@ namespace Motion::Core
          */
         static T GetSystemTicks()
         {
-            switch (CoreAPI::GetBaseAPI()->API())
+            auto& coreAPI = CoreAPI::GetInstance();
+            switch (coreAPI.API())
             {
             case PlatformBaseAPIs::GLFW: return static_cast<T>(glfwGetTime());
             case PlatformBaseAPIs::Win32: MOTION_ASSERT(false, "Win32 is not supported yet") return static_cast<T>(0);

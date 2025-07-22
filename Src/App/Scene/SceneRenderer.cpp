@@ -87,7 +87,7 @@ namespace Motion::App
                     command.TransformMatrix = glm::mat4(1.0f);
                 }
 
-                command.ViewProjectionMatrix = scene->m_SceneCamera->GetCameraMatrix();
+                command.ViewProjectionMatrix = scene->m_SceneCamera->Camera3D.MVP;
                 command.ScenePtr = scene;
 
                 m_DrawCommands.push_back(command);

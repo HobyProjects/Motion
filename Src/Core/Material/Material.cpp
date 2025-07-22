@@ -9,7 +9,7 @@ namespace Motion::Core
      * This function creates and assigns default textures used as fallbacks for materials.
      * These textures are typically used when no specific texture is provided for a material.
      */
-    std::shared_ptr<ITexture> MaterialFallbackTextures::White = CreateUnregisteredPlainTexture("White", 10, 10, { 1.0f, 1.0f, 1.0f });
+    std::shared_ptr<ITexture> MaterialFallbackTextures::White = CreateUnregisteredPlainTexture(10, 10, { 1.0f, 1.0f, 1.0f });
 
     /**
      * @brief Initializes the static fallback textures for materials.
@@ -17,7 +17,7 @@ namespace Motion::Core
      * This function creates and assigns default textures used as fallbacks for materials.
      * These textures are typically used when no specific texture is provided for a material.
      */
-    std::shared_ptr<ITexture> MaterialFallbackTextures::Black = CreateUnregisteredPlainTexture("Black", 10, 10, { 0.0f, 0.0f, 0.0f });
+    std::shared_ptr<ITexture> MaterialFallbackTextures::Black = CreateUnregisteredPlainTexture(10, 10, { 0.0f, 0.0f, 0.0f });
 
     /**
      * @brief Initializes the static fallback textures for materials.
@@ -25,7 +25,7 @@ namespace Motion::Core
      * This function creates and assigns default textures used as fallbacks for materials.
      * These textures are typically used when no specific texture is provided for a material.
      */
-    std::shared_ptr<ITexture> MaterialFallbackTextures::Grey = CreateUnregisteredPlainTexture("Grey", 10, 10, { 0.8f, 0.8f, 0.8f });
+    std::shared_ptr<ITexture> MaterialFallbackTextures::Grey = CreateUnregisteredPlainTexture(10, 10, { 0.8f, 0.8f, 0.8f });
 
     /**
      * @brief Initializes the static fallback normal texture for materials.
@@ -33,7 +33,7 @@ namespace Motion::Core
      * This function creates and assigns a default normal texture used as a fallback for materials.
      * The normal texture is typically used to provide surface detail without additional geometry.
      */
-    std::shared_ptr<ITexture> MaterialFallbackTextures::Normal = CreateUnregisteredPlainTexture("Normal", 10, 10, { 0.5f, 0.5f, 1.0f });
+    std::shared_ptr<ITexture> MaterialFallbackTextures::Normal = CreateUnregisteredPlainTexture(10, 10, { 0.5f, 0.5f, 1.0f });
 
     /**
      * @brief Constructs a Material object with the specified UUID, name, and shading method.
@@ -44,22 +44,6 @@ namespace Motion::Core
      */
     Material::Material(const UUID& uuid, const std::string& name) :
         AssetBase(uuid, name, AssetType::Material, "Undefined")
-    {
-        AssetInfo.IsInitialized = true;
-        m_ShadingMethod = MaterialShadingMethod::Auto;
-    }
-
-    /**
-     * @brief Constructs a Material object with the specified name and shading method.
-     *
-     * Initializes the Material by assigning a unique ID, setting its name,
-     * specifying its asset type as Material, and setting the shading method.
-     *
-     * @param name The name of the material.
-     * @param shadingMethod The shading method to be used by the material.
-     */
-    Material::Material(const std::string& name) :
-        AssetBase(UniqueIdentity::GetUniqueID(), name, AssetType::Material, "Undefined")
     {
         AssetInfo.IsInitialized = true;
         m_ShadingMethod = MaterialShadingMethod::Auto;

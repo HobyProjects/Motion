@@ -43,13 +43,13 @@ namespace Motion::Core
 
     template<typename T>
         requires std::is_enum_v<T>&& std::is_convertible_v<T, KeyCode>
-    class EventKeyboardKeyRepeate : public IEvent
+    class EventKeyboardKeyRepeat : public IEvent
     {
     public:
-        EventKeyboardKeyRepeate(T keyCode) : m_KeyCode(keyCode) {}
-        virtual ~EventKeyboardKeyRepeate() = default;
+        EventKeyboardKeyRepeat(T keyCode) : m_KeyCode(keyCode) {}
+        virtual ~EventKeyboardKeyRepeat() = default;
 
-        EVENT_CLASS_TYPE(EventType::KeyboardKeyRepeate);
+        EVENT_CLASS_TYPE(EventType::KeyboardKeyRepeat);
         EVENT_CLASS_CATEGORY(EventCategory::Keyboard);
 
         T KeyCode() const { return m_KeyCode; }

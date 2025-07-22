@@ -22,27 +22,8 @@ namespace Motion::Core
      */
     std::shared_ptr<StaticMesh> Importer::ImportModel(const std::string& modelName, const std::filesystem::path& path)
     {
-        return ImportModel(UniqueIdentity::GetUniqueID(), modelName, path);
-    }
-
-    /**
-     * @brief Imports a 3D model from the specified file path and creates a StaticMesh asset with a unique UUID.
-     *
-     * This function uses the Assimp library to read and process the 3D model file located at the given path.
-     * It creates a StaticMesh asset using the AssetManager and populates it with the imported mesh data.
-     * If the import fails, an error is logged and the returned StaticMesh asset is marked as uninitialized.
-     * On success, the mesh is loaded and the asset is marked as initialized.
-     *
-     * @param uuid The unique identifier for the imported StaticMesh asset.
-     * @param modelName The name to assign to the imported StaticMesh asset.
-     * @param path The filesystem path to the 3D model file to import.
-     * @return std::shared_ptr<StaticMesh> A shared pointer to the created StaticMesh asset. The asset's
-     *         initialization status can be checked via its metadata.
-     */
-    std::shared_ptr<StaticMesh> Importer::ImportModel(UUID uuid, const std::string& modelName, const std::filesystem::path& path)
-    {
         auto& assetManager = AssetManager::GetInstance();
-        std::shared_ptr<StaticMesh> staticMeshPtr = assetManager.Create<StaticMesh>(uuid, modelName, path);
+        std::shared_ptr<StaticMesh> staticMeshPtr = assetManager.Create<StaticMesh>(modelName, path);
 
         Assimp::Importer importer;
         const aiScene* scene = importer.ReadFile(path.string(), aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_GenSmoothNormals | aiProcess_JoinIdenticalVertices | aiProcess_CalcTangentSpace);

@@ -118,35 +118,6 @@ namespace Motion::Core
         glDeleteProgram(programID);
     }
 
-    /**
-     * @brief Constructs a GL_Shader object by compiling and linking shader sources.
-     *
-     * This constructor initializes a shader asset with the given name and source file path.
-     * It creates a new OpenGL shader program, compiles each shader source provided in the
-     * shaderSources map (keyed by ShaderType), attaches them to the program, and then links
-     * and validates the program. Upon successful creation, the shader is marked as loaded.
-     *
-     * @param name The name of the shader asset.
-     * @param shaderSources A map associating ShaderType with its corresponding GLSL source code.
-     * @param sourceFile The filesystem path to the original shader source file.
-     */
-    GL_Shader::GL_Shader(const std::string& name, const std::unordered_map<ShaderType, std::string>& shaderSources, const std::filesystem::path& sourceFile) :
-        AssetBase<IShader>(UniqueIdentity::GetUniqueID(), name, AssetType::Shader, sourceFile.string())
-    {
-        m_ProgramID = GL_CreateShaderProgram();
-
-        for (const auto& [type, source] : shaderSources)
-        {
-            ShaderID compiledShaderID = GL_CompileShader(type, source);
-            GL_AttachShaderProgram(compiledShaderID, m_ProgramID);
-        }
-
-        GL_LinkShaderProgram(m_ProgramID);
-        GL_ValidateShaderProgram(m_ProgramID);
-        ReflectUniforms();
-
-        AssetInfo.IsInitialized = true;
-    }
 
     /**
      * @brief Constructs a GL_Shader object, compiles and links shader sources into an OpenGL shader program.

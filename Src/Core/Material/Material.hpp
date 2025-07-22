@@ -72,6 +72,8 @@ namespace Motion::Core
         static std::shared_ptr<ITexture> Black;
         static std::shared_ptr<ITexture> Grey;
         static std::shared_ptr<ITexture> Normal;
+
+        static void Initialize();
     };
 
     class Material final : public AssetBase<IAsset>

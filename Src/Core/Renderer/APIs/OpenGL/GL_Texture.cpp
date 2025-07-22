@@ -303,7 +303,7 @@ namespace Motion::Core
      */
     void GL_CubeMapTexture::Unbind() const noexcept
     {
-        glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
+        glBindTextureUnit(0, 0);
     }
 
     /**

@@ -87,6 +87,7 @@ namespace Motion::Core
         IContext() = default;
         virtual ~IContext() = default;
 
+        virtual bool Activate() noexcept = 0;
         virtual void Attach(NativeWindow) noexcept = 0;
         virtual void Detach() noexcept = 0;
         virtual void SwapBuffers(NativeWindow) noexcept = 0;
@@ -145,13 +146,11 @@ namespace Motion::Core
         [[nodiscard]] bool Init() noexcept;
         [[nodiscard]] PlatformBaseAPIs API() const noexcept;
         [[nodiscard]] std::shared_ptr<IPlatformBaseAPI> GetBaseAPI() const noexcept;
-        [[nodiscard]] std::shared_ptr<IContext> GetContext() const noexcept;
 
         void Quit() noexcept;
 
     private:
         std::shared_ptr<IPlatformBaseAPI> m_PlatformBaseAPIService{ nullptr };
-        std::shared_ptr<IContext> m_ContextService{ nullptr };
     };
 
     class WindowManager

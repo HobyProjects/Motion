@@ -95,29 +95,18 @@ namespace Motion::App
         }
     }
 
-    /**
-     * @brief Ends the current scene by flushing the draw commands to the renderer.
-     *
-     * This method is called at the end of rendering a scene to ensure that all accumulated draw commands
-     * are processed and rendered. It invokes the Flush method to execute the draw calls.
-     */
-    void SceneRenderer::EndScene() noexcept
-    {
-        Flush();
-    }
 
     /**
-     * @brief Executes all queued draw commands, rendering the scene.
+     * @brief Ends the current scene rendering by sorting and executing draw commands.
      *
-     * This method sorts the draw commands by their sort key, retrieves the necessary
-     * assets (materials, meshes, shaders) from the AssetManager, and performs the rendering
-     * for each command. It selects the appropriate shader based on the material's shading method,
-     * binds the shader and material, sets required uniforms, and issues the mesh render call.
+     * This method sorts the draw commands based on their sort key and retrieves the necessary
+     * assets (materials, meshes, shaders) from the AssetManager. It then performs the rendering
+     * for each command, selecting the appropriate shader based on the material's shading method.
      * If any required asset (material or shader) is missing, a warning is logged and the draw call is skipped.
      *
-     * @note This method is noexcept and does not throw exceptions.
+     * @param skyBoxTextureID The texture ID of the skybox to be rendered in the scene.
      */
-    void SceneRenderer::Flush() noexcept
+    void SceneRenderer::EndScene(Motion::Core::TextureID skyBoxTextureID) noexcept
     {
         std::sort(m_DrawCommands.begin(), m_DrawCommands.end(), [](const SceneDrawCommand& a, const SceneDrawCommand& b) { return a < b; });
 
@@ -155,6 +144,10 @@ namespace Motion::App
                         currentShader->SetUniform(Motion::Core::UniformCache::LightAttri_Color, command.ScenePtr->m_Environment.DirectionalLight.Color);
                         currentShader->SetUniform(Motion::Core::UniformCache::LightAttri_Position, command.ScenePtr->m_Environment.DirectionalLight.Direction);
                         currentShader->SetUniform(Motion::Core::UniformCache::LightAttri_Intensity, command.ScenePtr->m_Environment.DirectionalLight.AmbientIntensity);
+
+                        Motion::Core::Renderer::BindTextureUnit(10, skyBoxTextureID);
+                        currentShader->SetUniform(Motion::Core::UniformCache::GlobalAttri_EnvironmentTexture, 10);
+                        currentShader->SetUniform(Motion::Core::UniformCache::GlobalAttri_CameraPosition, command.ScenePtr->m_SceneCamera->Camera3D.Position);
                     }
 
                     material->Bind(currentShader);
@@ -177,5 +170,21 @@ namespace Motion::App
                 continue;
             }
         }
+    }
+
+    /**
+     * @brief Executes all queued draw commands, rendering the scene.
+     *
+     * This method sorts the draw commands by their sort key, retrieves the necessary
+     * assets (materials, meshes, shaders) from the AssetManager, and performs the rendering
+     * for each command. It selects the appropriate shader based on the material's shading method,
+     * binds the shader and material, sets required uniforms, and issues the mesh render call.
+     * If any required asset (material or shader) is missing, a warning is logged and the draw call is skipped.
+     *
+     * @note This method is noexcept and does not throw exceptions.
+     */
+    void SceneRenderer::Flush() noexcept
+    {
+
     }
 }

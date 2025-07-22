@@ -260,8 +260,8 @@ namespace Motion::Core
             mesh = std::make_shared<Mesh>(
                 UniqueIdentity::GetUniqueID(),
                 std::format("{}_{}", name, meshCount++),
-                vertexData.data(), vertexData.size(),
-                indices.data(), indices.size(),
+                vertexData.data(), static_cast<std::uint32_t>(vertexData.size()),
+                indices.data(), static_cast<std::uint32_t>(indices.size()),
                 layout, nullptr
             );
         }

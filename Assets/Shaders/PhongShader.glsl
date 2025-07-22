@@ -57,7 +57,7 @@ uniform sampler2D u_OpacityTexture;
 uniform sampler2D u_NormalMapsTexture;
 
 // Environment map for reflection
-uniform samplerCube u_EnvironmentCubeMap;
+uniform samplerCube u_EnvironmentTexture;
 
 vec3 applyNormalMap() {
     vec3 normalMap = texture(u_NormalMapsTexture, v_TexCoords).rgb;
@@ -91,7 +91,7 @@ void main() {
     vec3 lightResult = (ambient + diffuse + specular) * u_LightColor * u_LightIntensity + emissive;
 
     // Reflectivity (cube map)
-    vec3 reflected = texture(u_EnvironmentCubeMap, R).rgb;
+    vec3 reflected = texture(u_EnvironmentTexture, R).rgb;
     vec3 finalColor = mix(lightResult, reflected, clamp(u_Reflectivity, 0.0, 1.0));
 
     FragColor = vec4(finalColor, opacity);

@@ -59,7 +59,7 @@ namespace Motion::App
     public:
         void BeginScene() noexcept;
         void Submit(Scene* scene) noexcept;
-        void EndScene() noexcept;
+        void EndScene(Motion::Core::TextureID skyBoxTextureID) noexcept;
         void Flush() noexcept;
 
         [[nodiscard]] std::uint32_t GetDrawCount() const noexcept { return m_DrawCount; }

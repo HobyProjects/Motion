@@ -9,7 +9,7 @@ namespace Motion::Core
      * This function creates and assigns default textures used as fallbacks for materials.
      * These textures are typically used when no specific texture is provided for a material.
      */
-    std::shared_ptr<ITexture> MaterialFallbackTextures::White = CreateUnregisteredPlainTexture(10, 10, { 1.0f, 1.0f, 1.0f });
+    std::shared_ptr<ITexture> MaterialFallbackTextures::White = nullptr;
 
     /**
      * @brief Initializes the static fallback textures for materials.
@@ -17,7 +17,7 @@ namespace Motion::Core
      * This function creates and assigns default textures used as fallbacks for materials.
      * These textures are typically used when no specific texture is provided for a material.
      */
-    std::shared_ptr<ITexture> MaterialFallbackTextures::Black = CreateUnregisteredPlainTexture(10, 10, { 0.0f, 0.0f, 0.0f });
+    std::shared_ptr<ITexture> MaterialFallbackTextures::Black = nullptr;
 
     /**
      * @brief Initializes the static fallback textures for materials.
@@ -25,7 +25,7 @@ namespace Motion::Core
      * This function creates and assigns default textures used as fallbacks for materials.
      * These textures are typically used when no specific texture is provided for a material.
      */
-    std::shared_ptr<ITexture> MaterialFallbackTextures::Grey = CreateUnregisteredPlainTexture(10, 10, { 0.8f, 0.8f, 0.8f });
+    std::shared_ptr<ITexture> MaterialFallbackTextures::Grey = nullptr;
 
     /**
      * @brief Initializes the static fallback normal texture for materials.
@@ -33,7 +33,21 @@ namespace Motion::Core
      * This function creates and assigns a default normal texture used as a fallback for materials.
      * The normal texture is typically used to provide surface detail without additional geometry.
      */
-    std::shared_ptr<ITexture> MaterialFallbackTextures::Normal = CreateUnregisteredPlainTexture(10, 10, { 0.5f, 0.5f, 1.0f });
+    std::shared_ptr<ITexture> MaterialFallbackTextures::Normal = nullptr;
+
+    /**
+     * @brief Initializes the static fallback textures for materials.
+     *
+     * This function creates and assigns default textures used as fallbacks for materials.
+     * These textures are typically used when no specific texture is provided for a material.
+     */
+    void MaterialFallbackTextures::Initialize()
+    {
+        White = GL_CreateUnregisteredPlainTexture(10, 10, { 1.0f, 1.0f, 1.0f });
+        Black = GL_CreateUnregisteredPlainTexture(10, 10, { 0.0f, 0.0f, 0.0f });
+        Grey = GL_CreateUnregisteredPlainTexture(10, 10, { 0.8f, 0.8f, 0.8f });
+        Normal = GL_CreateUnregisteredPlainTexture(10, 10, { 0.5f, 0.5f, 1.0f });
+    }
 
     /**
      * @brief Constructs a Material object with the specified UUID, name, and shading method.

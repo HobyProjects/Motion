@@ -49,22 +49,16 @@ namespace Motion::Core
     }
 
     /**
-     * Constructs a GLFW window with the given title and context.
+     * Constructs a GLFW_Window object with the specified window handle and title.
      *
-     * This constructor will use the primary monitor's video mode to set the default
-     * window dimensions. If the video mode is not available, it will use default values
-     * of 1280x720. Additionally, it will set the window hints for the OpenGL context
-     * based on the rendering API set in the Renderer class. If the rendering API is
-     * OpenGL, it will set the context version to 4.6 and the profile to core. If the
-     * rendering API is not OpenGL, it will not set any OpenGL window hints.
+     * This constructor initializes the GLFW window with the given handle and title,
+     * setting up the necessary properties and context for rendering.
      *
-     * @param windowHandle The window handle to use for the GLFW window.
-     * @param title The title of the window.
-     * @param context The context to use for the GLFW window.
+     * @param windowHandle The unique identifier for the window.
+     * @param title The title of the window to be displayed.
      */
-    GLFW_Window::GLFW_Window(WindowHandle windowHandle, const std::string& title, const std::shared_ptr<IContext> context)
+    GLFW_Window::GLFW_Window(WindowHandle windowHandle, const std::string& title)
     {
-        m_Context = context;
         const GLFWvidmode* mode = glfwGetVideoMode(glfwGetPrimaryMonitor());
         if (mode != nullptr)
         {
@@ -130,11 +124,29 @@ namespace Motion::Core
         m_Window = glfwCreateWindow(m_Properties.Width, m_Properties.Height, m_Properties.Title.c_str(), nullptr, nullptr);
         if (m_Window != nullptr)
         {
-            auto& coreAPI = CoreAPI::GetInstance();
-            m_Context = coreAPI.GetContext();
+            switch (Renderer::GetAPI())
+            {
+            case RenderingAPI::OpenGL:
+                m_Context = std::make_shared<GLFW_GL_Context>();
+                break;
+            case RenderingAPI::Vulkan:
+                MOTION_ASSERT(false, "Vulkan is not supported yet");
+                break;
+            case RenderingAPI::DirectX:
+                MOTION_ASSERT(false, "DirectX is not supported yet");
+                break;
+            default:
+                MOTION_ASSERT(false, "Unknown Rendering API");
+                break;
+            };
 
-            if (m_Context->IsContextCreated())
-                m_Context->Attach(m_Window);
+            m_Context->Attach(m_Window);
+            if (!m_Context->Activate())
+            {
+                MOTION_CORE_CRITICAL("Failed to activate graphics context");
+                return;
+            }
+
 
             glfwSetWindowSizeLimits(m_Window, m_Properties.MinWidth, m_Properties.MinHeight, GLFW_DONT_CARE, GLFW_DONT_CARE);
             glfwGetFramebufferSize(m_Window, &m_Properties.PixelWidth, &m_Properties.PixelHeight);

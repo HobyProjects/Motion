@@ -1,32 +1,35 @@
 #include "CorePCH.hpp"
+#include "GLFW_GL_Context.hpp"
 
 namespace Motion::Core
 {
     /**
-     * @brief Constructs a GLFW_GL_Context object and initializes the OpenGL context.
+     * @brief Initializes the OpenGL context using GLAD and GLFW.
      *
-     * This constructor initializes the OpenGL context using GLAD and sets the context version
-     * to 4.6. It also logs the OpenGL version if successful.
+     * This function loads the OpenGL functions using GLAD and initializes the OpenGL context.
+     * It checks if the context has been created successfully and logs the OpenGL version.
+     *
+     * @return true if the context is created successfully, false otherwise.
      */
-    GLFW_GL_Context::GLFW_GL_Context()
+    bool GLFW_GL_Context::Activate() noexcept
     {
         if (!m_IsContextCreated)
         {
-            std::int32_t glad_version = gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
-            if (glad_version == 0)
+            std::int32_t glad = gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
+            if (!glad)
             {
                 MOTION_CORE_CRITICAL("Failed to initialize GLAD");
-                return;
+                return false;
             }
 
             std::int32_t major{ 0 }, minor{ 0 };
             glGetIntegerv(GL_MAJOR_VERSION, &major);
             glGetIntegerv(GL_MINOR_VERSION, &minor);
             MOTION_CORE_INFO("GLAD successfully initialized. OpenGL {0}.{1}", major, minor);
-
-
-            m_IsContextCreated = glad_version;
+            return (m_IsContextCreated = glad);
         }
+
+        return m_IsContextCreated;
     }
 
     /**

@@ -43,6 +43,7 @@ namespace Motion::Core
         m_ShaderProgram->SetUniform(UniformCache::GlobalAttri_ProjectionMatrix, projectionMatrix);
 
         m_CubeMapTexture->Bind();
+        m_ShaderProgram->SetUniform(UniformCache::Texture_SkyboxTexture, 0);
         m_SkyBoxMesh->Render();
         m_CubeMapTexture->Unbind();
 

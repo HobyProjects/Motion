@@ -33,42 +33,12 @@ namespace Motion::Core
     {
         switch (s_PlatformBaseAPI)
         {
-        case PlatformBaseAPIs::GLFW:  m_PlatformBaseAPIService = std::make_shared<GLFW_BaseAPI>(); break;
-        case PlatformBaseAPIs::Win32: MOTION_ASSERT(false, "Win32 is not supported yet"); break;
-        default:              MOTION_ASSERT(false, "Unknown Base API"); break;
+        case PlatformBaseAPIs::GLFW:    m_PlatformBaseAPIService = std::make_shared<GLFW_BaseAPI>(); break;
+        case PlatformBaseAPIs::Win32:   MOTION_ASSERT(false, "Win32 is not supported yet"); break;
+        default:                        MOTION_ASSERT(false, "Unknown Base API"); break;
         };
 
-        if (!m_PlatformBaseAPIService->Init())
-        {
-            MOTION_ASSERT(false, "Failed to initialize Base API");
-            return false;
-        }
-
-        if (s_PlatformBaseAPI & Renderer::GetAPI() && PlatformBaseAPIs::GLFW & RenderingAPI::OpenGL)
-        {
-            m_ContextService = std::make_shared<GLFW_GL_Context>();
-            if (m_ContextService)
-            {
-                MOTION_CORE_INFO("Context service created successfully");
-                return true;
-            }
-        }
-
-        if (s_PlatformBaseAPI & Renderer::GetAPI() && PlatformBaseAPIs::GLFW & RenderingAPI::Vulkan)
-        {
-            MOTION_ASSERT(false, "Cannot create Vulkan context with GLFW API, Because GLFW API is not supported yet");
-            return false;
-        }
-
-        if (s_PlatformBaseAPI & Renderer::GetAPI() && PlatformBaseAPIs::GLFW & RenderingAPI::DirectX)
-        {
-            MOTION_ASSERT(false, "Cannot create DirectX context with GLFW API, Because GLFW API is not supported yet");
-            return false;
-        }
-
-
-
-        return false;
+        return m_PlatformBaseAPIService->Init();
     }
 
     /**
@@ -82,13 +52,7 @@ namespace Motion::Core
     {
         MOTION_CORE_INFO("Shutting down Core API...");
         if (m_PlatformBaseAPIService)
-        {
             m_PlatformBaseAPIService->Quit();
-            m_PlatformBaseAPIService.reset();
-
-            m_ContextService->Detach();
-            m_ContextService.reset();
-        }
     }
 
     /**
@@ -120,20 +84,6 @@ namespace Motion::Core
     }
 
     /**
-     * Retrieves the context service used by the Core API.
-     *
-     * @return A shared pointer to the context service.
-     *
-     * This function provides access to the context service currently in use.
-     * It returns a shared pointer to the IContext instance, allowing for further
-     * interaction with the context-specific implementation details.
-     */
-    std::shared_ptr<IContext> CoreAPI::GetContext() const noexcept
-    {
-        return m_ContextService;
-    }
-
-    /**
      * @brief Creates a new window instance based on the current platform API.
      *
      * This function generates a unique window handle and creates a window using the
@@ -155,7 +105,7 @@ namespace Motion::Core
         case PlatformBaseAPIs::GLFW:
         {
             auto& coreAPI = CoreAPI::GetInstance();
-            auto window = std::make_shared<GLFW_Window>(uniqueHandle, title, coreAPI.GetContext());
+            auto window = std::make_shared<GLFW_Window>(uniqueHandle, title);
             m_WindowManagementService[uniqueHandle] = window;
 
             MOTION_CORE_INFO("Window created with handle {:X}", uniqueHandle);

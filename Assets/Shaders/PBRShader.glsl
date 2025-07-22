@@ -5,6 +5,7 @@ layout(location = 0) in vec3 a_Position;
 layout(location = 1) in vec2 a_TexCoords;
 layout(location = 2) in vec3 a_Normals;
 layout(location = 3) in vec3 a_Tangents;
+layout(location = 4) in vec3 a_Bitangents;
 
 uniform mat4 u_ModelMatrix;
 uniform mat4 u_ViewProjMatrix;
@@ -67,7 +68,7 @@ uniform sampler2D u_TransmissionTexture;
 uniform sampler2D u_EmissiveTexture;
 
 // Environment
-uniform samplerCube u_EnvironmentCubeMap;
+uniform samplerCube u_EnvironmentTexture;
 
 const float PI = 3.14159265359;
 
@@ -132,7 +133,7 @@ void main() {
 
     // IBL reflection
     vec3 R = reflect(-V, N);
-    vec3 envReflection = texture(u_EnvironmentCubeMap, R).rgb;
+    vec3 envReflection = texture(u_EnvironmentTexture, R).rgb;
     float reflectionStrength = mix(1.0, 0.0, roughness);
     vec3 specEnv = envReflection * F * reflectionStrength;
 

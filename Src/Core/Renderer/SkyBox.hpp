@@ -12,6 +12,7 @@ namespace Motion::Core
         SkyBox();
         ~SkyBox() = default;
 
+        TextureID GetTextureID() const noexcept { return m_CubeMapTexture ? m_CubeMapTexture->GetID() : 0; }
         void Render(const glm::mat4& viewMatrix, const glm::mat4& projectionMatrix) noexcept;
 
     private:

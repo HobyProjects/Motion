@@ -14,12 +14,14 @@ namespace Motion::App
 
     void SceneEditorLayer::OnAttach()
     {
+        //TEMP
         auto& assetManager = Motion::Core::AssetManager::GetInstance();
         assetManager.Create<Motion::Core::IShader>("PostProcessingShader", "Assets/Shaders/PostProcessing.glsl");
         assetManager.Create<Motion::Core::IShader>("SkyBoxShader", "Assets/Shaders/SkyBox.glsl");
         assetManager.Create<Motion::Core::IShader>("PBRShader", "Assets/Shaders/PBRShader.glsl");
         assetManager.Create<Motion::Core::IShader>("PhongShader", "Assets/Shaders/PhongShader.glsl");
         assetManager.Create<Motion::Core::IShader>("UnlitShader", "Assets/Shaders/UnlitShader.glsl");
+        Motion::Core::MaterialFallbackTextures::Initialize();
 
         m_Viewport.FrameSpec.Width = static_cast<uint32_t>(m_ViewportWidth);
         m_Viewport.FrameSpec.Height = static_cast<uint32_t>(m_ViewportHeight);
@@ -58,6 +60,7 @@ namespace Motion::App
 
         m_ActiveScene->OnUpdate(handle, deltaTime);
 
+
         m_Framebuffer->Bind();
 
         Motion::Core::Renderer::ClearColor({ 0.243, 0.243, 0.243, 1.0f });
@@ -66,11 +69,9 @@ namespace Motion::App
 
         auto& sceneRenderer = SceneRenderer::GetInstance();
         sceneRenderer.BeginScene();
-
         m_SkyBox->Render(m_ActiveScene->GetViewMatrix(), m_ActiveScene->GetProjectionMatrix());
         sceneRenderer.Submit(m_ActiveScene.get());
-
-        sceneRenderer.EndScene();
+        sceneRenderer.EndScene(m_SkyBox->GetTextureID());
 
         m_Framebuffer->Unbind();
         m_PostProcessor->Process(m_Framebuffer->GetAttachment(Motion::Core::FrameBufferColorAttachmentStandards::Standard).TextureID);

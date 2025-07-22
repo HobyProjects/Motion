@@ -17,9 +17,9 @@ namespace Motion::Core
 
     enum DrawFlags : std::uint8_t
     {
-        None = 0,
-        SkipDepthMask = Bits<1>::value,
-        Wireframe = Bits<2>::value,
+        DepthTest = Bits<1>::value,
+        SkipDepthMask = Bits<2>::value,
+        Wireframe = Bits<3>::value,
     };
 
     inline std::uint8_t operator|(RenderingAPI a, RenderingAPI b) { return static_cast<std::uint8_t>(a) | static_cast<std::uint8_t>(b); }
@@ -42,7 +42,7 @@ namespace Motion::Core
         static void Init();
         static void Quit();
         static void Clear();
-        static void ResetDrawFlags();
+        static void ResetDrawFlags(DrawFlags flags);
         static void ApplyDrawFlags(DrawFlags flags);
         static void ClearColor(const glm::vec4& color);
         static void DrawIndexed(std::uint32_t indicesCount);

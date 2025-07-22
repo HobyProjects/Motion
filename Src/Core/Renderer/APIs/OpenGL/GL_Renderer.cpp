@@ -21,6 +21,8 @@ namespace Motion::Core
     {
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+        glDepthMask(GL_TRUE);
         glEnable(GL_DEPTH_TEST);
 
 #ifdef MOTION_BUILD_DEBUG
@@ -114,10 +116,9 @@ namespace Motion::Core
     {
         switch (flags)
         {
-        case DrawFlags::None:
+        case DrawFlags::DepthTest:
         {
-            glDisable(GL_DEPTH_TEST);
-            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+            glEnable(GL_DEPTH_TEST);
             break;
         }
         case DrawFlags::SkipDepthMask:
@@ -137,16 +138,36 @@ namespace Motion::Core
     }
 
     /**
-     * @brief Resets OpenGL draw state flags to their default values.
+     * @brief Resets the OpenGL drawing flags to their default state.
      *
-     * This function enables depth writing, sets the polygon mode to fill for both front and back faces,
-     * and enables depth testing. It is typically called to ensure the OpenGL state is consistent before rendering.
+     * This function clears any previously set draw flags and restores the default rendering state.
+     * It is typically called at the end of a frame or before starting a new frame.
+     *
+     * @param flags The draw flags to reset (e.g., SkipDepthMask, Wireframe).
      */
-    void GL_ResetDrawFlags()
+    void GL_ResetDrawFlags(DrawFlags flags)
     {
-        glDepthMask(GL_TRUE);
-        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-        glEnable(GL_DEPTH_TEST);
+        switch (flags)
+        {
+        case DrawFlags::DepthTest:
+        {
+            glDisable(GL_DEPTH_TEST);
+            break;
+        }
+        case DrawFlags::SkipDepthMask:
+        {
+            glDepthMask(GL_TRUE);
+            break;
+        }
+        case DrawFlags::Wireframe:
+        {
+            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+            break;
+        }
+        default:
+            MOTION_CORE_WARN("Unknown draw flag: {0}", static_cast<std::uint8_t>(flags));
+            break;
+        };
     }
 
     /**

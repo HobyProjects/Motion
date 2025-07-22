@@ -54,9 +54,9 @@ namespace Motion::Core
         QuickMesh(QuickMesh&&) = delete;
         QuickMesh& operator=(QuickMesh&&) = delete;
 
-        std::shared_ptr<Mesh> CreatePlane(bool isRegistered, const std::string name, float width, float height, std::uint32_t widthSegments = 1, std::uint32_t heightSegments = 1);
-        std::shared_ptr<Mesh> CreateCube(bool isRegistered, const std::string name, float width, float height, float depth);
-        std::shared_ptr<Mesh> CreateSphere(bool isRegistered, const std::string name, std::uint32_t sectorCount, std::uint32_t stackCount);
-        std::shared_ptr<Mesh> CreateQuad(bool isRegistered, const std::string name, std::uint32_t width, std::uint32_t height);
+        static std::shared_ptr<Mesh> CreatePlane(bool isRegistered, const std::string name, float width, float height, std::uint32_t widthSegments = 1, std::uint32_t heightSegments = 1);
+        static std::shared_ptr<Mesh> CreateCube(bool isRegistered, const std::string name, float width, float height, float depth);
+        static std::shared_ptr<Mesh> CreateSphere(bool isRegistered, const std::string name, std::uint32_t sectorCount, std::uint32_t stackCount);
+        static std::shared_ptr<Mesh> CreateQuad(bool isRegistered, const std::string name, std::uint32_t width, std::uint32_t height);
     };
 }

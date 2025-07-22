@@ -310,17 +310,19 @@ namespace Motion::Core
     }
 
     /**
-     * @brief Resets the draw flags to their default state.
+     * @brief Resets the draw flags to their default state for the current rendering API.
      *
      * This function clears any previously set draw flags and restores the default rendering state.
      * It is typically called at the end of a frame or before starting a new frame.
+     *
+     * @param flags The draw flags to reset (e.g., SkipDepthMask, Wireframe).
      */
-    void Renderer::ResetDrawFlags()
+    void Renderer::ResetDrawFlags(DrawFlags flags)
     {
         switch (s_RenderingAPI)
         {
         case RenderingAPI::OpenGL:
-            GL_ResetDrawFlags();
+            GL_ResetDrawFlags(flags);
             break;
         case RenderingAPI::Vulkan:
             MOTION_ASSERT(false, "Vulkan is not implemented yet!");

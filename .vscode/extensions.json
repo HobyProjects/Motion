@@ -1,0 +1,16 @@
+{
+    "recommendations": [
+        "ms-vscode.cpptools",
+        "ms-vscode.cpptools-extension-pack",
+        "ms-vscode.cmake-tools",
+        "twxs.cmake",
+        "ms-vscode.cpptools-themes",
+        "slevesque.shader",
+        "raczzalan.webgl-glsl-editor",
+        "ms-vscode.hexeditor",
+        "gruntfuggly.todo-tree",
+        "streetsidesoftware.code-spell-checker",
+        "ms-vsliveshare.vsliveshare",
+        "vadimcn.vscode-lldb"
+    ]
+}

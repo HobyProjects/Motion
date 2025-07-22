@@ -76,6 +76,7 @@ namespace Motion::Core
         inline static constexpr std::string_view GlobalAttri_ModelMatrix = "u_ModelMatrix";
         inline static constexpr std::string_view GlobalAttri_ViewProjMatrix = "u_ViewProjMatrix";
         inline static constexpr std::string_view GlobalAttri_Sampler2DArray = "u_Sampler2DArray";
+        inline static constexpr std::string_view GlobalAttri_CameraPosition = "u_CameraPosition";
 
         inline static constexpr std::string_view LightAttri_Position = "u_LightPosition";
         inline static constexpr std::string_view LightAttri_Color = "u_LightColor";
@@ -110,15 +111,15 @@ namespace Motion::Core
         inline static constexpr std::string_view Texture_AmbientTexture = "u_AmbientTexture";
         inline static constexpr std::string_view Texture_SpecularTexture = "u_SpecularTexture";
         inline static constexpr std::string_view Texture_EmissiveTexture = "u_EmissiveTexture";
-        inline static constexpr std::string_view Texture_NormalMapsTexture = "u_NormalMapsTexture";
-        inline static constexpr std::string_view Texture_HightMapsTexture = "u_HightMapsTexture";
+        inline static constexpr std::string_view Texture_NormalMapTexture = "u_NormalMapTexture";
+        inline static constexpr std::string_view Texture_HightMapTexture = "u_HightMapTexture";
         inline static constexpr std::string_view Texture_ShininessTexture = "u_ShininessTexture";
-        inline static constexpr std::string_view Texture_OpacityMapsTexture = "u_OpacityTexture";
+        inline static constexpr std::string_view Texture_OpacityTexture = "u_OpacityTexture";
         inline static constexpr std::string_view Texture_LightMapsTexture = "u_LightTexture";
         inline static constexpr std::string_view Texture_BaseColorTexture = "u_BaseColorTexture";
         inline static constexpr std::string_view Texture_MetallicTexture = "u_MetallicTexture";
         inline static constexpr std::string_view Texture_RoughnessTexture = "u_RoughnessTexture";
-        inline static constexpr std::string_view Texture_AOMapTexture = "u_AmbientOcclusionTexture";
+        inline static constexpr std::string_view Texture_AmbientOcclusionTexture = "u_AmbientOcclusionTexture";
         inline static constexpr std::string_view Texture_EmissiveTexture = "u_EmissiveTexture";
         inline static constexpr std::string_view Texture_ClearCoatTexture = "u_ClearCoatTexture";
         inline static constexpr std::string_view Texture_SheenTexture = "u_SheenTexture";

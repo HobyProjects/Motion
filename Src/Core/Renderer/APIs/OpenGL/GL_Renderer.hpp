@@ -14,7 +14,7 @@ namespace Motion::Core
     void GL_ResetDrawFlags(DrawFlags flags);
 
     void GL_BindTextureUnit(uint32_t slot, TextureID textureID);
-    void GL_UnbindTextureUnit();
+    void GL_UnbindTextureUnit(std::uint32_t slot);
 
     std::int32_t GL_GetMaxTextureSlots() noexcept;
 }

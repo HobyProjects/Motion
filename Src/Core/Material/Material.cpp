@@ -1,4 +1,5 @@
 #include "CorePCH.hpp"
+#include "Material.hpp"
 
 namespace Motion::Core
 {
@@ -135,55 +136,60 @@ namespace Motion::Core
     {
         if (shader->IsInitialized())
         {
-            for (const auto& [uniformName, value] : m_FloatParameters)
+            if (m_ShadingMethod == MaterialShadingMethod::Auto)
             {
-                shader->SetUniform(uniformName, value);
+                DetermineShadingMethod();
             }
 
-            for (const auto& [uniformName, value] : m_Vec3Parameters)
+            if (m_ShadingMethod & MaterialShadingMethod::PBR)
             {
-                shader->SetUniform(uniformName, value);
+                shader->SetUniform(UniformCache::Factor_BaseColorFactor, m_Vec4Parameters[UniformCache::Factor_BaseColorFactor]);
+                shader->SetUniform(UniformCache::Factor_MetallicFactor, m_FloatParameters[UniformCache::Factor_MetallicFactor]);
+                shader->SetUniform(UniformCache::Factor_RoughnessFactor, m_FloatParameters[UniformCache::Factor_RoughnessFactor]);
+                shader->SetUniform(UniformCache::Factor_AmbientOcclusionFactor, m_FloatParameters[UniformCache::Factor_AmbientOcclusionFactor]);
+                shader->SetUniform(UniformCache::Factor_TransmissionFactor, m_FloatParameters[UniformCache::Factor_TransmissionFactor]);
+                shader->SetUniform(UniformCache::Factor_ClearCoatFactor, m_FloatParameters[UniformCache::Factor_ClearCoatFactor]);
+                shader->SetUniform(UniformCache::Factor_ClearCoatRoughnessFactor, m_FloatParameters[UniformCache::Factor_ClearCoatRoughnessFactor]);
+                shader->SetUniform(UniformCache::Factor_SheenFactor, m_FloatParameters[UniformCache::Factor_SheenFactor]);
+                shader->SetUniform(UniformCache::Factor_SheenRoughnessFactor, m_FloatParameters[UniformCache::Factor_SheenRoughnessFactor]);
+                shader->SetUniform(UniformCache::Factor_IndexOfRefraction, m_FloatParameters[UniformCache::Factor_IndexOfRefraction]);
+
+                Renderer::BindTextureUnit(0, m_Textures[UniformCache::Texture_BaseColorTexture]->GetID());
+                Renderer::BindTextureUnit(1, m_Textures[UniformCache::Texture_MetallicTexture]->GetID());
+                Renderer::BindTextureUnit(2, m_Textures[UniformCache::Texture_RoughnessTexture]->GetID());
+                Renderer::BindTextureUnit(3, m_Textures[UniformCache::Texture_AmbientOcclusionTexture]->GetID());
+                Renderer::BindTextureUnit(3, m_Textures[UniformCache::Texture_NormalMapTexture]->GetID());
+                Renderer::BindTextureUnit(4, m_Textures[UniformCache::Texture_EmissiveTexture]->GetID());
+                Renderer::BindTextureUnit(5, m_Textures[UniformCache::Texture_ClearCoatTexture]->GetID());
+                Renderer::BindTextureUnit(6, m_Textures[UniformCache::Texture_SheenTexture]->GetID());
+                Renderer::BindTextureUnit(7, m_Textures[UniformCache::Texture_TransmissionTexture]->GetID());
             }
 
-            for (const auto& [uniformName, value] : m_Vec4Parameters)
+            if (m_ShadingMethod & MaterialShadingMethod::Phong)
             {
-                shader->SetUniform(uniformName, value);
+                shader->SetUniform(UniformCache::Color_AmbientColor, m_Vec3Parameters[UniformCache::Color_AmbientColor]);
+                shader->SetUniform(UniformCache::Color_DiffuseColor, m_Vec3Parameters[UniformCache::Color_DiffuseColor]);
+                shader->SetUniform(UniformCache::Color_SpecularColor, m_Vec3Parameters[UniformCache::Color_SpecularColor]);
+                shader->SetUniform(UniformCache::Color_EmissiveColor, m_Vec3Parameters[UniformCache::Color_EmissiveColor]);
+
+                shader->SetUniform(UniformCache::Property_Shininess, m_FloatParameters[UniformCache::Property_Shininess]);
+                shader->SetUniform(UniformCache::Property_ShininessStrength, m_FloatParameters[UniformCache::Property_ShininessStrength]);
+                shader->SetUniform(UniformCache::Property_Opacity, m_FloatParameters[UniformCache::Property_Opacity]);
+                shader->SetUniform(UniformCache::Property_Reflectivity, m_FloatParameters[UniformCache::Property_Reflectivity]);
+
+                Renderer::BindTextureUnit(0, m_Textures[UniformCache::Texture_AmbientTexture]->GetID());
+                Renderer::BindTextureUnit(1, m_Textures[UniformCache::Texture_DiffuseTexture]->GetID());
+                Renderer::BindTextureUnit(2, m_Textures[UniformCache::Texture_SpecularTexture]->GetID());
+                Renderer::BindTextureUnit(3, m_Textures[UniformCache::Texture_ShininessTexture]->GetID());
+                Renderer::BindTextureUnit(4, m_Textures[UniformCache::Texture_EmissiveTexture]->GetID());
+                Renderer::BindTextureUnit(5, m_Textures[UniformCache::Texture_NormalMapTexture]->GetID());
+                Renderer::BindTextureUnit(6, m_Textures[UniformCache::Texture_OpacityTexture]->GetID());
             }
 
-            if (!m_Textures.empty())
+            if (m_ShadingMethod & MaterialShadingMethod::Unlit)
             {
-                if (!m_Textures.size() > Renderer::GetMaxTextureSlots())
-                {
-                    std::uint32_t samples[32] = { 0,  1,  2,  3,  4,  5,  6,  7,
-                                                   8,  9, 10, 11, 12, 13, 14, 15,
-                                                  16, 17, 18, 19, 20, 21, 22, 23,
-                                                  24, 25, 26, 27, 28, 29, 30, 31 };
-
-                    shader->SetUniform(UniformCache::GlobalAttri_Sampler2DArray, 32, samples);
-
-                    std::uint32_t slot = 0;
-                    for (const auto& [uniformName, texture] : m_Textures)
-                    {
-                        if (texture->IsInitialized())
-                        {
-                            texture->Bind(slot++);
-                        }
-                        else
-                        {
-                            MOTION_CORE_ERROR("Texture {0} is not initialized in material {1}", uniformName, GetName());
-                        }
-                    }
-                }
-                else
-                {
-                    MOTION_CORE_ERROR("Too many textures bound to the material {0}", GetName());
-                    return;
-                }
-            }
-            else
-            {
-                MOTION_CORE_ERROR("No textures bound to the material {0}", GetName());
-                return;
+                shader->SetUniform(UniformCache::Color_EmissiveColor, m_Vec3Parameters[UniformCache::Color_EmissiveColor]);
+                Renderer::BindTextureUnit(0, m_Textures[UniformCache::Texture_EmissiveTexture]->GetID());
             }
         }
     }
@@ -199,13 +205,50 @@ namespace Motion::Core
      */
     void Material::Unbind() const noexcept
     {
-        for (const auto& [uniformName, texture] : m_Textures)
+        if (m_ShadingMethod & MaterialShadingMethod::PBR)
         {
-            if (texture->IsInitialized())
-            {
-                texture->Unbind();
-            }
+            Renderer::UnbindTextureUnit(0);
+            Renderer::UnbindTextureUnit(1);
+            Renderer::UnbindTextureUnit(2);
+            Renderer::UnbindTextureUnit(3);
+            Renderer::UnbindTextureUnit(4);
+            Renderer::UnbindTextureUnit(5);
+            Renderer::UnbindTextureUnit(6);
+            Renderer::UnbindTextureUnit(7);
         }
+
+        if (m_ShadingMethod & MaterialShadingMethod::Phong)
+        {
+            Renderer::UnbindTextureUnit(0);
+            Renderer::UnbindTextureUnit(1);
+            Renderer::UnbindTextureUnit(2);
+            Renderer::UnbindTextureUnit(3);
+            Renderer::UnbindTextureUnit(4);
+            Renderer::UnbindTextureUnit(5);
+            Renderer::UnbindTextureUnit(6);
+        }
+
+        if (m_ShadingMethod & MaterialShadingMethod::Unlit)
+        {
+            Renderer::UnbindTextureUnit(0);
+        }
+    }
+
+    /**
+     * @brief Checks if the given texture is one of the default fallback textures.
+     *
+     * This function compares the provided texture with predefined fallback textures
+     * (White, Black, Grey, Normal) and returns true if it matches any of them.
+     *
+     * @param texture The MaterialTexture to check against the default textures.
+     * @return true if the texture is a default fallback texture, false otherwise.
+     */
+    static bool IsDefaultTexture(const MaterialTexture& texture)
+    {
+        return texture == MaterialFallbackTextures::White ||
+            texture == MaterialFallbackTextures::Black ||
+            texture == MaterialFallbackTextures::Grey ||
+            texture == MaterialFallbackTextures::Normal;
     }
 
     /**
@@ -235,7 +278,7 @@ namespace Motion::Core
                 m_Textures.contains(UniformCache::Texture_BaseColorTexture) &&
                 m_Textures.contains(UniformCache::Texture_MetallicTexture) &&
                 m_Textures.contains(UniformCache::Texture_RoughnessTexture) &&
-                m_Textures.contains(UniformCache::Texture_AOMapTexture);
+                m_Textures.contains(UniformCache::Texture_AmbientOcclusionTexture);
 
             if (usePBR)
             {
@@ -262,4 +305,78 @@ namespace Motion::Core
             m_ShadingMethod = MaterialShadingMethod::Unlit;
         }
     }
+
+    /**
+     * @brief Sets up texture parameters for the material based on the textures associated with it.
+     *
+     * This function iterates through all textures associated with the material and sets default
+     * values for various uniform parameters if the texture is a default texture. It ensures that
+     * the material has sensible defaults for rendering, even when specific textures are not provided.
+     *
+     * @note This method is noexcept and does not throw exceptions.
+     */
+    void Material::SetupTextureParameters() noexcept
+    {
+        for (auto& [uniformName, texture] : m_Textures)
+        {
+            if (IsDefaultTexture(texture))
+            {
+                if (uniformName == UniformCache::Texture_BaseColorTexture)
+                    SetUniform(UniformCache::Factor_BaseColorFactor, glm::vec3(1.0f));
+
+                if (uniformName == UniformCache::Texture_MetallicTexture)
+                    SetUniform(UniformCache::Factor_MetallicFactor, 0.0f);
+
+                if (uniformName == UniformCache::Texture_RoughnessTexture)
+                    SetUniform(UniformCache::Factor_RoughnessFactor, 0.8f);
+
+                if (uniformName == UniformCache::Texture_EmissiveTexture)
+                    SetUniform(UniformCache::Color_EmissiveColor, glm::vec3(0.0f));
+
+                if (uniformName == UniformCache::Texture_AmbientOcclusionTexture)
+                    SetUniform(UniformCache::Factor_AmbientOcclusionFactor, 1.0f);
+
+                if (uniformName == UniformCache::Texture_ClearCoatTexture)
+                {
+                    SetUniform(UniformCache::Factor_ClearCoatFactor, 0.0f);
+                    SetUniform(UniformCache::Factor_ClearCoatRoughnessFactor, 0.1f);
+                }
+
+                if (uniformName == UniformCache::Texture_SheenTexture)
+                {
+                    SetUniform(UniformCache::Factor_SheenFactor, 0.0f);
+                    SetUniform(UniformCache::Factor_SheenRoughnessFactor, 0.3f);
+                }
+
+                if (uniformName == UniformCache::Texture_TransmissionTexture)
+                {
+                    SetUniform(UniformCache::Factor_TransmissionFactor, 0.0f);
+                    SetUniform(UniformCache::Property_IndexOfRefraction, 1.5f);
+                }
+
+                if (uniformName == UniformCache::Texture_DiffuseTexture)
+                    SetUniform(UniformCache::Color_DiffuseColor, glm::vec3(0.8f));
+
+                if (uniformName == UniformCache::Texture_SpecularTexture)
+                    SetUniform(UniformCache::Color_SpecularColor, glm::vec3(0.5f));
+
+                if (uniformName == UniformCache::Texture_ShininessTexture)
+                    SetUniform(UniformCache::Property_Shininess, 32.0f);
+
+                if (uniformName == UniformCache::Texture_EmissiveTexture)
+                    SetUniform(UniformCache::Color_EmissiveColor, glm::vec3(0.0f));
+
+                if (uniformName == UniformCache::Texture_OpacityTexture)
+                    SetUniform(UniformCache::Property_Opacity, 1.0f);
+
+                if (uniformName == UniformCache::Texture_AmbientTexture)
+                    SetUniform(UniformCache::Color_AmbientColor, glm::vec3(0.0f));
+            }
+        }
+    }
+
+
+
 }
+
+

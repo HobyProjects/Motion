@@ -184,16 +184,18 @@ namespace Motion::Core
         glBindTextureUnit(slot, textureID);
     }
 
+
     /**
-     * @brief Unbinds any texture from texture unit 0 in OpenGL.
+     * @brief Unbinds a texture unit slot in OpenGL.
      *
-     * This function calls glBindTextureUnit with unit 0 and texture 0,
-     * effectively unbinding any texture that was previously bound to texture unit 0.
-     * Useful for resetting texture state and avoiding unintended texture usage.
+     * This function unbinds the texture unit specified by `slot` by binding texture ID 0 to it.
+     * It effectively clears any texture that was previously bound to that slot.
+     *
+     * @param slot The texture unit slot to unbind.
      */
-    void GL_UnbindTextureUnit()
+    void GL_UnbindTextureUnit(std::uint32_t slot)
     {
-        glBindTextureUnit(0, 0);
+        glBindTextureUnit(slot, 0);
     }
 
     /**

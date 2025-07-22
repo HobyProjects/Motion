@@ -284,13 +284,15 @@ namespace Motion::Core
             std::format("{}_SubMesh_{}", staticMeshPtr->GetName(), meshSegment->MeshIndex),
             vertices.data(), vertices.size(),
             indices.data(), indices.size(),
-            BufferLayout({
-                { UniformCache::VertexAttri_Position, BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Position) },
-                { UniformCache::VertexAttri_TexCoords, BufferComponents::UV, BufferStride::F2, false, offsetof(Vertex, TexCoord) },
-                { UniformCache::VertexAttri_Normals, BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Normal) },
-                { UniformCache::VertexAttri_Tangents, BufferComponents::XYZ, BufferStride::F3, hasNormalizeTangents, offsetof(Vertex, Tangent) },
-                { UniformCache::VertexAttri_Bitangents, BufferComponents::XYZ, BufferStride::F3, hasNormalizeTangents, offsetof(Vertex, Bitangent) }
-                }),
+            BufferLayout(
+                {
+                    { UniformCache::VertexAttri_Position, BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Position) },
+                    { UniformCache::VertexAttri_TexCoords, BufferComponents::UV, BufferStride::F2, false, offsetof(Vertex, TexCoord) },
+                    { UniformCache::VertexAttri_Normals, BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Normal) },
+                    { UniformCache::VertexAttri_Tangents, BufferComponents::XYZ, BufferStride::F3, hasNormalizeTangents, offsetof(Vertex, Tangent) },
+                    { UniformCache::VertexAttri_Bitangents, BufferComponents::XYZ, BufferStride::F3, hasNormalizeTangents, offsetof(Vertex, Bitangent) }
+                }
+            ),
             staticMeshPtr
         );
 
@@ -321,6 +323,8 @@ namespace Motion::Core
             LoadNode(staticMeshPtr, node->mChildren[i], scene);
         }
     }
+
+
 
     /**
      * @brief Loads and assigns material properties and textures to a given mesh segment from an Assimp scene.
@@ -388,19 +392,22 @@ namespace Motion::Core
         meshSegment->Materials->SetTexture(UniformCache::Texture_SpecularTexture, LoadTextures(aiTextureType_SPECULAR, currentMaterial, TextureType::SpecularTexture));
         meshSegment->Materials->SetTexture(UniformCache::Texture_AmbientTexture, LoadTextures(aiTextureType_AMBIENT, currentMaterial, TextureType::AmbientTexture));
         meshSegment->Materials->SetTexture(UniformCache::Texture_EmissiveTexture, LoadTextures(aiTextureType_EMISSIVE, currentMaterial, TextureType::EmissiveTexture));
-        meshSegment->Materials->SetTexture(UniformCache::Texture_NormalMapsTexture, LoadTextures(aiTextureType_NORMALS, currentMaterial, TextureType::NormalMapsTexture));
+        meshSegment->Materials->SetTexture(UniformCache::Texture_NormalMapTexture, LoadTextures(aiTextureType_NORMALS, currentMaterial, TextureType::NormalMapsTexture));
         meshSegment->Materials->SetTexture(UniformCache::Texture_ShininessTexture, LoadTextures(aiTextureType_SHININESS, currentMaterial, TextureType::ShininessTexture));
-        meshSegment->Materials->SetTexture(UniformCache::Texture_OpacityMapsTexture, LoadTextures(aiTextureType_OPACITY, currentMaterial, TextureType::OpacityMapsTexture));
+        meshSegment->Materials->SetTexture(UniformCache::Texture_OpacityTexture, LoadTextures(aiTextureType_OPACITY, currentMaterial, TextureType::OpacityMapsTexture));
 
         // ********************************* Modern textures types ******************************************** //
         meshSegment->Materials->SetTexture(UniformCache::Texture_BaseColorTexture, LoadTextures(aiTextureType_BASE_COLOR, currentMaterial, TextureType::BaseColorMapsTexture));
         meshSegment->Materials->SetTexture(UniformCache::Texture_MetallicTexture, LoadTextures(aiTextureType_METALNESS, currentMaterial, TextureType::MetallicMapsTexture));
         meshSegment->Materials->SetTexture(UniformCache::Texture_RoughnessTexture, LoadTextures(aiTextureType_DIFFUSE_ROUGHNESS, currentMaterial, TextureType::RoughnessMapsTexture));
-        meshSegment->Materials->SetTexture(UniformCache::Texture_AOMapTexture, LoadTextures(aiTextureType_AMBIENT_OCCLUSION, currentMaterial, TextureType::AOMapsTexture));
+        meshSegment->Materials->SetTexture(UniformCache::Texture_AmbientOcclusionTexture, LoadTextures(aiTextureType_AMBIENT_OCCLUSION, currentMaterial, TextureType::AOMapsTexture));
         meshSegment->Materials->SetTexture(UniformCache::Texture_EmissiveTexture, LoadTextures(aiTextureType_EMISSION_COLOR, currentMaterial, TextureType::EmissiveMapsTexture));
         meshSegment->Materials->SetTexture(UniformCache::Texture_ClearCoatTexture, LoadTextures(aiTextureType_CLEARCOAT, currentMaterial, TextureType::ClearCoatMapsTexture));
         meshSegment->Materials->SetTexture(UniformCache::Texture_SheenTexture, LoadTextures(aiTextureType_SHEEN, currentMaterial, TextureType::SheenMapsTexture));
         meshSegment->Materials->SetTexture(UniformCache::Texture_TransmissionTexture, LoadTextures(aiTextureType_TRANSMISSION, currentMaterial, TextureType::TransmissionMapsTexture));
+
+        // Setup texture parameters for the material if textures are default
+        meshSegment->Materials->SetupTextureParameters();
 
         // Determine the shading method based on the material properties
         meshSegment->Materials->DetermineShadingMethod();

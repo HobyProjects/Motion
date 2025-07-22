@@ -225,21 +225,22 @@ namespace Motion::Core
         }
     }
 
+
     /**
-     * @brief Unbinds the currently bound texture unit for the active rendering API.
+     * @brief Unbinds a texture unit slot for the active rendering API.
      *
-     * This function abstracts the process of unbinding a texture unit across different rendering APIs.
-     * For OpenGL, it calls the appropriate unbind function. For Vulkan and DirectX, this function is
-     * not yet implemented and will trigger an assertion failure.
+     * This function unbinds the specified texture unit slot, effectively clearing any texture bound to it.
+     * The implementation depends on the currently selected rendering API. If the rendering API is not implemented,
+     * an assertion will be triggered.
      *
-     * @note If an unknown or unsupported rendering API is selected, an assertion will be triggered.
+     * @param slot The texture unit slot to unbind.
      */
-    void Renderer::UnbindTextureUnit()
+    void Renderer::UnbindTextureUnit(std::uint32_t slot)
     {
         switch (s_RenderingAPI)
         {
         case RenderingAPI::OpenGL:
-            GL_UnbindTextureUnit();
+            GL_UnbindTextureUnit(slot);
             break;
         case RenderingAPI::Vulkan:
             MOTION_ASSERT(false, "Vulkan is not implemented yet!");

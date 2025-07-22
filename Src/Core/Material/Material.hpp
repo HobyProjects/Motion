@@ -15,13 +15,18 @@
 
 namespace Motion::Core
 {
-    enum class MaterialShadingMethod
+    using MaterialTexture = std::shared_ptr<ITexture>;
+
+    enum class MaterialShadingMethod : std::uint8_t
     {
         Auto,
         Phong,
         PBR,
         Unlit
     };
+
+    inline std::uint8_t operator|(MaterialShadingMethod lhs, MaterialShadingMethod rhs) { return static_cast<std::uint8_t>(lhs) | static_cast<std::uint8_t>(rhs); }
+    inline std::uint8_t operator&(MaterialShadingMethod lhs, MaterialShadingMethod rhs) { return static_cast<std::uint8_t>(lhs) & static_cast<std::uint8_t>(rhs); }
 
     struct StandardMaterialConfig
     {
@@ -54,6 +59,13 @@ namespace Motion::Core
         static constexpr float IndexOfRefractionFactor = 1.5f;                  // Used in transmission/refraction models
     };
 
+    enum class MaterialParameterType : std::uint8_t
+    {
+        Float,
+        Vec3,
+        Texture
+    };
+
     struct MaterialFallbackTextures
     {
         static std::shared_ptr<ITexture> White;
@@ -78,14 +90,19 @@ namespace Motion::Core
         void SetUniform(const std::string_view uniformName, const glm::vec4& value);
         void SetTexture(const std::string_view uniformName, const std::shared_ptr<ITexture>& texture);
         void DetermineShadingMethod() noexcept;
+        void SetupTextureParameters() noexcept;
 
+        [[nodiscard]] const std::unordered_map<std::string_view, float>& GetFloatParameters() const noexcept { return m_FloatParameters; }
+        [[nodiscard]] const std::unordered_map<std::string_view, glm::vec3>& GetVec3Parameters() const noexcept { return m_Vec3Parameters; }
+        [[nodiscard]] const std::unordered_map<std::string_view, glm::vec4>& GetVec4Parameters() const noexcept { return m_Vec4Parameters; }
+        [[nodiscard]] const std::unordered_map<std::string_view, MaterialTexture>& GetTextures() const noexcept { return m_Textures; }
         [[nodiscard]] MaterialShadingMethod GetShadingMethod() const noexcept { return m_ShadingMethod; }
 
     private:
         std::unordered_map<std::string_view, float> m_FloatParameters;
         std::unordered_map<std::string_view, glm::vec3> m_Vec3Parameters;
         std::unordered_map<std::string_view, glm::vec4> m_Vec4Parameters;
-        std::unordered_map<std::string_view, std::shared_ptr<ITexture>> m_Textures;
+        std::unordered_map<std::string_view, MaterialTexture> m_Textures;
         MaterialShadingMethod m_ShadingMethod{ MaterialShadingMethod::Auto };
     };
 }

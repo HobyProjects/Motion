@@ -50,7 +50,7 @@ namespace Motion::Core
 
         static std::int32_t GetMaxTextureSlots() noexcept;
         static void BindTextureUnit(std::uint32_t slot, TextureID textureID);
-        static void UnbindTextureUnit();
+        static void UnbindTextureUnit(std::uint32_t slot);
 
         [[nodiscard]] static RenderingAPI GetAPI() noexcept;
     };

@@ -144,7 +144,8 @@
         "xtr1common": "cpp",
         "xtree": "cpp",
         "xutility": "cpp",
-        "resumable": "cpp"
+        "resumable": "cpp",
+        "memory_resource": "cpp"
     },
     "C_Cpp.default.cppStandard": "c++20",
     "C_Cpp.default.cStandard": "c17",
@@ -170,6 +171,7 @@
         "Blit",
         "Blits",
         "blitting",
+        "BRDF",
         "CLEARCOAT",
         "DASSIMP",
         "DCMAKE",
@@ -184,6 +186,7 @@
         "Floatv",
         "GLAPIENTRY",
         "GLFW",
+        "Hdot",
         "iconification",
         "iconified",
         "iconify",
@@ -200,6 +203,7 @@
         "multisampled",
         "multisampling",
         "NATVIS",
+        "Ndot",
         "nmake",
         "OCCLUISION",
         "OPENGL",
@@ -210,6 +214,7 @@
         "REFRACTI",
         "RELWITHDEBINFO",
         "Repeate",
+        "Schlick",
         "skybox"
     ]
 }

@@ -6,7 +6,8 @@ namespace Motion::App
     static std::weak_ptr<Motion::Core::IWindow> s_Window;
     static std::weak_ptr<Motion::App::ImGuiLayer> s_ImGuiLayer;
 
-    SceneEditorLayer::SceneEditorLayer(Motion::Core::WindowHandle handle, const std::shared_ptr<Motion::App::ImGuiLayer>& imguiLayer) : Motion::Core::Layer("EditorLayer")
+    SceneEditorLayer::SceneEditorLayer(Motion::Core::WindowHandle handle, const std::shared_ptr<Motion::App::ImGuiLayer>& imguiLayer)
+        : Motion::Core::Layer("EditorLayer")
     {
         s_ImGuiLayer = imguiLayer;
     }
@@ -18,7 +19,8 @@ namespace Motion::App
         m_Viewport.Size = { m_ViewportWidth, m_ViewportHeight };
 
         m_Framebuffer = Motion::Core::BufferFactory::CreateFrameBuffer(m_Viewport.FrameSpec);
-        m_PostProcessor = std::make_unique<Motion::Core::PostProcessor>(m_Framebuffer->GetFrameSpecification(), Motion::Core::UUID()); //<-- Include the post-processing shader here
+        m_PostProcessor = std::make_unique<Motion::Core::PostProcessor>(m_Framebuffer->GetFrameSpecification());
+        m_SkyBox = std::make_unique<Motion::Core::SkyBox>();
 
         if (m_Scenes.empty())
         {
@@ -43,20 +45,22 @@ namespace Motion::App
         {
             m_Viewport.Update(glm::vec2(m_ViewportWidth, m_ViewportHeight));
             m_Framebuffer->ResizeFrame((uint32_t)m_ViewportWidth, (uint32_t)m_ViewportHeight);
-
-            for (const auto& scene : m_Scenes)
-                scene->OnViewportSizeChanges(m_ViewportWidth, m_ViewportHeight);
+            m_PostProcessor->OnResize((uint32_t)m_ViewportWidth, (uint32_t)m_ViewportHeight);
+            m_ActiveScene->OnViewportSizeChanges(m_ViewportWidth, m_ViewportHeight);
         }
+
+        m_ActiveScene->OnUpdate(handle, deltaTime);
 
         m_Framebuffer->Bind();
 
         Motion::Core::Renderer::ClearColor({ 0.243, 0.243, 0.243, 1.0f });
         Motion::Core::Renderer::Clear();
 
+
         auto& sceneRenderer = SceneRenderer::GetInstance();
         sceneRenderer.BeginScene();
 
-        m_ActiveScene->OnUpdate(handle, deltaTime);
+        m_SkyBox->Render(m_ActiveScene->GetViewMatrix(), m_ActiveScene->GetProjectionMatrix());
         sceneRenderer.Submit(m_ActiveScene.get());
 
         sceneRenderer.EndScene();

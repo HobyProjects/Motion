@@ -77,6 +77,8 @@ namespace Motion::Core
         inline static constexpr std::string_view GlobalAttri_ViewProjMatrix = "u_ViewProjMatrix";
         inline static constexpr std::string_view GlobalAttri_Sampler2DArray = "u_Sampler2DArray";
         inline static constexpr std::string_view GlobalAttri_CameraPosition = "u_CameraPosition";
+        inline static constexpr std::string_view GlobalAttri_ViewMatrix = "u_ViewMatrix";
+        inline static constexpr std::string_view GlobalAttri_ProjectionMatrix = "u_ProjectionMatrix";
 
         inline static constexpr std::string_view LightAttri_Position = "u_LightPosition";
         inline static constexpr std::string_view LightAttri_Color = "u_LightColor";

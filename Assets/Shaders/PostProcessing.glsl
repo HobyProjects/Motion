@@ -14,7 +14,7 @@ void main() {
 #type fragment
 #version 460 core
 
-layout(location = 0) out vec4 FragColor;
+out vec4 FragColor;
 
 in vec2 v_TexCoord;
 uniform sampler2D u_PostProcessTexture;

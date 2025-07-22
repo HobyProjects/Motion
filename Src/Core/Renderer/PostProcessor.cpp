@@ -17,7 +17,7 @@ namespace Motion::Core
 
         auto& assetManager = AssetManager::GetInstance();
         m_Shader = assetManager.Get<IShader>("PostProcessingShader");
-        m_ScreenQuad = QuickMesh::CreateQuad(false, "Name", spec.Width, spec.Height);
+        m_ScreenQuad = QuickMesh::CreateQuad(false, spec.Name, spec.Width, spec.Height);
     }
 
     /**
@@ -40,11 +40,12 @@ namespace Motion::Core
         m_FrameBuffer->Bind();
 
         m_Shader->Bind();
-        m_Shader->SetUniform("u_PostProcessTexture", 0);
 
         Renderer::BindTextureUnit(0, inputTextureID);
+        m_Shader->SetUniform("u_PostProcessTexture", 0);
+
         m_ScreenQuad->Render();
-        Renderer::UnbindTextureUnit();
+        Renderer::UnbindTextureUnit(0);
 
         m_Shader->Unbind();
         m_FrameBuffer->Unbind();

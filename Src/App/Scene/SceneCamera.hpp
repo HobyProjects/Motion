@@ -16,7 +16,6 @@ namespace Motion::App
         void SetAspectRatio(float width, float height);
         void OnUpdate(Motion::Core::WindowHandle handle, Motion::Core::Timer deltaTime);
         void OnEvents(Motion::Core::WindowHandle handle, Motion::Core::IEvent& e);
-        glm::mat4 GetCameraMatrix() { return Camera3D.GetCameraMatrix(); }
 
     private:
         bool OnMouseCursorPosChange(Motion::Core::WindowHandle handle, Motion::Core::EventMouseCursorMove<float>& e);

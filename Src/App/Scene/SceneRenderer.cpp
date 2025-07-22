@@ -1,4 +1,5 @@
 #include "CorePCH.hpp"
+
 #include "SceneRenderer.hpp"
 #include "Scene.hpp"
 
@@ -119,42 +120,49 @@ namespace Motion::App
     void SceneRenderer::Flush() noexcept
     {
         std::sort(m_DrawCommands.begin(), m_DrawCommands.end(), [](const SceneDrawCommand& a, const SceneDrawCommand& b) { return a < b; });
-        auto& assetManager = Motion::Core::AssetManager::GetInstance();
+
+        Motion::Core::AssetManager& assetManager = Motion::Core::AssetManager::GetInstance();
+        std::shared_ptr<Motion::Core::IShader> pbrShader = assetManager.Get<Motion::Core::IShader>("PBRShader");
+        std::shared_ptr<Motion::Core::IShader> phongShader = assetManager.Get<Motion::Core::IShader>("PhongShader");
+        std::shared_ptr<Motion::Core::IShader> unlitShader = assetManager.Get<Motion::Core::IShader>("UnlitShader");
 
         for (const auto& command : m_DrawCommands)
         {
             std::shared_ptr<Motion::Core::Material> material = assetManager.Get<Motion::Core::Material>(command.MaterialID);
             std::shared_ptr<Motion::Core::Mesh> mesh = assetManager.Get<Motion::Core::Mesh>(command.MeshID);
-            std::shared_ptr<Motion::Core::IShader> shader{ nullptr };
+            std::shared_ptr<Motion::Core::IShader> currentShader{ nullptr };
 
             if (material)
             {
                 Motion::Core::MaterialShadingMethod shadingMethod = material->GetShadingMethod();
                 switch (shadingMethod)
                 {
-                case Motion::Core::MaterialShadingMethod::PBR:      shader = assetManager.Get<Motion::Core::IShader>("PBRShader"); break;
-                case Motion::Core::MaterialShadingMethod::Phong:    shader = assetManager.Get<Motion::Core::IShader>("PhongShader"); break;
-                case Motion::Core::MaterialShadingMethod::Unlit:    shader = assetManager.Get<Motion::Core::IShader>("UnlitShader"); break;
-                case Motion::Core::MaterialShadingMethod::Auto:     shader = assetManager.Get<Motion::Core::IShader>("UnlitShader"); break;
+                case Motion::Core::MaterialShadingMethod::PBR:      currentShader = pbrShader; break;
+                case Motion::Core::MaterialShadingMethod::Phong:    currentShader = phongShader; break;
+                case Motion::Core::MaterialShadingMethod::Unlit:    currentShader = unlitShader; break;
+                case Motion::Core::MaterialShadingMethod::Auto:     currentShader = unlitShader; break;
                 }
 
-                if (shader)
+                if (currentShader)
                 {
-                    shader->Bind();
-                    shader->SetUniform(Motion::Core::UniformCache::GlobalAttri_ViewProjMatrix, command.ViewProjectionMatrix);
-                    shader->SetUniform(Motion::Core::UniformCache::GlobalAttri_ModelMatrix, command.TransformMatrix);
+                    currentShader->Bind();
 
-                    shader->SetUniform(Motion::Core::UniformCache::LightAttri_Color, command.ScenePtr->m_Environment.DirectionalLight.Color);
-                    shader->SetUniform(Motion::Core::UniformCache::LightAttri_Position, command.ScenePtr->m_Environment.DirectionalLight.Direction);
-                    shader->SetUniform(Motion::Core::UniformCache::LightAttri_Intensity, command.ScenePtr->m_Environment.DirectionalLight.AmbientIntensity);
+                    if (shadingMethod & Motion::Core::MaterialShadingMethod::PBR || shadingMethod & Motion::Core::MaterialShadingMethod::Phong)
+                    {
+                        currentShader->SetUniform(Motion::Core::UniformCache::GlobalAttri_ViewProjMatrix, command.ViewProjectionMatrix);
+                        currentShader->SetUniform(Motion::Core::UniformCache::GlobalAttri_ModelMatrix, command.TransformMatrix);
 
-                    material->Bind(shader);
+                        currentShader->SetUniform(Motion::Core::UniformCache::LightAttri_Color, command.ScenePtr->m_Environment.DirectionalLight.Color);
+                        currentShader->SetUniform(Motion::Core::UniformCache::LightAttri_Position, command.ScenePtr->m_Environment.DirectionalLight.Direction);
+                        currentShader->SetUniform(Motion::Core::UniformCache::LightAttri_Intensity, command.ScenePtr->m_Environment.DirectionalLight.AmbientIntensity);
+                    }
+
+                    material->Bind(currentShader);
 
                     mesh->Render();
 
                     material->Unbind();
-                    shader->Unbind();
-
+                    currentShader->Unbind();
                     m_DrawCount++;
                 }
                 else

@@ -80,6 +80,7 @@ namespace Motion::Core
         [[nodiscard]] virtual bool GenerateTexture2D(std::uint32_t width, std::uint32_t height, const glm::vec3& color) = 0;
     };
 
+
     class ICubeMapTexture : public IAsset
     {
     public:
@@ -98,6 +99,11 @@ namespace Motion::Core
         [[nodiscard]] virtual bool LoadCubeMapTexture(const std::filesystem::path& textureFile) = 0;
     };
 
+    /**
+     * @brief Concept to check if a type is a valid texture.
+     *
+     * This concept checks if the type T has the methods Bind() and GetID() with the expected return types.
+     */
     template<typename T>
     concept TextureExpected = requires(T texture)
     {

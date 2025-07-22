@@ -155,14 +155,31 @@ namespace Motion::Core
                 shader->SetUniform(UniformCache::Factor_IndexOfRefraction, m_FloatParameters[UniformCache::Factor_IndexOfRefraction]);
 
                 Renderer::BindTextureUnit(0, m_Textures[UniformCache::Texture_BaseColorTexture]->GetID());
+                shader->SetUniform(UniformCache::Texture_BaseColorTexture, 0);
+
                 Renderer::BindTextureUnit(1, m_Textures[UniformCache::Texture_MetallicTexture]->GetID());
+                shader->SetUniform(UniformCache::Texture_MetallicTexture, 1);
+
                 Renderer::BindTextureUnit(2, m_Textures[UniformCache::Texture_RoughnessTexture]->GetID());
+                shader->SetUniform(UniformCache::Texture_RoughnessTexture, 2);
+
                 Renderer::BindTextureUnit(3, m_Textures[UniformCache::Texture_AmbientOcclusionTexture]->GetID());
+                shader->SetUniform(UniformCache::Texture_AmbientOcclusionTexture, 3);
+
                 Renderer::BindTextureUnit(3, m_Textures[UniformCache::Texture_NormalMapTexture]->GetID());
+                shader->SetUniform(UniformCache::Texture_NormalMapTexture, 3);
+
                 Renderer::BindTextureUnit(4, m_Textures[UniformCache::Texture_EmissiveTexture]->GetID());
+                shader->SetUniform(UniformCache::Texture_EmissiveTexture, 4);
+
                 Renderer::BindTextureUnit(5, m_Textures[UniformCache::Texture_ClearCoatTexture]->GetID());
+                shader->SetUniform(UniformCache::Texture_ClearCoatTexture, 5);
+
                 Renderer::BindTextureUnit(6, m_Textures[UniformCache::Texture_SheenTexture]->GetID());
+                shader->SetUniform(UniformCache::Texture_SheenTexture, 6);
+
                 Renderer::BindTextureUnit(7, m_Textures[UniformCache::Texture_TransmissionTexture]->GetID());
+                shader->SetUniform(UniformCache::Texture_TransmissionTexture, 7);
             }
 
             if (m_ShadingMethod & MaterialShadingMethod::Phong)
@@ -178,18 +195,33 @@ namespace Motion::Core
                 shader->SetUniform(UniformCache::Property_Reflectivity, m_FloatParameters[UniformCache::Property_Reflectivity]);
 
                 Renderer::BindTextureUnit(0, m_Textures[UniformCache::Texture_AmbientTexture]->GetID());
+                shader->SetUniform(UniformCache::Texture_AmbientTexture, 0);
+
                 Renderer::BindTextureUnit(1, m_Textures[UniformCache::Texture_DiffuseTexture]->GetID());
+                shader->SetUniform(UniformCache::Texture_DiffuseTexture, 1);
+
                 Renderer::BindTextureUnit(2, m_Textures[UniformCache::Texture_SpecularTexture]->GetID());
+                shader->SetUniform(UniformCache::Texture_SpecularTexture, 2);
+
                 Renderer::BindTextureUnit(3, m_Textures[UniformCache::Texture_ShininessTexture]->GetID());
+                shader->SetUniform(UniformCache::Texture_ShininessTexture, 3);
+
                 Renderer::BindTextureUnit(4, m_Textures[UniformCache::Texture_EmissiveTexture]->GetID());
+                shader->SetUniform(UniformCache::Texture_EmissiveTexture, 4);
+
                 Renderer::BindTextureUnit(5, m_Textures[UniformCache::Texture_NormalMapTexture]->GetID());
+                shader->SetUniform(UniformCache::Texture_NormalMapTexture, 5);
+
                 Renderer::BindTextureUnit(6, m_Textures[UniformCache::Texture_OpacityTexture]->GetID());
+                shader->SetUniform(UniformCache::Texture_OpacityTexture, 6);
             }
 
             if (m_ShadingMethod & MaterialShadingMethod::Unlit)
             {
                 shader->SetUniform(UniformCache::Color_EmissiveColor, m_Vec3Parameters[UniformCache::Color_EmissiveColor]);
+
                 Renderer::BindTextureUnit(0, m_Textures[UniformCache::Texture_EmissiveTexture]->GetID());
+                shader->SetUniform(UniformCache::Texture_EmissiveTexture, 0);
             }
         }
     }

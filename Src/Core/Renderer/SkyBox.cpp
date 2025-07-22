@@ -28,7 +28,7 @@ namespace Motion::Core
         }
     }
 
-    void SkyBox::Render(const glm::mat4& transformMatrix, const glm::mat4 viewProjectionMatrix) noexcept
+    void SkyBox::Render(const glm::mat4& viewMatrix, const glm::mat4& projectionMatrix) noexcept
     {
         if (!m_CubeMapTexture || !m_ShaderProgram || !m_SkyBoxMesh)
         {
@@ -38,9 +38,10 @@ namespace Motion::Core
 
         Renderer::ApplyDrawFlags(DrawFlags::SkipDepthMask);
         m_ShaderProgram->Bind();
-        glm::mat4 skyboxView = glm::mat4(glm::mat3(transformMatrix));
-        m_ShaderProgram->SetUniform(UniformCache::GlobalAttri_ModelMatrix, skyboxView);
-        m_ShaderProgram->SetUniform(UniformCache::GlobalAttri_ViewProjMatrix, viewProjectionMatrix);
+
+        glm::mat4 skyboxView = glm::mat4(glm::mat3(viewMatrix));
+        m_ShaderProgram->SetUniform(UniformCache::GlobalAttri_ViewMatrix, skyboxView);
+        m_ShaderProgram->SetUniform(UniformCache::GlobalAttri_ProjectionMatrix, projectionMatrix);
 
         m_CubeMapTexture->Bind();
         m_SkyBoxMesh->Render();

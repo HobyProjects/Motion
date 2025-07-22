@@ -5,6 +5,7 @@
 
 #include "ImguiLayer.hpp"
 #include "Scene.hpp"
+#include "SkyBox.hpp"
 
 namespace Motion::App
 {
@@ -31,6 +32,8 @@ namespace Motion::App
 
         std::shared_ptr<Motion::Core::IFrameBuffer> m_Framebuffer{ nullptr };
         std::unique_ptr<Motion::Core::PostProcessor> m_PostProcessor{ nullptr };
+        std::unique_ptr<Motion::Core::SkyBox> m_SkyBox{ nullptr };
+
         std::unordered_map<std::shared_ptr<Scene>, Motion::Core::FrameTextureID> m_SceneTextures{};
     };
 }

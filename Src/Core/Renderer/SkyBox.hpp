@@ -12,7 +12,7 @@ namespace Motion::Core
         SkyBox();
         ~SkyBox() = default;
 
-        void Render(const glm::mat4& transformMatrix, const glm::mat4 viewProjectionMatrix) noexcept;
+        void Render(const glm::mat4& viewMatrix, const glm::mat4& projectionMatrix) noexcept;
 
     private:
         std::shared_ptr<ICubeMapTexture> m_CubeMapTexture;

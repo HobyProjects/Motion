@@ -7,7 +7,7 @@ set(MOTION_APP_EXECUTABLE MotionEngine)
 # #############################################################################
 # CMake Configuration
 # #############################################################################
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/CMake")
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
@@ -27,7 +27,6 @@ find_package(glfw3 CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
 find_package(glad CONFIG REQUIRED)
 find_package(glm CONFIG REQUIRED)
-find_package(soil2 CONFIG REQUIRED)
 find_package(imgui CONFIG REQUIRED)
 find_package(EnTT CONFIG REQUIRED)
 find_package(Assimp CONFIG REQUIRED)
@@ -167,7 +166,6 @@ target_link_libraries(
     spdlog::spdlog
     glad::glad
     glm::glm-header-only
-    soil2::soil2
     imgui::imgui
     assimp::assimp
     yaml-cpp::yaml-cpp

@@ -330,7 +330,6 @@ def main():
         Package("spdlog", "libs/spdlog", "libs/build/config/spdlog", "build/packages/spdlog", "-DSPDLOG_BUILD_EXAMPLES=OFF"),
         Package("glad", "libs/glad", "libs/build/config/glad", "build/packages/glad", ""),
         Package("glm", "libs/glm", "libs/build/config/glm", "build/packages/glm", "-DGLM_BUILD_TESTS=OFF"),
-        Package("SOIL2", "libs/SOIL2", "libs/build/config/SOIL2", "build/packages/SOIL2", ""),
         Package("imgui", "libs/imgui_docking", "libs/build/config/imgui", "build/packages/imgui", ""),
         Package("entt", "libs/entt", "libs/build/config/entt", "build/packages/entt", "-DENTT_INCLUDE_HEADERS=ON -DENTT_INCLUDE_NATVIS=ON -DENTT_INSTALL=ON"),
         Package("assimp", "libs/assimp", "libs/build/config/assimp", "build/packages/assimp", "-DASSIMP_BUILD_TESTS=OFF"),

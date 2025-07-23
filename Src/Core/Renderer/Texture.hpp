@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <concepts>
 
+#include "Buffers.hpp"
 #include "Asset.hpp"
 
 namespace Motion
@@ -76,6 +77,22 @@ namespace Motion
     protected:
         [[nodiscard]] virtual bool LoadTextureFromFile(const std::filesystem::path& textureFile, bool flip) = 0;
         [[nodiscard]] virtual bool GenerateTexture2D(std::uint32_t width, std::uint32_t height, const glm::vec3& color) = 0;
+    };
+
+    class TextureBinding
+    {
+    private:
+        TextureBinding() = default;
+        ~TextureBinding() = default;
+
+        TextureBinding(const TextureBinding&) = delete;
+        TextureBinding& operator=(const TextureBinding&) = delete;
+        TextureBinding(TextureBinding&&) = delete;
+        TextureBinding& operator=(TextureBinding&&) = delete;
+
+    public:
+        [[nodiscard]] static BindingPoint Point() noexcept;
+        static void Reset() noexcept;
     };
 
 

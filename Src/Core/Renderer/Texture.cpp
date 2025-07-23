@@ -3,6 +3,45 @@
 namespace Motion
 {
     /**
+     * @brief Represents a binding point for textures in the rendering pipeline.
+     *
+     * This class provides static methods to manage texture binding points,
+     * allowing for efficient texture management during rendering operations.
+     */
+    static BindingPoint s_BindingPoint = 0;
+
+    /**
+     * @brief Returns a new binding point for textures.
+     *
+     * This method increments the static binding point counter and returns the new value.
+     * It is used to assign unique binding points to textures in the rendering pipeline.
+     *
+     * @return BindingPoint The next available binding point.
+     */
+    BindingPoint TextureBinding::Point() noexcept
+    {
+        if (s_BindingPoint >= Renderer::GetMaxTextureSlots())
+        {
+            MOTION_CORE_ERROR("Exceeded maximum texture slots available in the renderer.");
+            return 0; // Return 0 or handle error appropriately
+        }
+
+        return s_BindingPoint++;
+    }
+
+    /**
+     * @brief Resets the texture binding point to zero.
+     *
+     * This method sets the static binding point counter back to zero,
+     * effectively clearing any previously assigned binding points.
+     * It is useful for resetting the state of texture bindings in the rendering pipeline.
+     */
+    void TextureBinding::Reset() noexcept
+    {
+        s_BindingPoint = 0;
+    }
+
+    /**
      * @brief Creates an unregistered plain texture with the specified name, width, and height.
      *
      * This function creates a texture object that is not registered with any resource manager.

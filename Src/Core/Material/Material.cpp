@@ -4,52 +4,6 @@
 namespace Motion
 {
     /**
-     * @brief Initializes the static fallback textures for materials.
-     *
-     * This function creates and assigns default textures used as fallbacks for materials.
-     * These textures are typically used when no specific texture is provided for a material.
-     */
-    std::shared_ptr<ITexture> MaterialFallbackTextures::White = nullptr;
-
-    /**
-     * @brief Initializes the static fallback textures for materials.
-     *
-     * This function creates and assigns default textures used as fallbacks for materials.
-     * These textures are typically used when no specific texture is provided for a material.
-     */
-    std::shared_ptr<ITexture> MaterialFallbackTextures::Black = nullptr;
-
-    /**
-     * @brief Initializes the static fallback textures for materials.
-     *
-     * This function creates and assigns default textures used as fallbacks for materials.
-     * These textures are typically used when no specific texture is provided for a material.
-     */
-    std::shared_ptr<ITexture> MaterialFallbackTextures::Grey = nullptr;
-
-    /**
-     * @brief Initializes the static fallback normal texture for materials.
-     *
-     * This function creates and assigns a default normal texture used as a fallback for materials.
-     * The normal texture is typically used to provide surface detail without additional geometry.
-     */
-    std::shared_ptr<ITexture> MaterialFallbackTextures::Normal = nullptr;
-
-    /**
-     * @brief Initializes the static fallback textures for materials.
-     *
-     * This function creates and assigns default textures used as fallbacks for materials.
-     * These textures are typically used when no specific texture is provided for a material.
-     */
-    void MaterialFallbackTextures::Initialize()
-    {
-        White = GL_CreateUnregisteredPlainTexture(10, 10, { 1.0f, 1.0f, 1.0f });
-        Black = GL_CreateUnregisteredPlainTexture(10, 10, { 0.0f, 0.0f, 0.0f });
-        Grey = GL_CreateUnregisteredPlainTexture(10, 10, { 0.8f, 0.8f, 0.8f });
-        Normal = GL_CreateUnregisteredPlainTexture(10, 10, { 0.5f, 0.5f, 1.0f });
-    }
-
-    /**
      * @brief Constructs a Material object with the specified UUID, name, and shading method.
      *
      * @param uuid The universally unique identifier for the material.
@@ -64,48 +18,6 @@ namespace Motion
     }
 
     /**
-     * @brief Sets the value of a float uniform parameter for the material.
-     *
-     * This function assigns the given float value to the uniform parameter specified by its name.
-     * If the parameter already exists, its value is updated; otherwise, a new parameter is created.
-     *
-     * @param uniformName The name of the uniform parameter to set.
-     * @param value The float value to assign to the uniform parameter.
-     */
-    void Material::SetUniform(const std::string_view uniformName, float value)
-    {
-        m_FloatParameters[uniformName] = value;
-    }
-
-    /**
-     * @brief Sets a vec3 uniform parameter for the material.
-     *
-     * Stores the given glm::vec3 value in the material's uniform parameter map,
-     * associated with the specified uniform name. If the uniform already exists,
-     * its value will be updated.
-     *
-     * @param uniformName The name of the uniform parameter to set.
-     * @param value The glm::vec3 value to assign to the uniform parameter.
-     */
-    void Material::SetUniform(const std::string_view uniformName, const glm::vec3& value)
-    {
-        m_Vec3Parameters[uniformName] = value;
-    }
-
-    /**
-     * @brief Sets a vec4 uniform parameter for the material.
-     *
-     * Updates or adds a vec4 parameter associated with the given uniform name.
-     *
-     * @param uniformName The name of the uniform parameter to set.
-     * @param value The glm::vec4 value to assign to the uniform parameter.
-     */
-    void Material::SetUniform(const std::string_view uniformName, const glm::vec4& value)
-    {
-        m_Vec4Parameters[uniformName] = value;
-    }
-
-    /**
      * @brief Associates a texture with a specified uniform name in the material.
      *
      * This function sets or updates the texture corresponding to the given uniform name.
@@ -115,9 +27,9 @@ namespace Motion
      * @param uniformName The name of the shader uniform to associate with the texture.
      * @param texture A shared pointer to the texture object to be set.
      */
-    void Material::SetTexture(const std::string_view uniformName, const std::shared_ptr<ITexture>& texture)
+    void Material::SetTexture(const std::string_view uniformName, const MaterialTexture& texture)
     {
-        m_Textures[uniformName] = texture;
+        m_Textures.push_back({ uniformName, texture });
     }
 
     /**
@@ -132,95 +44,15 @@ namespace Motion
      */
     void Material::Bind(const std::shared_ptr<IShader>& shader) noexcept
     {
-        if (shader->IsInitialized())
+        if (m_ShadingMethod & MaterialShadingMethod::Auto)
         {
-            if (m_ShadingMethod == MaterialShadingMethod::Auto)
-            {
-                DetermineShadingMethod();
-            }
+            DetermineShadingMethod();
+            Bind(shader);
+        }
 
-            if (m_ShadingMethod & MaterialShadingMethod::PBR)
-            {
-                shader->SetUniform(UniformCache::Factor_BaseColorFactor, m_Vec4Parameters[UniformCache::Factor_BaseColorFactor]);
-                shader->SetUniform(UniformCache::Factor_MetallicFactor, m_FloatParameters[UniformCache::Factor_MetallicFactor]);
-                shader->SetUniform(UniformCache::Factor_RoughnessFactor, m_FloatParameters[UniformCache::Factor_RoughnessFactor]);
-                shader->SetUniform(UniformCache::Factor_AmbientOcclusionFactor, m_FloatParameters[UniformCache::Factor_AmbientOcclusionFactor]);
-                shader->SetUniform(UniformCache::Factor_TransmissionFactor, m_FloatParameters[UniformCache::Factor_TransmissionFactor]);
-                shader->SetUniform(UniformCache::Factor_ClearCoatFactor, m_FloatParameters[UniformCache::Factor_ClearCoatFactor]);
-                shader->SetUniform(UniformCache::Factor_ClearCoatRoughnessFactor, m_FloatParameters[UniformCache::Factor_ClearCoatRoughnessFactor]);
-                shader->SetUniform(UniformCache::Factor_SheenFactor, m_FloatParameters[UniformCache::Factor_SheenFactor]);
-                shader->SetUniform(UniformCache::Factor_SheenRoughnessFactor, m_FloatParameters[UniformCache::Factor_SheenRoughnessFactor]);
-                shader->SetUniform(UniformCache::Factor_IndexOfRefraction, m_FloatParameters[UniformCache::Factor_IndexOfRefraction]);
+        if (m_ShadingMethod & MaterialShadingMethod::Phong)
+        {
 
-                Renderer::BindTextureUnit(0, m_Textures[UniformCache::Texture_BaseColorTexture]->GetID());
-                shader->SetUniform(UniformCache::Texture_BaseColorTexture, 0);
-
-                Renderer::BindTextureUnit(1, m_Textures[UniformCache::Texture_MetallicTexture]->GetID());
-                shader->SetUniform(UniformCache::Texture_MetallicTexture, 1);
-
-                Renderer::BindTextureUnit(2, m_Textures[UniformCache::Texture_RoughnessTexture]->GetID());
-                shader->SetUniform(UniformCache::Texture_RoughnessTexture, 2);
-
-                Renderer::BindTextureUnit(3, m_Textures[UniformCache::Texture_AmbientOcclusionTexture]->GetID());
-                shader->SetUniform(UniformCache::Texture_AmbientOcclusionTexture, 3);
-
-                Renderer::BindTextureUnit(3, m_Textures[UniformCache::Texture_NormalMapTexture]->GetID());
-                shader->SetUniform(UniformCache::Texture_NormalMapTexture, 3);
-
-                Renderer::BindTextureUnit(4, m_Textures[UniformCache::Texture_EmissiveTexture]->GetID());
-                shader->SetUniform(UniformCache::Texture_EmissiveTexture, 4);
-
-                Renderer::BindTextureUnit(5, m_Textures[UniformCache::Texture_ClearCoatTexture]->GetID());
-                shader->SetUniform(UniformCache::Texture_ClearCoatTexture, 5);
-
-                Renderer::BindTextureUnit(6, m_Textures[UniformCache::Texture_SheenTexture]->GetID());
-                shader->SetUniform(UniformCache::Texture_SheenTexture, 6);
-
-                Renderer::BindTextureUnit(7, m_Textures[UniformCache::Texture_TransmissionTexture]->GetID());
-                shader->SetUniform(UniformCache::Texture_TransmissionTexture, 7);
-            }
-
-            if (m_ShadingMethod & MaterialShadingMethod::Phong)
-            {
-                shader->SetUniform(UniformCache::Color_AmbientColor, m_Vec3Parameters[UniformCache::Color_AmbientColor]);
-                shader->SetUniform(UniformCache::Color_DiffuseColor, m_Vec3Parameters[UniformCache::Color_DiffuseColor]);
-                shader->SetUniform(UniformCache::Color_SpecularColor, m_Vec3Parameters[UniformCache::Color_SpecularColor]);
-                shader->SetUniform(UniformCache::Color_EmissiveColor, m_Vec3Parameters[UniformCache::Color_EmissiveColor]);
-
-                shader->SetUniform(UniformCache::Property_Shininess, m_FloatParameters[UniformCache::Property_Shininess]);
-                shader->SetUniform(UniformCache::Property_ShininessStrength, m_FloatParameters[UniformCache::Property_ShininessStrength]);
-                shader->SetUniform(UniformCache::Property_Opacity, m_FloatParameters[UniformCache::Property_Opacity]);
-                shader->SetUniform(UniformCache::Property_Reflectivity, m_FloatParameters[UniformCache::Property_Reflectivity]);
-
-                Renderer::BindTextureUnit(0, m_Textures[UniformCache::Texture_AmbientTexture]->GetID());
-                shader->SetUniform(UniformCache::Texture_AmbientTexture, 0);
-
-                Renderer::BindTextureUnit(1, m_Textures[UniformCache::Texture_DiffuseTexture]->GetID());
-                shader->SetUniform(UniformCache::Texture_DiffuseTexture, 1);
-
-                Renderer::BindTextureUnit(2, m_Textures[UniformCache::Texture_SpecularTexture]->GetID());
-                shader->SetUniform(UniformCache::Texture_SpecularTexture, 2);
-
-                Renderer::BindTextureUnit(3, m_Textures[UniformCache::Texture_ShininessTexture]->GetID());
-                shader->SetUniform(UniformCache::Texture_ShininessTexture, 3);
-
-                Renderer::BindTextureUnit(4, m_Textures[UniformCache::Texture_EmissiveTexture]->GetID());
-                shader->SetUniform(UniformCache::Texture_EmissiveTexture, 4);
-
-                Renderer::BindTextureUnit(5, m_Textures[UniformCache::Texture_NormalMapTexture]->GetID());
-                shader->SetUniform(UniformCache::Texture_NormalMapTexture, 5);
-
-                Renderer::BindTextureUnit(6, m_Textures[UniformCache::Texture_OpacityTexture]->GetID());
-                shader->SetUniform(UniformCache::Texture_OpacityTexture, 6);
-            }
-
-            if (m_ShadingMethod & MaterialShadingMethod::Unlit)
-            {
-                shader->SetUniform(UniformCache::Color_EmissiveColor, m_Vec3Parameters[UniformCache::Color_EmissiveColor]);
-
-                Renderer::BindTextureUnit(0, m_Textures[UniformCache::Texture_EmissiveTexture]->GetID());
-                shader->SetUniform(UniformCache::Texture_EmissiveTexture, 0);
-            }
         }
     }
 
@@ -235,33 +67,8 @@ namespace Motion
      */
     void Material::Unbind() const noexcept
     {
-        if (m_ShadingMethod & MaterialShadingMethod::PBR)
-        {
-            Renderer::UnbindTextureUnit(0);
-            Renderer::UnbindTextureUnit(1);
-            Renderer::UnbindTextureUnit(2);
-            Renderer::UnbindTextureUnit(3);
-            Renderer::UnbindTextureUnit(4);
-            Renderer::UnbindTextureUnit(5);
-            Renderer::UnbindTextureUnit(6);
-            Renderer::UnbindTextureUnit(7);
-        }
 
-        if (m_ShadingMethod & MaterialShadingMethod::Phong)
-        {
-            Renderer::UnbindTextureUnit(0);
-            Renderer::UnbindTextureUnit(1);
-            Renderer::UnbindTextureUnit(2);
-            Renderer::UnbindTextureUnit(3);
-            Renderer::UnbindTextureUnit(4);
-            Renderer::UnbindTextureUnit(5);
-            Renderer::UnbindTextureUnit(6);
-        }
 
-        if (m_ShadingMethod & MaterialShadingMethod::Unlit)
-        {
-            Renderer::UnbindTextureUnit(0);
-        }
     }
 
     /**
@@ -298,42 +105,7 @@ namespace Motion
      */
     void Material::DetermineShadingMethod() noexcept
     {
-        if (m_ShadingMethod == MaterialShadingMethod::Auto)
-        {
-            glm::vec3 baseColor = m_Vec3Parameters[UniformCache::Factor_BaseColorFactor];
-            float metallicFactor = m_FloatParameters[UniformCache::Factor_MetallicFactor];
-            float roughnessFactor = m_FloatParameters[UniformCache::Factor_RoughnessFactor];
 
-            bool usePBR = baseColor != glm::vec3(0.0f) && metallicFactor > 0.0f && roughnessFactor < 1.0f &&
-                m_Textures.contains(UniformCache::Texture_BaseColorTexture) &&
-                m_Textures.contains(UniformCache::Texture_MetallicTexture) &&
-                m_Textures.contains(UniformCache::Texture_RoughnessTexture) &&
-                m_Textures.contains(UniformCache::Texture_AmbientOcclusionTexture);
-
-            if (usePBR)
-            {
-                m_ShadingMethod = MaterialShadingMethod::PBR;
-                return;
-            }
-
-            glm::vec3 diffuseColor = m_Vec3Parameters[UniformCache::Color_DiffuseColor];
-            glm::vec3 specularColor = m_Vec3Parameters[UniformCache::Color_SpecularColor];
-            float shininess = m_FloatParameters[UniformCache::Property_Shininess];
-
-            bool usePhong = diffuseColor != glm::vec3(0.0f) && specularColor != glm::vec3(0.0f) && shininess > 0.0f ||
-                m_Textures.contains(UniformCache::Texture_DiffuseTexture) &&
-                m_Textures.contains(UniformCache::Texture_SpecularTexture) &&
-                m_Textures.contains(UniformCache::Texture_ShininessTexture);
-
-            if (usePhong)
-            {
-                m_ShadingMethod = MaterialShadingMethod::Phong;
-                return;
-            }
-
-            MOTION_CORE_WARN("Material shading method could not be determined, defaulting to Unlit.");
-            m_ShadingMethod = MaterialShadingMethod::Unlit;
-        }
     }
 
     /**

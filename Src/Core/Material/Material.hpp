@@ -76,6 +76,40 @@ namespace Motion
         static void Initialize();
     };
 
+    struct MaterialTextureSlot
+    {
+        std::string_view UniformName{};
+        MaterialTexture Texture{ nullptr };
+    };
+
+    struct MaterialAttributes
+    {
+        glm::vec3 AmbientColor{ 0.0f, 0.0f, 0.0f };
+        glm::vec3 DiffuseColor{ 0.8f, 0.8f, 0.8f };
+        glm::vec3 SpecularColor{ 0.5f, 0.5f, 0.5f };
+        glm::vec3 EmissiveColor{ 0.0f, 0.0f, 0.0f };
+        glm::vec3 ReflectiveColor{ 0.0f, 0.0f, 0.0f };
+        glm::vec3 TransparentColor{ 0.0f, 0.0f, 0.0f };
+
+        float Shininess{ 32.0f };
+        float ShininessStrength{ 1.0f };
+        float Opacity{ 1.0f };
+        float IndexOfRefraction{ 1.5f };
+        float Reflectivity{ 0.0f };
+        float BumpScaling{ 1.0f };
+
+        glm::vec3 BaseColorFactor{ 1.0f, 1.0f, 1.0f };
+        float MetallicFactor{ 0.0f };
+        float RoughnessFactor{ 0.8f };
+        float TransmissionFactor{ 0.0f };
+        float ClearCoatFactor{ 0.0f };
+        float ClearCoatRoughnessFactor{ 0.1f };
+        float SheenFactor{ 0.0f };
+        float SheenRoughnessFactor{ 0.3f };
+        float AmbientOcclusionFactor{ 1.0f };
+        float IndexOfRefractionFactor{ 1.5f };
+    };
+
     class Material final : public AssetBase<IAsset>
     {
     public:
@@ -89,21 +123,21 @@ namespace Motion
         void SetUniform(const std::string_view uniformName, float value);
         void SetUniform(const std::string_view uniformName, const glm::vec3& value);
         void SetUniform(const std::string_view uniformName, const glm::vec4& value);
-        void SetTexture(const std::string_view uniformName, const std::shared_ptr<ITexture>& texture);
+        void SetTexture(const std::string_view uniformName, const MaterialTexture& texture);
         void DetermineShadingMethod() noexcept;
         void SetupTextureParameters() noexcept;
 
-        [[nodiscard]] const std::unordered_map<std::string_view, float>& GetFloatParameters() const noexcept { return m_FloatParameters; }
-        [[nodiscard]] const std::unordered_map<std::string_view, glm::vec3>& GetVec3Parameters() const noexcept { return m_Vec3Parameters; }
-        [[nodiscard]] const std::unordered_map<std::string_view, glm::vec4>& GetVec4Parameters() const noexcept { return m_Vec4Parameters; }
-        [[nodiscard]] const std::unordered_map<std::string_view, MaterialTexture>& GetTextures() const noexcept { return m_Textures; }
+        [[nodiscard]] MaterialAttributes& RetrieveAttributes() noexcept { return m_Components; }
         [[nodiscard]] MaterialShadingMethod GetShadingMethod() const noexcept { return m_ShadingMethod; }
 
+        std::vector<MaterialTextureSlot>::iterator begin() noexcept { return m_Textures.begin(); }
+        std::vector<MaterialTextureSlot>::iterator end() noexcept { return m_Textures.end(); }
+        std::vector<MaterialTextureSlot>::const_iterator cbegin() const noexcept { return m_Textures.cbegin(); }
+        std::vector<MaterialTextureSlot>::const_iterator cend() const noexcept { return m_Textures.cend(); }
+
     private:
-        std::unordered_map<std::string_view, float> m_FloatParameters;
-        std::unordered_map<std::string_view, glm::vec3> m_Vec3Parameters;
-        std::unordered_map<std::string_view, glm::vec4> m_Vec4Parameters;
-        std::unordered_map<std::string_view, MaterialTexture> m_Textures;
+        MaterialAttributes m_Components{};
+        std::vector<MaterialTextureSlot> m_Textures{};
         MaterialShadingMethod m_ShadingMethod{ MaterialShadingMethod::Auto };
     };
 }

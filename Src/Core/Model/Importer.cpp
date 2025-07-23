@@ -56,20 +56,24 @@ namespace Motion
      */
     static std::shared_ptr<ITexture> GetDefaultTexture(aiTextureType aiTexType)
     {
-        if (aiTexType == aiTextureType_BASE_COLOR) return MaterialFallbackTextures::White;
-        if (aiTexType == aiTextureType_METALNESS)   return MaterialFallbackTextures::Black;
-        if (aiTexType == aiTextureType_DIFFUSE_ROUGHNESS) return MaterialFallbackTextures::Grey;
-        if (aiTexType == aiTextureType_NORMALS)     return MaterialFallbackTextures::Normal;
-        if (aiTexType == aiTextureType_AMBIENT_OCCLUSION) return MaterialFallbackTextures::White;
-        if (aiTexType == aiTextureType_EMISSION_COLOR) return MaterialFallbackTextures::Black;
-        if (aiTexType == aiTextureType_CLEARCOAT) return MaterialFallbackTextures::Black;
-        if (aiTexType == aiTextureType_SHEEN) return MaterialFallbackTextures::Black;
-        if (aiTexType == aiTextureType_TRANSMISSION) return MaterialFallbackTextures::Black;
 
-        if (aiTexType == aiTextureType_DIFFUSE) return MaterialFallbackTextures::White;
-        if (aiTexType == aiTextureType_SPECULAR) return MaterialFallbackTextures::Black;
-        if (aiTexType == aiTextureType_SHININESS) return MaterialFallbackTextures::Grey;
-        if (aiTexType == aiTextureType_OPACITY) return MaterialFallbackTextures::White;
+        switch (aiTexType)
+        {
+        case aiTextureType_BASE_COLOR: return CreateUnregisteredPlainTexture(10, 10, { 1.0f, 1.0f, 1.0f });
+        case aiTextureType_METALNESS: return CreateUnregisteredPlainTexture(10, 10, { 0.0f, 0.0f, 0.0f });
+        case aiTextureType_DIFFUSE_ROUGHNESS: return CreateUnregisteredPlainTexture(10, 10, { 0.8f, 0.8f, 0.8f });
+        case aiTextureType_NORMALS: return CreateUnregisteredPlainTexture(10, 10, { 0.5f, 0.5f, 1.0f });
+        case aiTextureType_AMBIENT_OCCLUSION: return CreateUnregisteredPlainTexture(10, 10, { 1.0f, 1.0f, 1.0f });
+        case aiTextureType_EMISSION_COLOR: return CreateUnregisteredPlainTexture(10, 10, { 0.0f, 0.0f, 0.0f });
+        case aiTextureType_CLEARCOAT: return CreateUnregisteredPlainTexture(10, 10, { 0.0f, 0.0f, 0.0f });
+        case aiTextureType_SHEEN: return CreateUnregisteredPlainTexture(10, 10, { 0.0f, 0.0f, 0.0f });
+        case aiTextureType_TRANSMISSION: return CreateUnregisteredPlainTexture(10, 10, { 0.0f, 0.0f, 0.0f });
+        case aiTextureType_DIFFUSE: return CreateUnregisteredPlainTexture(10, 10, { 1.0f, 1.0f, 1.0f });
+        case aiTextureType_SPECULAR: return CreateUnregisteredPlainTexture(10, 10, { 0.0f, 0.0f, 0.0f });
+        case aiTextureType_SHININESS: return CreateUnregisteredPlainTexture(10, 10, { 0.8f, 0.8f, 0.8f });
+        case aiTextureType_OPACITY: return CreateUnregisteredPlainTexture(10, 10, { 1.0f, 1.0f, 1.0f });
+        default: break;
+        }
 
         MOTION_ASSERT(false, "Unsupported aiTextureType for default texture: {0}", static_cast<int>(aiTexType));
         return nullptr;
@@ -87,37 +91,21 @@ namespace Motion
      * @param textureType The application's texture type to be associated with the loaded texture.
      * @return std::shared_ptr<ITexture> Shared pointer to the loaded or default texture, or nullptr if loading fails.
      */
-    static std::shared_ptr<ITexture> LoadTextures(aiTextureType aiTexType, aiMaterial* aiMaterial, TextureType textureType)
+    static std::shared_ptr<ITexture> LoadTextures(std::uint32_t index, aiTextureType aiTexType, aiMaterial* aiMaterial, TextureType textureType)
     {
         aiString property{};
         auto& assetManager = AssetManager::GetInstance();
 
-        if ((aiMaterial->GetTextureCount(aiTexType) > 0))
+        if (aiMaterial->GetTexture(aiTexType, index, &property) == AI_SUCCESS)
         {
-            if (aiMaterial->GetTexture(aiTexType, 0, &property) == AI_SUCCESS)
-            {
-                if (property.data[0] != '*')
-                {
-                    MOTION_CORE_INFO("Loading Texture in {0} ", property.C_Str());
-                    std::filesystem::path texturePath = std::filesystem::path(property.C_Str());
-                    std::string textureFileName = texturePath.filename().string();
+            std::filesystem::path textureFilePath(property.C_Str());
+            std::string textureFileName = textureFilePath.filename().string();
 
-                    std::shared_ptr<ITexture> texture = assetManager.Create<ITexture>(textureFileName, texturePath, textureType);
-                    if (texture != nullptr)
-                    {
-                        MOTION_CORE_INFO("{} Texture loading success!", textureFileName);
-                        return texture;
-                    }
-                    else
-                    {
-                        MOTION_CORE_ERROR("Failed to load texture from material for type: {0}", static_cast<int>(aiTexType));
-                        return GetDefaultTexture(aiTexType);
-                    }
-                }
-                else
-                {
-                    MOTION_CORE_WARN("Texture property {0} is a placeholder, skipping loading.", property.C_Str());
-                }
+            std::shared_ptr<ITexture> texture = assetManager.Create<ITexture>(textureFileName, textureFilePath, textureType, true);
+            if (texture != nullptr)
+            {
+                MOTION_CORE_INFO("{} Texture loading success!", textureFileName);
+                return texture;
             }
             else
             {
@@ -127,11 +115,9 @@ namespace Motion
         }
         else
         {
-            MOTION_CORE_WARN("No texture found for type: {0}, using default texture.", static_cast<int>(aiTexType));
+            MOTION_CORE_ERROR("Failed to retrieve texture property for type: {0}", static_cast<int>(aiTexType));
             return GetDefaultTexture(aiTexType);
         }
-
-        return nullptr;
     }
 
     /**
@@ -340,57 +326,106 @@ namespace Motion
             return;
         }
 
+        auto& attributes = meshSegment->Materials->RetrieveAttributes();
+
         // Surface Colors
-        meshSegment->Materials->SetUniform(UniformCache::Color_AmbientColor, LoadMaterialVec3Data(currentMaterial, AI_MATKEY_COLOR_AMBIENT, StandardMaterialConfig::AmbientColor));
-        meshSegment->Materials->SetUniform(UniformCache::Color_DiffuseColor, LoadMaterialVec3Data(currentMaterial, AI_MATKEY_COLOR_DIFFUSE, StandardMaterialConfig::DiffuseColor));
-        meshSegment->Materials->SetUniform(UniformCache::Color_SpecularColor, LoadMaterialVec3Data(currentMaterial, AI_MATKEY_COLOR_SPECULAR, StandardMaterialConfig::SpecularColor));
-        meshSegment->Materials->SetUniform(UniformCache::Color_EmissiveColor, LoadMaterialVec3Data(currentMaterial, AI_MATKEY_COLOR_EMISSIVE, StandardMaterialConfig::EmissiveColor));
-        meshSegment->Materials->SetUniform(UniformCache::Color_ReflectiveColor, LoadMaterialVec3Data(currentMaterial, AI_MATKEY_COLOR_REFLECTIVE, StandardMaterialConfig::ReflectiveColor));
-        meshSegment->Materials->SetUniform(UniformCache::Color_TransparentColor, LoadMaterialVec3Data(currentMaterial, AI_MATKEY_COLOR_TRANSPARENT, StandardMaterialConfig::TransparentColor));
+        attributes.AmbientColor = LoadMaterialVec3Data(currentMaterial, AI_MATKEY_COLOR_AMBIENT, StandardMaterialConfig::AmbientColor);
+        attributes.DiffuseColor = LoadMaterialVec3Data(currentMaterial, AI_MATKEY_COLOR_DIFFUSE, StandardMaterialConfig::DiffuseColor);
+        attributes.SpecularColor = LoadMaterialVec3Data(currentMaterial, AI_MATKEY_COLOR_SPECULAR, StandardMaterialConfig::SpecularColor);
+        attributes.EmissiveColor = LoadMaterialVec3Data(currentMaterial, AI_MATKEY_COLOR_EMISSIVE, StandardMaterialConfig::EmissiveColor);
+        attributes.ReflectiveColor = LoadMaterialVec3Data(currentMaterial, AI_MATKEY_COLOR_REFLECTIVE, StandardMaterialConfig::ReflectiveColor);
+        attributes.TransparentColor = LoadMaterialVec3Data(currentMaterial, AI_MATKEY_COLOR_TRANSPARENT, StandardMaterialConfig::TransparentColor);
 
         //Material properties
-        meshSegment->Materials->SetUniform(UniformCache::Property_Shininess, LoadMaterialFloatData(currentMaterial, AI_MATKEY_SHININESS, StandardMaterialConfig::Shininess));
-        meshSegment->Materials->SetUniform(UniformCache::Property_ShininessStrength, LoadMaterialFloatData(currentMaterial, AI_MATKEY_SHININESS_STRENGTH, StandardMaterialConfig::ShininessStrength));
-        meshSegment->Materials->SetUniform(UniformCache::Property_Opacity, LoadMaterialFloatData(currentMaterial, AI_MATKEY_OPACITY, StandardMaterialConfig::Opacity));
-        meshSegment->Materials->SetUniform(UniformCache::Property_IndexOfRefraction, LoadMaterialFloatData(currentMaterial, AI_MATKEY_IOR, StandardMaterialConfig::IndexOfRefraction));
-        meshSegment->Materials->SetUniform(UniformCache::Property_BumpScaling, LoadMaterialFloatData(currentMaterial, AI_MATKEY_BUMPSCALING, StandardMaterialConfig::BumpScaling));
-        meshSegment->Materials->SetUniform(UniformCache::Property_Reflectivity, LoadMaterialFloatData(currentMaterial, AI_MATKEY_REFLECTIVITY, StandardMaterialConfig::Reflectivity));
+        attributes.Shininess = LoadMaterialFloatData(currentMaterial, AI_MATKEY_SHININESS, StandardMaterialConfig::Shininess);
+        attributes.ShininessStrength = LoadMaterialFloatData(currentMaterial, AI_MATKEY_SHININESS_STRENGTH, StandardMaterialConfig::ShininessStrength);
+        attributes.Opacity = LoadMaterialFloatData(currentMaterial, AI_MATKEY_OPACITY, StandardMaterialConfig::Opacity);
+        attributes.IndexOfRefraction = LoadMaterialFloatData(currentMaterial, AI_MATKEY_IOR, StandardMaterialConfig::IndexOfRefraction);
+        attributes.BumpScaling = LoadMaterialFloatData(currentMaterial, AI_MATKEY_BUMPSCALING, StandardMaterialConfig::BumpScaling);
+        attributes.Reflectivity = LoadMaterialFloatData(currentMaterial, AI_MATKEY_REFLECTIVITY, StandardMaterialConfig::Reflectivity);
 
         //Material Factors
-        meshSegment->Materials->SetUniform(UniformCache::Factor_BaseColorFactor, LoadMaterialVec3Data(currentMaterial, AI_MATKEY_BASE_COLOR, StandardMaterialConfig::BaseColorFactor));
-        meshSegment->Materials->SetUniform(UniformCache::Factor_MetallicFactor, LoadMaterialFloatData(currentMaterial, AI_MATKEY_METALLIC_FACTOR, StandardMaterialConfig::MetallicFactor));
-        meshSegment->Materials->SetUniform(UniformCache::Factor_RoughnessFactor, LoadMaterialFloatData(currentMaterial, AI_MATKEY_ROUGHNESS_FACTOR, StandardMaterialConfig::RoughnessFactor));
-        meshSegment->Materials->SetUniform(UniformCache::Factor_TransmissionFactor, LoadMaterialFloatData(currentMaterial, AI_MATKEY_TRANSMISSION_FACTOR, StandardMaterialConfig::TransmissionFactor));
-        meshSegment->Materials->SetUniform(UniformCache::Factor_ClearCoatFactor, LoadMaterialFloatData(currentMaterial, AI_MATKEY_CLEARCOAT_FACTOR, StandardMaterialConfig::ClearCoatFactor));
-        meshSegment->Materials->SetUniform(UniformCache::Factor_ClearCoatRoughnessFactor, LoadMaterialFloatData(currentMaterial, AI_MATKEY_CLEARCOAT_ROUGHNESS_FACTOR, StandardMaterialConfig::ClearCoatRoughnessFactor));
-        meshSegment->Materials->SetUniform(UniformCache::Factor_SheenFactor, LoadMaterialFloatData(currentMaterial, AI_MATKEY_SHEEN_COLOR_FACTOR, StandardMaterialConfig::SheenFactor));
-        meshSegment->Materials->SetUniform(UniformCache::Factor_SheenRoughnessFactor, LoadMaterialFloatData(currentMaterial, AI_MATKEY_SHEEN_ROUGHNESS_FACTOR, StandardMaterialConfig::SheenRoughnessFactor));
-        meshSegment->Materials->SetUniform(UniformCache::Factor_IndexOfRefraction, LoadMaterialFloatData(currentMaterial, AI_MATKEY_REFRACTI, StandardMaterialConfig::IndexOfRefraction));
-        meshSegment->Materials->SetUniform(UniformCache::Factor_AmbientOcclusionFactor, LoadMaterialFloatData(currentMaterial, AI_MATKEY_AMBIENT_OCCLUISION_FACTOR, StandardMaterialConfig::AmbientOcclusionFactor));
+        attributes.BaseColorFactor = LoadMaterialVec3Data(currentMaterial, AI_MATKEY_BASE_COLOR, StandardMaterialConfig::BaseColorFactor);
+        attributes.MetallicFactor = LoadMaterialFloatData(currentMaterial, AI_MATKEY_METALLIC_FACTOR, StandardMaterialConfig::MetallicFactor);
+        attributes.RoughnessFactor = LoadMaterialFloatData(currentMaterial, AI_MATKEY_ROUGHNESS_FACTOR, StandardMaterialConfig::RoughnessFactor);
+        attributes.TransmissionFactor = LoadMaterialFloatData(currentMaterial, AI_MATKEY_TRANSMISSION_FACTOR, StandardMaterialConfig::TransmissionFactor);
+        attributes.ClearCoatFactor = LoadMaterialFloatData(currentMaterial, AI_MATKEY_CLEARCOAT_FACTOR, StandardMaterialConfig::ClearCoatFactor);
+        attributes.ClearCoatRoughnessFactor = LoadMaterialFloatData(currentMaterial, AI_MATKEY_CLEARCOAT_ROUGHNESS_FACTOR, StandardMaterialConfig::ClearCoatRoughnessFactor);
+        attributes.SheenFactor = LoadMaterialFloatData(currentMaterial, AI_MATKEY_SHEEN_COLOR_FACTOR, StandardMaterialConfig::SheenFactor);
+        attributes.SheenRoughnessFactor = LoadMaterialFloatData(currentMaterial, AI_MATKEY_SHEEN_ROUGHNESS_FACTOR, StandardMaterialConfig::SheenRoughnessFactor);
+        attributes.IndexOfRefraction = LoadMaterialFloatData(currentMaterial, AI_MATKEY_REFRACTI, StandardMaterialConfig::IndexOfRefraction);
+        attributes.AmbientOcclusionFactor = LoadMaterialFloatData(currentMaterial, AI_MATKEY_AMBIENT_OCCLUISION_FACTOR, StandardMaterialConfig::AmbientOcclusionFactor);
 
-        // ********************************* legacy textures types ******************************************** //
-        meshSegment->Materials->SetTexture(UniformCache::Texture_DiffuseTexture, LoadTextures(aiTextureType_DIFFUSE, currentMaterial, TextureType::DiffuseTexture));
-        meshSegment->Materials->SetTexture(UniformCache::Texture_SpecularTexture, LoadTextures(aiTextureType_SPECULAR, currentMaterial, TextureType::SpecularTexture));
-        meshSegment->Materials->SetTexture(UniformCache::Texture_AmbientTexture, LoadTextures(aiTextureType_AMBIENT, currentMaterial, TextureType::AmbientTexture));
-        meshSegment->Materials->SetTexture(UniformCache::Texture_EmissiveTexture, LoadTextures(aiTextureType_EMISSIVE, currentMaterial, TextureType::EmissiveTexture));
-        meshSegment->Materials->SetTexture(UniformCache::Texture_NormalMapTexture, LoadTextures(aiTextureType_NORMALS, currentMaterial, TextureType::NormalMapsTexture));
-        meshSegment->Materials->SetTexture(UniformCache::Texture_ShininessTexture, LoadTextures(aiTextureType_SHININESS, currentMaterial, TextureType::ShininessTexture));
-        meshSegment->Materials->SetTexture(UniformCache::Texture_OpacityTexture, LoadTextures(aiTextureType_OPACITY, currentMaterial, TextureType::OpacityMapsTexture));
+        aiTextureType assimpTextureTypes[] = {
+            aiTextureType_DIFFUSE,
+            aiTextureType_SPECULAR,
+            aiTextureType_AMBIENT,
+            aiTextureType_EMISSIVE,
+            aiTextureType_NORMALS,
+            aiTextureType_SHININESS,
+            aiTextureType_OPACITY,
 
-        // ********************************* Modern textures types ******************************************** //
-        meshSegment->Materials->SetTexture(UniformCache::Texture_BaseColorTexture, LoadTextures(aiTextureType_BASE_COLOR, currentMaterial, TextureType::BaseColorMapsTexture));
-        meshSegment->Materials->SetTexture(UniformCache::Texture_MetallicTexture, LoadTextures(aiTextureType_METALNESS, currentMaterial, TextureType::MetallicMapsTexture));
-        meshSegment->Materials->SetTexture(UniformCache::Texture_RoughnessTexture, LoadTextures(aiTextureType_DIFFUSE_ROUGHNESS, currentMaterial, TextureType::RoughnessMapsTexture));
-        meshSegment->Materials->SetTexture(UniformCache::Texture_AmbientOcclusionTexture, LoadTextures(aiTextureType_AMBIENT_OCCLUSION, currentMaterial, TextureType::AOMapsTexture));
-        meshSegment->Materials->SetTexture(UniformCache::Texture_EmissiveTexture, LoadTextures(aiTextureType_EMISSION_COLOR, currentMaterial, TextureType::EmissiveMapsTexture));
-        meshSegment->Materials->SetTexture(UniformCache::Texture_ClearCoatTexture, LoadTextures(aiTextureType_CLEARCOAT, currentMaterial, TextureType::ClearCoatMapsTexture));
-        meshSegment->Materials->SetTexture(UniformCache::Texture_SheenTexture, LoadTextures(aiTextureType_SHEEN, currentMaterial, TextureType::SheenMapsTexture));
-        meshSegment->Materials->SetTexture(UniformCache::Texture_TransmissionTexture, LoadTextures(aiTextureType_TRANSMISSION, currentMaterial, TextureType::TransmissionMapsTexture));
+            aiTextureType_BASE_COLOR,
+            aiTextureType_METALNESS,
+            aiTextureType_DIFFUSE_ROUGHNESS,
+            aiTextureType_AMBIENT_OCCLUSION,
+            aiTextureType_EMISSION_COLOR,
+            aiTextureType_CLEARCOAT,
+            aiTextureType_SHEEN,
+            aiTextureType_TRANSMISSION
+        };
 
-        // Setup texture parameters for the material if textures are default
-        meshSegment->Materials->SetupTextureParameters();
+        TextureType textureTypes[] = {
+            TextureType::DiffuseTexture,
+            TextureType::SpecularTexture,
+            TextureType::AmbientTexture,
+            TextureType::EmissiveTexture,
+            TextureType::NormalMapsTexture,
+            TextureType::ShininessTexture,
+            TextureType::OpacityMapsTexture,
 
-        // Determine the shading method based on the material properties
-        meshSegment->Materials->DetermineShadingMethod();
+            TextureType::BaseColorMapsTexture,
+            TextureType::MetallicMapsTexture,
+            TextureType::RoughnessMapsTexture,
+            TextureType::AOMapsTexture,
+            TextureType::EmissiveMapsTexture,
+            TextureType::ClearCoatMapsTexture,
+            TextureType::SheenMapsTexture,
+            TextureType::TransmissionMapsTexture
+        };
+
+        std::string_view textureUniforms[] = {
+            UniformCache::Texture_DiffuseTexture,
+            UniformCache::Texture_SpecularTexture,
+            UniformCache::Texture_AmbientTexture,
+            UniformCache::Texture_EmissiveTexture,
+            UniformCache::Texture_NormalMapTexture,
+            UniformCache::Texture_ShininessTexture,
+            UniformCache::Texture_OpacityTexture,
+
+            UniformCache::Texture_BaseColorTexture,
+            UniformCache::Texture_MetallicTexture,
+            UniformCache::Texture_RoughnessTexture,
+            UniformCache::Texture_AmbientOcclusionTexture,
+            UniformCache::Texture_EmissiveTexture,
+            UniformCache::Texture_ClearCoatTexture,
+            UniformCache::Texture_SheenTexture,
+            UniformCache::Texture_TransmissionTexture
+        };
+
+
+        for (uint32_t i = 0; i < std::size(assimpTextureTypes); ++i)
+        {
+            std::uint32_t textureCount = currentMaterial->GetTextureCount(assimpTextureTypes[i]);
+            if (textureCount > 0)
+            {
+                for (std::uint32_t j = 0; j < textureCount; j++)
+                    meshSegment->Materials->SetTexture(textureUniforms[i], LoadTextures(j, assimpTextureTypes[i], currentMaterial, textureTypes[i]));
+            }
+
+        }
+
+        meshSegment->Materials->SetupTextureParameters();   // Setup texture parameters for the material if textures are default
+        meshSegment->Materials->DetermineShadingMethod();   // Determine the shading method based on the material properties
     }
 }

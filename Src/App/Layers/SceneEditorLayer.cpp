@@ -4,10 +4,9 @@
 namespace Motion
 {
     static std::weak_ptr<IWindow> s_Window;
-    static std::weak_ptr<App::ImGuiLayer> s_ImGuiLayer;
+    static std::weak_ptr<ImGuiLayer> s_ImGuiLayer;
 
-    SceneEditorLayer::SceneEditorLayer(WindowHandle handle, const std::shared_ptr<App::ImGuiLayer>& imguiLayer)
-        : Layer("EditorLayer")
+    SceneEditorLayer::SceneEditorLayer(WindowHandle handle, const std::shared_ptr<ImGuiLayer>& imguiLayer) : Layer("EditorLayer")
     {
         s_ImGuiLayer = imguiLayer;
     }
@@ -71,7 +70,7 @@ namespace Motion
         sceneRenderer.EndScene(m_SkyBox->GetTextureID());
 
         m_Framebuffer->Unbind();
-        m_SceneTextures[m_ActiveScene] = m_Framebuffer->GetAttachment(FrameBufferColorAttachmentStandards::Standard).TextureID;
+        m_SceneTextures[m_ActiveScene] = m_Framebuffer->GetAttachment(FrameBufferColorAttachmentStandards::Standard).TexID;
     }
 
     void SceneEditorLayer::OnEvent(WindowHandle handle, IEvent& e)

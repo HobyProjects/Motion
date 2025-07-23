@@ -12,7 +12,7 @@ namespace Motion
     class SceneEditorLayer : public Layer
     {
     public:
-        SceneEditorLayer(WindowHandle, const std::shared_ptr<App::ImGuiLayer>& imguiLayer);
+        SceneEditorLayer(WindowHandle, const std::shared_ptr<ImGuiLayer>& imguiLayer);
         virtual ~SceneEditorLayer() = default;
 
         virtual void OnAttach() override;
@@ -25,14 +25,16 @@ namespace Motion
         void DrawDockspace();
 
     private:
-        SceneViewport m_Viewport{};
-        std::shared_ptr<Scene> m_ActiveScene{ nullptr };
-        std::vector<std::shared_ptr<Scene>> m_Scenes{};
         float m_ViewportWidth{ 1280.0f }, m_ViewportHeight{ 720.0f };
 
         std::shared_ptr<IFrameBuffer> m_Framebuffer{ nullptr };
         std::unique_ptr<SkyBox> m_SkyBox{ nullptr };
 
+        //SCENE
+        SceneViewport m_Viewport{};
+        std::shared_ptr<Scene> m_ActiveScene{ nullptr };
+        std::vector<std::shared_ptr<Scene>> m_Scenes{};
         std::unordered_map<std::shared_ptr<Scene>, FrameTextureID> m_SceneTextures{};
+
     };
 }

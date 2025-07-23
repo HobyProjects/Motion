@@ -63,7 +63,7 @@ namespace Motion
     {
         if (m_FrameBuffer)
         {
-            return m_FrameBuffer->GetAttachment(FrameBufferColorAttachmentStandards::Standard).TextureID;
+            return m_FrameBuffer->GetAttachment(FrameBufferColorAttachmentStandards::Standard).TexID;
         }
 
         MOTION_CORE_ERROR("PostProcessor FrameBuffer is not initialized!");

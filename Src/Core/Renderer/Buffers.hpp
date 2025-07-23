@@ -188,13 +188,13 @@ namespace Motion
 
     struct ColorAttachments
     {
-        FrameTextureID TextureID{ 0 };
+        FrameTextureID TexID{ 0 };
         std::uint32_t AttachmentPoint{ 0 };
         FrameBufferColorAttachmentStandards Format{ FrameBufferColorAttachmentStandards::Standard };
     };
     struct DepthAttachment
     {
-        FrameTextureID TextureID{ 0 };
+        FrameTextureID TexID{ 0 };
         std::uint32_t AttachmentPoint{ 0 };
         FrameBufferDepthAttachmentStandards Format{ FrameBufferDepthAttachmentStandards::CommonCombined };
     };

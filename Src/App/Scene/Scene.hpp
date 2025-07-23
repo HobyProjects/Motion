@@ -8,7 +8,7 @@
 #include "SceneRenderer.hpp"
 #include "SceneEnviroment.hpp"
 
-namespace App
+namespace Motion
 {
     using SceneHandle = UUID;
 

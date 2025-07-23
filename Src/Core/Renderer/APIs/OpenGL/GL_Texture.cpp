@@ -372,11 +372,17 @@ namespace Motion::Core
             return false;
         }
 
-        m_Specification.TextureData.reset(SOIL_load_image(textureFile.string().c_str(), &m_Specification.Width, &m_Specification.Height, &m_Specification.NumberOfChannels, SOIL_LOAD_AUTO | SOIL_FLAG_TEXTURE_REPEATS | SOIL_FLAG_MIPMAPS | SOIL_FLAG_INVERT_Y));
+        m_Specification.TextureData.reset(SOIL_load_image(textureFile.string().c_str(), &m_Specification.Width, &m_Specification.Height, &m_Specification.NumberOfChannels, 0));
         if (!m_Specification.TextureData)
         {
             MOTION_CORE_ERROR("Failed to load cube map texture from file {0}: {1}", textureFile.string(), SOIL_last_result());
             return false;
+        }
+
+        if (m_Specification.Width != m_Specification.Height)
+        {
+            MOTION_CORE_WARN("Cube map texture {0} must have square dimensions, but got {1}x{2}", textureFile.string(), m_Specification.Width, m_Specification.Height);
+            m_Specification.Height = m_Specification.Width; // Adjust height to match width for cube map textures
         }
 
         AssetInfo.AssetName = textureFile.filename().string();

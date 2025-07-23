@@ -72,10 +72,10 @@ namespace Motion::Core
         GLenum glShaderType = GetShaderType(shaderType);
         ShaderID shaderID = glCreateShader(glShaderType);
         MOTION_ASSERT(shaderID, "Failed to create shader of type {0}", static_cast<int>(shaderType));
+
         const char* source = sourceCode.c_str();
         glShaderSource(shaderID, 1, &source, nullptr);
         glCompileShader(shaderID);
-
         return shaderID;
     }
 
@@ -183,8 +183,7 @@ namespace Motion::Core
         UniformLocation location = glGetUniformLocation(m_ProgramID, uniformName.data());
         if (location == INVALID_UNIFORM_LOCATION)
         {
-            MOTION_ASSERT(false, "Uniform '{0}' not found in shader program '{1}'", uniformName, AssetInfo.AssetName);
-            return INVALID_UNIFORM_LOCATION; // Return an invalid location if the uniform is not found
+            return INVALID_UNIFORM_LOCATION;
         }
 
         // Cache the uniform location for future use

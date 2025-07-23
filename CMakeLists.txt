@@ -213,3 +213,12 @@ set(
 add_executable(${MOTION_APP_EXECUTABLE} ${MOTION_APP_HEADERS} ${MOTION_APP_SOURCES})
 target_include_directories(${MOTION_APP_EXECUTABLE} PUBLIC ${MTION_APP_INCLUDE_DIR} ${MOTION_CORE_INCLUDE_DIR})
 target_link_libraries(${MOTION_APP_EXECUTABLE} PUBLIC ${MOTION_CORE_LIBRARY})
+
+add_custom_target(
+    MotionEngineResources ALL
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+    ${PROJECT_SOURCE_DIR}/Assets
+    ${PROJECT_BINARY_DIR}/${CMAKE_BUILD_TYPE}/Assets
+    COMMENT "Copying resources into the binary dir"
+)
+add_dependencies(${MOTION_APP_EXECUTABLE} MotionEngineResources)

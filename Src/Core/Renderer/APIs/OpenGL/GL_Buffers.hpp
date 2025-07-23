@@ -4,7 +4,7 @@
 #include "Buffers.hpp"
 #include "GL_Texture.hpp"
 
-namespace Motion::Core
+namespace Motion
 {
     class GL_VertexBuffer final : public IVertexBuffer
     {

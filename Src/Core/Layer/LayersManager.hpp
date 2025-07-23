@@ -5,7 +5,7 @@
 
 #include "Layer.hpp"
 
-namespace Motion::Core
+namespace Motion
 {
     class LayersManager
     {

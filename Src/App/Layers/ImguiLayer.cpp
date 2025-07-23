@@ -1,15 +1,16 @@
 #include "CorePCH.hpp"
 #include "ImguiLayer.hpp"
 
-namespace Motion::App
+namespace Motion
 {
-    ImGuiLayer::ImGuiLayer(Motion::Core::WindowHandle handle, ImGuiColorScheme colorScheme)
-        : m_WindowHandle(handle), m_ColorScheme(colorScheme), Motion::Core::Layer("ImGuiLayer") {}
+    ImGuiLayer::ImGuiLayer(WindowHandle handle, ImGuiColorScheme colorScheme)
+        : m_WindowHandle(handle), m_ColorScheme(colorScheme), Layer("ImGuiLayer") {
+    }
 
     void ImGuiLayer::OnAttach()
     {
         //[TODO] : Manage imgui assets here, importing fonts, textures, etc
-        (m_ColorScheme == ImGuiColorScheme::Dark) ? Motion::Core::UserInterfaceInitializer::UseColorDark() : Motion::Core::UserInterfaceInitializer::UseColorLight();
+        (m_ColorScheme == ImGuiColorScheme::Dark) ? UserInterfaceInitializer::UseColorDark() : UserInterfaceInitializer::UseColorLight();
     }
 
     void ImGuiLayer::OnDetach()
@@ -17,16 +18,16 @@ namespace Motion::App
 
     }
 
-    void ImGuiLayer::OnEvent(Motion::Core::WindowHandle handle, Motion::Core::IEvent& e)
+    void ImGuiLayer::OnEvent(WindowHandle handle, IEvent& e)
     {
         if (m_AllowEvents)
         {
             ImGuiIO& io = ImGui::GetIO();
-            if (e.Equals(Motion::Core::EventCategory::Keyboard) && !io.WantCaptureKeyboard)
+            if (e.Equals(EventCategory::Keyboard) && !io.WantCaptureKeyboard)
             {
                 io.WantCaptureKeyboard = true;
             }
-            if (e.Equals(Motion::Core::EventCategory::Mouse) && !io.WantCaptureMouse)
+            if (e.Equals(EventCategory::Mouse) && !io.WantCaptureMouse)
             {
                 io.WantCaptureMouse = true;
             }
@@ -35,8 +36,8 @@ namespace Motion::App
 
     void ImGuiLayer::Begin()
     {
-        auto& coreAPI = Motion::Core::CoreAPI::GetInstance();
-        if (coreAPI.API() & Motion::Core::PlatformBaseAPIs::GLFW && Motion::Core::Renderer::GetAPI() & Motion::Core::RenderingAPI::OpenGL)
+        auto& coreAPI = CoreAPI::GetInstance();
+        if (coreAPI.API() & PlatformBaseAPIs::GLFW && Renderer::GetAPI() & RenderingAPI::OpenGL)
         {
             ImGui_ImplOpenGL3_NewFrame();
             ImGui_ImplGlfw_NewFrame();
@@ -49,17 +50,17 @@ namespace Motion::App
     void ImGuiLayer::End()
     {
         ImGuiIO& io = ImGui::GetIO();
-        auto& coreAPI = Motion::Core::CoreAPI::GetInstance();
-        auto& windowManager = Motion::Core::WindowManager::GetInstance();
+        auto& coreAPI = CoreAPI::GetInstance();
+        auto& windowManager = WindowManager::GetInstance();
 
-        std::weak_ptr<Motion::Core::IWindow> window = windowManager.GetWindow(m_WindowHandle);
+        std::weak_ptr<IWindow> window = windowManager.GetWindow(m_WindowHandle);
         if (!window.expired())
         {
             auto windowPtr = window.lock();
             io.DisplaySize = ImVec2(static_cast<float>(windowPtr->GetProperties().Width), static_cast<float>(windowPtr->GetProperties().Height));
         }
 
-        if (coreAPI.API() & Motion::Core::PlatformBaseAPIs::GLFW && Motion::Core::Renderer::GetAPI() & Motion::Core::RenderingAPI::OpenGL)
+        if (coreAPI.API() & PlatformBaseAPIs::GLFW && Renderer::GetAPI() & RenderingAPI::OpenGL)
         {
             ImGui::EndFrame();
             ImGui::Render();
@@ -76,7 +77,7 @@ namespace Motion::App
 
     void ImGuiLayer::UseColorScheme(ImGuiColorScheme colorScheme)
     {
-        (colorScheme == ImGuiColorScheme::Dark) ? Motion::Core::UserInterfaceInitializer::UseColorDark() : Motion::Core::UserInterfaceInitializer::UseColorLight();
+        (colorScheme == ImGuiColorScheme::Dark) ? UserInterfaceInitializer::UseColorDark() : UserInterfaceInitializer::UseColorLight();
         m_ColorScheme = colorScheme;
     }
 }

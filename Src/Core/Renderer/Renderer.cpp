@@ -1,7 +1,7 @@
 #include "CorePCH.hpp"
 #include "Renderer.hpp"
 
-namespace Motion::Core
+namespace Motion
 {
 #ifdef MOTION_PLATFORM_WINDOWS
     // This should be DirectX but for now we are using OpenGL

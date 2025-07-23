@@ -1,7 +1,7 @@
 #include "CorePCH.hpp"
 #include "Scene.hpp"
 
-namespace Motion::App
+namespace Motion
 {
     Scene::Scene(SceneHandle handle, const std::string& name, const glm::vec2& viewportSize)
     {
@@ -15,7 +15,7 @@ namespace Motion::App
 
     }
 
-    void Scene::OnUpdate(Motion::Core::WindowHandle handle, Motion::Core::Timer deltaTime)
+    void Scene::OnUpdate(WindowHandle handle, Timer deltaTime)
     {
         m_SceneCamera->OnUpdate(handle, deltaTime);
 
@@ -25,12 +25,12 @@ namespace Motion::App
         }
     }
 
-    void Scene::OnEvent(Motion::Core::WindowHandle handle, Motion::Core::IEvent& e)
+    void Scene::OnEvent(WindowHandle handle, IEvent& e)
     {
         m_SceneCamera->OnEvents(handle, e);
     }
 
-    void Scene::OnUIRenders(Motion::Core::WindowHandle handle)
+    void Scene::OnUIRenders(WindowHandle handle)
     {
         RenderEntities(handle);
     }
@@ -68,7 +68,7 @@ namespace Motion::App
         }
     }
 
-    void Scene::RenderEntities(Motion::Core::WindowHandle handle)
+    void Scene::RenderEntities(WindowHandle handle)
     {
         ImGui::Begin("Scene Entities");
 
@@ -77,24 +77,24 @@ namespace Motion::App
             if (m_SimulationStarted) ImGui::BeginDisabled();
             if (ImGui::MenuItem("Import StaticMesh"))
             {
-                auto& windowManager = Motion::Core::WindowManager::GetInstance();
-                std::weak_ptr<Motion::Core::IWindow> window = windowManager.GetWindow(handle);
+                auto& windowManager = WindowManager::GetInstance();
+                std::weak_ptr<IWindow> window = windowManager.GetWindow(handle);
                 if (!window.expired())
                 {
                     auto windowPtr = window.lock();
-                    std::filesystem::path filePath = Motion::Core::DialogBoxes::OpenFileDialog(windowPtr->GetNativeWindow(), "Import StaticMesh", Motion::Core::DialogBoxes::FileType::ModelFile);
+                    std::filesystem::path filePath = DialogBoxes::OpenFileDialog(windowPtr->GetNativeWindow(), "Import StaticMesh", DialogBoxes::FileType::ModelFile);
                     if (!filePath.empty())
                     {
-                        auto& assetManager = Motion::Core::AssetManager::GetInstance();
+                        auto& assetManager = AssetManager::GetInstance();
                         std::string fileName = filePath.filename().string();
 
-                        std::shared_ptr<Motion::Core::StaticMesh> staticMesh = assetManager.Create<Motion::Core::StaticMesh>(fileName, filePath);
+                        std::shared_ptr<StaticMesh> staticMesh = assetManager.Create<StaticMesh>(fileName, filePath);
                         if (staticMesh)
                         {
-                            auto& entityFactory = Motion::Core::EntityFactory::GetInstance();
-                            std::shared_ptr<Motion::Core::Entity> entity = entityFactory.CreateEntity(filePath.filename().string());
-                            entity->AddComponent<Motion::Core::TransformComponent>();
-                            entity->AddComponent<Motion::Core::MeshComponent>(filePath.filename().string(), staticMesh);
+                            auto& entityFactory = EntityFactory::GetInstance();
+                            std::shared_ptr<Entity> entity = entityFactory.CreateEntity(filePath.filename().string());
+                            entity->AddComponent<TransformComponent>();
+                            entity->AddComponent<MeshComponent>(filePath.filename().string(), staticMesh);
                             m_Entities.push_back(entity);
                             m_SelectedEntity = entity;
                         }
@@ -112,14 +112,14 @@ namespace Motion::App
 
         if (ImGui::IsMouseDown(ImGuiMouseButton_Left) && ImGui::IsWindowHovered())
         {
-            m_SelectedEntity = Motion::Core::EntityFactory::EMPTYENTITY;
+            m_SelectedEntity = EntityFactory::EMPTYENTITY;
         }
 
         for (uint32_t i = 0; i < m_Entities.size(); i++)
         {
             if (m_SimulationStarted) ImGui::BeginDisabled();
-            std::shared_ptr<Motion::Core::Entity> entity = m_Entities[i];
-            auto& tag = entity->GetComponent<Motion::Core::TagComponent>();
+            std::shared_ptr<Entity> entity = m_Entities[i];
+            auto& tag = entity->GetComponent<TagComponent>();
             ImGuiTreeNodeFlags flags = ((m_SelectedEntity == entity) ? ImGuiTreeNodeFlags_Selected : 0) | ImGuiTreeNodeFlags_OpenOnArrow;
             flags |= ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_FramePadding;
 
@@ -137,7 +137,7 @@ namespace Motion::App
         }
 
         ImGui::Begin("Properties");
-        if (m_SelectedEntity && m_SelectedEntity != Motion::Core::EntityFactory::EMPTYENTITY)
+        if (m_SelectedEntity && m_SelectedEntity != EntityFactory::EMPTYENTITY)
         {
             RenderComponents(handle, m_SelectedEntity);
         }
@@ -147,7 +147,7 @@ namespace Motion::App
     }
 
     template<typename T, typename UIFunc>
-    static void DrawComponentControls(const std::string& name, const std::shared_ptr<Motion::Core::Entity>& entity, UIFunc uiFunc, bool enabled = true)
+    static void DrawComponentControls(const std::string& name, const std::shared_ptr<Entity>& entity, UIFunc uiFunc, bool enabled = true)
     {
         static const ImGuiTreeNodeFlags treeNodeFlags = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_AllowItemOverlap | ImGuiTreeNodeFlags_FramePadding;
 
@@ -166,11 +166,11 @@ namespace Motion::App
         }
     }
 
-    void Scene::RenderComponents(Motion::Core::WindowHandle handle, const std::shared_ptr<Motion::Core::Entity>& entity)
+    void Scene::RenderComponents(WindowHandle handle, const std::shared_ptr<Entity>& entity)
     {
-        if (entity->HasComponent<Motion::Core::TagComponent>())
+        if (entity->HasComponent<TagComponent>())
         {
-            auto& tag = entity->GetComponent<Motion::Core::TagComponent>();
+            auto& tag = entity->GetComponent<TagComponent>();
 
             char buffer[256];
             memset(buffer, 0, sizeof(buffer));
@@ -182,14 +182,14 @@ namespace Motion::App
             }
         }
 
-        DrawComponentControls<Motion::Core::TransformComponent>("Transform", entity,
+        DrawComponentControls<TransformComponent>("Transform", entity,
             [](auto& component)
             {
                 ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, { 10.0f, 0.0f });
 
-                Motion::Core::CustomUIControl::DragControllerVec3("Translation", component.Translation, 0.0f);
-                Motion::Core::CustomUIControl::DragControllerVec3("Rotation", component.Rotation, 0.0f);
-                Motion::Core::CustomUIControl::DragControllerVec3("Scale", component.Scale, 1.0f);
+                CustomUIControl::DragControllerVec3("Translation", component.Translation, 0.0f);
+                CustomUIControl::DragControllerVec3("Rotation", component.Rotation, 0.0f);
+                CustomUIControl::DragControllerVec3("Scale", component.Scale, 1.0f);
 
                 ImGui::PopStyleVar();
 
@@ -200,7 +200,7 @@ namespace Motion::App
         //[TODO]: Other components can be added here
     }
 
-    void Scene::UpdatePhysicsComponents(Motion::Core::Timer deltaTime)
+    void Scene::UpdatePhysicsComponents(Timer deltaTime)
     {
         if (m_SimulationStarted)
         {
@@ -228,7 +228,7 @@ namespace Motion::App
         }
     }
 
-    void SceneViewport::Update(const Motion::Core::FrameBufferSpecification& spec)
+    void SceneViewport::Update(const FrameBufferSpecification& spec)
     {
         FrameSpec = spec;
         Size = { (float)spec.Width, (float)spec.Height };

@@ -1,7 +1,7 @@
 #include "CorePCH.hpp"
 #include "GL_Renderer.hpp"
 
-namespace Motion::Core
+namespace Motion
 {
     /**
      * @brief Initializes OpenGL state for rendering.

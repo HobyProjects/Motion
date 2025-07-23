@@ -1,6 +1,6 @@
 #include "CorePCH.hpp"
 
-namespace Motion::Core
+namespace Motion
 {
     /**
      * @brief Recalculates the camera's view, projection, and MVP matrices.

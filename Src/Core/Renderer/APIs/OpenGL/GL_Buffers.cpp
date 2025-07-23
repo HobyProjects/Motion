@@ -1,7 +1,7 @@
 #include "CorePCH.hpp"
 #include "GL_Buffers.hpp"
 
-namespace Motion::Core
+namespace Motion
 {
     /******************************************************************************************
      *                         GL_VertexBuffer Implementation                                 *

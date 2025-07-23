@@ -1,6 +1,6 @@
 #include "CorePCH.hpp"
 
-namespace Motion::Core
+namespace Motion
 {
     /**
      * @brief Creates a vertex buffer of the specified allocation size using the current rendering API.

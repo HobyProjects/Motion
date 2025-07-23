@@ -2,7 +2,7 @@
 
 #include "Renderer.hpp"
 
-namespace Motion::Core
+namespace Motion
 {
     void GL_Init();
     void GL_Quit();

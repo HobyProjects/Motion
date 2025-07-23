@@ -5,7 +5,7 @@
 #include <spdlog/spdlog.h>
 #include <spdlog/fmt/ostr.h>
 
-namespace Motion::Core
+namespace Motion
 {
     class Loggers
     {
@@ -46,13 +46,13 @@ namespace Motion::Core
     };
 }
 
-#define MOTION_CORE_INFO(...) ::Motion::Core::Loggers::GetInstance().CoreLogger()->info(__VA_ARGS__)
-#define MOTION_CORE_WARN(...) ::Motion::Core::Loggers::GetInstance().CoreLogger()->warn(__VA_ARGS__)
-#define MOTION_CORE_ERROR(...) ::Motion::Core::Loggers::GetInstance().CoreLogger()->error(__VA_ARGS__)
-#define MOTION_CORE_CRITICAL(...) ::Motion::Core::Loggers::GetInstance().CoreLogger()->critical(__VA_ARGS__)
+#define MOTION_CORE_INFO(...) ::Loggers::GetInstance().CoreLogger()->info(__VA_ARGS__)
+#define MOTION_CORE_WARN(...) ::Loggers::GetInstance().CoreLogger()->warn(__VA_ARGS__)
+#define MOTION_CORE_ERROR(...) ::Loggers::GetInstance().CoreLogger()->error(__VA_ARGS__)
+#define MOTION_CORE_CRITICAL(...) ::Loggers::GetInstance().CoreLogger()->critical(__VA_ARGS__)
 
-#define MOTION_INFO(...) ::Motion::Core::Loggers::GetInstance().AppLogger()->info(__VA_ARGS__)
-#define MOTION_WARN(...) ::Motion::Core::Loggers::GetInstance().AppLogger()->warn(__VA_ARGS__)
-#define MOTION_ERROR(...) ::Motion::Core::Loggers::GetInstance().AppLogger()->error(__VA_ARGS__)
-#define MOTION_CRITICAL(...) ::Motion::Core::Loggers::GetInstance().AppLogger()->critical(__VA_ARGS__)
+#define MOTION_INFO(...) ::Loggers::GetInstance().AppLogger()->info(__VA_ARGS__)
+#define MOTION_WARN(...) ::Loggers::GetInstance().AppLogger()->warn(__VA_ARGS__)
+#define MOTION_ERROR(...) ::Loggers::GetInstance().AppLogger()->error(__VA_ARGS__)
+#define MOTION_CRITICAL(...) ::Loggers::GetInstance().AppLogger()->critical(__VA_ARGS__)
 

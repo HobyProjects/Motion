@@ -1,7 +1,7 @@
 #include "CorePCH.hpp"
 #include "SceneCamera.hpp"
 
-namespace Motion::App
+namespace Motion
 {
     SceneCamera::SceneCamera(float viewportWidth, float viewportHeight, bool rotationEnabled)
     {
@@ -20,48 +20,47 @@ namespace Motion::App
         Camera3D.RefreshCameraMatrix();
     }
 
-    void SceneCamera::OnUpdate(Motion::Core::WindowHandle handle, Motion::Core::Timer deltaTime)
+    void SceneCamera::OnUpdate(WindowHandle handle, Timer deltaTime)
     {
-        if (Motion::Core::InputsHandler::GetMouseButtonState(handle, Motion::Core::MouseButton::MOUSE_BUTTON_RIGHT) &
-            (Motion::Core::KeyState::KEY_PRESSED | Motion::Core::KeyState::KEY_REPEAT))
+        if (InputsHandler::GetMouseButtonState(handle, MouseButton::MOUSE_BUTTON_RIGHT) & (KeyState::KEY_PRESSED | KeyState::KEY_REPEAT))
         {
-            if (Motion::Core::InputsHandler::GetKeyState(handle, Motion::Core::KeyCode::KEY_W) &
-                (Motion::Core::KeyState::KEY_PRESSED | Motion::Core::KeyState::KEY_REPEAT))
+            if (InputsHandler::GetKeyState(handle, KeyCode::KEY_W) &
+                (KeyState::KEY_PRESSED | KeyState::KEY_REPEAT))
             {
                 Camera3D.Position += Camera3D.TranslationSpeed * Camera3D.Oriantaion;
                 Camera3D.RefreshCameraMatrix();
             }
 
-            if (Motion::Core::InputsHandler::GetKeyState(handle, Motion::Core::KeyCode::KEY_S) &
-                (Motion::Core::KeyState::KEY_PRESSED | Motion::Core::KeyState::KEY_REPEAT))
+            if (InputsHandler::GetKeyState(handle, KeyCode::KEY_S) &
+                (KeyState::KEY_PRESSED | KeyState::KEY_REPEAT))
             {
                 Camera3D.Position += Camera3D.TranslationSpeed * -Camera3D.Oriantaion;
                 Camera3D.RefreshCameraMatrix();
             }
 
-            if (Motion::Core::InputsHandler::GetKeyState(handle, Motion::Core::KeyCode::KEY_A) &
-                (Motion::Core::KeyState::KEY_PRESSED | Motion::Core::KeyState::KEY_REPEAT))
+            if (InputsHandler::GetKeyState(handle, KeyCode::KEY_A) &
+                (KeyState::KEY_PRESSED | KeyState::KEY_REPEAT))
             {
                 Camera3D.Position += Camera3D.TranslationSpeed * -glm::normalize(glm::cross(Camera3D.Oriantaion, Camera3D.WorldUp));
                 Camera3D.RefreshCameraMatrix();
             }
 
-            if (Motion::Core::InputsHandler::GetKeyState(handle, Motion::Core::KeyCode::KEY_D) &
-                (Motion::Core::KeyState::KEY_PRESSED | Motion::Core::KeyState::KEY_REPEAT))
+            if (InputsHandler::GetKeyState(handle, KeyCode::KEY_D) &
+                (KeyState::KEY_PRESSED | KeyState::KEY_REPEAT))
             {
                 Camera3D.Position += Camera3D.TranslationSpeed * glm::normalize(glm::cross(Camera3D.Oriantaion, Camera3D.WorldUp));
                 Camera3D.RefreshCameraMatrix();
             }
 
-            if (Motion::Core::InputsHandler::GetKeyState(handle, Motion::Core::KeyCode::KEY_LEFT_CONTROL) &
-                (Motion::Core::KeyState::KEY_PRESSED | Motion::Core::KeyState::KEY_REPEAT))
+            if (InputsHandler::GetKeyState(handle, KeyCode::KEY_LEFT_CONTROL) &
+                (KeyState::KEY_PRESSED | KeyState::KEY_REPEAT))
             {
                 Camera3D.Position += Camera3D.TranslationSpeed * -Camera3D.WorldUp;
                 Camera3D.RefreshCameraMatrix();
             }
 
-            if (Motion::Core::InputsHandler::GetKeyState(handle, Motion::Core::KeyCode::KEY_SPACE) &
-                (Motion::Core::KeyState::KEY_PRESSED | Motion::Core::KeyState::KEY_REPEAT))
+            if (InputsHandler::GetKeyState(handle, KeyCode::KEY_SPACE) &
+                (KeyState::KEY_PRESSED | KeyState::KEY_REPEAT))
             {
                 Camera3D.Position += Camera3D.TranslationSpeed * Camera3D.WorldUp;
                 Camera3D.RefreshCameraMatrix();
@@ -69,17 +68,17 @@ namespace Motion::App
         }
     }
 
-    void SceneCamera::OnEvents(Motion::Core::WindowHandle handle, Motion::Core::IEvent& e)
+    void SceneCamera::OnEvents(WindowHandle handle, IEvent& e)
     {
-        Motion::Core::EventHandler handler(handle, e);
-        handler.Dispatch<Motion::Core::EventMouseCursorMove<float>>(EVENT_CALLBACK(OnMouseCursorPosChange));
-        handler.Dispatch<Motion::Core::EventMouseWheelScroll<float>>(EVENT_CALLBACK(OnMouseWheelScrollEvent));
+        EventHandler handler(handle, e);
+        handler.Dispatch<EventMouseCursorMove<float>>(EVENT_CALLBACK(OnMouseCursorPosChange));
+        handler.Dispatch<EventMouseWheelScroll<float>>(EVENT_CALLBACK(OnMouseWheelScrollEvent));
     }
 
-    bool SceneCamera::OnMouseCursorPosChange(Motion::Core::WindowHandle handle, Motion::Core::EventMouseCursorMove<float>& e)
+    bool SceneCamera::OnMouseCursorPosChange(WindowHandle handle, EventMouseCursorMove<float>& e)
     {
-        if (Motion::Core::InputsHandler::GetMouseButtonState(handle, Motion::Core::MouseButton::MOUSE_BUTTON_RIGHT) &
-            (Motion::Core::KeyState::KEY_PRESSED | Motion::Core::KeyState::KEY_REPEAT))
+        if (InputsHandler::GetMouseButtonState(handle, MouseButton::MOUSE_BUTTON_RIGHT) &
+            (KeyState::KEY_PRESSED | KeyState::KEY_REPEAT))
         {
             float xOffset = e.GetX() - m_MouseX;
             float yOffset = e.GetY() - m_MouseY;  // Change this to invert camera control
@@ -111,7 +110,7 @@ namespace Motion::App
         return false;
     }
 
-    bool SceneCamera::OnMouseWheelScrollEvent(Motion::Core::WindowHandle handle, Motion::Core::EventMouseWheelScroll<float>& e)
+    bool SceneCamera::OnMouseWheelScrollEvent(WindowHandle handle, EventMouseWheelScroll<float>& e)
     {
         Camera3D.PerspectiveFov -= (float)e.OffsetY();
         if (Camera3D.PerspectiveFov < 1.0f) Camera3D.PerspectiveFov = 1.0f;

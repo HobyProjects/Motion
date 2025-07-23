@@ -8,19 +8,19 @@
 #include "SceneRenderer.hpp"
 #include "SceneEnviroment.hpp"
 
-namespace Motion::App
+namespace App
 {
-    using SceneHandle = Motion::Core::UUID;
+    using SceneHandle = UUID;
 
     struct SceneViewport
     {
-        Motion::Core::FrameBufferSpecification FrameSpec{};
+        FrameBufferSpecification FrameSpec{};
         glm::vec2 Size{ 0.0f, 0.0f };
 
         bool Focused{ false };
         bool Hovered{ false };
 
-        void Update(const Motion::Core::FrameBufferSpecification& spec);
+        void Update(const FrameBufferSpecification& spec);
         void Update(const glm::vec2& size);
         bool SizeHasChanged(float width, float height);
         void Clear();
@@ -35,9 +35,9 @@ namespace Motion::App
         Scene(SceneHandle handle, const std::string& name, const glm::vec2& viewportSize);
         ~Scene();
 
-        void OnUpdate(Motion::Core::WindowHandle handle, Motion::Core::Timer deltaTime);
-        void OnEvent(Motion::Core::WindowHandle handle, Motion::Core::IEvent& e);
-        void OnUIRenders(Motion::Core::WindowHandle handle);
+        void OnUpdate(WindowHandle handle, Timer deltaTime);
+        void OnEvent(WindowHandle handle, IEvent& e);
+        void OnUIRenders(WindowHandle handle);
         void OnViewportSizeChanges(float width, float height);
         void SetName(const std::string& name) { m_Name = name; }
         void SetActive(bool active) { m_IsActive = active; }
@@ -62,11 +62,11 @@ namespace Motion::App
 
     private:
         /* IMGUI RENDERINGS */
-        void RenderEntities(Motion::Core::WindowHandle handle);
-        void RenderComponents(Motion::Core::WindowHandle handle, const std::shared_ptr<Motion::Core::Entity>& entity);
+        void RenderEntities(WindowHandle handle);
+        void RenderComponents(WindowHandle handle, const std::shared_ptr<Entity>& entity);
 
         /* SIMULATION */
-        void UpdatePhysicsComponents(Motion::Core::Timer deltaTime);
+        void UpdatePhysicsComponents(Timer deltaTime);
 
     private:
         SceneHandle m_SceneID{ 0 };
@@ -74,8 +74,8 @@ namespace Motion::App
         bool m_IsActive{ false };
 
         std::unique_ptr<SceneCamera> m_SceneCamera{ nullptr };
-        std::vector<std::shared_ptr<Motion::Core::Entity>> m_Entities{};
-        std::shared_ptr<Motion::Core::Entity> m_SelectedEntity{ Motion::Core::EntityFactory::EMPTYENTITY };
+        std::vector<std::shared_ptr<Entity>> m_Entities{};
+        std::shared_ptr<Entity> m_SelectedEntity{ EntityFactory::EMPTYENTITY };
 
         /* SCENE ENVIRONMENT */
         SceneEnvironment m_Environment{};

@@ -5,7 +5,7 @@
 #include "Entity.hpp"
 #include "Components.hpp"
 
-namespace Motion::App
+namespace Motion
 {
     struct DirectionalLight
     {
@@ -31,10 +31,10 @@ namespace Motion::App
 
         void SetSettings(const PhysicsAttributes& settings) { m_Settings = settings; }
         PhysicsAttributes& GetSettings() { return m_Settings; }
-        void Update(std::shared_ptr<Motion::Core::Entity> entity, float deltaTime);
+        void Update(std::shared_ptr<Entity> entity, float deltaTime);
 
     private:
-        void EnvironmentIntegration(Motion::Core::TransformComponent& transform, Motion::Core::PhysicsBodyComponent& body, float deltaTime);
+        void EnvironmentIntegration(TransformComponent& transform, PhysicsBodyComponent& body, float deltaTime);
 
     private:
         PhysicsAttributes m_Settings{};

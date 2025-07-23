@@ -6,7 +6,7 @@
 #include "Window.hpp"
 #include "Texture.hpp"
 
-namespace Motion::Core
+namespace Motion
 {
     enum class RenderingAPI : std::uint8_t
     {

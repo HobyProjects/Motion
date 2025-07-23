@@ -1,7 +1,7 @@
 #include "CorePCH.hpp"
 #include "AssetManager.hpp"
 
-namespace Motion::Core
+namespace Motion
 {
     // Still nothing to implement here....
 }

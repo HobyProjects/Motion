@@ -2,7 +2,7 @@
 
 #include "Window.hpp"
 
-namespace Motion::Core
+namespace Motion
 {
     class GLFW_GL_Context final : public IContext
     {

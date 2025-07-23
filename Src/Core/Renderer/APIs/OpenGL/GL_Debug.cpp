@@ -1,6 +1,6 @@
 #include "CorePCH.hpp"
 
-namespace Motion::Core
+namespace Motion
 {
     void GL_MessageCallBack(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam)
     {

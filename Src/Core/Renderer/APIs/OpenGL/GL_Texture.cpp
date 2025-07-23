@@ -1,7 +1,6 @@
 #include "CorePCH.hpp"
-#include "GL_Texture.hpp"
 
-namespace Motion::Core
+namespace Motion
 {
     /**
      * Constructs a new GL_Texture object with the specified UUID, name, width, and height. This

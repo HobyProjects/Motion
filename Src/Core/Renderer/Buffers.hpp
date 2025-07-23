@@ -8,7 +8,7 @@
 
 #include "Base.hpp"
 
-namespace Motion::Core
+namespace Motion
 {
     inline constexpr std::uint32_t SHADER_BUFFER_DEFAULT_SIZE = 1024;
     inline constexpr std::uint32_t SHADER_BUFFER_MAX_SIZE = 65536;

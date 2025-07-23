@@ -16,7 +16,7 @@
 #include "Material.hpp"
 #include "Model.hpp"
 
-namespace Motion::Core
+namespace Motion
 {
     template<>
     struct AssetBackendsBuilder<IShader>

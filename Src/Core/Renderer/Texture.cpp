@@ -1,6 +1,6 @@
 #include "CorePCH.hpp"
 
-namespace Motion::Core
+namespace Motion
 {
     /**
      * @brief Creates an unregistered plain texture with the specified name, width, and height.

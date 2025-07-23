@@ -2,7 +2,7 @@
 
 #include "Event.hpp"
 
-namespace Motion::Core
+namespace Motion
 {
     class EventWindowClose final : public IEvent
     {

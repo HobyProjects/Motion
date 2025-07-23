@@ -5,7 +5,7 @@
 #include "Timer.hpp"
 #include "Event.hpp"
 
-namespace Motion::App
+namespace Motion
 {
     class SceneCamera
     {
@@ -14,15 +14,15 @@ namespace Motion::App
         ~SceneCamera() = default;
 
         void SetAspectRatio(float width, float height);
-        void OnUpdate(Motion::Core::WindowHandle handle, Motion::Core::Timer deltaTime);
-        void OnEvents(Motion::Core::WindowHandle handle, Motion::Core::IEvent& e);
+        void OnUpdate(WindowHandle handle, Timer deltaTime);
+        void OnEvents(WindowHandle handle, IEvent& e);
 
     private:
-        bool OnMouseCursorPosChange(Motion::Core::WindowHandle handle, Motion::Core::EventMouseCursorMove<float>& e);
-        bool OnMouseWheelScrollEvent(Motion::Core::WindowHandle handle, Motion::Core::EventMouseWheelScroll<float>& e);
+        bool OnMouseCursorPosChange(WindowHandle handle, EventMouseCursorMove<float>& e);
+        bool OnMouseWheelScrollEvent(WindowHandle handle, EventMouseWheelScroll<float>& e);
 
     public:
-        Motion::Core::Camera3D Camera3D;
+        Camera3D Camera3D;
 
     private:
         float m_MouseX = 0.0f, m_MouseY = 0.0f;

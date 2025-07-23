@@ -6,7 +6,7 @@
 #include "UUID.hpp"
 #include "Model.hpp"
 
-namespace Motion::Core
+namespace Motion
 {
     struct TagComponent
     {

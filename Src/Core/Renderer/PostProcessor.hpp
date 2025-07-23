@@ -5,7 +5,7 @@
 #include "Mesh.hpp"
 #include "Buffers.hpp"
 
-namespace Motion::Core
+namespace Motion
 {
     class PostProcessor
     {

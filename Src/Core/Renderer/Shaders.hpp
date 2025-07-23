@@ -13,7 +13,7 @@
 
 #define INVALID_UNIFORM_LOCATION  -1
 
-namespace Motion::Core
+namespace Motion
 {
     using ShaderID = uint32_t;
     using ShaderProgramID = uint32_t;
@@ -75,7 +75,6 @@ namespace Motion::Core
 
         inline static constexpr std::string_view GlobalAttri_ModelMatrix = "u_ModelMatrix";
         inline static constexpr std::string_view GlobalAttri_ViewProjMatrix = "u_ViewProjMatrix";
-        inline static constexpr std::string_view GlobalAttri_Sampler2DArray = "u_Sampler2DArray";
         inline static constexpr std::string_view GlobalAttri_CameraPosition = "u_CameraPosition";
         inline static constexpr std::string_view GlobalAttri_ViewMatrix = "u_ViewMatrix";
         inline static constexpr std::string_view GlobalAttri_ProjectionMatrix = "u_ProjectionMatrix";

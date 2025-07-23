@@ -3,7 +3,7 @@
 #include "Shaders.hpp"
 #include "Asset.hpp"
 
-namespace Motion::Core
+namespace Motion
 {
     class GL_Shader final : public AssetBase<IShader>
     {

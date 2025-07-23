@@ -1,7 +1,6 @@
 #include "CorePCH.hpp"
-#include "GLFW_GL_Context.hpp"
 
-namespace Motion::Core
+namespace Motion
 {
     /**
      * @brief Initializes the OpenGL context using GLAD and GLFW.

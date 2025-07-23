@@ -1,13 +1,13 @@
 #include "CorePCH.hpp"
 #include "SceneEditorLayer.hpp"
 
-namespace Motion::App
+namespace Motion
 {
-    static std::weak_ptr<Motion::Core::IWindow> s_Window;
-    static std::weak_ptr<Motion::App::ImGuiLayer> s_ImGuiLayer;
+    static std::weak_ptr<IWindow> s_Window;
+    static std::weak_ptr<App::ImGuiLayer> s_ImGuiLayer;
 
-    SceneEditorLayer::SceneEditorLayer(Motion::Core::WindowHandle handle, const std::shared_ptr<Motion::App::ImGuiLayer>& imguiLayer)
-        : Motion::Core::Layer("EditorLayer")
+    SceneEditorLayer::SceneEditorLayer(WindowHandle handle, const std::shared_ptr<App::ImGuiLayer>& imguiLayer)
+        : Layer("EditorLayer")
     {
         s_ImGuiLayer = imguiLayer;
     }
@@ -15,26 +15,25 @@ namespace Motion::App
     void SceneEditorLayer::OnAttach()
     {
         //TEMP
-        auto& assetManager = Motion::Core::AssetManager::GetInstance();
-        assetManager.Create<Motion::Core::IShader>("PostProcessingShader", "Assets/Shaders/PostProcessing.glsl");
-        assetManager.Create<Motion::Core::IShader>("SkyBoxShader", "Assets/Shaders/SkyBox.glsl");
-        assetManager.Create<Motion::Core::IShader>("PBRShader", "Assets/Shaders/PBRShader.glsl");
-        assetManager.Create<Motion::Core::IShader>("PhongShader", "Assets/Shaders/PhongShader.glsl");
-        assetManager.Create<Motion::Core::IShader>("UnlitShader", "Assets/Shaders/UnlitShader.glsl");
-        Motion::Core::MaterialFallbackTextures::Initialize();
+        auto& assetManager = AssetManager::GetInstance();
+        assetManager.Create<IShader>("SkyBoxShader", "Assets/Shaders/SkyBoxShader.glsl");
+        assetManager.Create<IShader>("PBRShader", "Assets/Shaders/PBRShader.glsl");
+        assetManager.Create<IShader>("PhongShader", "Assets/Shaders/PhongShader.glsl");
+        assetManager.Create<IShader>("UnlitShader", "Assets/Shaders/UnlitShader.glsl");
+        MaterialFallbackTextures::Initialize();
 
+        m_Viewport.FrameSpec.Name = "SceneEditorFrame";
         m_Viewport.FrameSpec.Width = static_cast<uint32_t>(m_ViewportWidth);
         m_Viewport.FrameSpec.Height = static_cast<uint32_t>(m_ViewportHeight);
         m_Viewport.Size = { m_ViewportWidth, m_ViewportHeight };
 
-        m_Framebuffer = Motion::Core::BufferFactory::CreateFrameBuffer(m_Viewport.FrameSpec);
-        m_PostProcessor = std::make_unique<Motion::Core::PostProcessor>(m_Framebuffer->GetFrameSpecification());
-        m_SkyBox = std::make_unique<Motion::Core::SkyBox>();
+        m_Framebuffer = BufferFactory::CreateFrameBuffer(m_Viewport.FrameSpec);
+        m_SkyBox = std::make_unique<SkyBox>();
 
         if (m_Scenes.empty())
         {
             //[TODO] : When scene serialization is implemented, load the default scene from a file or create a new one.
-            m_Scenes.push_back(std::make_shared<Scene>(Motion::Core::UniqueIdentity::GetUniqueID(), "Default Scene", glm::vec2(m_ViewportWidth, m_ViewportHeight)));
+            m_Scenes.push_back(std::make_shared<Scene>(UniqueIdentity::GetUniqueID(), "Default Scene", glm::vec2(m_ViewportWidth, m_ViewportHeight)));
         }
 
         m_ActiveScene = m_Scenes[0];
@@ -44,17 +43,15 @@ namespace Motion::App
     void SceneEditorLayer::OnDetach()
     {
         m_Framebuffer.reset();
-        m_PostProcessor.reset();
         m_Scenes.clear();
     }
 
-    void SceneEditorLayer::OnUpdate(Motion::Core::WindowHandle handle, Motion::Core::Timer deltaTime)
+    void SceneEditorLayer::OnUpdate(WindowHandle handle, Timer deltaTime)
     {
         if (m_Viewport.SizeHasChanged(m_ViewportWidth, m_ViewportHeight))
         {
             m_Viewport.Update(glm::vec2(m_ViewportWidth, m_ViewportHeight));
             m_Framebuffer->ResizeFrame((uint32_t)m_ViewportWidth, (uint32_t)m_ViewportHeight);
-            m_PostProcessor->OnResize((uint32_t)m_ViewportWidth, (uint32_t)m_ViewportHeight);
             m_ActiveScene->OnViewportSizeChanges(m_ViewportWidth, m_ViewportHeight);
         }
 
@@ -63,8 +60,8 @@ namespace Motion::App
 
         m_Framebuffer->Bind();
 
-        Motion::Core::Renderer::ClearColor({ 0.243, 0.243, 0.243, 1.0f });
-        Motion::Core::Renderer::Clear();
+        Renderer::ClearColor({ 0.243, 0.243, 0.243, 1.0f });
+        Renderer::Clear();
 
 
         auto& sceneRenderer = SceneRenderer::GetInstance();
@@ -74,16 +71,15 @@ namespace Motion::App
         sceneRenderer.EndScene(m_SkyBox->GetTextureID());
 
         m_Framebuffer->Unbind();
-        m_PostProcessor->Process(m_Framebuffer->GetAttachment(Motion::Core::FrameBufferColorAttachmentStandards::Standard).TextureID);
-        m_SceneTextures[m_ActiveScene] = m_PostProcessor->GetOutputTextureID();
+        m_SceneTextures[m_ActiveScene] = m_Framebuffer->GetAttachment(FrameBufferColorAttachmentStandards::Standard).TextureID;
     }
 
-    void SceneEditorLayer::OnEvent(Motion::Core::WindowHandle handle, Motion::Core::IEvent& e)
+    void SceneEditorLayer::OnEvent(WindowHandle handle, IEvent& e)
     {
         m_ActiveScene->OnEvent(handle, e);
     }
 
-    void SceneEditorLayer::OnUIRender(Motion::Core::WindowHandle handle)
+    void SceneEditorLayer::OnUIRender(WindowHandle handle)
     {
         DrawDockspace();
         ImGui::ShowDemoWindow();

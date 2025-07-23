@@ -1,6 +1,6 @@
 #include "CorePCH.hpp"
 
-namespace Motion::Core
+namespace Motion
 {
 #ifdef MOTION_PLATFORM_WINDOWS 
 

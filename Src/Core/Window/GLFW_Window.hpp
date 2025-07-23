@@ -5,7 +5,7 @@
 
 #include "Window.hpp"
 
-namespace Motion::Core
+namespace Motion
 {
     class GLFW_BaseAPI final : public IPlatformBaseAPI
     {

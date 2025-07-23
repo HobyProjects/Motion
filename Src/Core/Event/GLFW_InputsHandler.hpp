@@ -4,7 +4,7 @@
 #include "Window.hpp"
 #include "KeyCodes.hpp"
 
-namespace Motion::Core
+namespace Motion
 {
     [[nodiscard]] KeyState GLFW_KeyState(NativeWindow nativeWindow, KeyCode key) noexcept;
     [[nodiscard]] MouseButtonState GLFW_MouseButtonState(NativeWindow nativeWindow, MouseButton button) noexcept;

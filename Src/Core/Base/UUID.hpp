@@ -4,7 +4,7 @@
 #include <random>
 #include <functional>
 
-namespace Motion::Core
+namespace Motion
 {
     using UUID = uint64_t;
 

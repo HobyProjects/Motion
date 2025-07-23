@@ -1,7 +1,7 @@
 #include "CorePCH.hpp"
 #include "Mesh.hpp"
 
-namespace Motion::Core
+namespace Motion
 {
 
     /**

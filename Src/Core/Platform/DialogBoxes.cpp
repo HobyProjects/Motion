@@ -15,7 +15,7 @@
 
 #endif
 
-namespace Motion::Core
+namespace Motion
 {
     static const char* ALL_FILES_FILTER = "All Files\0*.*\0\0";
     static const char* TEXT_FILES_FILTER = "Text Files\0*.txt\0\0";

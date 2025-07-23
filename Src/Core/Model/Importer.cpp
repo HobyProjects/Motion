@@ -5,7 +5,7 @@
 #define AI_MATKEY_SHEEN_ROUGHNESS_FACTOR "$mat.sheen.roughnessFactor", 0, 0
 #define AI_MATKEY_AMBIENT_OCCLUISION_FACTOR "$mat.occlusionStrength", 0, 0
 
-namespace Motion::Core
+namespace Motion
 {
     /**
      * @brief Imports a 3D model from the specified file path and creates a StaticMesh asset.
@@ -318,7 +318,7 @@ namespace Motion::Core
      * @param meshSegment Shared pointer to the StaticMesh::MeshSegment to which materials will be assigned.
      * @param scene Pointer to the Assimp aiScene containing the material data.
      */
-    void Motion::Core::Importer::LoadMaterials(const std::shared_ptr<StaticMesh::MeshSegment>& meshSegment, const aiScene* scene)
+    void Importer::LoadMaterials(const std::shared_ptr<StaticMesh::MeshSegment>& meshSegment, const aiScene* scene)
     {
         MOTION_CORE_INFO("Extracting StaticMesh - SubMesh {0} Materials", meshSegment->MeshIndex);
         auto& assetManager = AssetManager::GetInstance();

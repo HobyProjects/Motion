@@ -1,6 +1,6 @@
 #include "CorePCH.hpp"
 
-namespace Motion::Core
+namespace Motion
 {
     /**
      * @brief Initializes the IMGUI library and sets up the rendering backend.

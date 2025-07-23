@@ -1,7 +1,5 @@
 #include "CorePCH.hpp"
-#include "GL_Shaders.hpp"
-
-namespace Motion::Core
+namespace Motion
 {
     /**
      * @brief Converts a ShaderType enum value to the corresponding OpenGL shader type constant.
@@ -585,7 +583,10 @@ namespace Motion::Core
 
         m_UniformInformationCache[UniformCache::GlobalAttri_ModelMatrix] = { UniformCache::GlobalAttri_ModelMatrix, UniformType::Mat4, GetUniformLocation(UniformCache::GlobalAttri_ModelMatrix) };
         m_UniformInformationCache[UniformCache::GlobalAttri_ViewProjMatrix] = { UniformCache::GlobalAttri_ViewProjMatrix, UniformType::Mat4, GetUniformLocation(UniformCache::GlobalAttri_ViewProjMatrix) };
-        m_UniformInformationCache[UniformCache::GlobalAttri_Sampler2DArray] = { UniformCache::GlobalAttri_Sampler2DArray, UniformType::Sampler2DArray, GetUniformLocation(UniformCache::GlobalAttri_Sampler2DArray) };
+        m_UniformInformationCache[UniformCache::GlobalAttri_CameraPosition] = { UniformCache::GlobalAttri_CameraPosition, UniformType::Vec3, GetUniformLocation(UniformCache::GlobalAttri_CameraPosition) };
+        m_UniformInformationCache[UniformCache::GlobalAttri_EnvironmentTexture] = { UniformCache::GlobalAttri_EnvironmentTexture, UniformType::SamplerCube, GetUniformLocation(UniformCache::GlobalAttri_EnvironmentTexture) };
+        m_UniformInformationCache[UniformCache::GlobalAttri_ViewMatrix] = { UniformCache::GlobalAttri_ViewMatrix, UniformType::Mat4, GetUniformLocation(UniformCache::GlobalAttri_ViewMatrix) };
+        m_UniformInformationCache[UniformCache::GlobalAttri_ProjectionMatrix] = { UniformCache::GlobalAttri_ProjectionMatrix, UniformType::Mat4, GetUniformLocation(UniformCache::GlobalAttri_ProjectionMatrix) };
 
         m_UniformInformationCache[UniformCache::LightAttri_Position] = { UniformCache::LightAttri_Position, UniformType::Vec3, GetUniformLocation(UniformCache::LightAttri_Position) };
         m_UniformInformationCache[UniformCache::LightAttri_Color] = { UniformCache::LightAttri_Color, UniformType::Vec3, GetUniformLocation(UniformCache::LightAttri_Color) };
@@ -608,6 +609,11 @@ namespace Motion::Core
         m_UniformInformationCache[UniformCache::Texture_ClearCoatTexture] = { UniformCache::Texture_ClearCoatTexture, UniformType::Sampler2D, GetUniformLocation(UniformCache::Texture_ClearCoatTexture) };
         m_UniformInformationCache[UniformCache::Texture_SheenTexture] = { UniformCache::Texture_SheenTexture, UniformType::Sampler2D, GetUniformLocation(UniformCache::Texture_SheenTexture) };
         m_UniformInformationCache[UniformCache::Texture_TransmissionTexture] = { UniformCache::Texture_TransmissionTexture, UniformType::Sampler2D, GetUniformLocation(UniformCache::Texture_TransmissionTexture) };
+
+        m_UniformInformationCache[UniformCache::Texture_SkyboxTexture] = { UniformCache::Texture_SkyboxTexture, UniformType::SamplerCube, GetUniformLocation(UniformCache::Texture_SkyboxTexture) };
+        m_UniformInformationCache[UniformCache::Texture_PostProcessTexture] = { UniformCache::Texture_PostProcessTexture, UniformType::Sampler2D, GetUniformLocation(UniformCache::Texture_PostProcessTexture) };
+
+
     }
 
     /**

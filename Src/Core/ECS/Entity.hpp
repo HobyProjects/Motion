@@ -3,7 +3,7 @@
 #include <entt/entt.hpp>
 #include "Timer.hpp"
 
-namespace Motion::Core
+namespace Motion
 {
     class Entity; // Forward Declaration
 

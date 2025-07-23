@@ -1,6 +1,6 @@
 #include "CorePCH.hpp"
 
-namespace Motion::Core
+namespace Motion
 {
     std::shared_ptr<IVertexArray> ArrayFactory::CreateVertexArray()
     {

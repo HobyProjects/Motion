@@ -6,7 +6,7 @@
 
 #include "Window.hpp"
 
-namespace Motion::Core
+namespace Motion
 {
     class Timer
     {

@@ -3,7 +3,7 @@
 #include "SceneRenderer.hpp"
 #include "Scene.hpp"
 
-namespace Motion::App
+namespace Motion
 {
     /**
      * @brief Begins a new scene by clearing the draw commands and resetting the draw count.
@@ -39,7 +39,7 @@ namespace Motion::App
             return;
         }
 
-        if (scene->m_SceneCamera != nullptr)
+        if (!scene->m_SceneCamera)
         {
             MOTION_CORE_ERROR("Scene camera is not set in the scene >> SKIPPING SUBMISSION");
             return;
@@ -50,13 +50,13 @@ namespace Motion::App
 
         for (const auto& entity : scene->m_Entities)
         {
-            if (!entity || !entity->HasComponent<Motion::Core::MeshComponent>())
+            if (!entity || !entity->HasComponent<MeshComponent>())
             {
                 MOTION_WARN("Entity is null or does not have a MeshComponent >> SKIPPING SUBMISSION");
                 continue;
             }
 
-            const auto& meshComponent = entity->GetComponent<Motion::Core::MeshComponent>();
+            const auto& meshComponent = entity->GetComponent<MeshComponent>();
             if (!meshComponent.Mesh)
             {
                 MOTION_WARN("MeshComponent has no mesh assigned. {} >> SKIPPING SUBMISSION", meshComponent.Name);
@@ -76,9 +76,9 @@ namespace Motion::App
                 command.MaterialID = meshSegment->Materials->GetUUID();
                 command.MeshID = meshSegment->MeshSelf->GetUUID();
 
-                if (entity->HasComponent<Motion::Core::TransformComponent>())
+                if (entity->HasComponent<TransformComponent>())
                 {
-                    const auto& transform = entity->GetComponent<Motion::Core::TransformComponent>();
+                    const auto& transform = entity->GetComponent<TransformComponent>();
                     command.TransformMatrix = transform.GetTransform();
                 }
                 else
@@ -106,48 +106,48 @@ namespace Motion::App
      *
      * @param skyBoxTextureID The texture ID of the skybox to be rendered in the scene.
      */
-    void SceneRenderer::EndScene(Motion::Core::TextureID skyBoxTextureID) noexcept
+    void SceneRenderer::EndScene(TextureID skyBoxTextureID) noexcept
     {
         std::sort(m_DrawCommands.begin(), m_DrawCommands.end(), [](const SceneDrawCommand& a, const SceneDrawCommand& b) { return a < b; });
 
-        Motion::Core::AssetManager& assetManager = Motion::Core::AssetManager::GetInstance();
-        std::shared_ptr<Motion::Core::IShader> pbrShader = assetManager.Get<Motion::Core::IShader>("PBRShader");
-        std::shared_ptr<Motion::Core::IShader> phongShader = assetManager.Get<Motion::Core::IShader>("PhongShader");
-        std::shared_ptr<Motion::Core::IShader> unlitShader = assetManager.Get<Motion::Core::IShader>("UnlitShader");
+        AssetManager& assetManager = AssetManager::GetInstance();
+        std::shared_ptr<IShader> pbrShader = assetManager.Get<IShader>("PBRShader");
+        std::shared_ptr<IShader> phongShader = assetManager.Get<IShader>("PhongShader");
+        std::shared_ptr<IShader> unlitShader = assetManager.Get<IShader>("UnlitShader");
 
         for (const auto& command : m_DrawCommands)
         {
-            std::shared_ptr<Motion::Core::Material> material = assetManager.Get<Motion::Core::Material>(command.MaterialID);
-            std::shared_ptr<Motion::Core::Mesh> mesh = assetManager.Get<Motion::Core::Mesh>(command.MeshID);
-            std::shared_ptr<Motion::Core::IShader> currentShader{ nullptr };
+            std::shared_ptr<Material> material = assetManager.Get<Material>(command.MaterialID);
+            std::shared_ptr<Mesh> mesh = assetManager.Get<Mesh>(command.MeshID);
+            std::shared_ptr<IShader> currentShader{ nullptr };
 
             if (material)
             {
-                Motion::Core::MaterialShadingMethod shadingMethod = material->GetShadingMethod();
+                MaterialShadingMethod shadingMethod = material->GetShadingMethod();
                 switch (shadingMethod)
                 {
-                case Motion::Core::MaterialShadingMethod::PBR:      currentShader = pbrShader; break;
-                case Motion::Core::MaterialShadingMethod::Phong:    currentShader = phongShader; break;
-                case Motion::Core::MaterialShadingMethod::Unlit:    currentShader = unlitShader; break;
-                case Motion::Core::MaterialShadingMethod::Auto:     currentShader = unlitShader; break;
+                case MaterialShadingMethod::PBR:      currentShader = pbrShader; break;
+                case MaterialShadingMethod::Phong:    currentShader = phongShader; break;
+                case MaterialShadingMethod::Unlit:    currentShader = unlitShader; break;
+                case MaterialShadingMethod::Auto:     currentShader = unlitShader; break;
                 }
 
                 if (currentShader)
                 {
                     currentShader->Bind();
 
-                    if (shadingMethod & Motion::Core::MaterialShadingMethod::PBR || shadingMethod & Motion::Core::MaterialShadingMethod::Phong)
+                    if (shadingMethod & MaterialShadingMethod::PBR || shadingMethod & MaterialShadingMethod::Phong)
                     {
-                        currentShader->SetUniform(Motion::Core::UniformCache::GlobalAttri_ViewProjMatrix, command.ViewProjectionMatrix);
-                        currentShader->SetUniform(Motion::Core::UniformCache::GlobalAttri_ModelMatrix, command.TransformMatrix);
+                        currentShader->SetUniform(UniformCache::GlobalAttri_ViewProjMatrix, command.ViewProjectionMatrix);
+                        currentShader->SetUniform(UniformCache::GlobalAttri_ModelMatrix, command.TransformMatrix);
 
-                        currentShader->SetUniform(Motion::Core::UniformCache::LightAttri_Color, command.ScenePtr->m_Environment.DirectionalLight.Color);
-                        currentShader->SetUniform(Motion::Core::UniformCache::LightAttri_Position, command.ScenePtr->m_Environment.DirectionalLight.Direction);
-                        currentShader->SetUniform(Motion::Core::UniformCache::LightAttri_Intensity, command.ScenePtr->m_Environment.DirectionalLight.AmbientIntensity);
+                        currentShader->SetUniform(UniformCache::LightAttri_Color, command.ScenePtr->m_Environment.DirectionalLight.Color);
+                        currentShader->SetUniform(UniformCache::LightAttri_Position, command.ScenePtr->m_Environment.DirectionalLight.Direction);
+                        currentShader->SetUniform(UniformCache::LightAttri_Intensity, command.ScenePtr->m_Environment.DirectionalLight.AmbientIntensity);
 
-                        Motion::Core::Renderer::BindTextureUnit(10, skyBoxTextureID);
-                        currentShader->SetUniform(Motion::Core::UniformCache::GlobalAttri_EnvironmentTexture, 10);
-                        currentShader->SetUniform(Motion::Core::UniformCache::GlobalAttri_CameraPosition, command.ScenePtr->m_SceneCamera->Camera3D.Position);
+                        Renderer::BindTextureUnit(10, skyBoxTextureID);
+                        currentShader->SetUniform(UniformCache::GlobalAttri_EnvironmentTexture, 10);
+                        currentShader->SetUniform(UniformCache::GlobalAttri_CameraPosition, command.ScenePtr->m_SceneCamera->Camera3D.Position);
                     }
 
                     material->Bind(currentShader);

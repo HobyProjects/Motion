@@ -9,7 +9,7 @@
 
 #define EVENT_CALLBACK(CALLBACK_FUNC) [this](auto&&... args) -> decltype(auto) { return this->CALLBACK_FUNC(std::forward<decltype(args)>(args)...); }
 
-namespace Motion::Core
+namespace Motion
 {
 
 

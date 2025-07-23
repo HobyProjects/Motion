@@ -1,7 +1,7 @@
 #include "CorePCH.hpp"
 #include "GL_Arrays.hpp"
 
-namespace Motion::Core
+namespace Motion
 {
     GL_VertexArray::GL_VertexArray()
     {

@@ -7,7 +7,7 @@
 
 #include "Asset.hpp"
 
-namespace Motion::Core
+namespace Motion
 {
     using TextureID = std::uint32_t;
     using FrameTextureID = std::uint32_t;

@@ -3,7 +3,7 @@
 #include "Event.hpp"
 #include "KeyCodes.hpp"
 
-namespace Motion::Core
+namespace Motion
 {
     template<typename T>
         requires std::is_enum_v<T>&& std::is_constructible_v<T, MouseButton>

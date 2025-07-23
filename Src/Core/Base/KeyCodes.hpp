@@ -2,7 +2,7 @@
 
 #include "Base.hpp"
 
-namespace Motion::Core
+namespace Motion
 {
     enum KeyCode : int32_t
     {

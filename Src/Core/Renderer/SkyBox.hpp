@@ -4,7 +4,7 @@
 #include "Texture.hpp"
 #include "Mesh.hpp"
 
-namespace Motion::Core
+namespace Motion
 {
     class SkyBox
     {

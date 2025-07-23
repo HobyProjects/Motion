@@ -1,7 +1,7 @@
 #include "CorePCH.hpp"
 #include "Material.hpp"
 
-namespace Motion::Core
+namespace Motion
 {
     /**
      * @brief Initializes the static fallback textures for materials.

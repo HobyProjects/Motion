@@ -6,15 +6,15 @@
 #include "Model.hpp"
 #include "SceneEnviroment.hpp"
 
-namespace Motion::App
+namespace Motion
 {
     class Scene; // forward declaration
 
     struct SceneDrawCommand
     {
-        Motion::Core::UUID SortKey{ 0 };
-        Motion::Core::UUID MaterialID{ 0 };
-        Motion::Core::UUID MeshID{ 0 };
+        UUID SortKey{ 0 };
+        UUID MaterialID{ 0 };
+        UUID MeshID{ 0 };
 
         glm::mat4 TransformMatrix{ 1.0f };
         glm::mat4 ViewProjectionMatrix{ 1.0f };
@@ -59,7 +59,7 @@ namespace Motion::App
     public:
         void BeginScene() noexcept;
         void Submit(Scene* scene) noexcept;
-        void EndScene(Motion::Core::TextureID skyBoxTextureID) noexcept;
+        void EndScene(TextureID skyBoxTextureID) noexcept;
         void Flush() noexcept;
 
         [[nodiscard]] std::uint32_t GetDrawCount() const noexcept { return m_DrawCount; }

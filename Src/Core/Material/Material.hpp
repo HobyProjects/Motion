@@ -13,7 +13,7 @@
 #include "Texture.hpp"
 #include "Asset.hpp"
 
-namespace Motion::Core
+namespace Motion
 {
     using MaterialTexture = std::shared_ptr<ITexture>;
 

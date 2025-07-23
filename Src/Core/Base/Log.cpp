@@ -1,7 +1,7 @@
 #include "CorePCH.hpp"
 #include "Log.hpp"
 
-namespace Motion::Core
+namespace Motion
 {
     /**
      * @brief Initializes the logging system for the Motion Core and Application.
@@ -16,7 +16,7 @@ namespace Motion::Core
      *
      * The loggers are registered globally with spdlog for later retrieval and use.
      */
-    void Motion::Core::Loggers::Initialize()
+    void Loggers::Initialize()
     {
         std::vector<spdlog::sink_ptr> log_skin{};
         log_skin.emplace_back(std::make_shared<spdlog::sinks::stdout_color_sink_mt>());
@@ -24,12 +24,12 @@ namespace Motion::Core
         log_skin[0]->set_pattern("%^[%T] %n: %v%$");
         log_skin[1]->set_pattern("[%T][%l] %n: %v");
 
-        m_CoreLogger = std::make_shared<spdlog::logger>("[MOTION::CORE]", std::begin(log_skin), std::end(log_skin));
+        m_CoreLogger = std::make_shared<spdlog::logger>("[Motion]", std::begin(log_skin), std::end(log_skin));
         spdlog::register_logger(m_CoreLogger);
         m_CoreLogger->set_level(spdlog::level::trace);
         m_CoreLogger->flush_on(spdlog::level::trace);
 
-        m_AppLogger = std::make_shared<spdlog::logger>("[MOTION::APP]", std::begin(log_skin), std::end(log_skin));
+        m_AppLogger = std::make_shared<spdlog::logger>("[APP]", std::begin(log_skin), std::end(log_skin));
         spdlog::register_logger(m_AppLogger);
         m_AppLogger->set_level(spdlog::level::trace);
         m_AppLogger->flush_on(spdlog::level::trace);

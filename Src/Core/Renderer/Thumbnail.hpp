@@ -3,7 +3,7 @@
 #include "Asset.hpp"
 #include "Model.hpp"
 
-namespace Motion::Core
+namespace Motion
 {
 
 }

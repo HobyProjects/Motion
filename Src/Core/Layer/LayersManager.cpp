@@ -1,6 +1,6 @@
 #include "CorePCH.hpp"
 
-namespace Motion::Core
+namespace Motion
 {
     /**
      * @brief Destructor for the LayersManager class.
@@ -32,7 +32,6 @@ namespace Motion::Core
     void LayersManager::PushLayer(std::shared_ptr<Layer> layer)
     {
         m_Layers.emplace(m_Layers.begin() + m_LayerInsertIndex, layer);
-        layer->OnAttach();
         m_LayerInsertIndex++;
     }
 

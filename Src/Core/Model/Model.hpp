@@ -9,7 +9,7 @@
 #include "Mesh.hpp"
 #include "Asset.hpp"
 
-namespace Motion::Core
+namespace Motion
 {
     class Importer; // forward declaration
 

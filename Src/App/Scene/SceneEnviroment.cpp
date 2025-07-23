@@ -1,14 +1,14 @@
 #include "CorePCH.hpp"
 #include "SceneEnviroment.hpp"
 
-namespace Motion::App
+namespace Motion
 {
-    void PhysicsWorld::Update(std::shared_ptr<Motion::Core::Entity> entity, float deltaTime)
+    void PhysicsWorld::Update(std::shared_ptr<Entity> entity, float deltaTime)
     {
-        Motion::Core::TransformComponent& transform = entity->GetComponent<Motion::Core::TransformComponent>();
-        Motion::Core::PhysicsBodyComponent& body = entity->GetComponent<Motion::Core::PhysicsBodyComponent>();
+        TransformComponent& transform = entity->GetComponent<TransformComponent>();
+        PhysicsBodyComponent& body = entity->GetComponent<PhysicsBodyComponent>();
 
-        if (body.Type != Motion::Core::PhysicsBodyComponent::BodyType::Dynamic || !body.Active)
+        if (body.Type != PhysicsBodyComponent::BodyType::Dynamic || !body.Active)
             return;
 
         EnvironmentIntegration(transform, body, deltaTime);
@@ -20,7 +20,7 @@ namespace Motion::App
         }
     }
 
-    void PhysicsWorld::EnvironmentIntegration(Motion::Core::TransformComponent& transform, Motion::Core::PhysicsBodyComponent& body, float deltaTime)
+    void PhysicsWorld::EnvironmentIntegration(TransformComponent& transform, PhysicsBodyComponent& body, float deltaTime)
     {
         glm::vec3 acceleration = m_Settings.Gravity + (body.ForceAccum / body.Mass);
         body.Velocity += acceleration * deltaTime;

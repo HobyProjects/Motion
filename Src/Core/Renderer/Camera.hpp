@@ -3,7 +3,7 @@
 #include <glm/glm.hpp>
 #include <memory>
 
-namespace Motion::Core
+namespace Motion
 {
     enum class CameraType
     {

@@ -9,7 +9,7 @@
 #include "ImguiLayer.hpp"
 #include "SceneEditorLayer.hpp"
 
-namespace Motion::App
+namespace Motion
 {
     class Application
     {
@@ -18,17 +18,17 @@ namespace Motion::App
         ~Application();
 
         void Start();
-        void OnEvent(Motion::Core::WindowHandle handle, Motion::Core::IEvent& e);
+        void OnEvent(WindowHandle handle, IEvent& e);
 
-        void PushLayer(const std::shared_ptr<Motion::Core::Layer>& layer);
-        void PushOverlay(const std::shared_ptr<Motion::Core::Layer>& layer);
-
-    private:
-        bool OnWindowClose(Motion::Core::WindowHandle handle, Motion::Core::EventWindowClose& e);
-        bool OnWindowResize(Motion::Core::WindowHandle handle, Motion::Core::EventWindowResize<uint32_t>& e);
+        void PushLayer(const std::shared_ptr<Layer>& layer);
+        void PushOverlay(const std::shared_ptr<Layer>& layer);
 
     private:
-        std::shared_ptr<Motion::Core::IWindow> m_Window{ nullptr };
+        bool OnWindowClose(WindowHandle handle, EventWindowClose& e);
+        bool OnWindowResize(WindowHandle handle, EventWindowResize<uint32_t>& e);
+
+    private:
+        std::shared_ptr<IWindow> m_Window{ nullptr };
 
         // Application Layers
         std::shared_ptr<ImGuiLayer> m_ImGuiLayer{ nullptr };

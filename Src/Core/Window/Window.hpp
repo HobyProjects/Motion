@@ -10,7 +10,7 @@
 #include "Renderer.hpp"
 #include "UUID.hpp"
 
-namespace Motion::Core
+namespace Motion
 {
     using WindowHandle = UUID;
     using NativeWindow = void*;

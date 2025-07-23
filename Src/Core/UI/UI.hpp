@@ -5,7 +5,7 @@
 #include "Window.hpp"
 #include "KeyCodes.hpp"
 
-namespace Motion::Core
+namespace Motion
 {
     class UserInterfaceInitializer
     {

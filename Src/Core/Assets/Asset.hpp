@@ -2,7 +2,7 @@
 
 #include "UUID.hpp"
 
-namespace Motion::Core
+namespace Motion
 {
     enum class AssetType : std::uint32_t
     {

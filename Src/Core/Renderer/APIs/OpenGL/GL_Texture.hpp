@@ -3,7 +3,7 @@
 #include "Texture.hpp"
 #include "Asset.hpp"
 
-namespace Motion::Core
+namespace Motion
 {
     class GL_Texture final : public AssetBase<ITexture>
     {

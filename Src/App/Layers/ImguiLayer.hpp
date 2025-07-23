@@ -4,7 +4,7 @@
 #include "Window.hpp"
 #include "UI.hpp"
 
-namespace Motion::App
+namespace Motion
 {
     enum class ImGuiColorScheme
     {
@@ -12,26 +12,26 @@ namespace Motion::App
         Dark,
     };
 
-    class ImGuiLayer final : public Motion::Core::Layer
+    class ImGuiLayer final : public Layer
     {
-        public:
-            ImGuiLayer() : Motion::Core::Layer("ImGuiLayer") {}
-            ImGuiLayer(Motion::Core::WindowHandle handle, ImGuiColorScheme colorScheme = ImGuiColorScheme::Dark);
-            virtual ~ImGuiLayer() = default;
+    public:
+        ImGuiLayer() : Layer("ImGuiLayer") {}
+        ImGuiLayer(WindowHandle handle, ImGuiColorScheme colorScheme = ImGuiColorScheme::Dark);
+        virtual ~ImGuiLayer() = default;
 
-            virtual void OnAttach() override;
-            virtual void OnDetach() override;
-            virtual void OnEvent(Motion::Core::WindowHandle handle, Motion::Core::IEvent& e) override;
+        virtual void OnAttach() override;
+        virtual void OnDetach() override;
+        virtual void OnEvent(WindowHandle handle, IEvent& e) override;
 
-            void Begin();
-            void End();
-            void AcceptEvents(bool allowed) { m_AllowEvents = allowed; }
-            void UseColorScheme(ImGuiColorScheme colorScheme);
+        void Begin();
+        void End();
+        void AcceptEvents(bool allowed) { m_AllowEvents = allowed; }
+        void UseColorScheme(ImGuiColorScheme colorScheme);
 
-        private:
-            Motion::Core::WindowHandle m_WindowHandle{0};
-            ImGuiColorScheme m_ColorScheme{ ImGuiColorScheme::Dark };
-            bool m_AllowEvents{ false };
+    private:
+        WindowHandle m_WindowHandle{ 0 };
+        ImGuiColorScheme m_ColorScheme{ ImGuiColorScheme::Dark };
+        bool m_AllowEvents{ false };
     };
 
 }

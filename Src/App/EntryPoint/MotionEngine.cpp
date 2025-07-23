@@ -1,15 +1,16 @@
 #include "Application.hpp"
 
+using namespace Motion;
 
 int main(int argc, char* argv[])
 {
-    auto& logger = Motion::Core::Loggers::GetInstance();
+    auto& logger = Loggers::GetInstance();
     logger.Initialize();
 
-    auto& coreAPI = Motion::Core::CoreAPI::GetInstance();
+    auto& coreAPI = CoreAPI::GetInstance();
     if (coreAPI.Init())
     {
-        Motion::App::Application app;
+        Application app;
         app.Start();
     }
     else

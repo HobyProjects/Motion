@@ -6,7 +6,7 @@
 #include "Arrays.hpp"
 #include "Shaders.hpp"
 
-namespace Motion::Core
+namespace Motion
 {
     class StaticMesh; // Forward declaration
 

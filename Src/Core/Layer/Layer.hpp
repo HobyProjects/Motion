@@ -6,7 +6,7 @@
 #include "Event.hpp"
 #include "Timer.hpp"
 
-namespace Motion::Core
+namespace Motion
 {
     class Layer
     {

@@ -1,0 +1,75 @@
+cmake_minimum_required(VERSION 3.15)
+project(stb_image C CXX)
+
+set(STB_IMAGE_LIBRARY stb)
+add_library(
+    ${STB_IMAGE_LIBRARY}
+    STATIC
+    stb/stb_image.h
+    src/stb_image.cpp
+)
+
+target_include_directories(${STB_IMAGE_LIBRARY} PRIVATE stb)
+add_library(stb::stb ALIAS ${STB_IMAGE_LIBRARY})
+
+set_target_properties(
+    ${STB_IMAGE_LIBRARY} PROPERTIES
+    CXX_STANDARD 20
+    CXX_STANDARD_REQUIRED ON
+    CXX_EXTENSIONS OFF
+    C_STANDARD 17
+    C_STANDARD_REQUIRED ON
+    C_EXTENSIONS OFF
+)
+
+include(GNUInstallDirs)
+
+target_include_directories(
+    ${STB_IMAGE_LIBRARY} PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+)
+
+install(
+    TARGETS ${STB_IMAGE_LIBRARY}
+    EXPORT "${STB_IMAGE_LIBRARY}Targets"
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+    INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+)
+
+install(
+    FILES stb/stb_image.h
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${STB_IMAGE_LIBRARY}
+)
+
+install(
+    EXPORT "${STB_IMAGE_LIBRARY}Targets"
+    FILE "${STB_IMAGE_LIBRARY}Targets.cmake"
+    NAMESPACE stb::
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${STB_IMAGE_LIBRARY}
+)
+
+include(CMakePackageConfigHelpers)
+configure_package_config_file(
+    "${CMAKE_CURRENT_LIST_DIR}/config/${STB_IMAGE_LIBRARY}Config.cmake.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/${STB_IMAGE_LIBRARY}Config.cmake"
+    INSTALL_DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/${STB_IMAGE_LIBRARY}"
+)
+
+configure_package_config_file(
+    "${CMAKE_CURRENT_LIST_DIR}/config/${STB_IMAGE_LIBRARY}.pc.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/${STB_IMAGE_LIBRARY}.pc"
+    INSTALL_DESTINATION "${CMAKE_INSTALL_LIBDIR}/pkgconfig"
+)
+
+install(
+    FILES "${CMAKE_CURRENT_BINARY_DIR}/${STB_IMAGE_LIBRARY}Config.cmake"
+    DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/${STB_IMAGE_LIBRARY}"
+)
+
+install(
+    FILES "${CMAKE_CURRENT_BINARY_DIR}/${STB_IMAGE_LIBRARY}.pc"
+    DESTINATION "${CMAKE_INSTALL_LIBDIR}/pkgconfig"
+)

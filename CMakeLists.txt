@@ -31,6 +31,7 @@ find_package(imgui CONFIG REQUIRED)
 find_package(EnTT CONFIG REQUIRED)
 find_package(Assimp CONFIG REQUIRED)
 find_package(yaml-cpp CONFIG REQUIRED)
+find_package(stb CONFIG REQUIRED)
 
 # ##############################################################################
 # Platform Specific Configuration
@@ -170,6 +171,7 @@ target_link_libraries(
     assimp::assimp
     yaml-cpp::yaml-cpp
     EnTT::EnTT
+    stb::stb
 )
 
 # ##############################################################################

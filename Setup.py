@@ -333,6 +333,7 @@ def main():
         Package("imgui", "libs/imgui_docking", "libs/build/config/imgui", "build/packages/imgui", ""),
         Package("entt", "libs/entt", "libs/build/config/entt", "build/packages/entt", "-DENTT_INCLUDE_HEADERS=ON -DENTT_INCLUDE_NATVIS=ON -DENTT_INSTALL=ON"),
         Package("assimp", "libs/assimp", "libs/build/config/assimp", "build/packages/assimp", "-DASSIMP_BUILD_TESTS=OFF"),
+        Package("stb_image", "libs/stb_image", "libs/build/config/stb_image", "build/packages/stb_image", ""),
         Package("yaml-cpp", "libs/yaml-cpp", "libs/build/config/yaml-cpp", "build/packages/yaml-cpp", "-DYAML_BUILD_SHARED_LIBS=OFF")
     ]
 

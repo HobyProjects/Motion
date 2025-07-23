@@ -20,3 +20,6 @@
 [submodule "libs/yaml-cpp"]
 	path = libs/yaml-cpp
 	url = https://github.com/jbeder/yaml-cpp.git
+[submodule "libs/stb_image/stb"]
+	path = libs/stb_image/stb
+	url = https://github.com/nothings/stb.git

@@ -6,6 +6,7 @@ add_library(
     ${STB_IMAGE_LIBRARY}
     STATIC
     stb/stb_image.h
+    stb/stb_image_resize2.h
     src/stb_image.cpp
 )
 
@@ -39,8 +40,14 @@ install(
     INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
 )
 
+set(
+    STB_IMAGE_INSTALL_HEADERS
+    stb/stb_image.h
+    stb/stb_image_resize2.h
+)
+
 install(
-    FILES stb/stb_image.h
+    FILES ${STB_IMAGE_INSTALL_HEADERS}
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${STB_IMAGE_LIBRARY}
 )
 

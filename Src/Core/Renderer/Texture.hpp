@@ -53,9 +53,7 @@ namespace Motion::Core
 
     struct TextureSpecification
     {
-        std::string Name{};
-        std::unique_ptr<std::uint8_t[]> TextureData{ nullptr };
-        std::int32_t Width{ 0 }, Height{ 0 }, NumberOfChannels{ 0 };
+        std::int32_t Width{ 0 }, Height{ 0 }, Channels{ 0 };
         std::uint32_t InternalDataFormat{ 0 }, TextureDataFormat{ 0 }, TexID{ 0 };
         TextureType Type{ TextureType::BaseColorMapsTexture };
         TextureSource Source{ TextureSource::Undefined };

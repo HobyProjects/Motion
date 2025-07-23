@@ -26,7 +26,6 @@ namespace Motion::Core
 
     private:
         TextureSpecification m_Specification{};
-        bool m_FromFile{ false };
     };
 
     class GL_CubeMapTexture final : public AssetBase<ICubeMapTexture>

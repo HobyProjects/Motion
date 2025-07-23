@@ -145,7 +145,10 @@
         "xtree": "cpp",
         "xutility": "cpp",
         "resumable": "cpp",
-        "memory_resource": "cpp"
+        "memory_resource": "cpp",
+        "complex": "cpp",
+        "expected": "cpp",
+        "stack": "cpp"
     },
     "C_Cpp.default.cppStandard": "c++20",
     "C_Cpp.default.cStandard": "c17",
@@ -173,6 +176,7 @@
         "blitting",
         "BRDF",
         "CLEARCOAT",
+        "CUBICBSPLINE",
         "DASSIMP",
         "DCMAKE",
         "DENTT",
@@ -216,6 +220,8 @@
         "RELWITHDEBINFO",
         "Repeate",
         "Schlick",
-        "skybox"
+        "skybox",
+        "stbi",
+        "STBIR"
     ]
 }

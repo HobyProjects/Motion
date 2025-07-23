@@ -1,4 +1,5 @@
 #include "CorePCH.hpp"
+#include "GL_Texture.hpp"
 
 namespace Motion::Core
 {
@@ -53,27 +54,18 @@ namespace Motion::Core
         AssetInfo.IsInitialized = true;
     }
 
+
     /**
-     * Destructor for GL_Texture objects.
+     * Destructor for GL_Texture.
      *
-     * Frees up all resources allocated by the GL_Texture object. If the texture was not loaded from a file, the
-     * destructor will delete the texture data pointer and call glDeleteTextures to free up the OpenGL texture object.
-     * If the texture was loaded from a file, the destructor will call SOIL_free_image_data to free up the texture data
-     * and call glDeleteTextures to free up the OpenGL texture object.
+     * This destructor cleans up the OpenGL texture resources associated with this texture.
+     * It deletes the texture ID if it has been created, ensuring that no memory leaks occur.
      */
     GL_Texture::~GL_Texture()
     {
-        if (!m_FromFile)
+        if (m_Specification.TexID)
         {
             glDeleteTextures(1, &m_Specification.TexID);
-            m_Specification.TextureData.reset();
-        }
-
-        if (m_FromFile)
-        {
-            glDeleteTextures(1, &m_Specification.TexID);
-            SOIL_free_image_data(m_Specification.TextureData.get());
-            m_Specification.TexID = 0;
         }
     }
 
@@ -155,7 +147,7 @@ namespace Motion::Core
     }
 
     /**
-     * Loads a texture from the given file using SOIL
+     * Loads a texture from the given file using stb_image library.
      *
      * @param[in] textureFile The path to the texture file to load
      * @param[in] flip        Whether to flip the image vertically
@@ -166,19 +158,39 @@ namespace Motion::Core
     {
         MOTION_ASSERT(std::filesystem::exists(textureFile), "Unable to load texture file {0}", textureFile.string());
 
-        std::int32_t loaderFlags = (flip) ?
-            (SOIL_LOAD_RGBA | SOIL_FLAG_INVERT_Y | SOIL_FLAG_DDS_LOAD_DIRECT | SOIL_FLAG_MULTIPLY_ALPHA | SOIL_FLAG_COMPRESS_TO_DXT) :
-            (SOIL_LOAD_RGBA | SOIL_FLAG_DDS_LOAD_DIRECT | SOIL_FLAG_MULTIPLY_ALPHA | SOIL_FLAG_COMPRESS_TO_DXT);
-
-        m_Specification.TexID = SOIL_load_OGL_texture(textureFile.string().c_str(), SOIL_LOAD_RGBA, SOIL_CREATE_NEW_ID, loaderFlags);
-        MOTION_ASSERT(m_Specification.TexID, "Unable to load texture file {0}; {1}", textureFile.string(), SOIL_last_result());
-
-        m_FromFile = true;
-        if (m_Specification.TextureData)
+        stbi_set_flip_vertically_on_load(flip);
+        std::int32_t width, height, channels;
+        std::uint8_t* data = stbi_load(textureFile.string().c_str(), &width, &height, &channels, 0);
+        if (!data)
         {
+            MOTION_CORE_ERROR("Failed to load texture file {0}: {1}", textureFile.string(), stbi_failure_reason());
+            return false;
+        }
+
+        if (data)
+        {
+            m_Specification.Width = width;
+            m_Specification.Height = height;
+            m_Specification.Channels = channels;
+            m_Specification.InternalDataFormat = (channels == 4) ? GL_RGBA8 : GL_RGB8;
+            m_Specification.TextureDataFormat = (channels == 4) ? GL_RGBA : GL_RGB;
+
+            glCreateTextures(GL_TEXTURE_2D, 1, &m_Specification.TexID);
+            glBindTexture(GL_TEXTURE_2D, m_Specification.TexID);
+
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+            glTexImage2D(GL_TEXTURE_2D, 0, m_Specification.InternalDataFormat, m_Specification.Width, m_Specification.Height, 0, m_Specification.TextureDataFormat, GL_UNSIGNED_BYTE, data);
+            glGenerateMipmap(GL_TEXTURE_2D);
+            glBindTexture(GL_TEXTURE_2D, 0);
+
             AssetInfo.AssetName = textureFile.filename().string();
             AssetInfo.AssetSource = textureFile.string();
             AssetInfo.IsInitialized = true;
+
+            stbi_image_free(data);
             return true;
         }
 
@@ -199,12 +211,12 @@ namespace Motion::Core
     {
         m_Specification.Width = width;
         m_Specification.Height = height;
-        m_Specification.NumberOfChannels = 4; // RGBA
+        m_Specification.Channels = 4; // RGBA
         m_Specification.InternalDataFormat = GL_RGBA8;
         m_Specification.TextureDataFormat = GL_RGBA;
 
-        uint32_t textureAllocateSize = m_Specification.Width * m_Specification.Height * m_Specification.NumberOfChannels;
-        m_Specification.TextureData = std::make_unique<std::uint8_t[]>(textureAllocateSize);
+        uint32_t textureAllocateSize = m_Specification.Width * m_Specification.Height * m_Specification.Channels;
+        std::uint8_t* textureData = new std::uint8_t[textureAllocateSize];
 
         // Convert glm::vec3 (0.0f - 1.0f) to uint8_t (0 - 255)
         std::uint8_t r = static_cast<std::uint8_t>(glm::clamp(color.r, 0.0f, 1.0f) * 255.0f);
@@ -213,13 +225,13 @@ namespace Motion::Core
         std::uint8_t a = 255; // Fully opaque
 
         // Fill the texture buffer with RGBA
-        for (std::uint32_t i = 0; i < width * height; ++i)
+        for (std::uint32_t i = 0; i < (width * height); ++i)
         {
             std::uint32_t index = i * 4;
-            m_Specification.TextureData[index + 0] = r;
-            m_Specification.TextureData[index + 1] = g;
-            m_Specification.TextureData[index + 2] = b;
-            m_Specification.TextureData[index + 3] = a;
+            textureData[index + 0] = r;
+            textureData[index + 1] = g;
+            textureData[index + 2] = b;
+            textureData[index + 3] = a;
         }
 
         glCreateTextures(GL_TEXTURE_2D, 1, &m_Specification.TexID);
@@ -228,9 +240,11 @@ namespace Motion::Core
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-        glTexImage2D(GL_TEXTURE_2D, 0, m_Specification.InternalDataFormat, m_Specification.Width, m_Specification.Height, 0, m_Specification.TextureDataFormat, GL_UNSIGNED_BYTE, m_Specification.TextureData.get());
+        glTexImage2D(GL_TEXTURE_2D, 0, m_Specification.InternalDataFormat, m_Specification.Width, m_Specification.Height, 0, m_Specification.TextureDataFormat, GL_UNSIGNED_BYTE, textureData);
         glGenerateMipmap(GL_TEXTURE_2D);
+        glBindTexture(GL_TEXTURE_2D, 0);
 
+        delete[] textureData;
         return true;
     }
 
@@ -271,13 +285,6 @@ namespace Motion::Core
         {
             glDeleteTextures(1, &m_Specification.TexID);
             m_Specification.TexID = 0;
-        }
-
-        if (m_Specification.TextureData)
-        {
-            SOIL_free_image_data(m_Specification.TextureData.get());
-            m_Specification.TextureData.reset();
-            m_Specification.TextureData = nullptr;
         }
     }
 
@@ -372,24 +379,49 @@ namespace Motion::Core
             return false;
         }
 
-        m_Specification.TextureData.reset(SOIL_load_image(textureFile.string().c_str(), &m_Specification.Width, &m_Specification.Height, &m_Specification.NumberOfChannels, 0));
-        if (!m_Specification.TextureData)
+        std::uint8_t* data = stbi_load(textureFile.string().c_str(), &m_Specification.Width, &m_Specification.Height, &m_Specification.Channels, STBI_rgb_alpha);
+        if (!data)
         {
-            MOTION_CORE_ERROR("Failed to load cube map texture from file {0}: {1}", textureFile.string(), SOIL_last_result());
+            MOTION_CORE_ERROR("Failed to load cube map texture file {0}: {1}", textureFile.string(), stbi_failure_reason());
             return false;
         }
 
         if (m_Specification.Width != m_Specification.Height)
         {
-            MOTION_CORE_WARN("Cube map texture {0} must have square dimensions, but got {1}x{2}", textureFile.string(), m_Specification.Width, m_Specification.Height);
-            m_Specification.Height = m_Specification.Width; // Adjust height to match width for cube map textures
+            std::uint8_t* resizedTexture{ nullptr };
+            std::int32_t resizedWidth = m_Specification.Width;
+            std::int32_t resizedHeight = m_Specification.Width; // Cube maps must be square
+
+            MOTION_CORE_WARN("Cube map texture {0} must have square dimensions, but got {1} x {2} resizing...", textureFile.string(), m_Specification.Width, m_Specification.Height);
+
+            resizedTexture = stbir_resize_uint8_srgb(
+                data, m_Specification.Width, m_Specification.Height, 0,
+                0, resizedWidth, resizedHeight, 0, STBIR_RGBA
+            );
+
+            if (!resizedTexture)
+            {
+                MOTION_CORE_ERROR("Failed to resize cube map texture {0}: {1}", textureFile.string(), stbi_failure_reason());
+                stbi_image_free(data);
+                return false;
+            }
+            else
+            {
+                stbi_image_free(data);
+                data = nullptr; // Free original data
+
+                MOTION_CORE_INFO("Cube map texture {0} resized to {1} x {2}", textureFile.string(), resizedWidth, resizedHeight);
+                data = resizedTexture;
+                m_Specification.Width = resizedWidth;
+                m_Specification.Height = resizedHeight;
+            }
         }
 
         AssetInfo.AssetName = textureFile.filename().string();
         AssetInfo.AssetSource = textureFile.string();
         AssetInfo.IsInitialized = true;
 
-        m_Specification.InternalDataFormat = GL_RGBA;
+        m_Specification.InternalDataFormat = GL_RGBA8; // High dynamic range format
         m_Specification.TextureDataFormat = GL_RGBA;
 
         glCreateTextures(GL_TEXTURE_CUBE_MAP, 1, &m_Specification.TexID);
@@ -402,13 +434,14 @@ namespace Motion::Core
 
         for (std::uint32_t face = 0; face < 6; ++face)
         {
-            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, 0, m_Specification.InternalDataFormat, m_Specification.Width, m_Specification.Height, 0, m_Specification.TextureDataFormat, GL_UNSIGNED_BYTE, m_Specification.TextureData.get());
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, 0, m_Specification.InternalDataFormat, m_Specification.Width, m_Specification.Height, 0, m_Specification.TextureDataFormat, GL_UNSIGNED_BYTE, data);
         }
 
         glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
 
-        SOIL_free_image_data(m_Specification.TextureData.get());
-        m_Specification.TextureData = nullptr;
+        stbi_image_free(data);
+        MOTION_CORE_INFO("Cube map texture {0} loaded successfully with ID {1}", textureFile.string(), m_Specification.TexID);
+        m_Specification.Source = TextureSource::CubeMapTextureFile;
         return true;
     }
 

@@ -360,24 +360,25 @@ namespace Motion
             return;
         }
 
+        meshSegment->Materials->EmissiveColor = LoadMaterialVec3Data(currentMaterial, MATKEY_EMISSION_COLOR, MaterialDefaultValues::EmissiveColor);
+        meshSegment->Materials->EmissiveTexture = LoadTextures(0, MATKEY_EMISSION_TEXTURE, currentMaterial, TextureType::EmissiveTexture);
+
         for (std::uint32_t i = 0; i < MAX_MATERIAL_LAYERS; i++)
         {
-            MaterialLayer layer{};
-            layer.Data.BaseColor = LoadMaterialVec3Data(currentMaterial, MATKEY_COLOR_BASE, MaterialDefaultValues::BaseColor);
-            layer.Data.Metallic = LoadMaterialFloatData(currentMaterial, MATKEY_METALLIC_FACTOR, MaterialDefaultValues::Metallic);
-            layer.Data.Roughness = LoadMaterialFloatData(currentMaterial, MATKEY_ROUGHNESS_FACTOR, MaterialDefaultValues::Roughness);
-            layer.Data.Opacity = LoadMaterialFloatData(currentMaterial, MATKEY_OPACITY, MaterialDefaultValues::Opacity);
-            layer.Data.AmbientOcclusion = LoadMaterialFloatData(currentMaterial, MATKEY_AMBIENT_OCCLUISION_FACTOR, MaterialDefaultValues::AmbientOcclusion);
-            layer.Data.ClearCoat = LoadMaterialFloatData(currentMaterial, MATKEY_CLEARCOAT_FACTOR, MaterialDefaultValues::ClearCoat);
-            layer.Data.ClearCoatRoughness = LoadMaterialFloatData(currentMaterial, MATKEY_CLEARCOAT_ROUGHNESS_FACTOR, MaterialDefaultValues::ClearCoatRoughness);
-            layer.Data.SheenRoughness = LoadMaterialFloatData(currentMaterial, MATKEY_SHEEN_ROUGHNESS_FACTOR, MaterialDefaultValues::SheenRoughness);
-            layer.Data.Transmission = LoadMaterialFloatData(currentMaterial, MATKEY_TRANSMISSION_FACTOR, MaterialDefaultValues::Transmission);
-            layer.Data.IOR = LoadMaterialFloatData(currentMaterial, MATKEY_IOR, MaterialDefaultValues::IOR);
-            layer.Data.Sheen = LoadMaterialFloatData(currentMaterial, MATKEY_SHEEN_FACTOR, MaterialDefaultValues::Sheen);
-            layer.Data.Blend = MaterialDefaultValues::Blend;
-
-            layer.EmissiveColor = LoadMaterialVec3Data(currentMaterial, MATKEY_EMISSION_COLOR, MaterialDefaultValues::EmissiveColor);
-            meshSegment->Materials->InsertLayer(layer);
+            MaterialLayerData layer{};
+            layer.BaseColor = LoadMaterialVec3Data(currentMaterial, MATKEY_COLOR_BASE, MaterialDefaultValues::BaseColor);
+            layer.Metallic = LoadMaterialFloatData(currentMaterial, MATKEY_METALLIC_FACTOR, MaterialDefaultValues::Metallic);
+            layer.Roughness = LoadMaterialFloatData(currentMaterial, MATKEY_ROUGHNESS_FACTOR, MaterialDefaultValues::Roughness);
+            layer.Opacity = LoadMaterialFloatData(currentMaterial, MATKEY_OPACITY, MaterialDefaultValues::Opacity);
+            layer.AmbientOcclusion = LoadMaterialFloatData(currentMaterial, MATKEY_AMBIENT_OCCLUISION_FACTOR, MaterialDefaultValues::AmbientOcclusion);
+            layer.ClearCoat = LoadMaterialFloatData(currentMaterial, MATKEY_CLEARCOAT_FACTOR, MaterialDefaultValues::ClearCoat);
+            layer.ClearCoatRoughness = LoadMaterialFloatData(currentMaterial, MATKEY_CLEARCOAT_ROUGHNESS_FACTOR, MaterialDefaultValues::ClearCoatRoughness);
+            layer.SheenRoughness = LoadMaterialFloatData(currentMaterial, MATKEY_SHEEN_ROUGHNESS_FACTOR, MaterialDefaultValues::SheenRoughness);
+            layer.Transmission = LoadMaterialFloatData(currentMaterial, MATKEY_TRANSMISSION_FACTOR, MaterialDefaultValues::Transmission);
+            layer.IOR = LoadMaterialFloatData(currentMaterial, MATKEY_IOR, MaterialDefaultValues::IOR);
+            layer.Sheen = LoadMaterialFloatData(currentMaterial, MATKEY_SHEEN_FACTOR, MaterialDefaultValues::Sheen);
+            layer.Blend = MaterialDefaultValues::Blend;
+            meshSegment->Materials->InsertLayerData(i, layer);
         }
 
         auto InsertTextures =
@@ -389,9 +390,7 @@ namespace Motion
                 {
                     MOTION_CORE_WARN("Material {0} has no textures of type {1}.", meshSegment->Materials->GetName(), semantic);
                     for (std::uint32_t i = 0; i < MAX_MATERIAL_LAYERS; ++i)
-                    {
-                        meshSegment->Materials->InsertTexture(i, semantic, GetDefaultTexture(type));
-                    }
+                        meshSegment->Materials->InsertLayerTexture(i, semantic, GetDefaultTexture(type));
                 }
                 else
                 {
@@ -405,7 +404,7 @@ namespace Motion
                         else
                         {
                             auto texture = LoadTextures(i, type, currentMaterial, textureType);
-                            meshSegment->Materials->InsertTexture(i, semantic, texture);
+                            meshSegment->Materials->InsertLayerTexture(i, semantic, texture);
                         }
                     }
                 }
@@ -422,14 +421,7 @@ namespace Motion
         InsertTextures(MATKEY_SHEEN_TEXTURE, TextureType::SheenTexture, UniformCache::SheenTextures);
         InsertTextures(MATKEY_TRANSMISSION_TEXTURE, TextureType::TransmissionTexture, UniformCache::TransmissionTextures);
 
-        auto emissiveTexture = LoadTextures(0, MATKEY_EMISSION_TEXTURE, currentMaterial, TextureType::EmissiveTexture);
-        if (emissiveTexture)
-        {
-            for (std::uint32_t i = 0; i < MAX_MATERIAL_LAYERS; i++)
-            {
-                meshSegment->Materials->GetLayer(i).EmissiveTexture = emissiveTexture;
-                meshSegment->Materials->GetLayer(i).Textures[UniformCache::BlendMaskTextures] = CreateUnregisteredPlainTexture(10, 10, { 1.0f, 1.0f, 1.0f });
-            }
-        }
+        for (std::uint32_t i = 0; i < MAX_MATERIAL_LAYERS; i++)
+            meshSegment->Materials->InsertLayerTexture(i, UniformCache::BlendMaskTextures, CreateUnregisteredPlainTexture(10, 10, { 1.0f, 1.0f, 1.0f }));
     }
 }

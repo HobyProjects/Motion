@@ -94,6 +94,14 @@ namespace Motion
             BindTexture(UniformCache::NormalTextures);
             BindTexture(UniformCache::OpacityTextures);
             BindTexture(UniformCache::BlendMaskTextures);
+
+            m_Shader->SetUniform(UniformCache::EmissiveColor, EmissiveColor);
+            if (EmissiveTexture)
+            {
+                std::uint32_t binding = TextureBinding::Point();
+                EmissiveTexture->Bind(binding);
+                m_Shader->SetUniform(UniformCache::EmissiveTexture, static_cast<std::int32_t>(binding));
+            }
         }
     }
 
@@ -117,50 +125,52 @@ namespace Motion
                 }
             }
         }
-    }
 
-    /**
-     * @brief Inserts a new material layer into the material.
-     *
-     * This function adds a new material layer to the material's layer array. It checks for an empty slot
-     * and inserts the layer if found. If no empty slot is available, it asserts an error.
-     *
-     * @param layer The MaterialLayer to be inserted.
-     */
-    void Material::InsertLayer(const MaterialLayer& layer) noexcept
-    {
-        for (std::size_t i = 0; i < MAX_MATERIAL_LAYERS; ++i)
+        if (EmissiveTexture)
         {
-            // Check if the slot is unused by testing a property (e.g., Blend == default)
-            if (m_Layers[i].Data.Blend == MaterialDefaultValues::Blend &&
-                m_Layers[i].Textures.empty())
-            {
-                m_Layers[i] = layer;
-                return;
-            }
+            EmissiveTexture->Unbind();
         }
-        MOTION_ASSERT(false, "Maximum number of material layers exceeded!");
     }
 
     /**
-     * @brief Inserts a texture into a specific layer of the material.
+     * @brief Inserts layer data into the material at the specified index.
      *
-     * This function adds a texture to the specified layer of the material. If the texture already exists
-     * in that layer, it overwrites the existing texture.
+     * This function updates the material's layer data at the given index with the provided MaterialLayerData.
+     * It asserts that the index is within bounds to prevent out-of-range access.
      *
-     * @param layerIndex The index of the layer where the texture will be inserted.
-     * @param textureName The name of the texture to be inserted.
-     * @param texture The shared pointer to the ITexture to be inserted.
+     * @param layerIndex The index of the layer to update.
+     * @param data The MaterialLayerData to insert into the specified layer.
      */
-    void Material::InsertTexture(std::uint32_t layerIndex, std::string_view textureName, const std::shared_ptr<ITexture>& texture) noexcept
+    void Material::InsertLayerData(std::uint32_t layerIndex, const MaterialLayerData& data) noexcept
+    {
+        MOTION_ASSERT(layerIndex < MAX_MATERIAL_LAYERS, "Layer index out of bounds for material layers.");
+        m_Layers[layerIndex].Data = data;
+    }
+
+
+    /**
+     * @brief Inserts a texture into the specified layer of the material.
+     *
+     * This function adds a texture to the material layer at the specified index, using the provided texture name.
+     * If a texture with the same name already exists in the layer, it overwrites it with the new texture.
+     *
+     * @param layerIndex The index of the layer to insert the texture into.
+     * @param textureName The name of the texture to insert.
+     * @param texture The shared pointer to the ITexture to insert.
+     */
+    void Material::InsertLayerTexture(std::uint32_t layerIndex, std::string_view textureName, const std::shared_ptr<ITexture>& texture) noexcept
     {
         auto& layer = m_Layers[layerIndex];
         if (layer.Textures.find(textureName) != layer.Textures.end())
         {
-            MOTION_CORE_WARN("Texture {0} already exists in layer {1}. Overwriting.", textureName, layerIndex);
+            MOTION_CORE_WARN("Texture {0} already exists in layer {1}. Overwriting....", textureName, layerIndex);
+            layer.Textures[textureName] = std::move(texture);
+        }
+        else
+        {
+            layer.Textures[textureName] = std::move(texture);
         }
 
-        layer.Textures[textureName] = std::move(texture);
     }
 
 

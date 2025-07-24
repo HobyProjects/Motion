@@ -55,8 +55,6 @@ namespace Motion
     struct MaterialLayer
     {
         MaterialLayerData Data{};
-        glm::vec3 EmissiveColor{ MaterialDefaultValues::EmissiveColor };
-        std::shared_ptr<ITexture> EmissiveTexture{ nullptr };
         std::unordered_map<std::string_view, std::shared_ptr<ITexture>> Textures;
     };
 
@@ -72,12 +70,16 @@ namespace Motion
 
         [[nodiscard]] MaterialLayer& GetLayer(std::uint32_t index) noexcept;
 
-        void InsertLayer(const MaterialLayer& layer) noexcept;
-        void InsertTexture(std::uint32_t layerIndex, std::string_view textureName, const std::shared_ptr<ITexture>& texture) noexcept;
+        void InsertLayerData(std::uint32_t layerIndex, const MaterialLayerData& data) noexcept;
+        void InsertLayerTexture(std::uint32_t layerIndex, std::string_view textureName, const std::shared_ptr<ITexture>& texture) noexcept;
 
     private:
         std::array<MaterialLayer, MAX_MATERIAL_LAYERS> m_Layers{};
         std::shared_ptr<IShaderBuffer> m_ShaderBuffer{ nullptr };
         std::shared_ptr<IShader> m_Shader{ nullptr };
+
+    public:
+        glm::vec3 EmissiveColor{ MaterialDefaultValues::EmissiveColor };
+        std::shared_ptr<ITexture> EmissiveTexture{ nullptr };
     };
 }

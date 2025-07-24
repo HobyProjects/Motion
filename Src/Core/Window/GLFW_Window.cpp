@@ -197,8 +197,7 @@ namespace Motion
      */
     static void glfwWindowCloseEvent(GLFWwindow* window)
     {
-        auto& eventRegistry = EventRegistry<GLFWwindow*>::GetInstance();
-        eventRegistry.Invoke(EventType::WindowClose, window);
+        EventRegistry<GLFWwindow*>::Invoke(EventType::WindowClose, window);
     }
 
     /**
@@ -216,8 +215,7 @@ namespace Motion
      */
     static void glfwWindowResizeEvent(GLFWwindow* window, int width, int height)
     {
-        auto& eventRegistry = EventRegistry<GLFWwindow*, int, int>::GetInstance();
-        eventRegistry.Invoke(EventType::WindowResize, window, width, height);
+        EventRegistry<GLFWwindow*, int, int>::Invoke(EventType::WindowResize, window, width, height);
     }
 
     /**
@@ -236,8 +234,7 @@ namespace Motion
      */
     static void glfwWindowFocusEvent(GLFWwindow* window, int focused)
     {
-        auto& eventRegistry = EventRegistry<GLFWwindow*, int>::GetInstance();
-        eventRegistry.Invoke((focused) ? EventType::WindowFocusGain : EventType::WindowFocusLost, window, focused);
+        EventRegistry<GLFWwindow*, int>::Invoke((focused) ? EventType::WindowFocusGain : EventType::WindowFocusLost, window, focused);
     }
 
     /**
@@ -255,8 +252,7 @@ namespace Motion
      */
     static void glfwWindowIconifyEvent(GLFWwindow* window, int iconified)
     {
-        auto& eventRegistry = EventRegistry<GLFWwindow*, int>::GetInstance();
-        eventRegistry.Invoke(EventType::WindowMinimize, window, iconified);
+        EventRegistry<GLFWwindow*, int>::Invoke(EventType::WindowMinimize, window, iconified);
     }
 
     /**
@@ -274,8 +270,7 @@ namespace Motion
      */
     static void glfwWindowMaximizeEvent(GLFWwindow* window, int maximized)
     {
-        auto& eventRegistry = EventRegistry<GLFWwindow*, int>::GetInstance();
-        eventRegistry.Invoke(EventType::WindowMaximize, window, maximized);
+        EventRegistry<GLFWwindow*, int>::Invoke(EventType::WindowMaximize, window, maximized);
     }
 
     /**
@@ -293,8 +288,7 @@ namespace Motion
      */
     static void glfwWindowPosEvent(GLFWwindow* window, int x, int y)
     {
-        auto& eventRegistry = EventRegistry<GLFWwindow*, int, int>::GetInstance();
-        eventRegistry.Invoke(EventType::WindowPosChange, window, x, y);
+        EventRegistry<GLFWwindow*, int, int>::Invoke(EventType::WindowPosChange, window, x, y);
     }
 
     /**
@@ -312,8 +306,7 @@ namespace Motion
      */
     static void glfwWindowFrameBufferSizeEvent(GLFWwindow* window, int width, int height)
     {
-        auto& eventRegistry = EventRegistry<GLFWwindow*, int, int>::GetInstance();
-        eventRegistry.Invoke(EventType::WindowFrameBufferSizeChange, window, width, height);
+        EventRegistry<GLFWwindow*, int, int>::Invoke(EventType::WindowFrameBufferSizeChange, window, width, height);
     }
 
     /**
@@ -338,8 +331,7 @@ namespace Motion
      */
     static void glfwKeyEvent(GLFWwindow* window, int key, int scancode, int action, int mods)
     {
-        auto& eventRegistry = EventRegistry<GLFWwindow*, int, int, int, int>::GetInstance();
-        eventRegistry.Invoke(EventType::KeyboardKeyPress, window, key, scancode, action, mods);
+        EventRegistry<GLFWwindow*, int, int, int, int>::Invoke(EventType::KeyboardKeyPress, window, key, scancode, action, mods);
     }
 
     /**
@@ -357,8 +349,7 @@ namespace Motion
 
     static void glfwSetKeyCharEvent(GLFWwindow* window, unsigned int codepoint)
     {
-        auto& eventRegistry = EventRegistry<GLFWwindow*, unsigned int>::GetInstance();
-        eventRegistry.Invoke(EventType::KeyboardKeyChar, window, codepoint);
+        EventRegistry<GLFWwindow*, unsigned int>::Invoke(EventType::KeyboardKeyChar, window, codepoint);
     }
 
     /**
@@ -382,8 +373,7 @@ namespace Motion
      */
     static void glfwMouseButtonEvent(GLFWwindow* window, int button, int action, int mods)
     {
-        auto& eventRegistry = EventRegistry<GLFWwindow*, int, int, int>::GetInstance();
-        eventRegistry.Invoke(EventType::MouseButtonDown, window, button, action, mods);
+        EventRegistry<GLFWwindow*, int, int, int>::Invoke(EventType::MouseButtonDown, window, button, action, mods);
     }
 
     /**
@@ -401,8 +391,7 @@ namespace Motion
      */
     static void glfwMouseCursorPosEvent(GLFWwindow* window, double x, double y)
     {
-        auto& eventRegistry = EventRegistry<GLFWwindow*, double, double>::GetInstance();
-        eventRegistry.Invoke(EventType::MouseCursorPosChange, window, x, y);
+        EventRegistry<GLFWwindow*, double, double>::Invoke(EventType::MouseCursorPosChange, window, x, y);
     }
 
     /**
@@ -420,8 +409,7 @@ namespace Motion
      */
     static void glfwMouseCursorEnterEvent(GLFWwindow* window, int entered)
     {
-        auto& eventRegistry = EventRegistry<GLFWwindow*, int>::GetInstance();
-        eventRegistry.Invoke(EventType::MouseCursorWindowEnter, window, entered);
+        EventRegistry<GLFWwindow*, int>::Invoke(EventType::MouseCursorWindowEnter, window, entered);
     }
 
     /**
@@ -441,8 +429,7 @@ namespace Motion
      */
     static void glfwMouseScrollEvent(GLFWwindow* window, double x, double y)
     {
-        auto& eventRegistry = EventRegistry<GLFWwindow*, double, double>::GetInstance();
-        eventRegistry.Invoke(EventType::MouseWheelScroll, window, x, y);
+        EventRegistry<GLFWwindow*, double, double>::Invoke(EventType::MouseWheelScroll, window, x, y);
     }
 
     /**
@@ -476,7 +463,7 @@ namespace Motion
      */
     void GLFW_Window::RegisterEventsCallBacks()
     {
-        EventRegistry<GLFWwindow*>::GetInstance().Register(EventType::WindowClose,
+        EventRegistry<GLFWwindow*>::Register(EventType::WindowClose,
             [this](GLFWwindow* window)
             {
                 EventWindowClose windowCloseEvent;
@@ -484,7 +471,7 @@ namespace Motion
             }
         );
 
-        EventRegistry<GLFWwindow*, int, int>::GetInstance().Register(EventType::WindowResize,
+        EventRegistry<GLFWwindow*, int, int>::Register(EventType::WindowResize,
             [this](GLFWwindow* window, int width, int height)
             {
                 EventWindowResize windowResizeEvent(width, height);
@@ -494,7 +481,7 @@ namespace Motion
             }
         );
 
-        EventRegistry<GLFWwindow*, int>::GetInstance().Register(EventType::WindowFocusGain,
+        EventRegistry<GLFWwindow*, int>::Register(EventType::WindowFocusGain,
             [this](GLFWwindow* window, int focused)
             {
                 if (focused)
@@ -512,7 +499,7 @@ namespace Motion
             }
         );
 
-        EventRegistry<GLFWwindow*, int>::GetInstance().Register(EventType::WindowMinimize,
+        EventRegistry<GLFWwindow*, int>::Register(EventType::WindowMinimize,
             [this](GLFWwindow* window, int iconified)
             {
                 if (iconified)
@@ -524,7 +511,7 @@ namespace Motion
             }
         );
 
-        EventRegistry<GLFWwindow*, int>::GetInstance().Register(EventType::WindowMaximize,
+        EventRegistry<GLFWwindow*, int>::Register(EventType::WindowMaximize,
             [this](GLFWwindow* window, int maximized)
             {
                 if (maximized)
@@ -536,7 +523,7 @@ namespace Motion
             }
         );
 
-        EventRegistry<GLFWwindow*, int, int>::GetInstance().Register(EventType::WindowPosChange,
+        EventRegistry<GLFWwindow*, int, int>::Register(EventType::WindowPosChange,
             [this](GLFWwindow* window, int x, int y)
             {
                 EventWindowPosChange windowMoveEvent(x, y);
@@ -546,7 +533,7 @@ namespace Motion
             }
         );
 
-        EventRegistry<GLFWwindow*, int, int>::GetInstance().Register(EventType::WindowFrameBufferSizeChange,
+        EventRegistry<GLFWwindow*, int, int>::Register(EventType::WindowFrameBufferSizeChange,
             [this](GLFWwindow* window, int width, int height)
             {
                 EventWindowFrameBufferSizeChange windowPixelSizeEvent(width, height);
@@ -556,30 +543,30 @@ namespace Motion
             }
         );
 
-        EventRegistry<GLFWwindow*, int, int, int, int>::GetInstance().Register(EventType::KeyboardKeyPress,
+        EventRegistry<GLFWwindow*, int, int, int, int>::Register(EventType::KeyboardKeyPress,
             [this](GLFWwindow* window, int key, int scancode, int action, int mods)
             {
                 if (action == KeyState::KEY_PRESSED)
                 {
-                    EventKeyboardKeyPress<KeyCode> keyPressEvent(static_cast<KeyCode>(key));
+                    EventKeyboardKeyPress keyPressEvent(static_cast<KeyCode>(key));
                     m_CallbackFunc(m_Properties.Handle, keyPressEvent);
                 }
 
                 if (action == KeyState::KEY_RELEASED)
                 {
-                    EventKeyboardKeyRelease<KeyCode> keyReleaseEvent(static_cast<KeyCode>(key));
+                    EventKeyboardKeyRelease keyReleaseEvent(static_cast<KeyCode>(key));
                     m_CallbackFunc(m_Properties.Handle, keyReleaseEvent);
                 }
 
                 if (action == KeyState::KEY_REPEAT)
                 {
-                    EventKeyboardKeyRepeat<KeyCode> keyPressEvent(static_cast<KeyCode>(key));
+                    EventKeyboardKeyRepeat keyPressEvent(static_cast<KeyCode>(key));
                     m_CallbackFunc(m_Properties.Handle, keyPressEvent);
                 }
             }
         );
 
-        EventRegistry<GLFWwindow*, unsigned int>::GetInstance().Register(EventType::KeyboardKeyChar,
+        EventRegistry<GLFWwindow*, unsigned int>::Register(EventType::KeyboardKeyChar,
             [this](GLFWwindow* window, unsigned int codepoint)
             {
                 EventKeyboardKeyChar keyCharEvent(codepoint);
@@ -587,7 +574,10 @@ namespace Motion
             }
         );
 
-        EventRegistry<GLFWwindow*, int, int, int>::GetInstance().Register(EventType::MouseButtonDown,
+
+
+
+        EventRegistry<GLFWwindow*, int, int, int>::Register(EventType::MouseButtonDown,
             [this](GLFWwindow* window, int button, int action, int mods)
             {
                 if (action == MouseButtonState::MOUSE_BUTTON_PRESSED)
@@ -604,15 +594,15 @@ namespace Motion
             }
         );
 
-        EventRegistry<GLFWwindow*, double, double>::GetInstance().Register(EventType::MouseCursorPosChange,
+        EventRegistry<GLFWwindow*, double, double>::Register(EventType::MouseCursorPosChange,
             [this](GLFWwindow* window, double x, double y)
             {
-                EventMouseCursorMove<double> mouseCursorPosEvent(x, y);
+                EventMouseCursorMove mouseCursorPosEvent(x, y);
                 m_CallbackFunc(m_Properties.Handle, mouseCursorPosEvent);
             }
         );
 
-        EventRegistry<GLFWwindow*, int>::GetInstance().Register(EventType::MouseCursorWindowEnter,
+        EventRegistry<GLFWwindow*, int>::Register(EventType::MouseCursorWindowEnter,
             [this](GLFWwindow* window, int entered)
             {
                 if (entered)
@@ -628,10 +618,10 @@ namespace Motion
             }
         );
 
-        EventRegistry<GLFWwindow*, double, double>::GetInstance().Register(EventType::MouseWheelScroll,
+        EventRegistry<GLFWwindow*, double, double>::Register(EventType::MouseWheelScroll,
             [this](GLFWwindow* window, double x, double y)
             {
-                EventMouseWheelScroll<double> mouseWheelScrollEvent(x, y);
+                EventMouseWheelScroll mouseWheelScrollEvent(x, y);
                 m_CallbackFunc(m_Properties.Handle, mouseWheelScrollEvent);
             }
         );

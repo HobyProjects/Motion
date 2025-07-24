@@ -25,7 +25,7 @@ namespace Motion
 
     private:
         bool OnWindowClose(WindowHandle handle, EventWindowClose& e);
-        bool OnWindowResize(WindowHandle handle, EventWindowResize<uint32_t>& e);
+        bool OnWindowResize(WindowHandle handle, EventWindowResize& e);
 
     private:
         std::shared_ptr<IWindow> m_Window{ nullptr };

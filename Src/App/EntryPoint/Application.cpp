@@ -77,14 +77,11 @@ namespace Motion
     {
         EventHandler handler(handle, e);
         handler.Dispatch<EventWindowClose>(EVENT_CALLBACK(OnWindowClose));
-        handler.Dispatch<EventWindowResize<uint32_t>>(EVENT_CALLBACK(OnWindowResize));
+        handler.Dispatch<EventWindowResize>(EVENT_CALLBACK(OnWindowResize));
 
         auto& layersManager = LayersManager::GetInstance();
         for (std::vector<std::shared_ptr<Layer>>::reverse_iterator it = layersManager.rbegin(); it != layersManager.rend(); ++it)
         {
-            if (handler.IsHandled())
-                break;
-
             (*it)->OnEvent(handle, e);
         }
     }
@@ -98,7 +95,7 @@ namespace Motion
 
     }
 
-    bool Application::OnWindowResize(WindowHandle handle, EventWindowResize<uint32_t>& e)
+    bool Application::OnWindowResize(WindowHandle handle, EventWindowResize& e)
     {
         if (m_Window->GetProperties().State != WindowState::Minimized)
             Renderer::SetViewport(0, 0, e.Width(), e.Height());

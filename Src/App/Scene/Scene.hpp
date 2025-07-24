@@ -42,9 +42,9 @@ namespace Motion
         void SetName(const std::string& name) { m_Name = name; }
         void SetActive(bool active) { m_IsActive = active; }
 
-        glm::mat4 GetViewProjectionMatrix() const { return m_SceneCamera->Camera3D.MVP; }
-        glm::mat4 GetViewMatrix() const { return m_SceneCamera->Camera3D.View; }
-        glm::mat4 GetProjectionMatrix() const { return m_SceneCamera->Camera3D.Projection; }
+        glm::mat4 GetViewProjectionMatrix() const { return m_SceneCamera->SceneViewCamera.MVP; }
+        glm::mat4 GetViewMatrix() const { return m_SceneCamera->SceneViewCamera.View; }
+        glm::mat4 GetProjectionMatrix() const { return m_SceneCamera->SceneViewCamera.Projection; }
 
         SceneHandle GetSceneID() const { return m_SceneID; }
         std::string GetSceneName() const { return m_Name; }

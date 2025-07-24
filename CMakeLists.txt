@@ -78,6 +78,7 @@ set(
     ${MOTION_CORE_DIR}/Event/EventWindow.hpp
     ${MOTION_CORE_DIR}/Event/EventKeyboard.hpp
     ${MOTION_CORE_DIR}/Event/EventMouse.hpp
+    ${MOTION_CORE_DIR}/Event/EventRegistry.hpp
     ${MOTION_CORE_DIR}/Event/InputsHandler.hpp
     ${MOTION_CORE_DIR}/Event/GLFW_InputsHandler.hpp
 

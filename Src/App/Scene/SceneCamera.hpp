@@ -18,11 +18,11 @@ namespace Motion
         void OnEvents(WindowHandle handle, IEvent& e);
 
     private:
-        bool OnMouseCursorPosChange(WindowHandle handle, EventMouseCursorMove<float>& e);
-        bool OnMouseWheelScrollEvent(WindowHandle handle, EventMouseWheelScroll<float>& e);
+        bool OnMouseCursorPosChange(WindowHandle handle, EventMouseCursorMove& e);
+        bool OnMouseWheelScrollEvent(WindowHandle handle, EventMouseWheelScroll& e);
 
     public:
-        Camera3D Camera3D;
+        Camera3D SceneViewCamera;
 
     private:
         float m_MouseX = 0.0f, m_MouseY = 0.0f;

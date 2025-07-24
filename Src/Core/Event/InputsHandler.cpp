@@ -22,7 +22,7 @@ namespace Motion
         }
 
         MOTION_CORE_ERROR("Input handling from a non-existing window: {}", windowHandle);
-        return KeyState::KEY_NONE;
+        return KEY_STATE_UNKNOWN;
     }
 
     /**
@@ -45,7 +45,7 @@ namespace Motion
         }
 
         MOTION_CORE_ERROR("Input handling from a non-existing window: {}", windowHandle);
-        return MouseButtonState::MOUSE_BUTTON_NONE;
+        return MOUSE_BUTTON_STATE_UNKNOWN;
     }
 
     /**

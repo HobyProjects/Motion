@@ -14,16 +14,16 @@ namespace Motion
      */
     KeyState GLFW_KeyState(NativeWindow nativeWindow, KeyCode key) noexcept
     {
-        std::int32_t state = glfwGetKey((GLFWwindow*)nativeWindow, static_cast<std::int32_t>(key));
+        std::int32_t state = glfwGetKey((GLFWwindow*)nativeWindow, key);
 
         if (state == GLFW_PRESS)
-            return KeyState::KEY_PRESSED;
+            return KEY_PRESSED;
         if (state == GLFW_RELEASE)
-            return KeyState::KEY_RELEASED;
+            return KEY_RELEASED;
         if (state == GLFW_REPEAT)
-            return KeyState::KEY_REPEAT;
+            return KEY_REPEAT;
 
-        return KeyState::KEY_NONE;
+        return KEY_STATE_UNKNOWN;
     }
 
     /**
@@ -38,14 +38,14 @@ namespace Motion
      */
     MouseButtonState GLFW_MouseButtonState(NativeWindow nativeWindow, MouseButton button) noexcept
     {
-        std::int32_t state = glfwGetMouseButton((GLFWwindow*)nativeWindow, static_cast<std::int32_t>(button));
+        std::int32_t state = glfwGetMouseButton((GLFWwindow*)nativeWindow, button);
 
         if (state == GLFW_PRESS)
-            return MouseButtonState::MOUSE_BUTTON_PRESSED;
+            return MOUSE_BUTTON_PRESSED;
         if (state == GLFW_RELEASE)
-            return MouseButtonState::MOUSE_BUTTON_RELEASED;
+            return MOUSE_BUTTON_RELEASED;
 
-        return MouseButtonState::MOUSE_BUTTON_NONE;
+        return MOUSE_BUTTON_STATE_UNKNOWN;
     }
 
     /**

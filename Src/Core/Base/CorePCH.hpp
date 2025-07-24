@@ -69,6 +69,7 @@
 #include "EventKeyboard.hpp"
 #include "EventMouse.hpp"
 #include "EventWindow.hpp"
+#include "EventRegistry.hpp"
 #include "InputsHandler.hpp"
 #include "GLFW_InputsHandler.hpp"
 

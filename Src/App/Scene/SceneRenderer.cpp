@@ -91,8 +91,8 @@ namespace Motion
                     command.ModelMatrix = glm::mat4(1.0f);
                 }
 
-                command.ViewProjectionMatrix = scene->m_SceneCamera->Camera3D.MVP;
-                command.CameraPosition = scene->m_SceneCamera->Camera3D.Position;
+                command.ViewProjectionMatrix = scene->m_SceneCamera->SceneViewCamera.MVP;
+                command.CameraPosition = scene->m_SceneCamera->SceneViewCamera.Position;
                 command.LightPosition = scene->m_Environment.DirectionalLight.Direction;
                 command.LightColor = scene->m_Environment.DirectionalLight.Color;
                 command.LightIntensity = scene->m_Environment.DirectionalLight.AmbientIntensity;

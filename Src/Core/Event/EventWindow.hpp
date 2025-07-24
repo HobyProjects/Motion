@@ -14,44 +14,38 @@ namespace Motion
         EVENT_CLASS_CATEGORY(EventCategory::Window);
     };
 
-    template<typename T>
-        requires std::is_integral_v<T>
     class EventWindowResize final : public IEvent
     {
     public:
-        EventWindowResize(T width, T height) : m_Width(width), m_Height(height) {}
+        EventWindowResize(std::int32_t width, std::int32_t height) : m_Width(width), m_Height(height) {}
         virtual ~EventWindowResize() = default;
 
         EVENT_CLASS_TYPE(EventType::WindowResize);
         EVENT_CLASS_CATEGORY(EventCategory::Window);
 
-        T Width() const { return m_Width; }
-        T Height() const { return m_Height; }
+        std::int32_t Width() const { return m_Width; }
+        std::int32_t Height() const { return m_Height; }
 
     private:
-        T m_Width{ static_cast<T>(0) };
-        T m_Height{ static_cast<T>(0) };
+        std::int32_t m_Width{ 0 };
+        std::int32_t m_Height{ 0 };
     };
 
-    template<typename T>
-        requires std::is_integral_v<T>
     class EventWindowPosChange final : public IEvent
     {
     public:
-        EventWindowPosChange(T posX, T posY) :
-            m_PosX(posX), m_PosY(posY) {
-        }
+        EventWindowPosChange(std::int32_t posX, std::int32_t posY) : m_PosX(posX), m_PosY(posY) {}
         virtual ~EventWindowPosChange() = default;
 
         EVENT_CLASS_TYPE(EventType::WindowPosChange);
         EVENT_CLASS_CATEGORY(EventCategory::Window);
 
-        T GetPosX() const { return m_PosX; }
-        T GetPosY() const { return m_PosY; }
+        std::int32_t GetPosX() const { return m_PosX; }
+        std::int32_t GetPosY() const { return m_PosY; }
 
     private:
-        T m_PosX{ static_cast<T>(0) };
-        T m_PosY{ static_cast<T>(0) };
+        std::int32_t m_PosX{ 0 };
+        std::int32_t m_PosY{ 0 };
     };
 
     class EventWindowFocusGain final : public IEvent
@@ -74,25 +68,21 @@ namespace Motion
         EVENT_CLASS_CATEGORY(EventCategory::Window);
     };
 
-    template<typename T>
-        requires std::is_integral_v<T>
     class EventWindowFrameBufferSizeChange final : public IEvent
     {
     public:
-        EventWindowFrameBufferSizeChange(T width, T height) :
-            m_Width(width), m_Height(height) {
-        }
+        EventWindowFrameBufferSizeChange(std::int32_t width, std::int32_t height) : m_Width(width), m_Height(height) {}
         virtual ~EventWindowFrameBufferSizeChange() = default;
 
         EVENT_CLASS_TYPE(EventType::WindowResize);
         EVENT_CLASS_CATEGORY(EventCategory::Window);
 
-        T Width() const { return m_Width; }
-        T Height() const { return m_Height; }
+        std::int32_t Width() const { return m_Width; }
+        std::int32_t Height() const { return m_Height; }
 
     private:
-        T m_Width{ static_cast<T>(0) };
-        T m_Height{ static_cast<T>(0) };
+        std::int32_t m_Width{ 0 };
+        std::int32_t m_Height{ 0 };
     };
 
     class EventWindowMaximized final : public IEvent

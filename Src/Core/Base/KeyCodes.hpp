@@ -4,7 +4,7 @@
 
 namespace Motion
 {
-    enum KeyCode : int32_t
+    enum KeyCode : std::int32_t
     {
         // Number keys
         KEY_NUM_0 = 48,
@@ -144,26 +144,26 @@ namespace Motion
         KEY_UNKNOWN = 0
     };
 
-    enum KeyState : int32_t
+    enum KeyState : std::int32_t
     {
-        KEY_PRESSED = Bits<1>::value,
-        KEY_RELEASED = Bits<2>::value,
-        KEY_REPEAT = Bits<3>::value,
-        KEY_NONE = Bits<4>::value
+        KEY_RELEASED = 0,
+        KEY_PRESSED = 1,
+        KEY_REPEAT = 2,
+        KEY_STATE_UNKNOWN = -1
     };
 
-    enum MouseButton : int32_t
+    enum MouseButton : std::int32_t
     {
-        MOUSE_BUTTON_LEFT = Bits<1>::value,
-        MOUSE_BUTTON_RIGHT = Bits<2>::value,
-        MOUSE_BUTTON_MIDDLE = Bits<3>::value,
-        MOUSE_BUTTON_UNKNOWN = Bits<4>::value
+        MOUSE_BUTTON_LEFT = 0,
+        MOUSE_BUTTON_RIGHT = 1,
+        MOUSE_BUTTON_MIDDLE = 2,
+        MOUSE_BUTTON_UNKNOWN = -1
     };
 
-    enum MouseButtonState : int32_t
+    enum MouseButtonState : std::int32_t
     {
-        MOUSE_BUTTON_PRESSED = Bits<1>::value,
-        MOUSE_BUTTON_RELEASED = Bits<2>::value,
-        MOUSE_BUTTON_NONE = Bits<3>::value
+        MOUSE_BUTTON_RELEASED = 0,
+        MOUSE_BUTTON_PRESSED = 1,
+        MOUSE_BUTTON_STATE_UNKNOWN = -1
     };
 }

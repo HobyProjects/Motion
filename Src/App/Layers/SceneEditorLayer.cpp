@@ -17,17 +17,13 @@ namespace Motion
         auto& assetManager = AssetManager::GetInstance();
         assetManager.Create<IShader>("SkyBoxShader", "Assets/Shaders/SkyBoxShader.glsl");
         assetManager.Create<IShader>("PBRShader", "Assets/Shaders/PBRShader.glsl");
-        assetManager.Create<IShader>("PhongShader", "Assets/Shaders/PhongShader.glsl");
-        assetManager.Create<IShader>("UnlitShader", "Assets/Shaders/UnlitShader.glsl");
-        MaterialFallbackTextures::Initialize();
+        SkyBox::Init();
 
         m_Viewport.FrameSpec.Name = "SceneEditorFrame";
         m_Viewport.FrameSpec.Width = static_cast<uint32_t>(m_ViewportWidth);
         m_Viewport.FrameSpec.Height = static_cast<uint32_t>(m_ViewportHeight);
         m_Viewport.Size = { m_ViewportWidth, m_ViewportHeight };
-
         m_Framebuffer = BufferFactory::CreateFrameBuffer(m_Viewport.FrameSpec);
-        m_SkyBox = std::make_unique<SkyBox>();
 
         if (m_Scenes.empty())
         {
@@ -62,15 +58,18 @@ namespace Motion
         Renderer::ClearColor({ 0.243, 0.243, 0.243, 1.0f });
         Renderer::Clear();
 
+        SceneRenderer::BeginScene();
 
-        auto& sceneRenderer = SceneRenderer::GetInstance();
-        sceneRenderer.BeginScene();
-        m_SkyBox->Render(m_ActiveScene->GetViewMatrix(), m_ActiveScene->GetProjectionMatrix());
-        sceneRenderer.Submit(m_ActiveScene.get());
-        sceneRenderer.EndScene(m_SkyBox->GetTextureID());
+        SkyBox::Bind();
+        SkyBox::Render(m_ActiveScene->GetViewMatrix(), m_ActiveScene->GetProjectionMatrix());
+        SkyBox::Unbind();
+
+        SceneRenderer::Submit(m_ActiveScene.get());
+
+        SceneRenderer::EndScene();
 
         m_Framebuffer->Unbind();
-        m_SceneTextures[m_ActiveScene] = m_Framebuffer->GetAttachment(FrameBufferColorAttachmentStandards::Standard).TexID;
+        m_SceneTextures[m_ActiveScene] = m_Framebuffer->GetAttachment(FrameBufferColorAttachmentStandards::Standard).ID;
     }
 
     void SceneEditorLayer::OnEvent(WindowHandle handle, IEvent& e)

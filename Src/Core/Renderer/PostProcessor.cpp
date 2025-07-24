@@ -42,7 +42,7 @@ namespace Motion
         m_Shader->Bind();
 
         Renderer::BindTextureUnit(0, inputTextureID);
-        m_Shader->SetUniform(UniformCache::Texture_PostProcessTexture, 0);
+        m_Shader->SetUniform(UniformCache::PostProcessTexture, 0);
 
         m_ScreenQuad->Render();
         Renderer::UnbindTextureUnit(0);
@@ -63,7 +63,7 @@ namespace Motion
     {
         if (m_FrameBuffer)
         {
-            return m_FrameBuffer->GetAttachment(FrameBufferColorAttachmentStandards::Standard).TexID;
+            return m_FrameBuffer->GetAttachment(FrameBufferColorAttachmentStandards::Standard).ID;
         }
 
         MOTION_CORE_ERROR("PostProcessor FrameBuffer is not initialized!");

@@ -2,7 +2,6 @@
 
 #include "Mesh.hpp"
 #include "Buffers.hpp"
-#include "GL_Texture.hpp"
 
 namespace Motion
 {
@@ -99,7 +98,7 @@ namespace Motion
         virtual void Bind() override;
         virtual void Unbind() override;
 
-        virtual void ResizeFrame(std::uint32_t width, std::uint32_t Height) override;
+        virtual void ResizeFrame(std::uint32_t width, std::uint32_t height) override;
         virtual void BlitTo(IFrameBuffer* targetFrameBuffer, FrameBufferBlitMask mask, FrameBufferBlitFilter filter) override;
 
         [[nodiscard]] virtual BufferID GetFrameBufferID() const override { return m_FrameBufferID; }

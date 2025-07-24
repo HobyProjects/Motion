@@ -26,9 +26,7 @@ namespace Motion
 
     private:
         float m_ViewportWidth{ 1280.0f }, m_ViewportHeight{ 720.0f };
-
         std::shared_ptr<IFrameBuffer> m_Framebuffer{ nullptr };
-        std::unique_ptr<SkyBox> m_SkyBox{ nullptr };
 
         //SCENE
         SceneViewport m_Viewport{};

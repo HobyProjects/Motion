@@ -24,7 +24,6 @@ namespace Motion
         virtual void SetUniform(const std::string_view uniformName, const glm::mat3& value) override;
         virtual void SetUniform(const std::string_view uniformName, const glm::mat4& value) override;
         virtual void SetUniform(const std::string_view uniformName, std::uint32_t size, std::uint32_t* values) override;
-        virtual void ReflectUniforms() override;
 
         [[nodiscard]] virtual ShaderProgramID ProgramID() const override { return m_ProgramID; }
         [[nodiscard]] virtual std::string GetName() const override { return AssetInfo.AssetName; }
@@ -33,8 +32,7 @@ namespace Motion
     private:
         ShaderProgramID m_ProgramID{ 0 };
         ShaderType m_ShaderType{ ShaderType::None };
-        std::unordered_map<std::string_view, UniformInfomation> m_UniformInformationCache{};
-        std::unordered_map<std::string_view, UniformLocation> m_UniformLocationsCache{};
+        std::unordered_map<std::string_view, UniformLocation> m_UniformLocations{};
     };
 
     void GL_LinkShaderProgram(ShaderProgramID programID);

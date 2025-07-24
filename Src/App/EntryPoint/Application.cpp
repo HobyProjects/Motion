@@ -101,7 +101,7 @@ namespace Motion
     bool Application::OnWindowResize(WindowHandle handle, EventWindowResize<uint32_t>& e)
     {
         if (m_Window->GetProperties().State != WindowState::Minimized)
-            Core::Renderer::SetViewport(0, 0, e.Width(), e.Height());
+            Renderer::SetViewport(0, 0, e.Width(), e.Height());
 
         return false;
     }

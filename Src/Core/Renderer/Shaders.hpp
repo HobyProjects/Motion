@@ -33,38 +33,6 @@ namespace Motion
     inline uint32_t operator|(ShaderType a, ShaderType b) { return static_cast<uint32_t>(a) | static_cast<uint32_t>(b); }
     inline uint32_t operator&(ShaderType a, ShaderType b) { return static_cast<uint32_t>(a) & static_cast<uint32_t>(b); }
 
-    enum class UniformType : std::uint32_t
-    {
-        None = 0,
-        Float = 1,
-        Int = 2,
-        UInt = 3,
-        Vec2 = 4,
-        Vec3 = 5,
-        Vec4 = 6,
-        Mat2 = 7,
-        Mat3 = 8,
-        Mat4 = 9,
-        Sampler2D = 10,
-        Sampler2DArray = 11,
-        SamplerCube = 12,
-    };
-
-    struct UniformInfomation
-    {
-        std::string_view UniformName;
-        UniformType Type{ UniformType::None };
-        UniformLocation Location{ 0 };
-        bool IsValid{ false };
-
-        UniformInfomation() = default;
-        UniformInfomation(std::string_view name, UniformType type, UniformLocation location) :
-            UniformName(name), Type(type), Location(location) {
-            IsValid = (location != -1) ? true : false;
-        }
-        ~UniformInfomation() = default;
-    };
-
     struct UniformCache
     {
         inline static constexpr std::string_view Position = "a_Position";
@@ -99,8 +67,8 @@ namespace Motion
         inline static constexpr std::string_view EmissiveTexture = "u_EmissiveTexture";
         inline static constexpr std::string_view EnvironmentTexture = "u_EnvironmentTexture";
 
-        inline static constexpr std::string_view Texture_PostProcessTexture = "u_PostProcessTexture";
-        inline static constexpr std::string_view Texture_SkyboxTexture = "u_SkyboxTexture";
+        inline static constexpr std::string_view PostProcessTexture = "u_PostProcessTexture";
+        inline static constexpr std::string_view SkyboxTexture = "u_SkyboxTexture";
 
     };
 
@@ -123,7 +91,6 @@ namespace Motion
         virtual void SetUniform(const std::string_view uniformName, const glm::mat3& value) = 0;
         virtual void SetUniform(const std::string_view uniformName, const glm::mat4& value) = 0;
         virtual void SetUniform(const std::string_view uniformName, std::uint32_t size, std::uint32_t* values) = 0;
-        virtual void ReflectUniforms() = 0;
 
         [[nodiscard]] virtual ShaderProgramID ProgramID() const = 0;
         [[nodiscard]] virtual std::string GetName() const = 0;

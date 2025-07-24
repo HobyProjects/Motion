@@ -479,11 +479,11 @@ namespace Motion
 
         for (const auto& [attachmentPoint, colorAttachment] : m_ColorAttachments)
         {
-            glDeleteTextures(1, &colorAttachment.TexID);
+            glDeleteTextures(1, &colorAttachment.ID);
         }
 
-        if (m_DepthAttachment.TexID)
-            glDeleteTextures(1, &m_DepthAttachment.TexID);
+        if (m_DepthAttachment.ID)
+            glDeleteTextures(1, &m_DepthAttachment.ID);
 
         m_ColorAttachments.clear();
         m_DepthAttachment = {};
@@ -620,10 +620,10 @@ namespace Motion
         if (m_Specification.Samples > 1)
         {
             BlitTo(target, FrameBufferBlitMask::Color, FrameBufferBlitFilter::Nearest);
-            return GetAttachment(FrameBufferColorAttachmentStandards::Standard).TexID;
+            return GetAttachment(FrameBufferColorAttachmentStandards::Standard).ID;
         }
 
-        return GetAttachment(FrameBufferColorAttachmentStandards::Standard).TexID;
+        return GetAttachment(FrameBufferColorAttachmentStandards::Standard).ID;
     }
 
 
@@ -876,11 +876,11 @@ namespace Motion
 
             for (const auto& [attachmentPoint, colorAttachment] : m_ColorAttachments)
             {
-                glDeleteTextures(1, &colorAttachment.TexID);
+                glDeleteTextures(1, &colorAttachment.ID);
             }
 
-            if (m_DepthAttachment.TexID)
-                glDeleteTextures(1, &m_DepthAttachment.TexID);
+            if (m_DepthAttachment.ID)
+                glDeleteTextures(1, &m_DepthAttachment.ID);
 
             m_ColorAttachments.clear();
             m_DepthAttachment = {};
@@ -897,8 +897,8 @@ namespace Motion
             auto colorAttachment = m_Specification.Colors[i];
             if (useMultiSampling)
             {
-                glGenTextures(1, &colorAttachment.TexID);
-                glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, colorAttachment.TexID);
+                glGenTextures(1, &colorAttachment.ID);
+                glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, colorAttachment.ID);
                 glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, m_Specification.Samples, GL_ColorAttachmentFormat(colorAttachment.Format), m_Specification.Width, m_Specification.Height, GL_TRUE);
                 glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
                 glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -908,13 +908,13 @@ namespace Motion
                 glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_MIN_LOD, -1000);
                 glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_MAX_LOD, 1000);
                 glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_BASE_LEVEL, 0);
-                glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + colorAttachment.AttachmentPoint, GL_TEXTURE_2D_MULTISAMPLE, colorAttachment.TexID, 0);
+                glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + colorAttachment.AttachmentPoint, GL_TEXTURE_2D_MULTISAMPLE, colorAttachment.ID, 0);
 
             }
             else
             {
-                glGenTextures(1, &colorAttachment.TexID);
-                glBindTexture(GL_TEXTURE_2D, colorAttachment.TexID);
+                glGenTextures(1, &colorAttachment.ID);
+                glBindTexture(GL_TEXTURE_2D, colorAttachment.ID);
                 glTexImage2D(GL_TEXTURE_2D, 0, GL_ColorAttachmentFormat(colorAttachment.Format), m_Specification.Width, m_Specification.Height, 0, GL_Texture2D_Format(colorAttachment.Format), GL_Texture2D_Type(colorAttachment.Format), nullptr);
                 glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
                 glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -924,7 +924,7 @@ namespace Motion
                 glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_LOD, -1000);
                 glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LOD, 1000);
                 glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
-                glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + colorAttachment.AttachmentPoint, GL_TEXTURE_2D, colorAttachment.TexID, 0);
+                glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + colorAttachment.AttachmentPoint, GL_TEXTURE_2D, colorAttachment.ID, 0);
             }
 
             m_ColorAttachments[i] = colorAttachment;
@@ -932,10 +932,10 @@ namespace Motion
 
         if (hasDepth)
         {
-            glGenTextures(1, &m_DepthAttachment.TexID);
-            glBindTexture(GL_TEXTURE_2D, m_DepthAttachment.TexID);
+            glGenTextures(1, &m_DepthAttachment.ID);
+            glBindTexture(GL_TEXTURE_2D, m_DepthAttachment.ID);
             glTexImage2D(GL_TEXTURE_2D, 0, GL_DepthAttachmentFormat(m_Specification.Depth.Format), m_Specification.Width, m_Specification.Height, 0, GL_Texture2D_DepthFormat(m_Specification.Depth.Format), GL_Texture2D_DepthType(m_Specification.Depth.Format), nullptr);
-            glFramebufferTexture2D(GL_FRAMEBUFFER, (m_DepthAttachment.AttachmentPoint = GetDepthAttachmentPoint(m_Specification.Depth.Format)), GL_TEXTURE_2D, m_DepthAttachment.TexID, 0);
+            glFramebufferTexture2D(GL_FRAMEBUFFER, (m_DepthAttachment.AttachmentPoint = GetDepthAttachmentPoint(m_Specification.Depth.Format)), GL_TEXTURE_2D, m_DepthAttachment.ID, 0);
         }
 
         if (!m_ColorAttachments.empty())

@@ -30,7 +30,7 @@ namespace Motion
             return;
         }
 
-        s_SkyBoxMesh = QuickMesh::CreateCube(false, "SkyBoxMesh", 200.0f, 2000.0f, 200.0f);
+        s_SkyBoxMesh = QuickMesh::CreateCube(false, "SkyBoxMesh", 200.0f, 200.0f, 200.0f);
         if (!s_SkyBoxMesh)
         {
             MOTION_CORE_ERROR("Failed to create SkyBoxMesh");
@@ -51,7 +51,7 @@ namespace Motion
         s_SkyBoxShader->Bind();
         std::uint32_t bindingPoint = TextureBinding::Point();
         s_SkyBoxCubeTexture->Bind(bindingPoint);
-        s_SkyBoxShader->SetUniform(UniformCache::Texture_SkyboxTexture, bindingPoint);
+        s_SkyBoxShader->SetUniform(UniformCache::SkyboxTexture, bindingPoint);
     }
 
     /**

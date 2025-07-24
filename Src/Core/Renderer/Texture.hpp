@@ -5,13 +5,11 @@
 #include <cstdint>
 #include <concepts>
 
-#include "Buffers.hpp"
 #include "Asset.hpp"
 
 namespace Motion
 {
     using TextureID = std::uint32_t;
-    using FrameTextureID = std::uint32_t;
 
     enum class TextureType : std::uint32_t
     {
@@ -82,7 +80,7 @@ namespace Motion
         TextureBinding& operator=(TextureBinding&&) = delete;
 
     public:
-        [[nodiscard]] static BindingPoint Point() noexcept;
+        [[nodiscard]] static std::uint32_t Point() noexcept;
         static void Reset() noexcept;
     };
 

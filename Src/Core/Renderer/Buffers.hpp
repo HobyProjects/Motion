@@ -16,6 +16,8 @@ namespace Motion
     inline constexpr std::uint32_t UNIFORM_BUFFER_MAX_BINDING = 16;
     inline constexpr std::uint32_t UNIFORM_BUFFER_MAX_SIZE = 65536;
 
+    using FrameTextureID = std::uint32_t;
+
     enum class BufferComponents : std::uint32_t
     {
         X = 1,
@@ -188,13 +190,13 @@ namespace Motion
 
     struct ColorAttachments
     {
-        FrameTextureID TexID{ 0 };
+        FrameTextureID ID{ 0 };
         std::uint32_t AttachmentPoint{ 0 };
         FrameBufferColorAttachmentStandards Format{ FrameBufferColorAttachmentStandards::Standard };
     };
     struct DepthAttachment
     {
-        FrameTextureID TexID{ 0 };
+        FrameTextureID ID{ 0 };
         std::uint32_t AttachmentPoint{ 0 };
         FrameBufferDepthAttachmentStandards Format{ FrameBufferDepthAttachmentStandards::CommonCombined };
     };

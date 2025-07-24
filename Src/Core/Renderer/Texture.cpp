@@ -8,7 +8,7 @@ namespace Motion
      * This class provides static methods to manage texture binding points,
      * allowing for efficient texture management during rendering operations.
      */
-    static BindingPoint s_BindingPoint = 0;
+    static std::uint32_t s_BindingPoint = 0;
 
     /**
      * @brief Returns a new binding point for textures.
@@ -18,7 +18,7 @@ namespace Motion
      *
      * @return BindingPoint The next available binding point.
      */
-    BindingPoint TextureBinding::Point() noexcept
+    std::uint32_t TextureBinding::Point() noexcept
     {
         if (s_BindingPoint >= Renderer::GetMaxTextureSlots())
         {

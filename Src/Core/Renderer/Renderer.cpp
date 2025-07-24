@@ -336,4 +336,60 @@ namespace Motion
             break;
         }
     }
+
+    /**
+     * @brief Resets the depth function to the default state for the current rendering API.
+     *
+     * This function sets the depth comparison function back to its default state (e.g., GL_LESS for OpenGL).
+     * It is typically called at the start of a new frame or when resetting the rendering state.
+     *
+     * @note The implementation depends on the currently selected rendering API.
+     * If the rendering API is not implemented, an assertion will be triggered.
+     */
+    void Renderer::ResetDepthFunction()
+    {
+        switch (s_RenderingAPI)
+        {
+        case RenderingAPI::OpenGL:
+            GL_ResetDepthFunction();
+            break;
+        case RenderingAPI::Vulkan:
+            MOTION_ASSERT(false, "Vulkan is not implemented yet!");
+            break;
+        case RenderingAPI::DirectX:
+            MOTION_ASSERT(false, "DirectX is not implemented yet!");
+            break;
+        default:
+            MOTION_ASSERT(false, "Unknown rendering API!");
+            break;
+        }
+    }
+
+    /**
+     * @brief Applies the specified depth function for the current rendering API.
+     *
+     * This function sets the depth comparison function used by the rendering backend to determine
+     * whether a fragment should be drawn based on its depth value. The implementation varies
+     * depending on the selected rendering API.
+     *
+     * @param depthFunction The depth function to apply (e.g., Less, Greater, Always).
+     */
+    void Renderer::ApplyDepthFunction(DepthFunction depthFunction)
+    {
+        switch (s_RenderingAPI)
+        {
+        case RenderingAPI::OpenGL:
+            GL_ApplyDepthFunction(depthFunction);
+            break;
+        case RenderingAPI::Vulkan:
+            MOTION_ASSERT(false, "Vulkan is not implemented yet!");
+            break;
+        case RenderingAPI::DirectX:
+            MOTION_ASSERT(false, "DirectX is not implemented yet!");
+            break;
+        default:
+            MOTION_ASSERT(false, "Unknown rendering API!");
+            break;
+        }
+    }
 }

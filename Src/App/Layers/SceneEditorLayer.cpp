@@ -54,21 +54,14 @@ namespace Motion
 
 
         m_Framebuffer->Bind();
-
         Renderer::ClearColor({ 0.243, 0.243, 0.243, 1.0f });
         Renderer::Clear();
-
         SceneRenderer::BeginScene();
-
-        SkyBox::Bind();
         SkyBox::Render(m_ActiveScene->GetViewMatrix(), m_ActiveScene->GetProjectionMatrix());
-        SkyBox::Unbind();
-
         SceneRenderer::Submit(m_ActiveScene.get());
-
         SceneRenderer::EndScene();
-
         m_Framebuffer->Unbind();
+
         m_SceneTextures[m_ActiveScene] = m_Framebuffer->GetAttachment(FrameBufferColorAttachmentStandards::Standard).ID;
     }
 

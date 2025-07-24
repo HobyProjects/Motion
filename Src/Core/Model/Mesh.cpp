@@ -293,134 +293,82 @@ namespace Motion
      */
     std::shared_ptr<Mesh> QuickMesh::CreateCube(bool isRegistered, const std::string name, float width, float height, float depth)
     {
-        // Half dimensions
         float hw = width * 0.5f;
         float hh = height * 0.5f;
         float hd = depth * 0.5f;
 
-        // Cube vertices (8 corners)
         glm::vec3 positions[8] = {
-            {-hw, -hh, -hd}, // 0
-            { hw, -hh, -hd}, // 1
-            { hw,  hh, -hd}, // 2
-            {-hw,  hh, -hd}, // 3
-            {-hw, -hh,  hd}, // 4
-            { hw, -hh,  hd}, // 5
-            { hw,  hh,  hd}, // 6
-            {-hw,  hh,  hd}  // 7
+            {-hw, -hh, -hd}, { hw, -hh, -hd}, { hw,  hh, -hd}, { -hw,  hh, -hd},
+            {-hw, -hh,  hd}, { hw, -hh,  hd}, { hw,  hh,  hd}, { -hw,  hh,  hd}
         };
 
-        // Cube faces (each face has 4 vertices, but we need unique normals/tangents per face, so 24 vertices)
         struct Face {
             int idx[4];
-            glm::vec3 normal;
-            glm::vec3 tangent;
-            glm::vec3 bitangent;
+            glm::vec3 normal, tangent, bitangent;
         };
 
         Face faces[6] = {
-            // -Z (back)
-            {{0, 1, 2, 3}, {0, 0, -1}, {1, 0, 0}, {0, 1, 0}},
-            // +Z (front)
-            {{5, 4, 7, 6}, {0, 0, 1}, {-1, 0, 0}, {0, 1, 0}},
-            // -X (left)
-            {{4, 0, 3, 7}, {-1, 0, 0}, {0, 0, -1}, {0, 1, 0}},
-            // +X (right)
-            {{1, 5, 6, 2}, {1, 0, 0}, {0, 0, 1}, {0, 1, 0}},
-            // -Y (bottom)
-            {{4, 5, 1, 0}, {0, -1, 0}, {1, 0, 0}, {0, 0, 1}},
-            // +Y (top)
-            {{3, 2, 6, 7}, {0, 1, 0}, {1, 0, 0}, {0, 0, -1}}
+            {{0, 1, 2, 3}, { 0,  0, -1}, { 1,  0, 0}, {0, 1, 0}}, // -Z
+            {{5, 4, 7, 6}, { 0,  0,  1}, {-1,  0, 0}, {0, 1, 0}}, // +Z
+            {{4, 0, 3, 7}, {-1,  0,  0}, { 0,  0, -1}, {0, 1, 0}}, // -X
+            {{1, 5, 6, 2}, { 1,  0,  0}, { 0,  0, 1}, {0, 1, 0}}, // +X
+            {{4, 5, 1, 0}, { 0, -1,  0}, { 1,  0, 0}, {0, 0, 1}}, // -Y
+            {{3, 2, 6, 7}, { 0,  1,  0}, { 1,  0, 0}, {0, 0, -1}} // +Y
         };
 
         glm::vec2 uvs[4] = {
-            {0.0f, 0.0f},
-            {1.0f, 0.0f},
-            {1.0f, 1.0f},
-            {0.0f, 1.0f}
+            {0.0f, 0.0f}, {1.0f, 0.0f}, {1.0f, 1.0f}, {0.0f, 1.0f}
         };
 
         std::vector<Vertex> vertices;
         std::vector<std::uint32_t> indices;
 
-        for (int f = 0; f < 6; ++f) {
-            int base = static_cast<int>(vertices.size());
-            for (int v = 0; v < 4; ++v) {
-                Vertex vert;
-                vert.Position = positions[faces[f].idx[v]];
-                vert.Normal = faces[f].normal;
-                vert.TexCoord = uvs[v];
-                vert.Tangent = faces[f].tangent;
-                vert.Bitangent = faces[f].bitangent;
-                vertices.push_back(vert);
+        for (const auto& face : faces) {
+            unsigned int base = static_cast<unsigned int>(vertices.size());
+            for (int i = 0; i < 4; ++i) {
+                vertices.push_back({ positions[face.idx[i]], uvs[i], face.normal, face.tangent, face.bitangent });
             }
-            // Two triangles per face
-            indices.push_back(base + 0);
-            indices.push_back(base + 1);
-            indices.push_back(base + 2);
-            indices.push_back(base + 2);
-            indices.push_back(base + 3);
-            indices.push_back(base + 0);
+
+            indices.insert(indices.end(), { base + 0, base + 1, base + 2, base + 2, base + 3, base + 0 });
         }
 
-        // Prepare buffer data
         std::vector<float> vertexData;
         for (const auto& v : vertices) {
-            vertexData.push_back(v.Position.x);
-            vertexData.push_back(v.Position.y);
-            vertexData.push_back(v.Position.z);
-            vertexData.push_back(v.Normal.x);
-            vertexData.push_back(v.Normal.y);
-            vertexData.push_back(v.Normal.z);
-            vertexData.push_back(v.TexCoord.x);
-            vertexData.push_back(v.TexCoord.y);
-            vertexData.push_back(v.Tangent.x);
-            vertexData.push_back(v.Tangent.y);
-            vertexData.push_back(v.Tangent.z);
-            vertexData.push_back(v.Bitangent.x);
-            vertexData.push_back(v.Bitangent.y);
-            vertexData.push_back(v.Bitangent.z);
-        }
-
-        BufferLayout layout({
-            { UniformCache::Position, BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Position) },
-            { UniformCache::TexCoords, BufferComponents::UV, BufferStride::F2, false, offsetof(Vertex, TexCoord) },
-            { UniformCache::Normals, BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Normal) },
-            { UniformCache::Tangents, BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Tangent) },
-            { UniformCache::Bitangents, BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Bitangent) }
-            });
-
-        static std::int32_t meshCount = 0;
-        std::shared_ptr<Mesh> mesh = nullptr;
-
-        if (isRegistered)
-        {
-            mesh = AssetManager::GetInstance().Create<Mesh>(
-                std::format("{}_{}", name, meshCount++).c_str(),
-                vertexData.data(), static_cast<std::int32_t>(vertexData.size()),
-                indices.data(), static_cast<std::int32_t>(indices.size()),
-                layout, nullptr
-            );
-        }
-        else
-        {
-            mesh = std::make_shared<Mesh>(
-                UniqueIdentity::GetUniqueID(),
-                std::format("{}_{}", name, meshCount++),
-                vertexData.data(), static_cast<std::int32_t>(vertexData.size()),
-                indices.data(), static_cast<std::int32_t>(indices.size()),
-                layout, nullptr
+            vertexData.insert(
+                vertexData.end(),
+                {
+                    v.Position.x, v.Position.y, v.Position.z,
+                    v.TexCoord.x, v.TexCoord.y,
+                    v.Normal.x, v.Normal.y, v.Normal.z,
+                    v.Tangent.x, v.Tangent.y, v.Tangent.z,
+                    v.Bitangent.x, v.Bitangent.y, v.Bitangent.z
+                }
             );
         }
 
-        if (mesh)
-        {
-            MOTION_CORE_INFO("Created Cube Mesh: '{}'", mesh->GetName());
-            return mesh;
+        BufferLayout layout(
+            {
+                { UniformCache::Position,   BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Position) },
+                { UniformCache::TexCoords,  BufferComponents::UV,  BufferStride::F2, false, offsetof(Vertex, TexCoord) },
+                { UniformCache::Normals,    BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Normal) },
+                { UniformCache::Tangents,   BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Tangent) },
+                { UniformCache::Bitangents, BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Bitangent) }
+            }
+        );
+
+        static int32_t meshCount = 0;
+        auto meshName = std::format("{}_{}", name, meshCount++);
+
+        std::shared_ptr<Mesh> mesh
+            = isRegistered ? AssetManager::GetInstance().Create<Mesh>(meshName.c_str(), vertexData.data(), static_cast<int32_t>(vertexData.size()), indices.data(), static_cast<int32_t>(indices.size()), layout, nullptr) : std::make_shared<Mesh>(UniqueIdentity::GetUniqueID(), meshName, vertexData.data(), static_cast<int32_t>(vertexData.size()), indices.data(), static_cast<int32_t>(indices.size()), layout, nullptr);
+
+        if (!mesh) {
+            MOTION_CORE_ERROR("Failed to create Cube Mesh: '{}'", name);
+            return nullptr;
         }
 
-        MOTION_CORE_ERROR("Failed to create Cube Mesh: '{}'", name);
-        return nullptr;
+        MOTION_CORE_INFO("Created Cube Mesh: '{}'", mesh->GetName());
+        return mesh;
     }
 
     /**

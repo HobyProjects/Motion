@@ -22,6 +22,18 @@ namespace Motion
         Wireframe = Bits<3>::value,
     };
 
+    enum class DepthFunction : GLenum
+    {
+        Never = Bits<1>::value,
+        Less = Bits<2>::value,
+        Equal = Bits<3>::value,
+        LessEqual = Bits<4>::value,
+        Greater = Bits<5>::value,
+        NotEqual = Bits<6>::value,
+        GreaterEqual = Bits<7>::value,
+        Always = Bits<8>::value
+    };
+
     inline std::uint8_t operator|(RenderingAPI a, RenderingAPI b) { return static_cast<std::uint8_t>(a) | static_cast<std::uint8_t>(b); }
     inline std::uint8_t operator&(RenderingAPI a, RenderingAPI b) { return static_cast<std::uint8_t>(a) & static_cast<std::uint8_t>(b); }
     inline std::uint8_t operator|(DrawFlags a, DrawFlags b) { return static_cast<std::uint8_t>(a) | static_cast<std::uint8_t>(b); }
@@ -43,6 +55,8 @@ namespace Motion
         static void Quit();
         static void Clear();
         static void ResetDrawFlags(DrawFlags flags);
+        static void ResetDepthFunction();
+        static void ApplyDepthFunction(DepthFunction depthFunction);
         static void ApplyDrawFlags(DrawFlags flags);
         static void ClearColor(const glm::vec4& color);
         static void DrawIndexed(std::int32_t indicesCount);

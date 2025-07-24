@@ -12,6 +12,8 @@ namespace Motion
     void GL_DrawIndexed(std::int32_t indicesCount);
     void GL_ApplyDrawFlags(DrawFlags flags);
     void GL_ResetDrawFlags(DrawFlags flags);
+    void GL_ApplyDepthFunction(DepthFunction depthFunction);
+    void GL_ResetDepthFunction();
 
     void GL_BindTextureUnit(std::int32_t slot, std::uint32_t textureID);
     void GL_UnbindTextureUnit(std::int32_t slot);

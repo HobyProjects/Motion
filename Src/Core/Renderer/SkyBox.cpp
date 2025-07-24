@@ -1,11 +1,13 @@
 #include "CorePCH.hpp"
-#include "SkyBox.hpp"
 
 namespace Motion
 {
     static std::shared_ptr<ICubeMapTexture> s_SkyBoxCubeTexture = nullptr;
     static std::shared_ptr<IShader> s_SkyBoxShader = nullptr;
-    static std::shared_ptr<Mesh> s_SkyBoxMesh = nullptr;
+
+    static std::shared_ptr<IVertexArray> s_SkyBoxVAO = nullptr;
+    static std::shared_ptr<IVertexBuffer> s_SkyBoxVBO = nullptr;
+    static std::shared_ptr<IElementBuffer> s_SkyBoxEBO = nullptr;
 
     /**
      * @brief Initializes the SkyBox by loading the cube map texture and shader.
@@ -16,7 +18,7 @@ namespace Motion
     void SkyBox::Init() noexcept
     {
         auto& assetManager = AssetManager::GetInstance();
-        s_SkyBoxCubeTexture = CreateUnregisteredCubeMapTexture("Assets/SkyBox/SkyBox_Texture_1.jpg");
+        s_SkyBoxCubeTexture = CreateUnregisteredCubeMapTexture("Assets/SkyBox/SkyBox_Texture_2.jpg");
         if (!s_SkyBoxCubeTexture)
         {
             MOTION_CORE_ERROR("Failed to create CubeMapTexture for SkyBox");
@@ -30,42 +32,51 @@ namespace Motion
             return;
         }
 
-        s_SkyBoxMesh = QuickMesh::CreateCube(false, "SkyBoxMesh", 200.0f, 200.0f, 200.0f);
-        if (!s_SkyBoxMesh)
-        {
-            MOTION_CORE_ERROR("Failed to create SkyBoxMesh");
-            return;
-        }
-    }
+        std::vector<float> vertices = {
+            -1.0f,  1.0f, -1.0f, // 0 top-left-back
+            -1.0f, -1.0f, -1.0f, // 1 bottom-left-back
+             1.0f, -1.0f, -1.0f, // 2 bottom-right-back
+             1.0f,  1.0f, -1.0f, // 3 top-right-back
+            -1.0f,  1.0f,  1.0f, // 4 top-left-front
+            -1.0f, -1.0f,  1.0f, // 5 bottom-left-front
+             1.0f, -1.0f,  1.0f, // 6 bottom-right-front
+             1.0f,  1.0f,  1.0f  // 7 top-right-front
+        };
 
-    /**
-     * @brief Binds the SkyBox shader and texture for rendering.
-     *
-     * This function applies the necessary draw flags and binds the skybox shader and texture.
-     * It should be called before rendering the skybox.
-     */
-    void SkyBox::Bind() noexcept
-    {
-        Renderer::ApplyDrawFlags(DrawFlags::SkipDepthMask);
+        std::vector<std::uint32_t> indices = {
+            // back face
+            0, 1, 2,
+            2, 3, 0,
 
-        s_SkyBoxShader->Bind();
-        std::int32_t bindingPoint = TextureBinding::Point();
-        s_SkyBoxCubeTexture->Bind(bindingPoint);
-        s_SkyBoxShader->SetUniform(UniformCache::SkyboxTexture, bindingPoint);
-    }
+            // front face
+            4, 5, 6,
+            6, 7, 4,
 
-    /**
-     * @brief Unbinds the SkyBox shader and texture after rendering.
-     *
-     * This function unbinds the skybox shader and texture, restoring the previous state.
-     * It should be called after rendering the skybox.
-     */
-    void SkyBox::Unbind() noexcept
-    {
-        s_SkyBoxCubeTexture->Unbind();
-        s_SkyBoxShader->Unbind();
+            // left face
+            4, 5, 1,
+            1, 0, 4,
 
-        Renderer::ResetDrawFlags(DrawFlags::SkipDepthMask);
+            // right face
+            3, 2, 6,
+            6, 7, 3,
+
+            // bottom face
+            1, 5, 6,
+            6, 2, 1,
+
+            // top face
+            4, 0, 3,
+            3, 7, 4
+        };
+
+        s_SkyBoxVBO = BufferFactory::CreateVertexBuffer(vertices.data(), static_cast<std::int32_t>(vertices.size()));
+        s_SkyBoxEBO = BufferFactory::CreateElementBuffer(indices.data(), static_cast<std::int32_t>(indices.size()));
+        s_SkyBoxVAO = std::make_shared<GL_VertexArray>();
+
+        BufferLayout layout({ { UniformCache::Position, BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Position) } });
+        s_SkyBoxVBO->SetLayout(layout);
+        s_SkyBoxVAO->EmplaceVertexBuffer(s_SkyBoxVBO);
+        s_SkyBoxVAO->EmplaceIndexBuffer(s_SkyBoxEBO);
     }
 
     /**
@@ -79,17 +90,32 @@ namespace Motion
      */
     void SkyBox::Render(const glm::mat4& viewMatrix, const glm::mat4& projectionMatrix) noexcept
     {
-        if (!s_SkyBoxShader || !s_SkyBoxCubeTexture || !s_SkyBoxMesh)
+        if (!s_SkyBoxShader || !s_SkyBoxCubeTexture)
         {
             MOTION_CORE_ERROR("SkyBox is not initialized properly. Cannot render.");
             return;
         }
 
-        glm::mat4 skyBoxView = glm::mat4(glm::mat3(viewMatrix));
-        s_SkyBoxShader->SetUniform(UniformCache::ViewMatrix, skyBoxView);
-        s_SkyBoxShader->SetUniform(UniformCache::ProjectionMatrix, projectionMatrix);
+        glm::mat4 view = glm::mat4(glm::mat3(viewMatrix));
+        glm::mat4 projection = projectionMatrix;
 
-        s_SkyBoxMesh->Render();
+        Renderer::ApplyDrawFlags(DrawFlags::SkipDepthMask);
+        s_SkyBoxShader->Bind();
+
+        s_SkyBoxShader->SetUniform(UniformCache::ViewMatrix, view);
+        s_SkyBoxShader->SetUniform(UniformCache::ProjectionMatrix, projection);
+
+        std::int32_t bindingPoint = TextureBinding::Point();
+        s_SkyBoxCubeTexture->Bind(bindingPoint);
+        s_SkyBoxShader->SetUniform(UniformCache::SkyboxTexture, bindingPoint);
+
+        s_SkyBoxVAO->Bind();
+        Renderer::DrawIndexed(s_SkyBoxEBO->GetElementCount());
+        s_SkyBoxVAO->Unbind();
+
+        s_SkyBoxCubeTexture->Unbind();
+        s_SkyBoxShader->Unbind();
+        Renderer::ResetDrawFlags(DrawFlags::SkipDepthMask);
     }
 
     /**

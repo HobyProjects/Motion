@@ -18,8 +18,6 @@ namespace Motion
         SkyBox& operator=(SkyBox&&) = delete;
 
     public:
-        static void Bind() noexcept;
-        static void Unbind() noexcept;
         static void Init() noexcept;
         static void Render(const glm::mat4& viewMatrix, const glm::mat4& projectionMatrix) noexcept;
 

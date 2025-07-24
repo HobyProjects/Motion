@@ -12,7 +12,7 @@ namespace Motion
         float PerspectiveNear{ 0.01f };
         float PerspectiveFar{ 10000.0f };
         float Rotation{ 0.0f };
-        float TranslationSpeed{ 2.0f };
+        float TranslationSpeed{ 1.0f };
         float Sensitivity{ 0.2f };
         float ViewportWidth{ 0.0f };
         float ViewportHeight{ 0.0f };

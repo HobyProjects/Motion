@@ -200,6 +200,7 @@
         "INCLUDEDIR",
         "Integerv",
         "Keybaord",
+        "loadf",
         "Lsizei",
         "Makefiles",
         "METALNESS",
@@ -225,6 +226,7 @@
         "Schlick",
         "skybox",
         "stbi",
-        "STBIR"
+        "STBIR",
+        "xyww"
     ]
 }

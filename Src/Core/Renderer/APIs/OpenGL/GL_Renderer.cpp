@@ -1,5 +1,4 @@
 #include "CorePCH.hpp"
-#include "GL_Renderer.hpp"
 
 namespace Motion
 {
@@ -20,10 +19,10 @@ namespace Motion
     void GL_Init()
     {
         glEnable(GL_BLEND);
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
         glDepthMask(GL_TRUE);
         glEnable(GL_DEPTH_TEST);
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 #ifdef MOTION_BUILD_DEBUG
 
@@ -168,6 +167,61 @@ namespace Motion
             MOTION_CORE_WARN("Unknown draw flag: {0}", static_cast<std::uint8_t>(flags));
             break;
         };
+    }
+
+    /**
+     * @brief Applies the specified depth function for OpenGL rendering.
+     *
+     * This function sets the depth comparison function used by OpenGL to determine
+     * whether a fragment should be drawn based on its depth value. It maps the provided
+     * DepthFunction enum to the corresponding OpenGL constant.
+     *
+     * @param depthFunction The depth function to apply (e.g., Less, Greater, Always).
+     */
+    void GL_ApplyDepthFunction(DepthFunction depthFunction)
+    {
+        switch (depthFunction)
+        {
+        case DepthFunction::Never:
+            glDepthFunc(GL_NEVER);
+            break;
+        case DepthFunction::Less:
+            glDepthFunc(GL_LESS);
+            break;
+        case DepthFunction::Equal:
+            glDepthFunc(GL_EQUAL);
+            break;
+        case DepthFunction::LessEqual:
+            glDepthFunc(GL_LEQUAL);
+            break;
+        case DepthFunction::Greater:
+            glDepthFunc(GL_GREATER);
+            break;
+        case DepthFunction::NotEqual:
+            glDepthFunc(GL_NOTEQUAL);
+            break;
+        case DepthFunction::GreaterEqual:
+            glDepthFunc(GL_GEQUAL);
+            break;
+        case DepthFunction::Always:
+            glDepthFunc(GL_ALWAYS);
+            break;
+        default:
+            MOTION_CORE_WARN("Unknown depth function: {0}", static_cast<GLenum>(depthFunction));
+            break;
+        }
+    }
+
+    /**
+     * @brief Resets the OpenGL depth function to the default state (GL_LESS).
+     *
+     * This function sets the depth function back to GL_LESS, which is the default
+     * depth comparison function in OpenGL. It is typically called when resetting
+     * the rendering state or before starting a new frame.
+     */
+    void GL_ResetDepthFunction()
+    {
+        glDepthFunc(GL_LESS);
     }
 
     /**

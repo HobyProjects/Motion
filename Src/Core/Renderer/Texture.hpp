@@ -93,6 +93,7 @@ namespace Motion
         ICubeMapTexture() = default;
         virtual ~ICubeMapTexture() = default;
 
+        virtual void Bind(std::uint32_t bindingPoint = 0) const noexcept = 0;
         virtual void Bind() const noexcept = 0;
         virtual void Unbind() const noexcept = 0;
 

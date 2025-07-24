@@ -1,4 +1,5 @@
 #include "CorePCH.hpp"
+#include "GL_Texture.hpp"
 
 namespace Motion
 {
@@ -22,7 +23,7 @@ namespace Motion
             return;
         }
 
-        m_Specification.Type = TextureType::DiffuseTexture;
+        m_Specification.Type = TextureType::BaseColorTexture;
         m_Specification.Source = TextureSource::GeneratedTexture;
         AssetInfo.IsInitialized = true;
     }
@@ -285,6 +286,18 @@ namespace Motion
             glDeleteTextures(1, &m_Specification.TexID);
             m_Specification.TexID = 0;
         }
+    }
+    /**
+     * @brief Binds the cube map texture to the specified binding point.
+     *
+     * This function binds the OpenGL cube map texture represented by this object to the given binding point,
+     * making it active for subsequent rendering operations.
+     *
+     * @param bindingPoint The texture unit or binding point to which the texture should be bound.
+     */
+    void GL_CubeMapTexture::Bind(std::uint32_t bindingPoint) const noexcept
+    {
+        glBindTextureUnit(bindingPoint, m_Specification.TexID);
     }
 
     /**

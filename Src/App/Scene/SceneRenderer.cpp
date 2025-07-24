@@ -5,6 +5,9 @@
 
 namespace Motion
 {
+    static std::vector<SceneDrawCommand> s_CommandQueue{};
+    static std::uint32_t s_DrawCallsCount{ 0 };
+
     /**
      * @brief Begins a new scene by clearing the draw commands and resetting the draw count.
      *
@@ -13,8 +16,9 @@ namespace Motion
      */
     void SceneRenderer::BeginScene() noexcept
     {
-        m_DrawCommands.clear();
-        m_DrawCount = 0;
+        s_CommandQueue.clear();
+        s_DrawCallsCount = 0;
+        TextureBinding::Reset();
     }
 
     /**
@@ -79,112 +83,54 @@ namespace Motion
                 if (entity->HasComponent<TransformComponent>())
                 {
                     const auto& transform = entity->GetComponent<TransformComponent>();
-                    command.TransformMatrix = transform.GetTransform();
+                    command.Model = transform.GetTransform();
                 }
                 else
                 {
                     MOTION_WARN("Entity has no TransformComponent, using identity matrix for transform");
-                    command.TransformMatrix = glm::mat4(1.0f);
+                    command.Model = glm::mat4(1.0f);
                 }
 
-                command.ViewProjectionMatrix = scene->m_SceneCamera->Camera3D.MVP;
-                command.ScenePtr = scene;
+                command.MVP = scene->m_SceneCamera->Camera3D.MVP;
+                command.CameraPosition = scene->m_SceneCamera->Camera3D.Position;
+                command.LightPosition = scene->m_Environment.DirectionalLight.Direction;
+                command.LightColor = scene->m_Environment.DirectionalLight.Color;
+                command.LightIntensity = scene->m_Environment.DirectionalLight.AmbientIntensity;
+                command.EnvironmentTexture = SkyBox::GetTextureID();
 
-                m_DrawCommands.push_back(command);
+                s_CommandQueue.push_back(command);
             }
         }
     }
 
 
     /**
-     * @brief Ends the current scene rendering by sorting and executing draw commands.
+     * @brief Ends the current scene rendering by sorting and executing the draw commands.
      *
-     * This method sorts the draw commands based on their sort key and retrieves the necessary
-     * assets (materials, meshes, shaders) from the AssetManager. It then performs the rendering
-     * for each command, selecting the appropriate shader based on the material's shading method.
-     * If any required asset (material or shader) is missing, a warning is logged and the draw call is skipped.
-     *
-     * @param skyBoxTextureID The texture ID of the skybox to be rendered in the scene.
+     * This method sorts the accumulated draw commands based on their sort key, material ID, and mesh ID,
+     * then iterates through the sorted commands to render each mesh with its associated material.
+     * It uses the AssetManager to retrieve the necessary shader, material, and mesh resources for rendering.
      */
-    void SceneRenderer::EndScene(TextureID skyBoxTextureID) noexcept
+    void SceneRenderer::EndScene() noexcept
     {
-        std::sort(m_DrawCommands.begin(), m_DrawCommands.end(), [](const SceneDrawCommand& a, const SceneDrawCommand& b) { return a < b; });
+        std::sort(s_CommandQueue.begin(), s_CommandQueue.end(), [](const SceneDrawCommand& a, const SceneDrawCommand& b) { return a < b; });
 
         AssetManager& assetManager = AssetManager::GetInstance();
-        std::shared_ptr<IShader> pbrShader = assetManager.Get<IShader>("PBRShader");
-        std::shared_ptr<IShader> phongShader = assetManager.Get<IShader>("PhongShader");
-        std::shared_ptr<IShader> unlitShader = assetManager.Get<IShader>("UnlitShader");
+        std::shared_ptr<IShader> shader = assetManager.Get<IShader>("PBRShader");
 
-        for (const auto& command : m_DrawCommands)
+        for (const auto& command : s_CommandQueue)
         {
             std::shared_ptr<Material> material = assetManager.Get<Material>(command.MaterialID);
             std::shared_ptr<Mesh> mesh = assetManager.Get<Mesh>(command.MeshID);
-            std::shared_ptr<IShader> currentShader{ nullptr };
 
-            if (material)
-            {
-                MaterialShadingMethod shadingMethod = material->GetShadingMethod();
-                switch (shadingMethod)
-                {
-                case MaterialShadingMethod::PBR:      currentShader = pbrShader; break;
-                case MaterialShadingMethod::Phong:    currentShader = phongShader; break;
-                case MaterialShadingMethod::Unlit:    currentShader = unlitShader; break;
-                case MaterialShadingMethod::Auto:     currentShader = unlitShader; break;
-                }
+            shader->Bind();
+            material->Bind();
 
-                if (currentShader)
-                {
-                    currentShader->Bind();
+            mesh->Render();
 
-                    if (shadingMethod & MaterialShadingMethod::PBR || shadingMethod & MaterialShadingMethod::Phong)
-                    {
-                        currentShader->SetUniform(UniformCache::GlobalAttri_ViewProjMatrix, command.ViewProjectionMatrix);
-                        currentShader->SetUniform(UniformCache::GlobalAttri_ModelMatrix, command.TransformMatrix);
-
-                        currentShader->SetUniform(UniformCache::LightAttri_Color, command.ScenePtr->m_Environment.DirectionalLight.Color);
-                        currentShader->SetUniform(UniformCache::LightAttri_Position, command.ScenePtr->m_Environment.DirectionalLight.Direction);
-                        currentShader->SetUniform(UniformCache::LightAttri_Intensity, command.ScenePtr->m_Environment.DirectionalLight.AmbientIntensity);
-
-                        Renderer::BindTextureUnit(10, skyBoxTextureID);
-                        currentShader->SetUniform(UniformCache::GlobalAttri_EnvironmentTexture, 10);
-                        currentShader->SetUniform(UniformCache::GlobalAttri_CameraPosition, command.ScenePtr->m_SceneCamera->Camera3D.Position);
-                    }
-
-                    material->Bind(currentShader);
-
-                    mesh->Render();
-
-                    material->Unbind();
-                    currentShader->Unbind();
-                    m_DrawCount++;
-                }
-                else
-                {
-                    MOTION_WARN("Cannot run the draw call with ID {}. Because Shader is expired", command.SortKey);
-                    continue;
-                }
-            }
-            else
-            {
-                MOTION_WARN("Cannot run the draw call with ID {}. Because Material is expired", command.SortKey);
-                continue;
-            }
+            material->Unbind();
+            shader->Unbind();
+            s_DrawCallsCount++;
         }
-    }
-
-    /**
-     * @brief Executes all queued draw commands, rendering the scene.
-     *
-     * This method sorts the draw commands by their sort key, retrieves the necessary
-     * assets (materials, meshes, shaders) from the AssetManager, and performs the rendering
-     * for each command. It selects the appropriate shader based on the material's shading method,
-     * binds the shader and material, sets required uniforms, and issues the mesh render call.
-     * If any required asset (material or shader) is missing, a warning is logged and the draw call is skipped.
-     *
-     * @note This method is noexcept and does not throw exceptions.
-     */
-    void SceneRenderer::Flush() noexcept
-    {
-
     }
 }

@@ -1,55 +1,108 @@
 #include "CorePCH.hpp"
+#include "SkyBox.hpp"
 
 namespace Motion
 {
-    SkyBox::SkyBox()
+    static std::shared_ptr<ICubeMapTexture> s_SkyBoxCubeTexture = nullptr;
+    static std::shared_ptr<IShader> s_SkyBoxShader = nullptr;
+    static std::shared_ptr<Mesh> s_SkyBoxMesh = nullptr;
+
+    /**
+     * @brief Initializes the SkyBox by loading the cube map texture and shader.
+     *
+     * This function retrieves the cube map texture and shader from the asset manager,
+     * and creates a mesh for the skybox. It should be called once before rendering the skybox.
+     */
+    void SkyBox::Init() noexcept
     {
         auto& assetManager = AssetManager::GetInstance();
-        m_CubeMapTexture = CreateUnregisteredCubeMapTexture("Assets/SkyBox/SkyBox_Texture_1.jpg");
-        if (!m_CubeMapTexture)
+        s_SkyBoxCubeTexture = CreateUnregisteredCubeMapTexture("Assets/SkyBox/SkyBox_Texture_1.jpg");
+        if (!s_SkyBoxCubeTexture)
         {
             MOTION_CORE_ERROR("Failed to create CubeMapTexture for SkyBox");
             return;
         }
 
-        m_ShaderProgram = assetManager.Get<IShader>("SkyBoxShader");
-        if (!m_ShaderProgram)
+        s_SkyBoxShader = assetManager.Get<IShader>("SkyBoxShader");
+        if (!s_SkyBoxShader)
         {
             MOTION_CORE_ERROR("Failed to retrieve SkyBoxShader");
             return;
         }
 
-        m_SkyBoxMesh = QuickMesh::CreateCube(false, "SkyBoxMesh", 200.0f, 2000.0f, 200.0f);
-        if (!m_SkyBoxMesh)
+        s_SkyBoxMesh = QuickMesh::CreateCube(false, "SkyBoxMesh", 200.0f, 2000.0f, 200.0f);
+        if (!s_SkyBoxMesh)
         {
             MOTION_CORE_ERROR("Failed to create SkyBoxMesh");
             return;
         }
     }
 
-    void SkyBox::Render(const glm::mat4& viewMatrix, const glm::mat4& projectionMatrix) noexcept
+    /**
+     * @brief Binds the SkyBox shader and texture for rendering.
+     *
+     * This function applies the necessary draw flags and binds the skybox shader and texture.
+     * It should be called before rendering the skybox.
+     */
+    void SkyBox::Bind() noexcept
     {
-        if (!m_CubeMapTexture || !m_ShaderProgram || !m_SkyBoxMesh)
-        {
-            MOTION_CORE_ERROR("SkyBox resources are not properly initialized");
-            return;
-        }
-
         Renderer::ApplyDrawFlags(DrawFlags::SkipDepthMask);
-        m_ShaderProgram->Bind();
 
-        glm::mat4 skyboxView = glm::mat4(glm::mat3(viewMatrix));
-        m_ShaderProgram->SetUniform(UniformCache::GlobalAttri_ViewMatrix, skyboxView);
-        m_ShaderProgram->SetUniform(UniformCache::GlobalAttri_ProjectionMatrix, projectionMatrix);
+        s_SkyBoxShader->Bind();
+        std::uint32_t bindingPoint = TextureBinding::Point();
+        s_SkyBoxCubeTexture->Bind(bindingPoint);
+        s_SkyBoxShader->SetUniform(UniformCache::Texture_SkyboxTexture, bindingPoint);
+    }
 
-        m_CubeMapTexture->Bind();
-        m_ShaderProgram->SetUniform(UniformCache::Texture_SkyboxTexture, 0);
-        m_SkyBoxMesh->Render();
-        m_CubeMapTexture->Unbind();
+    /**
+     * @brief Unbinds the SkyBox shader and texture after rendering.
+     *
+     * This function unbinds the skybox shader and texture, restoring the previous state.
+     * It should be called after rendering the skybox.
+     */
+    void SkyBox::Unbind() noexcept
+    {
+        s_SkyBoxCubeTexture->Unbind();
+        s_SkyBoxShader->Unbind();
 
-        m_ShaderProgram->Unbind();
         Renderer::ResetDrawFlags(DrawFlags::SkipDepthMask);
     }
 
+    /**
+     * @brief Renders the SkyBox using the provided view and projection matrices.
+     *
+     * This function sets up the view and projection matrices for the skybox shader,
+     * and renders the skybox mesh. It should be called after binding the skybox.
+     *
+     * @param viewMatrix The view matrix to use for rendering the skybox.
+     * @param projectionMatrix The projection matrix to use for rendering the skybox.
+     */
+    void SkyBox::Render(const glm::mat4& viewMatrix, const glm::mat4& projectionMatrix) noexcept
+    {
+        if (!s_SkyBoxShader || !s_SkyBoxCubeTexture || !s_SkyBoxMesh)
+        {
+            MOTION_CORE_ERROR("SkyBox is not initialized properly. Cannot render.");
+            return;
+        }
+
+        glm::mat4 skyBoxView = glm::mat4(glm::mat3(viewMatrix));
+        s_SkyBoxShader->SetUniform(UniformCache::ViewMatrix, skyBoxView);
+        s_SkyBoxShader->SetUniform(UniformCache::ProjectionMatrix, projectionMatrix);
+
+        s_SkyBoxMesh->Render();
+    }
+
+    /**
+     * @brief Retrieves the texture ID of the SkyBox cube map texture.
+     *
+     * This function returns the texture ID of the currently bound skybox cube map texture.
+     * It can be used for further processing or rendering operations that require the texture ID.
+     *
+     * @return TextureID The ID of the skybox cube map texture.
+     */
+    TextureID SkyBox::GetTextureID() noexcept
+    {
+        return s_SkyBoxCubeTexture ? s_SkyBoxCubeTexture->GetID() : 0;
+    }
 
 }

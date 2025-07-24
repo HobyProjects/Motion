@@ -8,16 +8,21 @@ namespace Motion
 {
     class SkyBox
     {
-    public:
-        SkyBox();
+    private:
+        SkyBox() = default;
         ~SkyBox() = default;
 
-        TextureID GetTextureID() const noexcept { return m_CubeMapTexture ? m_CubeMapTexture->GetID() : 0; }
-        void Render(const glm::mat4& viewMatrix, const glm::mat4& projectionMatrix) noexcept;
+        SkyBox(const SkyBox&) = delete;
+        SkyBox& operator=(const SkyBox&) = delete;
+        SkyBox(SkyBox&&) = delete;
+        SkyBox& operator=(SkyBox&&) = delete;
 
-    private:
-        std::shared_ptr<ICubeMapTexture> m_CubeMapTexture;
-        std::shared_ptr<IShader> m_ShaderProgram;
-        std::shared_ptr<Mesh> m_SkyBoxMesh;
+    public:
+        static void Bind() noexcept;
+        static void Unbind() noexcept;
+        static void Init() noexcept;
+        static void Render(const glm::mat4& viewMatrix, const glm::mat4& projectionMatrix) noexcept;
+
+        [[nodiscard]] static TextureID GetTextureID() noexcept;
     };
 }

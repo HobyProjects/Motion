@@ -16,10 +16,15 @@ namespace Motion
         UUID MaterialID{ 0 };
         UUID MeshID{ 0 };
 
-        glm::mat4 TransformMatrix{ 1.0f };
-        glm::mat4 ViewProjectionMatrix{ 1.0f };
+        glm::mat4 Model{ 1.0f };
+        glm::mat4 MVP{ 1.0f };
 
-        Scene* ScenePtr{ nullptr };
+        glm::vec3 CameraPosition{ 0.0f, 0.0f, 0.0f };
+        glm::vec3 LightPosition{ 0.0f, 0.0f, 0.0f };
+        glm::vec3 LightColor{ 1.0f, 1.0f, 1.0f };
+        float LightIntensity{ 1.0f };
+
+        TextureID EnvironmentTexture{ 0 };
 
         SceneDrawCommand() = default;
         ~SceneDrawCommand() = default;
@@ -42,31 +47,9 @@ namespace Motion
         SceneRenderer& operator=(SceneRenderer&&) = delete;
 
     public:
-        /**
-         * @brief Returns the singleton instance of SceneRenderer.
-         *
-         * This method ensures that only one instance of SceneRenderer exists throughout the application.
-         * It initializes the instance if it does not already exist.
-         *
-         * @return Reference to the singleton SceneRenderer instance.
-         */
-        [[nodiscard]] static SceneRenderer& GetInstance() noexcept
-        {
-            static SceneRenderer instance;
-            return instance;
-        }
-
-    public:
-        void BeginScene() noexcept;
-        void Submit(Scene* scene) noexcept;
-        void EndScene(TextureID skyBoxTextureID) noexcept;
-        void Flush() noexcept;
-
-        [[nodiscard]] std::uint32_t GetDrawCount() const noexcept { return m_DrawCount; }
-
-    private:
-        std::vector<SceneDrawCommand> m_DrawCommands;
-        std::uint32_t m_DrawCount{ 0 };
+        static void BeginScene() noexcept;
+        static void Submit(Scene* scene) noexcept;
+        static void EndScene() noexcept;
     };
 
 

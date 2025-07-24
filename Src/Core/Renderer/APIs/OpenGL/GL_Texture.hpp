@@ -34,6 +34,7 @@ namespace Motion
         GL_CubeMapTexture(UUID uuid, const std::string& name, const std::filesystem::path& textureFile);
         virtual ~GL_CubeMapTexture();
 
+        virtual void Bind(std::uint32_t bindingPoint = 0) const noexcept override;
         virtual void Bind() const noexcept override;
         virtual void Unbind() const noexcept override;
 
@@ -50,6 +51,6 @@ namespace Motion
     };
 
     [[nodiscard]] std::shared_ptr<GL_Texture> GL_CreateUnregisteredPlainTexture(std::uint32_t width = 100, std::uint32_t height = 100, const glm::vec3& color = { 1.0f, 1.0f, 1.0f }) noexcept;
-    [[nodiscard]] std::shared_ptr<GL_Texture> GL_CreateUnregisteredTextureFromFile(const std::filesystem::path& textureFile, TextureType type = TextureType::BaseColorMapsTexture, bool flip = true) noexcept;
+    [[nodiscard]] std::shared_ptr<GL_Texture> GL_CreateUnregisteredTextureFromFile(const std::filesystem::path& textureFile, TextureType type = TextureType::BaseColorTexture, bool flip = true) noexcept;
     [[nodiscard]] std::shared_ptr<GL_CubeMapTexture> GL_CreateUnregisteredCubeMapTexture(const std::filesystem::path& textureFile) noexcept;
 }

@@ -1,6 +1,5 @@
 #include "CorePCH.hpp"
 #include "Material.hpp"
-
 namespace Motion
 {
     /**
@@ -13,170 +12,172 @@ namespace Motion
     Material::Material(const UUID& uuid, const std::string& name) :
         AssetBase(uuid, name, AssetType::Material, "Undefined")
     {
+        auto& assetManager = AssetManager::GetInstance();
+        m_Shader = assetManager.Get<IShader>("PBRShader");
+        m_ShaderBuffer = BufferFactory::CreateShaderBuffer(static_cast<std::uint32_t>(sizeof(MaterialLayerData) * MAX_MATERIAL_LAYERS), 0);
         AssetInfo.IsInitialized = true;
-        m_ShadingMethod = MaterialShadingMethod::Auto;
     }
 
-    /**
-     * @brief Associates a texture with a specified uniform name in the material.
-     *
-     * This function sets or updates the texture corresponding to the given uniform name.
-     * The texture is stored internally and can be used during rendering to bind the appropriate
-     * texture to the shader uniform.
-     *
-     * @param uniformName The name of the shader uniform to associate with the texture.
-     * @param texture A shared pointer to the texture object to be set.
-     */
-    void Material::SetTexture(const std::string_view uniformName, const MaterialTexture& texture)
+    // Offset values for the material buffer
+    enum MATERIAL_BUFFER_OFFSET : std::uint32_t
     {
-        m_Textures.push_back({ uniformName, texture });
-    }
+        BASE_COLOR_FACTOR = 0,
+        METALLIC_FACTOR = 16,
+        ROUGHNESS_FACTOR = 20,
+        OPACITY = 24,
+        AO_FACTOR = 28,
+        CLEAR_COAT_FACTOR = 32,
+        CLEAR_COAT_ROUGHNESS = 36,
+        SHEEN_FACTOR = 40,
+        SHEEN_ROUGHNESS = 44,
+        TRANSMISSION = 48,
+        IOR = 52,
+        BLEND_FACTOR = 56
+    };
+
+    // Size of various data types in bytes
+    enum MATERIAL_SIZE : std::uint32_t
+    {
+        VEC3 = sizeof(glm::vec3),
+        VEC4 = sizeof(glm::vec4),
+        FLOAT = sizeof(float),
+    };
+
+    // Size of a single material layer in bytes
+    constexpr std::uint32_t LAYER_SIZE = sizeof(MaterialLayerData);
 
     /**
-     * @brief Binds the material parameters and textures to the given shader.
+     * @brief Binds the material and its associated textures.
      *
-     * This function ensures that the shading method is determined only once per material instance.
-     * If the provided shader is valid and currently in use, it iterates over all parameter bindings,
-     * setting each parameter as a uniform in the shader. It also binds all associated textures.
-     *
-     * @param shader A shared pointer to the shader to which the material parameters and textures will be bound.
-     * @note This function is noexcept and thread-safe for the shading method determination.
+     * This function binds the shader buffer and sets the uniform values for each material layer.
+     * It also binds the textures associated with each layer to the appropriate binding points.
      */
-    void Material::Bind(const std::shared_ptr<IShader>& shader) noexcept
+    void Material::Bind() noexcept
     {
-        if (m_ShadingMethod & MaterialShadingMethod::Auto)
+        m_ShaderBuffer->Bind();
+
+        for (std::uint32_t i = 0; i < MAX_MATERIAL_LAYERS; i++)
         {
-            DetermineShadingMethod();
-            Bind(shader);
+            const auto& layer = m_Layers[i];
+            std::uint32_t baseOffset = i * LAYER_SIZE;
+
+            m_ShaderBuffer->SetBufferData(baseOffset + BASE_COLOR_FACTOR, VEC3, layer.Data.BaseColor);
+            m_ShaderBuffer->SetBufferData(baseOffset + METALLIC_FACTOR, FLOAT, layer.Data.Metallic);
+            m_ShaderBuffer->SetBufferData(baseOffset + ROUGHNESS_FACTOR, FLOAT, layer.Data.Roughness);
+            m_ShaderBuffer->SetBufferData(baseOffset + OPACITY, FLOAT, layer.Data.Opacity);
+            m_ShaderBuffer->SetBufferData(baseOffset + AO_FACTOR, FLOAT, layer.Data.AmbientOcclusion);
+            m_ShaderBuffer->SetBufferData(baseOffset + CLEAR_COAT_FACTOR, FLOAT, layer.Data.ClearCoat);
+            m_ShaderBuffer->SetBufferData(baseOffset + CLEAR_COAT_ROUGHNESS, FLOAT, layer.Data.ClearCoatRoughness);
+            m_ShaderBuffer->SetBufferData(baseOffset + SHEEN_FACTOR, FLOAT, layer.Data.Sheen);
+            m_ShaderBuffer->SetBufferData(baseOffset + SHEEN_ROUGHNESS, FLOAT, layer.Data.SheenRoughness);
+            m_ShaderBuffer->SetBufferData(baseOffset + TRANSMISSION, FLOAT, layer.Data.Transmission);
+            m_ShaderBuffer->SetBufferData(baseOffset + IOR, FLOAT, layer.Data.IOR);
+            m_ShaderBuffer->SetBufferData(baseOffset + BLEND_FACTOR, FLOAT, layer.Data.Blend);
+
+            auto BindTexture =
+                [&](std::string_view uniformBase)
+                {
+                    auto it = layer.Textures.find(uniformBase);
+                    if (it != layer.Textures.end() && it->second)
+                    {
+                        std::uint32_t binding = TextureBinding::Point();
+                        it->second->Bind(binding);
+                        std::string uniformName = std::format("{}[{}]", uniformBase, i);
+                        m_Shader->SetUniform(uniformName, static_cast<std::int32_t>(binding));
+                    }
+                };
+
+            BindTexture(UniformCache::BaseColorTextures);
+            BindTexture(UniformCache::MetallicTextures);
+            BindTexture(UniformCache::RoughnessTextures);
+            BindTexture(UniformCache::AmbientOcclusionTextures);
+            BindTexture(UniformCache::NormalTextures);
+            BindTexture(UniformCache::OpacityTextures);
+            BindTexture(UniformCache::BlendMaskTextures);
         }
+    }
 
-        if (m_ShadingMethod & MaterialShadingMethod::Phong)
+    /**
+     * @brief Unbinds the material and its associated textures.
+     *
+     * This function unbinds the shader buffer and all textures associated with the material layers.
+     * It ensures that the GPU resources are released and no longer used in rendering.
+     */
+    void Material::Unbind() noexcept
+    {
+        m_ShaderBuffer->Unbind();
+        for (std::uint32_t i = 0; i < MAX_MATERIAL_LAYERS; i++)
         {
-
-        }
-    }
-
-    /**
-     * @brief Unbinds all textures associated with this material.
-     *
-     * Iterates through all texture bindings and calls the Unbind method
-     * on each bound texture, if present. This is typically used to
-     * release texture resources from the rendering pipeline after use.
-     *
-     * @note This method does not throw exceptions.
-     */
-    void Material::Unbind() const noexcept
-    {
-
-
-    }
-
-    /**
-     * @brief Checks if the given texture is one of the default fallback textures.
-     *
-     * This function compares the provided texture with predefined fallback textures
-     * (White, Black, Grey, Normal) and returns true if it matches any of them.
-     *
-     * @param texture The MaterialTexture to check against the default textures.
-     * @return true if the texture is a default fallback texture, false otherwise.
-     */
-    static bool IsDefaultTexture(const MaterialTexture& texture)
-    {
-        return texture == MaterialFallbackTextures::White ||
-            texture == MaterialFallbackTextures::Black ||
-            texture == MaterialFallbackTextures::Grey ||
-            texture == MaterialFallbackTextures::Normal;
-    }
-
-    /**
-     * @brief Determines the appropriate shading method for the material based on its properties and textures.
-     *
-     * This method inspects the material's properties and associated textures to automatically select
-     * a shading method if the current shading method is set to MaterialShadingMethod::Auto.
-     * The selection is made in the following order:
-     *   1. PBR (Physically Based Rendering): Chosen if base color, metallic, and roughness factors are valid and
-     *      all required PBR textures are present.
-     *   2. Phong: Chosen if diffuse and specular colors, and shininess are valid, or if all legacy Phong textures are present.
-     *   3. Unlit: Chosen if the emissive color is valid and the emissive texture is present.
-     * If none of the above conditions are met, the method defaults to Phong shading and logs a warning.
-     *
-     * @note This method modifies the m_ShadingMethod member variable if the shading method is determined.
-     * @note The method is noexcept and does not throw exceptions.
-     */
-    void Material::DetermineShadingMethod() noexcept
-    {
-
-    }
-
-    /**
-     * @brief Sets up texture parameters for the material based on the textures associated with it.
-     *
-     * This function iterates through all textures associated with the material and sets default
-     * values for various uniform parameters if the texture is a default texture. It ensures that
-     * the material has sensible defaults for rendering, even when specific textures are not provided.
-     *
-     * @note This method is noexcept and does not throw exceptions.
-     */
-    void Material::SetupTextureParameters() noexcept
-    {
-        for (auto& [uniformName, texture] : m_Textures)
-        {
-            if (IsDefaultTexture(texture))
+            const auto& layer = m_Layers[i];
+            for (const auto& [textureName, texture] : layer.Textures)
             {
-                if (uniformName == UniformCache::Texture_BaseColorTexture)
-                    SetUniform(UniformCache::Factor_BaseColorFactor, glm::vec3(1.0f));
-
-                if (uniformName == UniformCache::Texture_MetallicTexture)
-                    SetUniform(UniformCache::Factor_MetallicFactor, 0.0f);
-
-                if (uniformName == UniformCache::Texture_RoughnessTexture)
-                    SetUniform(UniformCache::Factor_RoughnessFactor, 0.8f);
-
-                if (uniformName == UniformCache::Texture_EmissiveTexture)
-                    SetUniform(UniformCache::Color_EmissiveColor, glm::vec3(0.0f));
-
-                if (uniformName == UniformCache::Texture_AmbientOcclusionTexture)
-                    SetUniform(UniformCache::Factor_AmbientOcclusionFactor, 1.0f);
-
-                if (uniformName == UniformCache::Texture_ClearCoatTexture)
+                if (texture)
                 {
-                    SetUniform(UniformCache::Factor_ClearCoatFactor, 0.0f);
-                    SetUniform(UniformCache::Factor_ClearCoatRoughnessFactor, 0.1f);
+                    texture->Unbind();
                 }
-
-                if (uniformName == UniformCache::Texture_SheenTexture)
-                {
-                    SetUniform(UniformCache::Factor_SheenFactor, 0.0f);
-                    SetUniform(UniformCache::Factor_SheenRoughnessFactor, 0.3f);
-                }
-
-                if (uniformName == UniformCache::Texture_TransmissionTexture)
-                {
-                    SetUniform(UniformCache::Factor_TransmissionFactor, 0.0f);
-                    SetUniform(UniformCache::Property_IndexOfRefraction, 1.5f);
-                }
-
-                if (uniformName == UniformCache::Texture_DiffuseTexture)
-                    SetUniform(UniformCache::Color_DiffuseColor, glm::vec3(0.8f));
-
-                if (uniformName == UniformCache::Texture_SpecularTexture)
-                    SetUniform(UniformCache::Color_SpecularColor, glm::vec3(0.5f));
-
-                if (uniformName == UniformCache::Texture_ShininessTexture)
-                    SetUniform(UniformCache::Property_Shininess, 32.0f);
-
-                if (uniformName == UniformCache::Texture_EmissiveTexture)
-                    SetUniform(UniformCache::Color_EmissiveColor, glm::vec3(0.0f));
-
-                if (uniformName == UniformCache::Texture_OpacityTexture)
-                    SetUniform(UniformCache::Property_Opacity, 1.0f);
-
-                if (uniformName == UniformCache::Texture_AmbientTexture)
-                    SetUniform(UniformCache::Color_AmbientColor, glm::vec3(0.0f));
             }
         }
     }
 
+    /**
+     * @brief Inserts a new material layer into the material.
+     *
+     * This function adds a new material layer to the material's layer array. It checks for an empty slot
+     * and inserts the layer if found. If no empty slot is available, it asserts an error.
+     *
+     * @param layer The MaterialLayer to be inserted.
+     */
+    void Material::InsertLayer(const MaterialLayer& layer) noexcept
+    {
+        for (std::size_t i = 0; i < MAX_MATERIAL_LAYERS; ++i)
+        {
+            // Check if the slot is unused by testing a property (e.g., Blend == default)
+            if (m_Layers[i].Data.Blend == MaterialDefaultValues::Blend &&
+                m_Layers[i].Textures.empty())
+            {
+                m_Layers[i] = layer;
+                return;
+            }
+        }
+        MOTION_ASSERT(false, "Maximum number of material layers exceeded!");
+    }
+
+    /**
+     * @brief Inserts a texture into a specific layer of the material.
+     *
+     * This function adds a texture to the specified layer of the material. If the texture already exists
+     * in that layer, it overwrites the existing texture.
+     *
+     * @param layerIndex The index of the layer where the texture will be inserted.
+     * @param textureName The name of the texture to be inserted.
+     * @param texture The shared pointer to the ITexture to be inserted.
+     */
+    void Material::InsertTexture(std::uint32_t layerIndex, std::string_view textureName, const std::shared_ptr<ITexture>& texture) noexcept
+    {
+        auto& layer = m_Layers[layerIndex];
+        if (layer.Textures.find(textureName) != layer.Textures.end())
+        {
+            MOTION_CORE_WARN("Texture {0} already exists in layer {1}. Overwriting.", textureName, layerIndex);
+        }
+
+        layer.Textures[textureName] = std::move(texture);
+    }
+
+
+    /**
+     * @brief Retrieves a material layer by index.
+     *
+     * This function provides access to a specific material layer by its index. It asserts that the index
+     * is within bounds and returns a reference to the requested layer.
+     *
+     * @param index The index of the material layer to retrieve.
+     * @return MaterialLayer& Reference to the requested material layer.
+     */
+    MaterialLayer& Material::GetLayer(std::uint32_t index) noexcept
+    {
+        MOTION_ASSERT(index < MAX_MATERIAL_LAYERS, "Index out of bounds for material layers.");
+        return m_Layers[index];
+    }
 
 
 }

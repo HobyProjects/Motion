@@ -1,9 +1,46 @@
 #include "CorePCH.hpp"
 
-#define AI_MATKEY_CLEARCOAT_ROUGHNESS_FACTOR "$mat.clearcoat.roughnessFactor", 0, 0
-#define AI_MATKEY_IOR "$mat.ior", 0, 0
-#define AI_MATKEY_SHEEN_ROUGHNESS_FACTOR "$mat.sheen.roughnessFactor", 0, 0
-#define AI_MATKEY_AMBIENT_OCCLUISION_FACTOR "$mat.occlusionStrength", 0, 0
+// Base Color
+#define MATKEY_COLOR_BASE "$clr.base", 0, 0
+#define MATKEY_BASE_COLOR_TEXTURE aiTextureType_BASE_COLOR
+
+// Metallic-Roughness
+#define MATKEY_METALLIC_FACTOR "$mat.metallicFactor", 0, 0
+#define MATKEY_ROUGHNESS_FACTOR "$mat.roughnessFactor", 0, 0
+#define MATKEY_METALLIC_TEXTURE aiTextureType_METALNESS
+#define MATKEY_ROUGHNESS_TEXTURE aiTextureType_DIFFUSE_ROUGHNESS
+
+// Ambient Occlusion
+#define MATKEY_AMBIENT_OCCLUSION_TEXTURE aiTextureType_AMBIENT_OCCLUSION
+#define MATKEY_AMBIENT_OCCLUISION_FACTOR "$mat.occlusionStrength", 0, 0
+
+// Normal Map
+#define MATKEY_NORMAL_TEXTURE aiTextureType_NORMALS
+
+// Emissive
+#define MATKEY_EMISSION_COLOR "$clr.emissive", 0, 0
+#define MATKEY_EMISSION_TEXTURE aiTextureType_EMISSION_COLOR
+
+// Clear Coat (KHR_materials_clearcoat)
+#define MATKEY_CLEARCOAT_FACTOR "$mat.clearcoat.factor", 0, 0
+#define MATKEY_CLEARCOAT_ROUGHNESS_FACTOR "$mat.clearcoat.roughnessFactor", 0, 0
+#define MATKEY_CLEARCOAT_TEXTURE aiTextureType_CLEARCOAT
+
+// Sheen (KHR_materials_sheen)
+#define MATKEY_SHEEN_FACTOR "$mat.sheen.colorFactor", 0, 0
+#define MATKEY_SHEEN_ROUGHNESS_FACTOR "$mat.sheen.roughnessFactor", 0, 0
+#define MATKEY_SHEEN_TEXTURE aiTextureType_SHEEN
+
+// Transmission (KHR_materials_transmission)
+#define MATKEY_TRANSMISSION_FACTOR "$mat.transmission.factor", 0, 0
+#define MATKEY_TRANSMISSION_TEXTURE aiTextureType_TRANSMISSION
+
+// Index of Refraction (KHR_materials_ior)
+#define MATKEY_IOR "$mat.ior", 0, 0
+
+// Opacity / Alpha Mode
+#define MATKEY_OPACITY "$mat.opacity", 0, 0
+#define MATKEY_OPACITY_TEXTURE aiTextureType_OPACITY
 
 namespace Motion
 {
@@ -68,9 +105,6 @@ namespace Motion
         case aiTextureType_CLEARCOAT: return CreateUnregisteredPlainTexture(10, 10, { 0.0f, 0.0f, 0.0f });
         case aiTextureType_SHEEN: return CreateUnregisteredPlainTexture(10, 10, { 0.0f, 0.0f, 0.0f });
         case aiTextureType_TRANSMISSION: return CreateUnregisteredPlainTexture(10, 10, { 0.0f, 0.0f, 0.0f });
-        case aiTextureType_DIFFUSE: return CreateUnregisteredPlainTexture(10, 10, { 1.0f, 1.0f, 1.0f });
-        case aiTextureType_SPECULAR: return CreateUnregisteredPlainTexture(10, 10, { 0.0f, 0.0f, 0.0f });
-        case aiTextureType_SHININESS: return CreateUnregisteredPlainTexture(10, 10, { 0.8f, 0.8f, 0.8f });
         case aiTextureType_OPACITY: return CreateUnregisteredPlainTexture(10, 10, { 1.0f, 1.0f, 1.0f });
         default: break;
         }
@@ -159,7 +193,7 @@ namespace Motion
      * Otherwise, a default vector (0.0f, 0.0f, 0.0f) is returned.
      *
      * @param currentMaterial Pointer to the aiMaterial from which to load the property.
-     * @param dataType The name of the material property to retrieve (e.g., AI_MATKEY_COLOR_DIFFUSE).
+     * @param dataType The name of the material property to retrieve (e.g., MATKEY_COLOR_DIFFUSE).
      * @param type The type of the property (usually aiTextureType_NONE for colors).
      * @param idx The index of the property (usually 0).
      * @return glm::vec3 The loaded vector value, or (0.0f, 0.0f, 0.0f) if not found.
@@ -253,11 +287,11 @@ namespace Motion
             indices.data(), indices.size(),
             BufferLayout(
                 {
-                    { UniformCache::VertexAttri_Position, BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Position) },
-                    { UniformCache::VertexAttri_TexCoords, BufferComponents::UV, BufferStride::F2, false, offsetof(Vertex, TexCoord) },
-                    { UniformCache::VertexAttri_Normals, BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Normal) },
-                    { UniformCache::VertexAttri_Tangents, BufferComponents::XYZ, BufferStride::F3, hasNormalizeTangents, offsetof(Vertex, Tangent) },
-                    { UniformCache::VertexAttri_Bitangents, BufferComponents::XYZ, BufferStride::F3, hasNormalizeTangents, offsetof(Vertex, Bitangent) }
+                    { UniformCache::Position, BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Position) },
+                    { UniformCache::TexCoords, BufferComponents::UV, BufferStride::F2, false, offsetof(Vertex, TexCoord) },
+                    { UniformCache::Normals, BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Normal) },
+                    { UniformCache::Tangents, BufferComponents::XYZ, BufferStride::F3, hasNormalizeTangents, offsetof(Vertex, Tangent) },
+                    { UniformCache::Bitangents, BufferComponents::XYZ, BufferStride::F3, hasNormalizeTangents, offsetof(Vertex, Bitangent) }
                 }
             ),
             staticMeshPtr
@@ -326,106 +360,76 @@ namespace Motion
             return;
         }
 
-        auto& attributes = meshSegment->Materials->RetrieveAttributes();
-
-        // Surface Colors
-        attributes.AmbientColor = LoadMaterialVec3Data(currentMaterial, AI_MATKEY_COLOR_AMBIENT, StandardMaterialConfig::AmbientColor);
-        attributes.DiffuseColor = LoadMaterialVec3Data(currentMaterial, AI_MATKEY_COLOR_DIFFUSE, StandardMaterialConfig::DiffuseColor);
-        attributes.SpecularColor = LoadMaterialVec3Data(currentMaterial, AI_MATKEY_COLOR_SPECULAR, StandardMaterialConfig::SpecularColor);
-        attributes.EmissiveColor = LoadMaterialVec3Data(currentMaterial, AI_MATKEY_COLOR_EMISSIVE, StandardMaterialConfig::EmissiveColor);
-        attributes.ReflectiveColor = LoadMaterialVec3Data(currentMaterial, AI_MATKEY_COLOR_REFLECTIVE, StandardMaterialConfig::ReflectiveColor);
-        attributes.TransparentColor = LoadMaterialVec3Data(currentMaterial, AI_MATKEY_COLOR_TRANSPARENT, StandardMaterialConfig::TransparentColor);
-
-        //Material properties
-        attributes.Shininess = LoadMaterialFloatData(currentMaterial, AI_MATKEY_SHININESS, StandardMaterialConfig::Shininess);
-        attributes.ShininessStrength = LoadMaterialFloatData(currentMaterial, AI_MATKEY_SHININESS_STRENGTH, StandardMaterialConfig::ShininessStrength);
-        attributes.Opacity = LoadMaterialFloatData(currentMaterial, AI_MATKEY_OPACITY, StandardMaterialConfig::Opacity);
-        attributes.IndexOfRefraction = LoadMaterialFloatData(currentMaterial, AI_MATKEY_IOR, StandardMaterialConfig::IndexOfRefraction);
-        attributes.BumpScaling = LoadMaterialFloatData(currentMaterial, AI_MATKEY_BUMPSCALING, StandardMaterialConfig::BumpScaling);
-        attributes.Reflectivity = LoadMaterialFloatData(currentMaterial, AI_MATKEY_REFLECTIVITY, StandardMaterialConfig::Reflectivity);
-
-        //Material Factors
-        attributes.BaseColorFactor = LoadMaterialVec3Data(currentMaterial, AI_MATKEY_BASE_COLOR, StandardMaterialConfig::BaseColorFactor);
-        attributes.MetallicFactor = LoadMaterialFloatData(currentMaterial, AI_MATKEY_METALLIC_FACTOR, StandardMaterialConfig::MetallicFactor);
-        attributes.RoughnessFactor = LoadMaterialFloatData(currentMaterial, AI_MATKEY_ROUGHNESS_FACTOR, StandardMaterialConfig::RoughnessFactor);
-        attributes.TransmissionFactor = LoadMaterialFloatData(currentMaterial, AI_MATKEY_TRANSMISSION_FACTOR, StandardMaterialConfig::TransmissionFactor);
-        attributes.ClearCoatFactor = LoadMaterialFloatData(currentMaterial, AI_MATKEY_CLEARCOAT_FACTOR, StandardMaterialConfig::ClearCoatFactor);
-        attributes.ClearCoatRoughnessFactor = LoadMaterialFloatData(currentMaterial, AI_MATKEY_CLEARCOAT_ROUGHNESS_FACTOR, StandardMaterialConfig::ClearCoatRoughnessFactor);
-        attributes.SheenFactor = LoadMaterialFloatData(currentMaterial, AI_MATKEY_SHEEN_COLOR_FACTOR, StandardMaterialConfig::SheenFactor);
-        attributes.SheenRoughnessFactor = LoadMaterialFloatData(currentMaterial, AI_MATKEY_SHEEN_ROUGHNESS_FACTOR, StandardMaterialConfig::SheenRoughnessFactor);
-        attributes.IndexOfRefraction = LoadMaterialFloatData(currentMaterial, AI_MATKEY_REFRACTI, StandardMaterialConfig::IndexOfRefraction);
-        attributes.AmbientOcclusionFactor = LoadMaterialFloatData(currentMaterial, AI_MATKEY_AMBIENT_OCCLUISION_FACTOR, StandardMaterialConfig::AmbientOcclusionFactor);
-
-        aiTextureType assimpTextureTypes[] = {
-            aiTextureType_DIFFUSE,
-            aiTextureType_SPECULAR,
-            aiTextureType_AMBIENT,
-            aiTextureType_EMISSIVE,
-            aiTextureType_NORMALS,
-            aiTextureType_SHININESS,
-            aiTextureType_OPACITY,
-
-            aiTextureType_BASE_COLOR,
-            aiTextureType_METALNESS,
-            aiTextureType_DIFFUSE_ROUGHNESS,
-            aiTextureType_AMBIENT_OCCLUSION,
-            aiTextureType_EMISSION_COLOR,
-            aiTextureType_CLEARCOAT,
-            aiTextureType_SHEEN,
-            aiTextureType_TRANSMISSION
-        };
-
-        TextureType textureTypes[] = {
-            TextureType::DiffuseTexture,
-            TextureType::SpecularTexture,
-            TextureType::AmbientTexture,
-            TextureType::EmissiveTexture,
-            TextureType::NormalMapsTexture,
-            TextureType::ShininessTexture,
-            TextureType::OpacityMapsTexture,
-
-            TextureType::BaseColorMapsTexture,
-            TextureType::MetallicMapsTexture,
-            TextureType::RoughnessMapsTexture,
-            TextureType::AOMapsTexture,
-            TextureType::EmissiveMapsTexture,
-            TextureType::ClearCoatMapsTexture,
-            TextureType::SheenMapsTexture,
-            TextureType::TransmissionMapsTexture
-        };
-
-        std::string_view textureUniforms[] = {
-            UniformCache::Texture_DiffuseTexture,
-            UniformCache::Texture_SpecularTexture,
-            UniformCache::Texture_AmbientTexture,
-            UniformCache::Texture_EmissiveTexture,
-            UniformCache::Texture_NormalMapTexture,
-            UniformCache::Texture_ShininessTexture,
-            UniformCache::Texture_OpacityTexture,
-
-            UniformCache::Texture_BaseColorTexture,
-            UniformCache::Texture_MetallicTexture,
-            UniformCache::Texture_RoughnessTexture,
-            UniformCache::Texture_AmbientOcclusionTexture,
-            UniformCache::Texture_EmissiveTexture,
-            UniformCache::Texture_ClearCoatTexture,
-            UniformCache::Texture_SheenTexture,
-            UniformCache::Texture_TransmissionTexture
-        };
-
-
-        for (uint32_t i = 0; i < std::size(assimpTextureTypes); ++i)
+        for (std::uint32_t i = 0; i < MAX_MATERIAL_LAYERS; i++)
         {
-            std::uint32_t textureCount = currentMaterial->GetTextureCount(assimpTextureTypes[i]);
-            if (textureCount > 0)
-            {
-                for (std::uint32_t j = 0; j < textureCount; j++)
-                    meshSegment->Materials->SetTexture(textureUniforms[i], LoadTextures(j, assimpTextureTypes[i], currentMaterial, textureTypes[i]));
-            }
+            MaterialLayer layer{};
+            layer.Data.BaseColor = LoadMaterialVec3Data(currentMaterial, MATKEY_COLOR_BASE, MaterialDefaultValues::BaseColor);
+            layer.Data.Metallic = LoadMaterialFloatData(currentMaterial, MATKEY_METALLIC_FACTOR, MaterialDefaultValues::Metallic);
+            layer.Data.Roughness = LoadMaterialFloatData(currentMaterial, MATKEY_ROUGHNESS_FACTOR, MaterialDefaultValues::Roughness);
+            layer.Data.Opacity = LoadMaterialFloatData(currentMaterial, MATKEY_OPACITY, MaterialDefaultValues::Opacity);
+            layer.Data.AmbientOcclusion = LoadMaterialFloatData(currentMaterial, MATKEY_AMBIENT_OCCLUISION_FACTOR, MaterialDefaultValues::AmbientOcclusion);
+            layer.Data.ClearCoat = LoadMaterialFloatData(currentMaterial, MATKEY_CLEARCOAT_FACTOR, MaterialDefaultValues::ClearCoat);
+            layer.Data.ClearCoatRoughness = LoadMaterialFloatData(currentMaterial, MATKEY_CLEARCOAT_ROUGHNESS_FACTOR, MaterialDefaultValues::ClearCoatRoughness);
+            layer.Data.SheenRoughness = LoadMaterialFloatData(currentMaterial, MATKEY_SHEEN_ROUGHNESS_FACTOR, MaterialDefaultValues::SheenRoughness);
+            layer.Data.Transmission = LoadMaterialFloatData(currentMaterial, MATKEY_TRANSMISSION_FACTOR, MaterialDefaultValues::Transmission);
+            layer.Data.IOR = LoadMaterialFloatData(currentMaterial, MATKEY_IOR, MaterialDefaultValues::IOR);
+            layer.Data.Sheen = LoadMaterialFloatData(currentMaterial, MATKEY_SHEEN_FACTOR, MaterialDefaultValues::Sheen);
+            layer.Data.Blend = MaterialDefaultValues::Blend;
 
+            layer.EmissiveColor = LoadMaterialVec3Data(currentMaterial, MATKEY_EMISSION_COLOR, MaterialDefaultValues::EmissiveColor);
+            meshSegment->Materials->InsertLayer(layer);
         }
 
-        meshSegment->Materials->SetupTextureParameters();   // Setup texture parameters for the material if textures are default
-        meshSegment->Materials->DetermineShadingMethod();   // Determine the shading method based on the material properties
+        auto InsertTextures =
+            [&](aiTextureType type, TextureType textureType, const std::string_view& semantic)
+            {
+                std::uint32_t textureCount = currentMaterial->GetTextureCount(type);
+
+                if (textureCount <= 0)
+                {
+                    MOTION_CORE_WARN("Material {0} has no textures of type {1}.", meshSegment->Materials->GetName(), semantic);
+                    for (std::uint32_t i = 0; i < MAX_MATERIAL_LAYERS; ++i)
+                    {
+                        meshSegment->Materials->InsertTexture(i, semantic, GetDefaultTexture(type));
+                    }
+                }
+                else
+                {
+                    for (std::uint32_t i = 0; i < textureCount; ++i)
+                    {
+                        if (textureCount > MAX_MATERIAL_LAYERS)
+                        {
+                            MOTION_CORE_WARN("Material {0} has more textures than the maximum allowed layers ({1}). Skipping additional textures.", meshSegment->Materials->GetName(), MAX_MATERIAL_LAYERS);
+                            break;
+                        }
+                        else
+                        {
+                            auto texture = LoadTextures(i, type, currentMaterial, textureType);
+                            meshSegment->Materials->InsertTexture(i, semantic, texture);
+                        }
+                    }
+                }
+            };
+
+        InsertTextures(MATKEY_BASE_COLOR_TEXTURE, TextureType::BaseColorTexture, UniformCache::BaseColorTextures);
+        InsertTextures(MATKEY_METALLIC_TEXTURE, TextureType::MetallicTexture, UniformCache::MetallicTextures);
+        InsertTextures(MATKEY_ROUGHNESS_TEXTURE, TextureType::RoughnessTexture, UniformCache::RoughnessTextures);
+        InsertTextures(MATKEY_AMBIENT_OCCLUSION_TEXTURE, TextureType::AmbientOcclusionTexture, UniformCache::AmbientOcclusionTextures);
+        InsertTextures(MATKEY_NORMAL_TEXTURE, TextureType::NormalTexture, UniformCache::NormalTextures);
+        InsertTextures(MATKEY_OPACITY_TEXTURE, TextureType::OpacityTexture, UniformCache::OpacityTextures);
+
+        InsertTextures(MATKEY_CLEARCOAT_TEXTURE, TextureType::ClearCoatTexture, UniformCache::ClearCoatTextures);
+        InsertTextures(MATKEY_SHEEN_TEXTURE, TextureType::SheenTexture, UniformCache::SheenTextures);
+        InsertTextures(MATKEY_TRANSMISSION_TEXTURE, TextureType::TransmissionTexture, UniformCache::TransmissionTextures);
+
+        auto emissiveTexture = LoadTextures(0, MATKEY_EMISSION_TEXTURE, currentMaterial, TextureType::EmissiveTexture);
+        if (emissiveTexture)
+        {
+            for (std::uint32_t i = 0; i < MAX_MATERIAL_LAYERS; i++)
+            {
+                meshSegment->Materials->GetLayer(i).EmissiveTexture = emissiveTexture;
+                meshSegment->Materials->GetLayer(i).Textures[UniformCache::BlendMaskTextures] = CreateUnregisteredPlainTexture(10, 10, { 1.0f, 1.0f, 1.0f });
+            }
+        }
     }
 }

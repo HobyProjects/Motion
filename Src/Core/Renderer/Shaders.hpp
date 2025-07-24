@@ -67,71 +67,38 @@ namespace Motion
 
     struct UniformCache
     {
-        inline static constexpr std::string_view VertexAttri_Position = "a_Position";
-        inline static constexpr std::string_view VertexAttri_TexCoords = "a_TexCoords";
-        inline static constexpr std::string_view VertexAttri_Normals = "a_Normals";
-        inline static constexpr std::string_view VertexAttri_Tangents = "a_Tangents";
-        inline static constexpr std::string_view VertexAttri_Bitangents = "a_Bitangents";
+        inline static constexpr std::string_view Position = "a_Position";
+        inline static constexpr std::string_view TexCoords = "a_TexCoords";
+        inline static constexpr std::string_view Normals = "a_Normals";
+        inline static constexpr std::string_view Tangents = "a_Tangents";
+        inline static constexpr std::string_view Bitangents = "a_Bitangents";
 
-        inline static constexpr std::string_view GlobalAttri_ModelMatrix = "u_ModelMatrix";
-        inline static constexpr std::string_view GlobalAttri_ViewProjMatrix = "u_ViewProjMatrix";
-        inline static constexpr std::string_view GlobalAttri_CameraPosition = "u_CameraPosition";
-        inline static constexpr std::string_view GlobalAttri_ViewMatrix = "u_ViewMatrix";
-        inline static constexpr std::string_view GlobalAttri_ProjectionMatrix = "u_ProjectionMatrix";
-        inline static constexpr std::string_view GlobalAttri_EnvironmentTexture = "u_EnvironmentTexture";
+        inline static constexpr std::string_view ViewProjMatrix = "u_ViewProjMatrix";
+        inline static constexpr std::string_view ModelMatrix = "u_ModelMatrix";
+        inline static constexpr std::string_view CameraPosition = "u_CameraPosition";
+        inline static constexpr std::string_view LightPosition = "u_LightPosition";
+        inline static constexpr std::string_view LightColor = "u_LightColor";
+        inline static constexpr std::string_view LightIntensity = "u_LightIntensity";
 
-        inline static constexpr std::string_view LightAttri_Position = "u_LightPosition";
-        inline static constexpr std::string_view LightAttri_Color = "u_LightColor";
-        inline static constexpr std::string_view LightAttri_Intensity = "u_LightIntensity";
+        inline static constexpr std::string_view BaseColorTextures = "u_BaseColorTextures";
+        inline static constexpr std::string_view MetallicTextures = "u_MetallicTextures";
+        inline static constexpr std::string_view RoughnessTextures = "u_RoughnessTextures";
+        inline static constexpr std::string_view AmbientOcclusionTextures = "u_AmbientOcclusionTextures";
+        inline static constexpr std::string_view NormalTextures = "u_NormalTextures";
+        inline static constexpr std::string_view OpacityTextures = "u_OpacityTextures";
+        inline static constexpr std::string_view BlendMaskTextures = "u_BlendMasks";
 
-        inline static constexpr std::string_view Color_AmbientColor = "u_AmbientColor";
-        inline static constexpr std::string_view Color_DiffuseColor = "u_DiffuseColor";
-        inline static constexpr std::string_view Color_SpecularColor = "u_SpecularColor";
-        inline static constexpr std::string_view Color_EmissiveColor = "u_EmissiveColor";
-        inline static constexpr std::string_view Color_TransparentColor = "u_TransparentColor";
-        inline static constexpr std::string_view Color_ReflectiveColor = "u_ReflectiveColor";
 
-        inline static constexpr std::string_view Property_Shininess = "u_Shininess";
-        inline static constexpr std::string_view Property_ShininessStrength = "u_ShininessStrength";
-        inline static constexpr std::string_view Property_Opacity = "u_Opacity";
-        inline static constexpr std::string_view Property_IndexOfRefraction = "u_IndexOfRefraction";
-        inline static constexpr std::string_view Property_BumpScaling = "u_BumpScaling";
-        inline static constexpr std::string_view Property_Reflectivity = "u_Reflectivity";
+        inline static constexpr std::string_view ClearCoatTextures = "u_ClearCoatTextures";
+        inline static constexpr std::string_view SheenTextures = "u_SheenTextures";
+        inline static constexpr std::string_view TransmissionTextures = "u_TransmissionTextures";
 
-        inline static constexpr std::string_view Factor_BaseColorFactor = "u_BaseColorFactor";
-        inline static constexpr std::string_view Factor_MetallicFactor = "u_MetallicFactor";
-        inline static constexpr std::string_view Factor_RoughnessFactor = "u_RoughnessFactor";
-        inline static constexpr std::string_view Factor_TransmissionFactor = "u_TransmissionFactor";
-        inline static constexpr std::string_view Factor_ClearCoatFactor = "u_ClearCoatFactor";
-        inline static constexpr std::string_view Factor_ClearCoatRoughnessFactor = "u_ClearCoatRoughnessFactor";
-        inline static constexpr std::string_view Factor_SheenFactor = "u_SheenFactor";
-        inline static constexpr std::string_view Factor_SheenRoughnessFactor = "u_SheenRoughnessFactor";
-        inline static constexpr std::string_view Factor_AmbientOcclusionFactor = "u_AmbientOcclusion";
-        inline static constexpr std::string_view Factor_IndexOfRefraction = "u_IndexOfRefraction";
-
-        inline static constexpr std::string_view Texture_DiffuseTexture = "u_DiffuseTexture";
-        inline static constexpr std::string_view Texture_AmbientTexture = "u_AmbientTexture";
-        inline static constexpr std::string_view Texture_SpecularTexture = "u_SpecularTexture";
-        inline static constexpr std::string_view Texture_EmissiveTexture = "u_EmissiveTexture";
-        inline static constexpr std::string_view Texture_NormalMapTexture = "u_NormalMapsTexture";
-        inline static constexpr std::string_view Texture_HightMapTexture = "u_HightMapsTexture";
-        inline static constexpr std::string_view Texture_ShininessTexture = "u_ShininessTexture";
-        inline static constexpr std::string_view Texture_OpacityTexture = "u_OpacityTexture";
-        inline static constexpr std::string_view Texture_LightMapsTexture = "u_LightMapsTexture";
-        inline static constexpr std::string_view Texture_BaseColorTexture = "u_BaseColorTexture";
-        inline static constexpr std::string_view Texture_MetallicTexture = "u_MetallicTexture";
-        inline static constexpr std::string_view Texture_RoughnessTexture = "u_RoughnessTexture";
-        inline static constexpr std::string_view Texture_AmbientOcclusionTexture = "u_AmbientOcclusionTexture";
-        inline static constexpr std::string_view Texture_ClearCoatTexture = "u_ClearCoatTexture";
-        inline static constexpr std::string_view Texture_SheenTexture = "u_SheenTexture";
-        inline static constexpr std::string_view Texture_TransmissionTexture = "u_TransmissionTexture";
+        inline static constexpr std::string_view EmissiveColor = "u_EmissiveColor";
+        inline static constexpr std::string_view EmissiveTexture = "u_EmissiveTexture";
+        inline static constexpr std::string_view EnvironmentTexture = "u_EnvironmentTexture";
 
         inline static constexpr std::string_view Texture_PostProcessTexture = "u_PostProcessTexture";
         inline static constexpr std::string_view Texture_SkyboxTexture = "u_SkyboxTexture";
-
-
-        UniformCache() = default;
-        ~UniformCache() = default;
 
     };
 

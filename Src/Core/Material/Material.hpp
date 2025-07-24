@@ -1,143 +1,83 @@
 #pragma once
 
-#include <filesystem>
-#include <memory>
-#include <unordered_map>
 #include <string>
 #include <string_view>
-#include <variant>
-
+#include <memory>
+#include <unordered_map>
+#include <vector>
 #include <glm/glm.hpp>
 
-#include "Shaders.hpp"
 #include "Texture.hpp"
+#include "Shaders.hpp"
+#include "Buffers.hpp"
 #include "Asset.hpp"
+
+#define MAX_MATERIAL_LAYERS 4
+
 
 namespace Motion
 {
     using MaterialTexture = std::shared_ptr<ITexture>;
 
-    enum class MaterialShadingMethod : std::uint8_t
+    struct MaterialDefaultValues
     {
-        Auto,
-        Phong,
-        PBR,
-        Unlit
+        static constexpr glm::vec3 EmissiveColor = { 0.0f, 0.0f, 0.0f };
+        static constexpr glm::vec3 BaseColor = { 1.0f, 1.0f, 1.0f };
+        static constexpr float Metallic = 0.0f;
+        static constexpr float Roughness = 1.0f;
+        static constexpr float Opacity = 1.0f;
+        static constexpr float AmbientOcclusion = 1.0f;
+        static constexpr float ClearCoat = 0.0f;
+        static constexpr float ClearCoatRoughness = 0.0f;
+        static constexpr float Sheen = 0.0f;
+        static constexpr float SheenRoughness = 0.5f;
+        static constexpr float Transmission = 0.0f;
+        static constexpr float IOR = 1.5f;
+        static constexpr float Blend = 1.0f;
     };
 
-    inline std::uint8_t operator|(MaterialShadingMethod lhs, MaterialShadingMethod rhs) { return static_cast<std::uint8_t>(lhs) | static_cast<std::uint8_t>(rhs); }
-    inline std::uint8_t operator&(MaterialShadingMethod lhs, MaterialShadingMethod rhs) { return static_cast<std::uint8_t>(lhs) & static_cast<std::uint8_t>(rhs); }
-
-    struct StandardMaterialConfig
+    struct MaterialLayerData
     {
-        // Surface Colors (legacy/compatibility with older formats)
-        static constexpr glm::vec3 AmbientColor = { 0.0f, 0.0f, 0.0f };         // Typically ignored in modern PBR
-        static constexpr glm::vec3 DiffuseColor = { 0.8f, 0.8f, 0.8f };         // Neutral gray
-        static constexpr glm::vec3 SpecularColor = { 0.5f, 0.5f, 0.5f };        // F0 reflectance for dielectrics
-        static constexpr glm::vec3 EmissiveColor = { 0.0f, 0.0f, 0.0f };        // No emission by default
-        static constexpr glm::vec3 ReflectiveColor = { 0.0f, 0.0f, 0.0f };
-        static constexpr glm::vec3 TransparentColor = { 0.0f, 0.0f, 0.0f };
-
-        // Material properties (legacy/Blinn-Phong)
-        static constexpr float Shininess = 32.0f;                               // Moderate gloss
-        static constexpr float ShininessStrength = 1.0f;
-        static constexpr float Opacity = 1.0f;                                  // Fully opaque
-        static constexpr float IndexOfRefraction = 1.5f;                        // Glass-like IOR
-        static constexpr float Reflectivity = 0.0f;                             // Non-metallic
-        static constexpr float BumpScaling = 1.0f;
-
-        // PBR Factors
-        static constexpr glm::vec3 BaseColorFactor = { 1.0f, 1.0f, 1.0f };      // White albedo
-        static constexpr float MetallicFactor = 0.0f;                           // Non-metallic by default
-        static constexpr float RoughnessFactor = 0.8f;                          // Rough (not glossy)
-        static constexpr float TransmissionFactor = 0.0f;                       // Opaque
-        static constexpr float ClearCoatFactor = 0.0f;                          // No clearcoat by default
-        static constexpr float ClearCoatRoughnessFactor = 0.1f;                 // Slightly smooth clearcoat (if used)
-        static constexpr float SheenFactor = 0.0f;                              // Disabled by default
-        static constexpr float SheenRoughnessFactor = 0.3f;                     // Slightly blurred sheen (if used)
-        static constexpr float AmbientOcclusionFactor = 1.0f;                   // Fully lit (no occlusion loss)
-        static constexpr float IndexOfRefractionFactor = 1.5f;                  // Used in transmission/refraction models
+        glm::vec3 BaseColor{ MaterialDefaultValues::BaseColor };
+        float Metallic{ MaterialDefaultValues::Metallic };
+        float Roughness{ MaterialDefaultValues::Roughness };
+        float Opacity{ MaterialDefaultValues::Opacity };
+        float AmbientOcclusion{ MaterialDefaultValues::AmbientOcclusion };
+        float ClearCoat{ MaterialDefaultValues::ClearCoat };
+        float ClearCoatRoughness{ MaterialDefaultValues::ClearCoatRoughness };
+        float Sheen{ MaterialDefaultValues::Sheen };
+        float SheenRoughness{ MaterialDefaultValues::SheenRoughness };
+        float Transmission{ MaterialDefaultValues::Transmission };
+        float IOR{ MaterialDefaultValues::IOR };
+        float Blend{ MaterialDefaultValues::Blend };
     };
 
-    enum class MaterialParameterType : std::uint8_t
+    struct MaterialLayer
     {
-        Float,
-        Vec3,
-        Texture
+        MaterialLayerData Data{};
+        glm::vec3 EmissiveColor{ MaterialDefaultValues::EmissiveColor };
+        std::shared_ptr<ITexture> EmissiveTexture{ nullptr };
+        std::unordered_map<std::string_view, std::shared_ptr<ITexture>> Textures;
     };
 
-    struct MaterialFallbackTextures
-    {
-        static std::shared_ptr<ITexture> White;
-        static std::shared_ptr<ITexture> Black;
-        static std::shared_ptr<ITexture> Grey;
-        static std::shared_ptr<ITexture> Normal;
-
-        static void Initialize();
-    };
-
-    struct MaterialTextureSlot
-    {
-        std::string_view UniformName{};
-        MaterialTexture Texture{ nullptr };
-    };
-
-    struct MaterialAttributes
-    {
-        glm::vec3 AmbientColor{ 0.0f, 0.0f, 0.0f };
-        glm::vec3 DiffuseColor{ 0.8f, 0.8f, 0.8f };
-        glm::vec3 SpecularColor{ 0.5f, 0.5f, 0.5f };
-        glm::vec3 EmissiveColor{ 0.0f, 0.0f, 0.0f };
-        glm::vec3 ReflectiveColor{ 0.0f, 0.0f, 0.0f };
-        glm::vec3 TransparentColor{ 0.0f, 0.0f, 0.0f };
-
-        float Shininess{ 32.0f };
-        float ShininessStrength{ 1.0f };
-        float Opacity{ 1.0f };
-        float IndexOfRefraction{ 1.5f };
-        float Reflectivity{ 0.0f };
-        float BumpScaling{ 1.0f };
-
-        glm::vec3 BaseColorFactor{ 1.0f, 1.0f, 1.0f };
-        float MetallicFactor{ 0.0f };
-        float RoughnessFactor{ 0.8f };
-        float TransmissionFactor{ 0.0f };
-        float ClearCoatFactor{ 0.0f };
-        float ClearCoatRoughnessFactor{ 0.1f };
-        float SheenFactor{ 0.0f };
-        float SheenRoughnessFactor{ 0.3f };
-        float AmbientOcclusionFactor{ 1.0f };
-        float IndexOfRefractionFactor{ 1.5f };
-    };
-
-    class Material final : public AssetBase<IAsset>
+    class Material : public AssetBase<IAsset>
     {
     public:
         Material() = default;
         Material(const UUID& uuid, const std::string& name);
         virtual ~Material() = default;
 
-        void Bind(const std::shared_ptr<IShader>& shader) noexcept;
-        void Unbind() const noexcept;
+        void Bind() noexcept;
+        void Unbind() noexcept;
 
-        void SetUniform(const std::string_view uniformName, float value);
-        void SetUniform(const std::string_view uniformName, const glm::vec3& value);
-        void SetUniform(const std::string_view uniformName, const glm::vec4& value);
-        void SetTexture(const std::string_view uniformName, const MaterialTexture& texture);
-        void DetermineShadingMethod() noexcept;
-        void SetupTextureParameters() noexcept;
+        [[nodiscard]] MaterialLayer& GetLayer(std::uint32_t index) noexcept;
 
-        [[nodiscard]] MaterialAttributes& RetrieveAttributes() noexcept { return m_Components; }
-        [[nodiscard]] MaterialShadingMethod GetShadingMethod() const noexcept { return m_ShadingMethod; }
-
-        std::vector<MaterialTextureSlot>::iterator begin() noexcept { return m_Textures.begin(); }
-        std::vector<MaterialTextureSlot>::iterator end() noexcept { return m_Textures.end(); }
-        std::vector<MaterialTextureSlot>::const_iterator cbegin() const noexcept { return m_Textures.cbegin(); }
-        std::vector<MaterialTextureSlot>::const_iterator cend() const noexcept { return m_Textures.cend(); }
+        void InsertLayer(const MaterialLayer& layer) noexcept;
+        void InsertTexture(std::uint32_t layerIndex, std::string_view textureName, const std::shared_ptr<ITexture>& texture) noexcept;
 
     private:
-        MaterialAttributes m_Components{};
-        std::vector<MaterialTextureSlot> m_Textures{};
-        MaterialShadingMethod m_ShadingMethod{ MaterialShadingMethod::Auto };
+        std::array<MaterialLayer, MAX_MATERIAL_LAYERS> m_Layers{};
+        std::shared_ptr<IShaderBuffer> m_ShaderBuffer{ nullptr };
+        std::shared_ptr<IShader> m_Shader{ nullptr };
     };
 }

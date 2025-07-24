@@ -15,30 +15,19 @@ namespace Motion
 
     enum class TextureType : std::uint32_t
     {
-        // Legacy Texture Types
-        DiffuseTexture = 0,
-        AmbientTexture,
-        SpecularTexture,
+        BaseColorTexture,
+        MetallicTexture,
+        RoughnessTexture,
+        AmbientOcclusionTexture,
         EmissiveTexture,
-        NormalMapsTexture,
-        HeightMaps,
-        ShininessTexture,
-        OpacityMapsTexture,
-        LightMapsTexture,
+        ClearCoatTexture,
+        SheenTexture,
+        TransmissionTexture,
+        NormalTexture,
+        OpacityTexture,
 
-        // PBR Texture Type
-        BaseColorMapsTexture,
-        MetallicMapsTexture,
-        RoughnessMapsTexture,
-        AOMapsTexture,
-        EmissiveMapsTexture,
-        ClearCoatMapsTexture,
-        SheenMapsTexture,
-        TransmissionMapsTexture,
-        UnknownTextureType,
-
-        // Cube Maps
-        CubeMapTexture
+        CubeMapTexture,
+        UnknownTexture
     };
 
     enum class TextureSource : std::uint32_t
@@ -49,14 +38,16 @@ namespace Motion
         CubeMapTextureFile,
     };
 
-    inline std::uint32_t operator|(TextureType a, TextureType b) { return static_cast<std::uint32_t>(a) | static_cast<std::uint32_t>(b); }
-    inline std::uint32_t operator&(TextureType a, TextureType b) { return static_cast<std::uint32_t>(a) & static_cast<std::uint32_t>(b); }
+    inline TextureType operator|(TextureType a, TextureType b) { return static_cast<TextureType>(static_cast<std::uint32_t>(a) | static_cast<std::uint32_t>(b)); }
+    inline TextureType operator&(TextureType a, TextureType b) { return static_cast<TextureType>(static_cast<std::uint32_t>(a) & static_cast<std::uint32_t>(b)); }
+    inline TextureType operator|=(TextureType& a, TextureType b) { return a = a | b; }
+    inline TextureType operator&=(TextureType& a, TextureType b) { return a = a & b; }
 
     struct TextureSpecification
     {
         std::int32_t Width{ 0 }, Height{ 0 }, Channels{ 0 };
         std::uint32_t InternalDataFormat{ 0 }, TextureDataFormat{ 0 }, TexID{ 0 };
-        TextureType Type{ TextureType::BaseColorMapsTexture };
+        TextureType Type{ TextureType::BaseColorTexture };
         TextureSource Source{ TextureSource::Undefined };
     };
 
@@ -127,6 +118,6 @@ namespace Motion
     };
 
     [[nodiscard]] std::shared_ptr<ITexture> CreateUnregisteredPlainTexture(std::uint32_t width = 100, std::uint32_t height = 100, const glm::vec3& color = { 1.0f, 1.0f, 1.0f }) noexcept;
-    [[nodiscard]] std::shared_ptr<ITexture> CreateUnregisteredTextureFromFile(const std::filesystem::path& textureFile, TextureType type = TextureType::BaseColorMapsTexture, bool flip = true) noexcept;
+    [[nodiscard]] std::shared_ptr<ITexture> CreateUnregisteredTextureFromFile(const std::filesystem::path& textureFile, TextureType type = TextureType::BaseColorTexture, bool flip = true) noexcept;
     [[nodiscard]] std::shared_ptr<ICubeMapTexture> CreateUnregisteredCubeMapTexture(const std::filesystem::path& textureFile) noexcept;
 }

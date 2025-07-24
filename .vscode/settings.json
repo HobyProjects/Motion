@@ -148,7 +148,8 @@
         "memory_resource": "cpp",
         "complex": "cpp",
         "expected": "cpp",
-        "stack": "cpp"
+        "stack": "cpp",
+        "string_view": "cpp"
     },
     "C_Cpp.default.cppStandard": "c++20",
     "C_Cpp.default.cStandard": "c17",
@@ -190,6 +191,7 @@
         "Floatv",
         "GLAPIENTRY",
         "GLFW",
+        "GLTF",
         "Hdot",
         "iconification",
         "iconified",
@@ -210,6 +212,7 @@
         "NATVIS",
         "Ndot",
         "nmake",
+        "occl",
         "OCCLUISION",
         "OPENGL",
         "Oriantaion",

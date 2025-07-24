@@ -83,20 +83,19 @@ namespace Motion
                 if (entity->HasComponent<TransformComponent>())
                 {
                     const auto& transform = entity->GetComponent<TransformComponent>();
-                    command.Model = transform.GetTransform();
+                    command.ModelMatrix = transform.GetTransform();
                 }
                 else
                 {
                     MOTION_WARN("Entity has no TransformComponent, using identity matrix for transform");
-                    command.Model = glm::mat4(1.0f);
+                    command.ModelMatrix = glm::mat4(1.0f);
                 }
 
-                command.MVP = scene->m_SceneCamera->Camera3D.MVP;
+                command.ViewProjectionMatrix = scene->m_SceneCamera->Camera3D.MVP;
                 command.CameraPosition = scene->m_SceneCamera->Camera3D.Position;
                 command.LightPosition = scene->m_Environment.DirectionalLight.Direction;
                 command.LightColor = scene->m_Environment.DirectionalLight.Color;
                 command.LightIntensity = scene->m_Environment.DirectionalLight.AmbientIntensity;
-                command.EnvironmentTexture = SkyBox::GetTextureID();
 
                 s_CommandQueue.push_back(command);
             }
@@ -124,7 +123,22 @@ namespace Motion
             std::shared_ptr<Mesh> mesh = assetManager.Get<Mesh>(command.MeshID);
 
             shader->Bind();
+            shader->SetUniform(UniformCache::ModelMatrix, command.ModelMatrix);
+            shader->SetUniform(UniformCache::ViewProjMatrix, command.ViewProjectionMatrix);
+            shader->SetUniform(UniformCache::CameraPosition, command.CameraPosition);
+            shader->SetUniform(UniformCache::LightPosition, command.LightPosition);
+            shader->SetUniform(UniformCache::LightColor, command.LightColor);
+            shader->SetUniform(UniformCache::LightIntensity, command.LightIntensity);
+
             material->Bind();
+
+            std::shared_ptr<ICubeMapTexture> environmentTexture = SkyBox::GetTexture();
+            if (environmentTexture)
+            {
+                std::uint32_t bindingPoint = TextureBinding::Point();
+                environmentTexture->Bind(bindingPoint);
+                shader->SetUniform(UniformCache::EnvironmentTexture, bindingPoint);
+            }
 
             mesh->Render();
 

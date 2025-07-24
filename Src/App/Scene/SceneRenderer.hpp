@@ -16,15 +16,13 @@ namespace Motion
         UUID MaterialID{ 0 };
         UUID MeshID{ 0 };
 
-        glm::mat4 Model{ 1.0f };
-        glm::mat4 MVP{ 1.0f };
+        glm::mat4 ModelMatrix{ 1.0f };
+        glm::mat4 ViewProjectionMatrix{ 1.0f };
 
         glm::vec3 CameraPosition{ 0.0f, 0.0f, 0.0f };
         glm::vec3 LightPosition{ 0.0f, 0.0f, 0.0f };
         glm::vec3 LightColor{ 1.0f, 1.0f, 1.0f };
         float LightIntensity{ 1.0f };
-
-        TextureID EnvironmentTexture{ 0 };
 
         SceneDrawCommand() = default;
         ~SceneDrawCommand() = default;

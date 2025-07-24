@@ -93,16 +93,16 @@ namespace Motion
     }
 
     /**
-     * @brief Retrieves the texture ID of the SkyBox cube map texture.
+     * @brief Retrieves the currently bound SkyBox cube map texture.
      *
-     * This function returns the texture ID of the currently bound skybox cube map texture.
-     * It can be used for further processing or rendering operations that require the texture ID.
+     * This function returns the shared pointer to the SkyBox cube map texture,
+     * which can be used for further processing or rendering operations.
      *
-     * @return TextureID The ID of the skybox cube map texture.
+     * @return std::shared_ptr<ICubeMapTexture> The currently bound SkyBox cube map texture.
      */
-    TextureID SkyBox::GetTextureID() noexcept
+    std::shared_ptr<ICubeMapTexture> SkyBox::GetTexture() noexcept
     {
-        return s_SkyBoxCubeTexture ? s_SkyBoxCubeTexture->GetID() : 0;
+        return s_SkyBoxCubeTexture;
     }
 
 }

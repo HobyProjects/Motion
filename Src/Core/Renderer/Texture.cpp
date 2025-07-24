@@ -1,4 +1,5 @@
 #include "CorePCH.hpp"
+#include "Texture.hpp"
 
 namespace Motion
 {
@@ -135,4 +136,37 @@ namespace Motion
             return nullptr;
         }
     }
+
+    /**
+     * @brief Creates an unregistered cube map texture from multiple texture files.
+     *
+     * This function constructs a shared pointer to a GL_CubeMapTexture object using the specified paths for each face of the cube map.
+     * The created cube map texture is not registered with any texture manager or resource system.
+     *
+     * @param posX_texture The filesystem path to the positive X face texture.
+     * @param negX_texture The filesystem path to the negative X face texture.
+     * @param posY_texture The filesystem path to the positive Y face texture.
+     * @param negY_texture The filesystem path to the negative Y face texture.
+     * @param posZ_texture The filesystem path to the positive Z face texture.
+     * @param negZ_texture The filesystem path to the negative Z face texture.
+     * @return std::shared_ptr<GL_CubeMapTexture> A shared pointer to the newly created GL_CubeMapTexture object.
+     */
+    std::shared_ptr<ICubeMapTexture> Motion::CreateUnregisteredCubeMapTexture(const std::filesystem::path& posX_texture, const std::filesystem::path& negX_texture, const std::filesystem::path& posY_texture, const std::filesystem::path& negY_texture, const std::filesystem::path& posZ_texture, const std::filesystem::path& negZ_texture) noexcept
+    {
+        switch (Renderer::GetAPI())
+        {
+        case RenderingAPI::OpenGL:
+            return GL_CreateUnregisteredCubeMapTexture(posX_texture, negX_texture, posY_texture, negY_texture, posZ_texture, negZ_texture);
+        case RenderingAPI::Vulkan:
+            MOTION_ASSERT(false, "Vulkan API is not yet implemented for cube map textures.");
+            return nullptr;
+        case RenderingAPI::DirectX:
+            MOTION_ASSERT(false, "DirectX API is not yet implemented for cube map textures.");
+            return nullptr;
+        default:
+            MOTION_ASSERT(false, "Unknown rendering API.");
+            return nullptr;
+        }
+    }
 }
+

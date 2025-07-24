@@ -1,4 +1,5 @@
 #include "CorePCH.hpp"
+#include "GL_Texture.hpp"
 
 namespace Motion
 {
@@ -261,15 +262,143 @@ namespace Motion
      * is marked as loaded.
      */
     GL_CubeMapTexture::GL_CubeMapTexture(UUID uuid, const std::string& name, const std::filesystem::path& textureFile)
-        : AssetBase<ICubeMapTexture>(uuid, name, AssetType::Texture, textureFile.string())
+        : AssetBase<ICubeMapTexture>(uuid, name, AssetType::CubeMapTexture, textureFile.string())
     {
-        if (!LoadCubeMapTexture(textureFile))
+        if (!std::filesystem::exists(textureFile))
         {
-            MOTION_ASSERT(false, "Unable to load cube map texture file {0}", textureFile.string());
+            MOTION_CORE_ERROR("Cube map texture file {0} does not exist", textureFile.string());
+        }
+
+        std::int32_t width, height, channels;
+        stbi_set_flip_vertically_on_load(false); // Cube maps should not be flipped
+        float* data = stbi_loadf(textureFile.string().c_str(), &width, &height, &channels, STBI_rgb_alpha);
+        if (!data)
+        {
+            MOTION_CORE_ERROR("Failed to load cube map texture file {0}: {1}", textureFile.string(), stbi_failure_reason());
+        }
+
+        if (width != height)
+        {
+            float* resizedTexture{ nullptr };
+            std::int32_t resizedWidth = width;
+            std::int32_t resizedHeight = width; // Cube maps must be square
+
+            MOTION_CORE_WARN("Cube map texture {0} must have square dimensions, but got {1} x {2} resizing...", textureFile.string(), width, height);
+
+            resizedTexture = stbir_resize_float_linear(
+                data, width, height, 0,
+                0, resizedWidth, resizedHeight, 0, STBIR_RGBA
+            );
+
+            if (!resizedTexture)
+            {
+                MOTION_CORE_ERROR("Failed to resize cube map texture {0}: {1}", textureFile.string(), stbi_failure_reason());
+                stbi_image_free(data);
+            }
+            else
+            {
+                stbi_image_free(data);
+                data = nullptr; // Free original data
+
+                MOTION_CORE_INFO("Cube map texture {0} resized to {1} x {2}", textureFile.string(), resizedWidth, resizedHeight);
+                data = resizedTexture;
+                width = resizedWidth;
+                height = resizedHeight;
+            }
+        }
+
+        std::int32_t internalDataformat = GL_RGBA32F; // High dynamic range format
+        std::int32_t textureDataFormat = GL_RGBA;
+
+        glCreateTextures(GL_TEXTURE_CUBE_MAP, 1, &m_TexID);
+        glBindTexture(GL_TEXTURE_CUBE_MAP, m_TexID);
+
+        glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X, 0, internalDataformat, width, height, 0, textureDataFormat, GL_FLOAT, data);
+        glTexImage2D(GL_TEXTURE_CUBE_MAP_NEGATIVE_X, 0, internalDataformat, width, height, 0, textureDataFormat, GL_FLOAT, data);
+        glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_Y, 0, internalDataformat, width, height, 0, textureDataFormat, GL_FLOAT, data);
+        glTexImage2D(GL_TEXTURE_CUBE_MAP_NEGATIVE_Y, 0, internalDataformat, width, height, 0, textureDataFormat, GL_FLOAT, data);
+        glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_Z, 0, internalDataformat, width, height, 0, textureDataFormat, GL_FLOAT, data);
+        glTexImage2D(GL_TEXTURE_CUBE_MAP_NEGATIVE_Z, 0, internalDataformat, width, height, 0, textureDataFormat, GL_FLOAT, data);
+
+        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
+        glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
+
+        stbi_image_free(data);
+        AssetInfo.AssetSource = textureFile.string();
+        AssetInfo.IsInitialized = true;
+
+
+        MOTION_CORE_INFO("Cube map texture {0} loaded successfully with ID {1}", textureFile.string(), m_TexID);
+    }
+
+
+    GL_CubeMapTexture::GL_CubeMapTexture(UUID uuid, const std::string& name, const std::filesystem::path& posX_texture, const std::filesystem::path& negX_texture, const std::filesystem::path& posY_texture, const std::filesystem::path& negY_texture, const std::filesystem::path& posZ_texture, const std::filesystem::path& negZ_texture) :
+        AssetBase<ICubeMapTexture>(uuid, name, AssetType::CubeMapTexture, "CubeMapTexture")
+    {
+        if (!std::filesystem::exists(posX_texture) || !std::filesystem::exists(negX_texture) ||
+            !std::filesystem::exists(posY_texture) || !std::filesystem::exists(negY_texture) ||
+            !std::filesystem::exists(posZ_texture) || !std::filesystem::exists(negZ_texture))
+        {
+            MOTION_CORE_ERROR("One or more cube map texture files do not exist");
             return;
         }
 
+        std::int32_t width, height, channels;
+        stbi_set_flip_vertically_on_load(false); // Cube maps should not be flipped vertically
+
+        float* posX = stbi_loadf(posX_texture.string().c_str(), &width, &height, &channels, STBI_rgb_alpha);
+        float* negX = stbi_loadf(negX_texture.string().c_str(), &width, &height, &channels, STBI_rgb_alpha);
+        float* posY = stbi_loadf(posY_texture.string().c_str(), &width, &height, &channels, STBI_rgb_alpha);
+        float* negY = stbi_loadf(negY_texture.string().c_str(), &width, &height, &channels, STBI_rgb_alpha);
+        float* posZ = stbi_loadf(posZ_texture.string().c_str(), &width, &height, &channels, STBI_rgb_alpha);
+        float* negZ = stbi_loadf(negZ_texture.string().c_str(), &width, &height, &channels, STBI_rgb_alpha);
+
+        if (!posX || !negX || !posY || !negY || !posZ || !negZ)
+        {
+            MOTION_CORE_ERROR("Failed to load one or more cube map texture files");
+            return;
+        }
+
+        std::int32_t internalDataFormat = GL_RGBA32F;
+        std::int32_t textureDataFormat = GL_RGBA;
+
+        glCreateTextures(GL_TEXTURE_CUBE_MAP, 1, &m_TexID);
+        glBindTexture(GL_TEXTURE_CUBE_MAP, m_TexID);
+
+        glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X, 0, internalDataFormat, width, height, 0, textureDataFormat, GL_FLOAT, posX);
+        glTexImage2D(GL_TEXTURE_CUBE_MAP_NEGATIVE_X, 0, internalDataFormat, width, height, 0, textureDataFormat, GL_FLOAT, negX);
+        glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_Y, 0, internalDataFormat, width, height, 0, textureDataFormat, GL_FLOAT, posY);
+        glTexImage2D(GL_TEXTURE_CUBE_MAP_NEGATIVE_Y, 0, internalDataFormat, width, height, 0, textureDataFormat, GL_FLOAT, negY);
+        glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_Z, 0, internalDataFormat, width, height, 0, textureDataFormat, GL_FLOAT, posZ);
+        glTexImage2D(GL_TEXTURE_CUBE_MAP_NEGATIVE_Z, 0, internalDataFormat, width, height, 0, textureDataFormat, GL_FLOAT, negZ);
+
+        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
+        glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
+
+        stbi_image_free(posX);
+        stbi_image_free(negX);
+        stbi_image_free(posY);
+        stbi_image_free(negY);
+        stbi_image_free(posZ);
+        stbi_image_free(negZ);
+
+        AssetInfo.AssetSource = "CubeMapTexture";
         AssetInfo.IsInitialized = true;
+
+
+        MOTION_CORE_INFO("Cube map textures loading success ID {0} -> {1}\n {2}\n {3}\n {4}\n {5}\n {6}\n", m_TexID,
+            posX_texture.string(), negX_texture.string(), posY_texture.string(),
+            negY_texture.string(), posZ_texture.string(), negZ_texture.string());
     }
 
     /**
@@ -280,11 +409,7 @@ namespace Motion
      */
     GL_CubeMapTexture::~GL_CubeMapTexture()
     {
-        if (m_Specification.TexID != 0)
-        {
-            glDeleteTextures(1, &m_Specification.TexID);
-            m_Specification.TexID = 0;
-        }
+        glDeleteTextures(1, &m_TexID);
     }
     /**
      * @brief Binds the cube map texture to the specified binding point.
@@ -296,7 +421,7 @@ namespace Motion
      */
     void GL_CubeMapTexture::Bind(std::int32_t bindingPoint) const noexcept
     {
-        glBindTextureUnit(bindingPoint, m_Specification.TexID);
+        glBindTextureUnit(bindingPoint, m_TexID);
     }
 
     /**
@@ -307,7 +432,7 @@ namespace Motion
      */
     void GL_CubeMapTexture::Bind() const noexcept
     {
-        glBindTextureUnit(0, m_Specification.TexID);
+        glBindTextureUnit(0, m_TexID);
     }
 
     /**
@@ -331,21 +456,7 @@ namespace Motion
      */
     TextureID GL_CubeMapTexture::GetID() const noexcept
     {
-        return m_Specification.TexID;
-    }
-
-    /**
-     * @brief Retrieves the specification of the cube map texture.
-     *
-     * This method returns the current TextureSpecification associated with this
-     * GL_CubeMapTexture instance. The specification typically contains details
-     * such as texture format, dimensions, filtering, and wrapping modes.
-     *
-     * @return The TextureSpecification of the cube map texture.
-     */
-    TextureSpecification& GL_CubeMapTexture::GetSpecification() noexcept
-    {
-        return m_Specification;
+        return m_TexID;
     }
 
     /**
@@ -364,101 +475,13 @@ namespace Motion
     {
         if (data != nullptr)
         {
-            glBindTexture(GL_TEXTURE_CUBE_MAP, m_Specification.TexID);
+            glBindTexture(GL_TEXTURE_CUBE_MAP, m_TexID);
             glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, mipLevel, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
         }
         else
         {
             MOTION_ASSERT(false, "Data pointer is null for setting cube map face {0} at mip level {1}", face, mipLevel);
         }
-    }
-
-    /**
-     * @brief Loads a cube map texture from the specified HDR file.
-     *
-     * This function attempts to load a cube map texture in HDR format from the given file path.
-     * It uses SOIL to load the texture and sets the texture ID in the specification if successful.
-     *
-     * @param textureFile The filesystem path to the cube map texture file.
-     * @return True if the texture was loaded successfully, false otherwise.
-     */
-    bool GL_CubeMapTexture::LoadCubeMapTexture(const std::filesystem::path& textureFile)
-    {
-        if (!std::filesystem::exists(textureFile))
-        {
-            MOTION_CORE_ERROR("Cube map texture file {0} does not exist", textureFile.string());
-            return false;
-        }
-
-        float* data = stbi_loadf(textureFile.string().c_str(), &m_Specification.Width, &m_Specification.Height, &m_Specification.Channels, STBI_rgb_alpha);
-        if (!data)
-        {
-            MOTION_CORE_ERROR("Failed to load cube map texture file {0}: {1}", textureFile.string(), stbi_failure_reason());
-            return false;
-        }
-
-        if (m_Specification.Width != m_Specification.Height)
-        {
-            float* resizedTexture{ nullptr };
-            std::int32_t resizedWidth = m_Specification.Width;
-            std::int32_t resizedHeight = m_Specification.Width; // Cube maps must be square
-
-            MOTION_CORE_WARN("Cube map texture {0} must have square dimensions, but got {1} x {2} resizing...", textureFile.string(), m_Specification.Width, m_Specification.Height);
-
-            resizedTexture = stbir_resize_float_linear(
-                data, m_Specification.Width, m_Specification.Height, 0,
-                0, resizedWidth, resizedHeight, 0, STBIR_RGBA
-            );
-
-            if (!resizedTexture)
-            {
-                MOTION_CORE_ERROR("Failed to resize cube map texture {0}: {1}", textureFile.string(), stbi_failure_reason());
-                stbi_image_free(data);
-                return false;
-            }
-            else
-            {
-                stbi_image_free(data);
-                data = nullptr; // Free original data
-
-                MOTION_CORE_INFO("Cube map texture {0} resized to {1} x {2}", textureFile.string(), resizedWidth, resizedHeight);
-                data = resizedTexture;
-                m_Specification.Width = resizedWidth;
-                m_Specification.Height = resizedHeight;
-            }
-        }
-
-        m_Specification.InternalDataFormat = GL_RGBA16F; // High dynamic range format
-        m_Specification.TextureDataFormat = GL_RGBA;
-
-        glCreateTextures(GL_TEXTURE_CUBE_MAP, 1, &m_Specification.TexID);
-        glBindTexture(GL_TEXTURE_CUBE_MAP, m_Specification.TexID);
-
-        glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X, 0, m_Specification.InternalDataFormat, m_Specification.Width, m_Specification.Height, 0, m_Specification.TextureDataFormat, GL_FLOAT, data);
-        glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_Y, 0, m_Specification.InternalDataFormat, m_Specification.Width, m_Specification.Height, 0, m_Specification.TextureDataFormat, GL_FLOAT, data);
-        glTexImage2D(GL_TEXTURE_CUBE_MAP_NEGATIVE_X, 0, m_Specification.InternalDataFormat, m_Specification.Width, m_Specification.Height, 0, m_Specification.TextureDataFormat, GL_FLOAT, data);
-        glTexImage2D(GL_TEXTURE_CUBE_MAP_NEGATIVE_Y, 0, m_Specification.InternalDataFormat, m_Specification.Width, m_Specification.Height, 0, m_Specification.TextureDataFormat, GL_FLOAT, data);
-        glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_Z, 0, m_Specification.InternalDataFormat, m_Specification.Width, m_Specification.Height, 0, m_Specification.TextureDataFormat, GL_FLOAT, data);
-        glTexImage2D(GL_TEXTURE_CUBE_MAP_NEGATIVE_Z, 0, m_Specification.InternalDataFormat, m_Specification.Width, m_Specification.Height, 0, m_Specification.TextureDataFormat, GL_FLOAT, data);
-
-        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
-        glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
-
-        stbi_image_free(data);
-
-        m_Specification.Source = TextureSource::CubeMapTextureFile;
-        AssetInfo.AssetName = textureFile.filename().string();
-        AssetInfo.AssetSource = textureFile.string();
-        AssetInfo.IsInitialized = true;
-
-
-        MOTION_CORE_INFO("Cube map texture {0} loaded successfully with ID {1}", textureFile.string(), m_Specification.TexID);
-        return true;
     }
 
     /**
@@ -512,5 +535,24 @@ namespace Motion
     {
         std::string name = textureFile.filename().string();
         return std::make_shared<GL_CubeMapTexture>(UniqueIdentity::GetUniqueID(), name, textureFile);
+    }
+
+    /**
+     * @brief Creates an unregistered OpenGL cube map texture from multiple texture files.
+     *
+     * This function constructs a shared pointer to a GL_CubeMapTexture object using the specified paths for each face of the cube map.
+     * The created cube map texture is not registered with any texture manager or resource system.
+     *
+     * @param posX_texture The filesystem path to the positive X face texture.
+     * @param negX_texture The filesystem path to the negative X face texture.
+     * @param posY_texture The filesystem path to the positive Y face texture.
+     * @param negY_texture The filesystem path to the negative Y face texture.
+     * @param posZ_texture The filesystem path to the positive Z face texture.
+     * @param negZ_texture The filesystem path to the negative Z face texture.
+     * @return std::shared_ptr<GL_CubeMapTexture> A shared pointer to the newly created GL_CubeMapTexture object.
+     */
+    std::shared_ptr<GL_CubeMapTexture> GL_CreateUnregisteredCubeMapTexture(const std::filesystem::path& posX_texture, const std::filesystem::path& negX_texture, const std::filesystem::path& posY_texture, const std::filesystem::path& negY_texture, const std::filesystem::path& posZ_texture, const std::filesystem::path& negZ_texture) noexcept
+    {
+        return std::make_shared<GL_CubeMapTexture>(UniqueIdentity::GetUniqueID(), "CubeMapTexture", posX_texture, negX_texture, posY_texture, negY_texture, posZ_texture, negZ_texture);
     }
 }

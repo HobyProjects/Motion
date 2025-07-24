@@ -18,7 +18,15 @@ namespace Motion
     void SkyBox::Init() noexcept
     {
         auto& assetManager = AssetManager::GetInstance();
-        s_SkyBoxCubeTexture = CreateUnregisteredCubeMapTexture("Assets/SkyBox/SkyBox_Texture_2.jpg");
+        s_SkyBoxCubeTexture = CreateUnregisteredCubeMapTexture(
+            "Assets/SkyBox/RooitouPark/px.png",
+            "Assets/SkyBox/RooitouPark/nx.png",
+            "Assets/SkyBox/RooitouPark/py.png",
+            "Assets/SkyBox/RooitouPark/ny.png",
+            "Assets/SkyBox/RooitouPark/pz.png",
+            "Assets/SkyBox/RooitouPark/nz.png"
+        );
+
         if (!s_SkyBoxCubeTexture)
         {
             MOTION_CORE_ERROR("Failed to create CubeMapTexture for SkyBox");

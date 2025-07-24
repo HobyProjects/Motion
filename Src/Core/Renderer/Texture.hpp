@@ -95,14 +95,9 @@ namespace Motion
         virtual void Bind(std::int32_t bindingPoint = 0) const noexcept = 0;
         virtual void Bind() const noexcept = 0;
         virtual void Unbind() const noexcept = 0;
-
-        [[nodiscard]] virtual TextureID GetID() const noexcept = 0;
-        [[nodiscard]] virtual TextureSpecification& GetSpecification() noexcept = 0;
-
         virtual void SetFace(std::int32_t face, std::int32_t mipLevel, std::int32_t width, std::int32_t height, std::int32_t format, const void* data) = 0;
 
-    protected:
-        [[nodiscard]] virtual bool LoadCubeMapTexture(const std::filesystem::path& textureFile) = 0;
+        [[nodiscard]] virtual TextureID GetID() const noexcept = 0;
     };
 
     /**
@@ -120,4 +115,8 @@ namespace Motion
     [[nodiscard]] std::shared_ptr<ITexture> CreateUnregisteredPlainTexture(std::int32_t width = 100, std::int32_t height = 100, const glm::vec3& color = { 1.0f, 1.0f, 1.0f }) noexcept;
     [[nodiscard]] std::shared_ptr<ITexture> CreateUnregisteredTextureFromFile(const std::filesystem::path& textureFile, TextureType type = TextureType::BaseColorTexture, bool flip = true) noexcept;
     [[nodiscard]] std::shared_ptr<ICubeMapTexture> CreateUnregisteredCubeMapTexture(const std::filesystem::path& textureFile) noexcept;
+    [[nodiscard]] std::shared_ptr<ICubeMapTexture> CreateUnregisteredCubeMapTexture(
+        const std::filesystem::path& posX_texture, const std::filesystem::path& negX_texture,
+        const std::filesystem::path& posY_texture, const std::filesystem::path& negY_texture,
+        const std::filesystem::path& posZ_texture, const std::filesystem::path& negZ_texture) noexcept;
 }

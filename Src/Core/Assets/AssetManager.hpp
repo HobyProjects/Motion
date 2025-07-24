@@ -246,6 +246,55 @@ namespace Motion
             }
             }
         }
+
+        /**
+         * @brief Creates a cube map texture object with individual face textures based on the current rendering API.
+         *
+         * This static function instantiates a cube map texture object with the specified UUID, name,
+         * and individual face texture file paths. The type of texture created depends on the active rendering API
+         * (OpenGL, Vulkan, or DirectX). Currently, only OpenGL is supported; Vulkan and DirectX
+         * will log an error and return nullptr.
+         *
+         * @param uuid The unique identifier for the cube map texture.
+         * @param name The name to assign to the cube map texture.
+         * @param posX_texture The filesystem path to the positive X face texture.
+         * @param negX_texture The filesystem path to the negative X face texture.
+         * @param posY_texture The filesystem path to the positive Y face texture.
+         * @param negY_texture The filesystem path to the negative Y face texture.
+         * @param posZ_texture The filesystem path to the positive Z face texture.
+         * @param negZ_texture The filesystem path to the negative Z face texture.
+         * @return std::shared_ptr<ICubeMapTexture> A shared pointer to the created cube map texture object,
+         *         or nullptr if the API is unsupported.
+         */
+        static std::shared_ptr<ICubeMapTexture> Create(UUID uuid, const std::string& name,
+            const std::filesystem::path& posX_texture, const std::filesystem::path& negX_texture,
+            const std::filesystem::path& posY_texture, const std::filesystem::path& negY_texture,
+            const std::filesystem::path& posZ_texture, const std::filesystem::path& negZ_texture)
+        {
+            switch (Renderer::GetAPI())
+            {
+            case RenderingAPI::OpenGL:
+            {
+                return std::make_shared<GL_CubeMapTexture>(uuid, name,
+                    posX_texture, negX_texture, posY_texture, negY_texture, posZ_texture, negZ_texture);
+            }
+            case RenderingAPI::Vulkan:
+            {
+                MOTION_CORE_ERROR("Vulkan API is not yet supported for cube map texture creation!");
+                return nullptr;
+            }
+            case RenderingAPI::DirectX:
+            {
+                MOTION_CORE_ERROR("DirectX API is not yet supported for cube map texture creation!");
+                return nullptr;
+            }
+            default:
+            {
+                MOTION_CORE_ERROR("Unsupported rendering API for cube map texture creation!");
+                return nullptr;
+            }
+            }
+        }
     };
 
 

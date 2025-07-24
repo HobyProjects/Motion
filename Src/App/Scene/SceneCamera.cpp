@@ -23,50 +23,22 @@ namespace Motion
 
     void SceneCamera::OnUpdate(WindowHandle handle, Timer deltaTime)
     {
-        if (InputsHandler::GetMouseButtonState(handle, MOUSE_BUTTON_RIGHT) & MOUSE_BUTTON_PRESSED)
-        {
-            KeyState wKeyPressed = InputsHandler::GetKeyState(handle, KEY_W);
-            if ((wKeyPressed & KEY_PRESSED) || (wKeyPressed & KEY_REPEAT))
-            {
-                SceneViewCamera.Position += SceneViewCamera.TranslationSpeed * SceneViewCamera.Oriantaion;
-                SceneViewCamera.RefreshCameraMatrix();
-            }
+        if (!(InputsHandler::GetMouseButtonState(handle, MOUSE_BUTTON_RIGHT) & MOUSE_BUTTON_PRESSED))
+            return;
 
-            KeyState sKeyPressed = InputsHandler::GetKeyState(handle, KEY_S);
-            if ((sKeyPressed & KEY_PRESSED) || (sKeyPressed & KEY_REPEAT))
-            {
-                SceneViewCamera.Position += SceneViewCamera.TranslationSpeed * -SceneViewCamera.Oriantaion;
-                SceneViewCamera.RefreshCameraMatrix();
-            }
+        glm::vec3 forward = glm::normalize(SceneViewCamera.Oriantaion);
+        glm::vec3 right = glm::normalize(glm::cross(forward, SceneViewCamera.WorldUp));
 
-            KeyState aKeyPressed = InputsHandler::GetKeyState(handle, KEY_A);
-            if ((aKeyPressed & KEY_PRESSED) || (aKeyPressed & KEY_REPEAT))
-            {
-                SceneViewCamera.Position += SceneViewCamera.TranslationSpeed * -glm::normalize(glm::cross(SceneViewCamera.Oriantaion, SceneViewCamera.WorldUp));
-                SceneViewCamera.RefreshCameraMatrix();
-            }
+        if (InputsHandler::GetKeyState(handle, KEY_W))
+            SceneViewCamera.Position += forward * SceneViewCamera.TranslationSpeed * deltaTime.GetDeltaTimeMilliseconds();
+        if (InputsHandler::GetKeyState(handle, KEY_S))
+            SceneViewCamera.Position -= forward * SceneViewCamera.TranslationSpeed * deltaTime.GetDeltaTimeMilliseconds();
+        if (InputsHandler::GetKeyState(handle, KEY_A))
+            SceneViewCamera.Position -= right * SceneViewCamera.TranslationSpeed * deltaTime.GetDeltaTimeMilliseconds();
+        if (InputsHandler::GetKeyState(handle, KEY_D))
+            SceneViewCamera.Position += right * SceneViewCamera.TranslationSpeed * deltaTime.GetDeltaTimeMilliseconds();
 
-            KeyState dKeyPressed = InputsHandler::GetKeyState(handle, KEY_D);
-            if ((dKeyPressed & KEY_PRESSED) || (dKeyPressed & KEY_REPEAT))
-            {
-                SceneViewCamera.Position += SceneViewCamera.TranslationSpeed * glm::normalize(glm::cross(SceneViewCamera.Oriantaion, SceneViewCamera.WorldUp));
-                SceneViewCamera.RefreshCameraMatrix();
-            }
-
-            KeyState ctrlKeyPressed = InputsHandler::GetKeyState(handle, KEY_LEFT_CONTROL);
-            if ((ctrlKeyPressed & KEY_PRESSED) || (ctrlKeyPressed & KEY_REPEAT))
-            {
-                SceneViewCamera.Position += SceneViewCamera.TranslationSpeed * -SceneViewCamera.WorldUp;
-                SceneViewCamera.RefreshCameraMatrix();
-            }
-
-            KeyState spaceKeyPressed = InputsHandler::GetKeyState(handle, KEY_SPACE);
-            if ((spaceKeyPressed & KEY_PRESSED) || (spaceKeyPressed & KEY_REPEAT))
-            {
-                SceneViewCamera.Position += SceneViewCamera.TranslationSpeed * SceneViewCamera.WorldUp;
-                SceneViewCamera.RefreshCameraMatrix();
-            }
-        }
+        SceneViewCamera.RefreshCameraMatrix();
     }
 
     void SceneCamera::OnEvents(WindowHandle handle, IEvent& e)
@@ -78,33 +50,46 @@ namespace Motion
 
     bool SceneCamera::OnMouseCursorPosChange(WindowHandle handle, EventMouseCursorMove& e)
     {
+        static bool firstMouseMovement = true;
+
         if (InputsHandler::GetMouseButtonState(handle, MOUSE_BUTTON_RIGHT) & MOUSE_BUTTON_PRESSED)
         {
-            float xOffset = e.GetX() - m_MouseX;
-            float yOffset = e.GetY() - m_MouseY;  // Change this to invert camera control
+            float currentX = e.GetX();
+            float currentY = e.GetY();
 
-            m_MouseX = e.GetX();
-            m_MouseY = e.GetY();
+            if (firstMouseMovement)
+            {
+                m_MouseX = currentX;
+                m_MouseY = currentY;
+                firstMouseMovement = false;
+                return false; // Prevent jump
+            }
+
+            float xOffset = currentX - m_MouseX;
+            float yOffset = currentY - m_MouseY;
+
+            m_MouseX = currentX;
+            m_MouseY = currentY;
 
             xOffset *= SceneViewCamera.Sensitivity;
             yOffset *= SceneViewCamera.Sensitivity;
 
             m_Yaw += xOffset;
-            m_Pitch -= yOffset;  // Flip the sign to fix inversion
+            m_Pitch -= yOffset;
 
-            // Clamp Pitch to prevent flipping
-            if (m_Pitch > 89.0f)
-                m_Pitch = 89.0f;
-            if (m_Pitch < -89.0f)
-                m_Pitch = -89.0f;
+            m_Pitch = glm::clamp(m_Pitch, -89.0f, 89.0f);
 
-            // Update camera direction
-            glm::vec3 direction{};
+            glm::vec3 direction;
             direction.x = cos(glm::radians(m_Yaw)) * cos(glm::radians(m_Pitch));
             direction.y = sin(glm::radians(m_Pitch));
             direction.z = sin(glm::radians(m_Yaw)) * cos(glm::radians(m_Pitch));
+
             SceneViewCamera.Oriantaion = glm::normalize(direction);
             SceneViewCamera.RefreshCameraMatrix();
+        }
+        else
+        {
+            firstMouseMovement = true; // Reset when not holding RMB
         }
 
         return false;

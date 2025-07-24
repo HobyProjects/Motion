@@ -79,7 +79,7 @@ namespace Motion
      * @param width The new width of the framebuffer.
      * @param height The new height of the framebuffer.
      */
-    void PostProcessor::OnResize(std::uint32_t width, std::uint32_t height)
+    void PostProcessor::OnResize(std::int32_t width, std::int32_t height)
     {
         if (m_FrameBuffer)
         {

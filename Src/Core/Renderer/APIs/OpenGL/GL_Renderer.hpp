@@ -8,13 +8,13 @@ namespace Motion
     void GL_Quit();
     void GL_Clear();
     void GL_ClearColor(const glm::vec4& color);
-    void GL_SetViewport(int32_t x, int32_t y, int32_t width, int32_t height);
-    void GL_DrawIndexed(uint32_t indicesCount);
+    void GL_SetViewport(std::int32_t x, std::int32_t y, std::int32_t width, std::int32_t height);
+    void GL_DrawIndexed(std::int32_t indicesCount);
     void GL_ApplyDrawFlags(DrawFlags flags);
     void GL_ResetDrawFlags(DrawFlags flags);
 
-    void GL_BindTextureUnit(uint32_t slot, TextureID textureID);
-    void GL_UnbindTextureUnit(std::uint32_t slot);
+    void GL_BindTextureUnit(std::int32_t slot, std::uint32_t textureID);
+    void GL_UnbindTextureUnit(std::int32_t slot);
 
     std::int32_t GL_GetMaxTextureSlots() noexcept;
 }

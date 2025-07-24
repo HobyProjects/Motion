@@ -228,7 +228,7 @@ namespace Motion
      */
     void Importer::LoadMesh(const std::shared_ptr<StaticMesh>& staticMeshPtr, aiMesh* mesh, const aiScene* scene)
     {
-        static uint32_t meshIndex = 0;
+        static int32_t meshIndex = 0;
         std::vector<float> vertices;
         std::vector<uint32_t> indices;
 
@@ -283,8 +283,8 @@ namespace Motion
         meshSegment->MaterialIndex = mesh->mMaterialIndex;
         meshSegment->MeshSelf = assetManager.Create<Mesh>(
             std::format("{}_SubMesh_{}", staticMeshPtr->GetName(), meshSegment->MeshIndex),
-            vertices.data(), vertices.size(),
-            indices.data(), indices.size(),
+            vertices.data(), static_cast<std::int32_t>(vertices.size()),
+            indices.data(), static_cast<std::int32_t>(indices.size()),
             BufferLayout(
                 {
                     { UniformCache::Position, BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Position) },

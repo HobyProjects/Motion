@@ -5,7 +5,7 @@
 
 namespace Motion
 {
-    using RendererID = uint32_t;
+    using RendererID = std::uint32_t;
 
     class IVertexArray
     {

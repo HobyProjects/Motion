@@ -15,7 +15,7 @@ namespace Motion
       *
       * @param allocatorSize The size in bytes to allocate for the vertex buffer.
       */
-    GL_VertexBuffer::GL_VertexBuffer(std::uint32_t allocatorSize)
+    GL_VertexBuffer::GL_VertexBuffer(std::int32_t allocatorSize)
     {
         glCreateBuffers(1, &m_VertexBufferID);
         glNamedBufferData(m_VertexBufferID, allocatorSize, nullptr, GL_DYNAMIC_DRAW);
@@ -29,7 +29,7 @@ namespace Motion
      * @param data Pointer to the array of vertex data to be stored in the buffer.
      * @param dataSize The number of elements in the data array.
      */
-    GL_VertexBuffer::GL_VertexBuffer(float* data, std::uint32_t dataSize)
+    GL_VertexBuffer::GL_VertexBuffer(float* data, std::int32_t dataSize)
     {
         glCreateBuffers(1, &m_VertexBufferID);
         glNamedBufferData(m_VertexBufferID, sizeof(data[0]) * dataSize, data, GL_STATIC_DRAW);
@@ -80,7 +80,7 @@ namespace Motion
      * @param data Pointer to the source data to be copied into the buffer.
      * @param size The size, in bytes, of the data to be copied.
      */
-    void GL_VertexBuffer::SetData(const void* data, std::uint32_t size)
+    void GL_VertexBuffer::SetData(const void* data, std::int32_t size)
     {
         glNamedBufferSubData(m_VertexBufferID, 0, size, data);
     }
@@ -108,10 +108,10 @@ namespace Motion
       * This constructor creates an OpenGL element buffer object (EBO) and uploads the provided
       * index data to the GPU. The buffer is initialized with the specified number of indices.
       *
-      * @param data Pointer to the array of index data (of type std::uint32_t) to be uploaded.
+      * @param data Pointer to the array of index data (of type std::int32_t) to be uploaded.
       * @param indicesCount The number of indices in the data array.
       */
-    GL_ElementBuffer::GL_ElementBuffer(std::uint32_t* data, std::uint32_t indicesCount) : m_Count(indicesCount)
+    GL_ElementBuffer::GL_ElementBuffer(std::uint32_t* data, std::int32_t indicesCount) : m_Count(indicesCount)
     {
         glCreateBuffers(1, &m_ElementBufferID);
         glNamedBufferData(m_ElementBufferID, indicesCount * sizeof(std::uint32_t), data, GL_STATIC_DRAW);
@@ -168,7 +168,7 @@ namespace Motion
       * @param size The size in bytes to allocate for the shader buffer.
       * @param binding The binding point to which this buffer will be associated.
       */
-    GL_ShaderBuffer::GL_ShaderBuffer(std::uint32_t size, BindingPoint binding)
+    GL_ShaderBuffer::GL_ShaderBuffer(std::int32_t size, BindingPoint binding)
     {
         glCreateBuffers(1, &m_ShaderBufferID);
         glNamedBufferData(m_ShaderBufferID, size, nullptr, GL_DYNAMIC_STORAGE_BIT);
@@ -225,7 +225,7 @@ namespace Motion
      * @param size The size in bytes of the data to update (should match sizeof(glm::mat4)).
      * @param data The matrix data to upload to the buffer.
      */
-    void GL_ShaderBuffer::SetBufferData(std::uint32_t offset, std::uint32_t size, const glm::mat4& data)
+    void GL_ShaderBuffer::SetBufferData(std::int32_t offset, std::int32_t size, const glm::mat4& data)
     {
         glNamedBufferSubData(m_ShaderBufferID, offset, size, glm::value_ptr(data));
     }
@@ -240,7 +240,7 @@ namespace Motion
      * @param size The size in bytes of the data to write.
      * @param data The glm::mat3 matrix containing the data to upload.
      */
-    void GL_ShaderBuffer::SetBufferData(std::uint32_t offset, std::uint32_t size, const glm::mat3& data)
+    void GL_ShaderBuffer::SetBufferData(std::int32_t offset, std::int32_t size, const glm::mat3& data)
     {
         glNamedBufferSubData(m_ShaderBufferID, offset, size, glm::value_ptr(data));
     }
@@ -255,7 +255,7 @@ namespace Motion
      * @param size The size in bytes of the data to be written.
      * @param data The glm::vec4 value to write into the buffer.
      */
-    void GL_ShaderBuffer::SetBufferData(std::uint32_t offset, std::uint32_t size, const glm::vec4& data)
+    void GL_ShaderBuffer::SetBufferData(std::int32_t offset, std::int32_t size, const glm::vec4& data)
     {
         glNamedBufferSubData(m_ShaderBufferID, offset, size, glm::value_ptr(data));
     }
@@ -269,7 +269,7 @@ namespace Motion
      * @param size The size in bytes of the data to upload (should match sizeof(glm::vec3)).
      * @param data The glm::vec3 data to be uploaded to the buffer.
      */
-    void GL_ShaderBuffer::SetBufferData(std::uint32_t offset, std::uint32_t size, const glm::vec3& data)
+    void GL_ShaderBuffer::SetBufferData(std::int32_t offset, std::int32_t size, const glm::vec3& data)
     {
         glNamedBufferSubData(m_ShaderBufferID, offset, size, glm::value_ptr(data));
     }
@@ -283,7 +283,7 @@ namespace Motion
      * @param size The size in bytes of the data to upload (should match sizeof(glm::vec2)).
      * @param data The glm::vec2 data to be uploaded to the buffer.
      */
-    void GL_ShaderBuffer::SetBufferData(std::uint32_t offset, std::uint32_t size, const glm::vec2& data)
+    void GL_ShaderBuffer::SetBufferData(std::int32_t offset, std::int32_t size, const glm::vec2& data)
     {
         glNamedBufferSubData(m_ShaderBufferID, offset, size, glm::value_ptr(data));
     }
@@ -297,7 +297,7 @@ namespace Motion
      * @param size The size in bytes of the data to upload (should be sizeof(float)).
      * @param data The float value to be uploaded to the buffer.
      */
-    void GL_ShaderBuffer::SetBufferData(std::uint32_t offset, std::uint32_t size, float data)
+    void GL_ShaderBuffer::SetBufferData(std::int32_t offset, std::int32_t size, float data)
     {
         glNamedBufferSubData(m_ShaderBufferID, offset, size, &data);
     }
@@ -316,7 +316,7 @@ namespace Motion
       * @param size The size in bytes of the uniform buffer to allocate.
       * @param binding The binding point to which this uniform buffer will be bound.
       */
-    GL_UniformBuffer::GL_UniformBuffer(std::uint32_t size, BindingPoint binding)
+    GL_UniformBuffer::GL_UniformBuffer(std::int32_t size, BindingPoint binding)
     {
         glCreateBuffers(1, &m_UniformBufferID);
         glNamedBufferData(m_UniformBufferID, size, nullptr, GL_DYNAMIC_STORAGE_BIT);
@@ -371,7 +371,7 @@ namespace Motion
      * @param size The size in bytes of the data to update (should match sizeof(glm::mat4)).
      * @param data The matrix data to upload to the buffer.
      */
-    void GL_UniformBuffer::SetBufferData(std::uint32_t offset, std::uint32_t size, const glm::mat4& data)
+    void GL_UniformBuffer::SetBufferData(std::int32_t offset, std::int32_t size, const glm::mat4& data)
     {
         glNamedBufferSubData(m_UniformBufferID, offset, size, glm::value_ptr(data));
     }
@@ -386,7 +386,7 @@ namespace Motion
      * @param size The size in bytes of the data to write.
      * @param data The glm::mat3 matrix containing the data to upload.
      */
-    void GL_UniformBuffer::SetBufferData(std::uint32_t offset, std::uint32_t size, const glm::mat3& data)
+    void GL_UniformBuffer::SetBufferData(std::int32_t offset, std::int32_t size, const glm::mat3& data)
     {
         glNamedBufferSubData(m_UniformBufferID, offset, size, glm::value_ptr(data));
     }
@@ -401,7 +401,7 @@ namespace Motion
      * @param size The size in bytes of the data to be written.
      * @param data The glm::vec4 value to write into the buffer.
      */
-    void GL_UniformBuffer::SetBufferData(std::uint32_t offset, std::uint32_t size, const glm::vec4& data)
+    void GL_UniformBuffer::SetBufferData(std::int32_t offset, std::int32_t size, const glm::vec4& data)
     {
         glNamedBufferSubData(m_UniformBufferID, offset, size, glm::value_ptr(data));
     }
@@ -415,7 +415,7 @@ namespace Motion
      * @param size The size in bytes of the data to upload (should match sizeof(glm::vec3)).
      * @param data The glm::vec3 data to be uploaded to the buffer.
      */
-    void GL_UniformBuffer::SetBufferData(std::uint32_t offset, std::uint32_t size, const glm::vec3& data)
+    void GL_UniformBuffer::SetBufferData(std::int32_t offset, std::int32_t size, const glm::vec3& data)
     {
         glNamedBufferSubData(m_UniformBufferID, offset, size, glm::value_ptr(data));
     }
@@ -429,7 +429,7 @@ namespace Motion
      * @param size The size in bytes of the data to upload (should match sizeof(glm::vec2)).
      * @param data The glm::vec2 data to be uploaded to the buffer.
      */
-    void GL_UniformBuffer::SetBufferData(std::uint32_t offset, std::uint32_t size, const glm::vec2& data)
+    void GL_UniformBuffer::SetBufferData(std::int32_t offset, std::int32_t size, const glm::vec2& data)
     {
         glNamedBufferSubData(m_UniformBufferID, offset, size, glm::value_ptr(data));
     }
@@ -443,7 +443,7 @@ namespace Motion
      * @param size The size in bytes of the data to upload (should be sizeof(float)).
      * @param data The float value to be uploaded to the buffer.
      */
-    void GL_UniformBuffer::SetBufferData(std::uint32_t offset, std::uint32_t size, float data)
+    void GL_UniformBuffer::SetBufferData(std::int32_t offset, std::int32_t size, float data)
     {
         glNamedBufferSubData(m_UniformBufferID, offset, size, &data);
     }
@@ -520,7 +520,7 @@ namespace Motion
      * according to the current FrameBufferSpecification. It sets up color attachments, depth/stencil
      * attachments, and multi-sampling if specified.
      */
-    void GL_FrameBuffer::ResizeFrame(std::uint32_t width, std::uint32_t Height)
+    void GL_FrameBuffer::ResizeFrame(std::int32_t width, std::int32_t Height)
     {
         m_Specification.Width = width;
         m_Specification.Height = Height;
@@ -641,7 +641,7 @@ namespace Motion
     ColorAttachments GL_FrameBuffer::GetAttachment(FrameBufferColorAttachmentStandards attachment) const
     {
         auto it = std::find_if(m_ColorAttachments.begin(), m_ColorAttachments.end(),
-            [&](const std::pair<const std::uint32_t, ColorAttachments>& pair)
+            [&](const std::pair<const std::int32_t, ColorAttachments>& pair)
             {
                 return pair.second.Format == attachment;
             }
@@ -673,7 +673,7 @@ namespace Motion
     std::int32_t GL_FrameBuffer::ReadPixel(FrameBufferColorAttachmentStandards attachment, std::int32_t x, std::int32_t y)
     {
         auto it = std::find_if(m_ColorAttachments.begin(), m_ColorAttachments.end(),
-            [&](const std::pair<const std::uint32_t, ColorAttachments>& pair)
+            [&](const std::pair<const std::int32_t, ColorAttachments>& pair)
             {
                 return pair.second.Format == attachment;
             }
@@ -681,7 +681,7 @@ namespace Motion
 
         if (it != m_ColorAttachments.end())
         {
-            std::uint32_t attachmentPoint = it->second.AttachmentPoint;
+            std::int32_t attachmentPoint = it->second.AttachmentPoint;
             glReadBuffer(GL_COLOR_ATTACHMENT0 + attachmentPoint);
 
             std::int32_t pixelData = 0;
@@ -892,7 +892,7 @@ namespace Motion
         const bool hasDepth = m_Specification.Depth.Format != FrameBufferDepthAttachmentStandards::None;
         const bool useMultiSampling = m_Specification.Samples > 1;
 
-        for (std::uint32_t i = 0; i < m_Specification.Colors.size(); i++)
+        for (std::int32_t i = 0; i < m_Specification.Colors.size(); i++)
         {
             auto colorAttachment = m_Specification.Colors[i];
             if (useMultiSampling)
@@ -978,7 +978,7 @@ namespace Motion
       * @param allocatorSize The size (in bytes) to allocate for the vertex buffer.
       * @return std::shared_ptr<GL_VertexBuffer> A shared pointer to the created GL_VertexBuffer.
       */
-    std::shared_ptr<GL_VertexBuffer> GL_CreateVertexBuffer(std::uint32_t allocatorSize)
+    std::shared_ptr<GL_VertexBuffer> GL_CreateVertexBuffer(std::int32_t allocatorSize)
     {
         return std::make_shared<GL_VertexBuffer>(allocatorSize);
     }
@@ -993,7 +993,7 @@ namespace Motion
      * @param size The size of the vertex data in bytes.
      * @return std::shared_ptr<GL_VertexBuffer> Shared pointer to the created GL_VertexBuffer.
      */
-    std::shared_ptr<GL_VertexBuffer> GL_CreateVertexBuffer(float* data, std::uint32_t size)
+    std::shared_ptr<GL_VertexBuffer> GL_CreateVertexBuffer(float* data, std::int32_t size)
     {
         return std::make_shared<GL_VertexBuffer>(data, size);
     }
@@ -1009,7 +1009,7 @@ namespace Motion
      * @param size The number of elements in the data array.
      * @return std::shared_ptr<GL_ElementBuffer> A shared pointer to the created GL_ElementBuffer.
      */
-    std::shared_ptr<GL_ElementBuffer> GL_CreateElementBuffer(std::uint32_t* data, std::uint32_t size)
+    std::shared_ptr<GL_ElementBuffer> GL_CreateElementBuffer(std::uint32_t* data, std::int32_t size)
     {
         return std::make_shared<GL_ElementBuffer>(data, size);
     }
@@ -1024,7 +1024,7 @@ namespace Motion
      * @param binding The binding point to which the shader buffer will be bound.
      * @return std::shared_ptr<GL_ShaderBuffer> A shared pointer to the created GL_ShaderBuffer.
      */
-    std::shared_ptr<GL_ShaderBuffer> GL_CreateShaderBuffer(std::uint32_t size, BindingPoint binding)
+    std::shared_ptr<GL_ShaderBuffer> GL_CreateShaderBuffer(std::int32_t size, BindingPoint binding)
     {
         return std::make_shared<GL_ShaderBuffer>(size, binding);
     }
@@ -1039,7 +1039,7 @@ namespace Motion
      * @param binding The binding point to which the uniform buffer will be bound.
      * @return std::shared_ptr<GL_UniformBuffer> A shared pointer to the created GL_UniformBuffer.
      */
-    std::shared_ptr<GL_UniformBuffer> GL_CreateUniformBuffer(std::uint32_t size, BindingPoint binding)
+    std::shared_ptr<GL_UniformBuffer> GL_CreateUniformBuffer(std::int32_t size, BindingPoint binding)
     {
         return std::make_shared<GL_UniformBuffer>(size, binding);
     }

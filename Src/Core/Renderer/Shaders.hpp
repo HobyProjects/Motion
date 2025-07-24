@@ -15,11 +15,11 @@
 
 namespace Motion
 {
-    using ShaderID = uint32_t;
-    using ShaderProgramID = uint32_t;
-    using UniformLocation = uint32_t;
+    using ShaderID = std::int32_t;
+    using ShaderProgramID = std::int32_t;
+    using UniformLocation = std::int32_t;
 
-    enum class ShaderType : uint32_t
+    enum class ShaderType : std::int32_t
     {
         None = 0,
         Vertex = 1,
@@ -30,8 +30,8 @@ namespace Motion
         TessellationEvaluation = 6
     };
 
-    inline uint32_t operator|(ShaderType a, ShaderType b) { return static_cast<uint32_t>(a) | static_cast<uint32_t>(b); }
-    inline uint32_t operator&(ShaderType a, ShaderType b) { return static_cast<uint32_t>(a) & static_cast<uint32_t>(b); }
+    inline std::int32_t operator|(ShaderType a, ShaderType b) { return static_cast<std::int32_t>(a) | static_cast<std::int32_t>(b); }
+    inline std::int32_t operator&(ShaderType a, ShaderType b) { return static_cast<std::int32_t>(a) & static_cast<std::int32_t>(b); }
 
     struct UniformCache
     {
@@ -83,14 +83,13 @@ namespace Motion
 
         virtual void SetUniform(const std::string_view uniformName, float value) = 0;
         virtual void SetUniform(const std::string_view uniformName, std::int32_t value) = 0;
-        virtual void SetUniform(const std::string_view uniformName, std::uint32_t value) = 0;
         virtual void SetUniform(const std::string_view uniformName, const glm::vec2& value) = 0;
         virtual void SetUniform(const std::string_view uniformName, const glm::vec3& value) = 0;
         virtual void SetUniform(const std::string_view uniformName, const glm::vec4& value) = 0;
         virtual void SetUniform(const std::string_view uniformName, const glm::mat2& value) = 0;
         virtual void SetUniform(const std::string_view uniformName, const glm::mat3& value) = 0;
         virtual void SetUniform(const std::string_view uniformName, const glm::mat4& value) = 0;
-        virtual void SetUniform(const std::string_view uniformName, std::uint32_t size, std::uint32_t* values) = 0;
+        virtual void SetUniform(const std::string_view uniformName, std::int32_t size, std::uint32_t* values) = 0;
 
         [[nodiscard]] virtual ShaderProgramID ProgramID() const = 0;
         [[nodiscard]] virtual std::string GetName() const = 0;

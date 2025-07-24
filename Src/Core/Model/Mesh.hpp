@@ -23,13 +23,13 @@ namespace Motion
     {
     public:
         Mesh() = default;
-        Mesh(UUID uuid, const std::string& name, float* vertices, std::uint32_t verticesSize, std::uint32_t* indices, std::uint32_t indicesCount, const BufferLayout& layout, const std::shared_ptr<StaticMesh>& parentModel);
+        Mesh(UUID uuid, const std::string& name, float* vertices, std::int32_t verticesSize, std::uint32_t* indices, std::int32_t indicesCount, const BufferLayout& layout, const std::shared_ptr<StaticMesh>& parentModel);
         ~Mesh() = default;
 
         void Bind() const noexcept;
         void Unbind() const noexcept;
         void Render();
-        std::uint32_t GetIndicesCount() const noexcept;
+        std::int32_t GetIndicesCount() const noexcept;
         std::shared_ptr<StaticMesh> GetParentModel() const noexcept;
 
     private:
@@ -53,9 +53,9 @@ namespace Motion
         QuickMesh(QuickMesh&&) = delete;
         QuickMesh& operator=(QuickMesh&&) = delete;
 
-        static std::shared_ptr<Mesh> CreatePlane(bool isRegistered, const std::string name, float width, float height, std::uint32_t widthSegments = 1, std::uint32_t heightSegments = 1);
+        static std::shared_ptr<Mesh> CreatePlane(bool isRegistered, const std::string name, float width, float height, std::int32_t widthSegments = 1, std::int32_t heightSegments = 1);
         static std::shared_ptr<Mesh> CreateCube(bool isRegistered, const std::string name, float width, float height, float depth);
-        static std::shared_ptr<Mesh> CreateSphere(bool isRegistered, const std::string name, std::uint32_t sectorCount, std::uint32_t stackCount);
-        static std::shared_ptr<Mesh> CreateQuad(bool isRegistered, const std::string name, std::uint32_t width, std::uint32_t height);
+        static std::shared_ptr<Mesh> CreateSphere(bool isRegistered, const std::string name, std::int32_t sectorCount, std::int32_t stackCount);
+        static std::shared_ptr<Mesh> CreateQuad(bool isRegistered, const std::string name, std::int32_t width, std::int32_t height);
     };
 }

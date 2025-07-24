@@ -14,7 +14,7 @@ namespace Motion
      * @param[in] height The height of the texture
      * @param[in] color  The color to fill the texture
      */
-    GL_Texture::GL_Texture(UUID uuid, const std::string& name, uint32_t width, uint32_t height, const glm::vec3& color)
+    GL_Texture::GL_Texture(UUID uuid, const std::string& name, std::int32_t width, std::int32_t height, const glm::vec3& color)
         : AssetBase<ITexture>(uuid, name, AssetType::Texture, "PlainTexture")
     {
         if (!GenerateTexture2D(width, height, color))
@@ -88,7 +88,7 @@ namespace Motion
      *
      * @param bindingPoint The texture unit or binding point to which the texture should be bound.
      */
-    void GL_Texture::Bind(uint32_t bindingPoint) const noexcept
+    void GL_Texture::Bind(std::int32_t bindingPoint) const noexcept
     {
         glBindTextureUnit(bindingPoint, m_Specification.TexID);
     }
@@ -207,7 +207,7 @@ namespace Motion
      *
      * @return Whether the texture could be generated successfully
      */
-    bool GL_Texture::GenerateTexture2D(std::uint32_t width, std::uint32_t height, const glm::vec3& color)
+    bool GL_Texture::GenerateTexture2D(std::int32_t width, std::int32_t height, const glm::vec3& color)
     {
         m_Specification.Width = width;
         m_Specification.Height = height;
@@ -215,7 +215,7 @@ namespace Motion
         m_Specification.InternalDataFormat = GL_RGBA8;
         m_Specification.TextureDataFormat = GL_RGBA;
 
-        uint32_t textureAllocateSize = m_Specification.Width * m_Specification.Height * m_Specification.Channels;
+        std::int32_t textureAllocateSize = m_Specification.Width * m_Specification.Height * m_Specification.Channels;
         std::uint8_t* textureData = new std::uint8_t[textureAllocateSize];
 
         // Convert glm::vec3 (0.0f - 1.0f) to uint8_t (0 - 255)
@@ -225,9 +225,9 @@ namespace Motion
         std::uint8_t a = 255; // Fully opaque
 
         // Fill the texture buffer with RGBA
-        for (std::uint32_t i = 0; i < (width * height); ++i)
+        for (std::int32_t i = 0; i < (width * height); ++i)
         {
-            std::uint32_t index = i * 4;
+            std::int32_t index = i * 4;
             textureData[index + 0] = r;
             textureData[index + 1] = g;
             textureData[index + 2] = b;
@@ -295,7 +295,7 @@ namespace Motion
      *
      * @param bindingPoint The texture unit or binding point to which the texture should be bound.
      */
-    void GL_CubeMapTexture::Bind(std::uint32_t bindingPoint) const noexcept
+    void GL_CubeMapTexture::Bind(std::int32_t bindingPoint) const noexcept
     {
         glBindTextureUnit(bindingPoint, m_Specification.TexID);
     }
@@ -361,7 +361,7 @@ namespace Motion
      * @param format    The format of the texture data (e.g., GL_RGB, GL_RGBA).
      * @param data      Pointer to the image data to upload.
      */
-    void GL_CubeMapTexture::SetFace(std::uint32_t face, std::int32_t mipLevel, std::uint32_t width, std::uint32_t height, std::uint32_t format, const void* data)
+    void GL_CubeMapTexture::SetFace(std::int32_t face, std::int32_t mipLevel, std::int32_t width, std::int32_t height, std::int32_t format, const void* data)
     {
         if (data != nullptr)
         {
@@ -444,7 +444,7 @@ namespace Motion
         glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
 
-        for (std::uint32_t face = 0; face < 6; ++face)
+        for (std::int32_t face = 0; face < 6; ++face)
         {
             glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, 0, m_Specification.InternalDataFormat, m_Specification.Width, m_Specification.Height, 0, m_Specification.TextureDataFormat, GL_UNSIGNED_BYTE, data);
         }
@@ -469,7 +469,7 @@ namespace Motion
      * @return std::shared_ptr<GL_Texture> A shared pointer to the newly created GL_Texture object.
      * @note This function is noexcept and guarantees not to throw exceptions.
      */
-    std::shared_ptr<GL_Texture> GL_CreateUnregisteredPlainTexture(std::uint32_t width, std::uint32_t height, const glm::vec3& color) noexcept
+    std::shared_ptr<GL_Texture> GL_CreateUnregisteredPlainTexture(std::int32_t width, std::int32_t height, const glm::vec3& color) noexcept
     {
         return std::make_shared<GL_Texture>(UniqueIdentity::GetUniqueID(), "PlainTexture", width, height, color);
     }

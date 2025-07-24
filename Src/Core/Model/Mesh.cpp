@@ -1,5 +1,4 @@
 #include "CorePCH.hpp"
-#include "Mesh.hpp"
 
 namespace Motion
 {
@@ -21,7 +20,7 @@ namespace Motion
      * @param layout The layout describing the structure of the vertex buffer.
      * @param parentModel Shared pointer to the parent StaticMesh object.
      */
-    Mesh::Mesh(UUID uuid, const std::string& name, float* vertices, std::uint32_t verticesSize, std::uint32_t* indices, std::uint32_t indicesCount,
+    Mesh::Mesh(UUID uuid, const std::string& name, float* vertices, std::int32_t verticesSize, std::uint32_t* indices, std::int32_t indicesCount,
         const BufferLayout& layout, const std::shared_ptr<StaticMesh>& parentModel)
         : AssetBase<IAsset>(uuid, name, AssetType::Mesh, "Undefined")
         , m_ParentModel(parentModel)
@@ -95,7 +94,7 @@ namespace Motion
      *
      * @return The number of indices in the mesh.
      */
-    std::uint32_t Mesh::GetIndicesCount() const noexcept
+    std::int32_t Mesh::GetIndicesCount() const noexcept
     {
         return m_IndicesCount;
     }
@@ -132,7 +131,7 @@ namespace Motion
      * @note The mesh is registered with the AssetManager and uses a generated name if creation succeeds.
      * @note Tangents and bitangents are calculated per triangle and accumulated per vertex, then normalized.
      */
-    std::shared_ptr<Mesh> QuickMesh::CreatePlane(bool isRegistered, const std::string name, float width, float height, std::uint32_t widthSegments, std::uint32_t heightSegments)
+    std::shared_ptr<Mesh> QuickMesh::CreatePlane(bool isRegistered, const std::string name, float width, float height, std::int32_t widthSegments, std::int32_t heightSegments)
     {
         std::vector<Vertex> vertices;
         std::vector<std::uint32_t> indices;
@@ -142,8 +141,8 @@ namespace Motion
         float dx = width / static_cast<float>(widthSegments);
         float dy = height / static_cast<float>(heightSegments);
 
-        for (std::uint32_t y = 0; y <= heightSegments; ++y) {
-            for (std::uint32_t x = 0; x <= widthSegments; ++x) {
+        for (std::int32_t y = 0; y <= heightSegments; ++y) {
+            for (std::int32_t x = 0; x <= widthSegments; ++x) {
                 float xpos = -halfWidth + x * dx;
                 float ypos = -halfHeight + y * dy;
                 float u = static_cast<float>(x) / widthSegments;
@@ -159,12 +158,12 @@ namespace Motion
             }
         }
 
-        for (std::uint32_t y = 0; y < heightSegments; ++y) {
-            for (std::uint32_t x = 0; x < widthSegments; ++x) {
-                std::uint32_t i0 = y * (widthSegments + 1) + x;
-                std::uint32_t i1 = i0 + 1;
-                std::uint32_t i2 = i0 + (widthSegments + 1);
-                std::uint32_t i3 = i2 + 1;
+        for (std::int32_t y = 0; y < heightSegments; ++y) {
+            for (std::int32_t x = 0; x < widthSegments; ++x) {
+                std::int32_t i0 = y * (widthSegments + 1) + x;
+                std::int32_t i1 = i0 + 1;
+                std::int32_t i2 = i0 + (widthSegments + 1);
+                std::int32_t i3 = i2 + 1;
 
                 // First triangle
                 indices.push_back(i0);
@@ -243,7 +242,7 @@ namespace Motion
             { UniformCache::Bitangents, BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Bitangent) }
             });
 
-        static std::uint32_t meshCount = 0;
+        static std::int32_t meshCount = 0;
         std::shared_ptr<Mesh> mesh = nullptr;
 
         if (isRegistered)
@@ -260,8 +259,8 @@ namespace Motion
             mesh = std::make_shared<Mesh>(
                 UniqueIdentity::GetUniqueID(),
                 std::format("{}_{}", name, meshCount++),
-                vertexData.data(), static_cast<std::uint32_t>(vertexData.size()),
-                indices.data(), static_cast<std::uint32_t>(indices.size()),
+                vertexData.data(), static_cast<std::int32_t>(vertexData.size()),
+                indices.data(), static_cast<std::int32_t>(indices.size()),
                 layout, nullptr
             );
         }
@@ -391,15 +390,15 @@ namespace Motion
             { UniformCache::Bitangents, BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Bitangent) }
             });
 
-        static std::uint32_t meshCount = 0;
+        static std::int32_t meshCount = 0;
         std::shared_ptr<Mesh> mesh = nullptr;
 
         if (isRegistered)
         {
             mesh = AssetManager::GetInstance().Create<Mesh>(
                 std::format("{}_{}", name, meshCount++).c_str(),
-                vertexData.data(), static_cast<std::uint32_t>(vertexData.size()),
-                indices.data(), static_cast<std::uint32_t>(indices.size()),
+                vertexData.data(), static_cast<std::int32_t>(vertexData.size()),
+                indices.data(), static_cast<std::int32_t>(indices.size()),
                 layout, nullptr
             );
         }
@@ -408,8 +407,8 @@ namespace Motion
             mesh = std::make_shared<Mesh>(
                 UniqueIdentity::GetUniqueID(),
                 std::format("{}_{}", name, meshCount++),
-                vertexData.data(), static_cast<std::uint32_t>(vertexData.size()),
-                indices.data(), static_cast<std::uint32_t>(indices.size()),
+                vertexData.data(), static_cast<std::int32_t>(vertexData.size()),
+                indices.data(), static_cast<std::int32_t>(indices.size()),
                 layout, nullptr
             );
         }
@@ -437,7 +436,7 @@ namespace Motion
      * @param stackCount Number of latitudinal slices (minimum 2).
      * @return std::shared_ptr<Mesh> A shared pointer to the created Mesh object, or nullptr if creation failed.
      */
-    std::shared_ptr<Mesh> QuickMesh::CreateSphere(bool isRegistered, const std::string name, std::uint32_t sectorCount, std::uint32_t stackCount)
+    std::shared_ptr<Mesh> QuickMesh::CreateSphere(bool isRegistered, const std::string name, std::int32_t sectorCount, std::int32_t stackCount)
     {
         if (sectorCount < 3) sectorCount = 3;
         if (stackCount < 2) stackCount = 2;
@@ -449,12 +448,12 @@ namespace Motion
         std::vector<std::uint32_t> indices;
 
         // Generate vertices
-        for (std::uint32_t i = 0; i <= stackCount; ++i) {
+        for (std::int32_t i = 0; i <= stackCount; ++i) {
             float stackAngle = PI / 2 - i * (PI / stackCount); // from pi/2 to -pi/2
             float xy = radius * cosf(stackAngle);
             float y = radius * sinf(stackAngle);
 
-            for (std::uint32_t j = 0; j <= sectorCount; ++j) {
+            for (std::int32_t j = 0; j <= sectorCount; ++j) {
                 float sectorAngle = j * (2 * PI / sectorCount); // from 0 to 2pi
 
                 float x = xy * cosf(sectorAngle);
@@ -482,10 +481,10 @@ namespace Motion
         }
 
         // Generate indices
-        for (std::uint32_t i = 0; i < stackCount; ++i) {
-            for (std::uint32_t j = 0; j < sectorCount; ++j) {
-                std::uint32_t first = i * (sectorCount + 1) + j;
-                std::uint32_t second = first + sectorCount + 1;
+        for (std::int32_t i = 0; i < stackCount; ++i) {
+            for (std::int32_t j = 0; j < sectorCount; ++j) {
+                std::int32_t first = i * (sectorCount + 1) + j;
+                std::int32_t second = first + sectorCount + 1;
 
                 if (i != 0) {
                     indices.push_back(first);
@@ -527,15 +526,15 @@ namespace Motion
             { UniformCache::Bitangents, BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Bitangent) }
             });
 
-        static std::uint32_t meshCount = 0;
+        static std::int32_t meshCount = 0;
         std::shared_ptr<Mesh> mesh = nullptr;
 
         if (isRegistered)
         {
             mesh = AssetManager::GetInstance().Create<Mesh>(
                 std::format("{}_{}", name, meshCount++).c_str(),
-                vertexData.data(), static_cast<std::uint32_t>(vertexData.size()),
-                indices.data(), static_cast<std::uint32_t>(indices.size()),
+                vertexData.data(), static_cast<std::int32_t>(vertexData.size()),
+                indices.data(), static_cast<std::int32_t>(indices.size()),
                 layout, nullptr
             );
         }
@@ -544,8 +543,8 @@ namespace Motion
             mesh = std::make_shared<Mesh>(
                 UniqueIdentity::GetUniqueID(),
                 std::format("{}_{}", name, meshCount++),
-                vertexData.data(), static_cast<std::uint32_t>(vertexData.size()),
-                indices.data(), static_cast<std::uint32_t>(indices.size()),
+                vertexData.data(), static_cast<std::int32_t>(vertexData.size()),
+                indices.data(), static_cast<std::int32_t>(indices.size()),
                 layout, nullptr
             );
         }
@@ -572,7 +571,7 @@ namespace Motion
      * @param height The height of the quad along the Z axis.
      * @return std::shared_ptr<Mesh> A shared pointer to the created Mesh object, or nullptr if creation failed.
      */
-    std::shared_ptr<Mesh> QuickMesh::CreateQuad(bool isRegistered, const std::string name, std::uint32_t width, std::uint32_t height)
+    std::shared_ptr<Mesh> QuickMesh::CreateQuad(bool isRegistered, const std::string name, std::int32_t width, std::int32_t height)
     {
         std::vector<Vertex> vertices(4);
         float halfWidth = static_cast<float>(width) * 0.5f;
@@ -632,15 +631,15 @@ namespace Motion
             { UniformCache::Bitangents, BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Bitangent) }
             });
 
-        static std::uint32_t meshCount = 0;
+        static std::int32_t meshCount = 0;
         std::shared_ptr<Mesh> mesh = nullptr;
 
         if (isRegistered)
         {
             mesh = AssetManager::GetInstance().Create<Mesh>(
                 std::format("{}_{}", name, meshCount++),
-                vertexData.data(), static_cast<std::uint32_t>(vertexData.size()),
-                indices.data(), static_cast<std::uint32_t>(indices.size()),
+                vertexData.data(), static_cast<std::int32_t>(vertexData.size()),
+                indices.data(), static_cast<std::int32_t>(indices.size()),
                 layout, nullptr
             );
         }
@@ -649,8 +648,8 @@ namespace Motion
             mesh = std::make_shared<Mesh>(
                 UniqueIdentity::GetUniqueID(),
                 std::format("{}_{}", name, meshCount++),
-                vertexData.data(), static_cast<std::uint32_t>(vertexData.size()),
-                indices.data(), static_cast<std::uint32_t>(indices.size()),
+                vertexData.data(), static_cast<std::int32_t>(vertexData.size()),
+                indices.data(), static_cast<std::int32_t>(indices.size()),
                 layout, nullptr
             );
         }

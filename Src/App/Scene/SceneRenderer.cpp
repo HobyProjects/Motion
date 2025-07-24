@@ -135,7 +135,7 @@ namespace Motion
             std::shared_ptr<ICubeMapTexture> environmentTexture = SkyBox::GetTexture();
             if (environmentTexture)
             {
-                std::uint32_t bindingPoint = TextureBinding::Point();
+                std::int32_t bindingPoint = TextureBinding::Point();
                 environmentTexture->Bind(bindingPoint);
                 shader->SetUniform(UniformCache::EnvironmentTexture, bindingPoint);
             }

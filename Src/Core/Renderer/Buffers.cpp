@@ -11,7 +11,7 @@ namespace Motion
      * @param allocatorSize The size (in bytes) to allocate for the vertex buffer.
      * @return std::shared_ptr<IVertexBuffer> A shared pointer to the created vertex buffer, or nullptr if the API is not implemented.
      */
-    std::shared_ptr<IVertexBuffer> BufferFactory::CreateVertexBuffer(std::uint32_t allocatorSize)
+    std::shared_ptr<IVertexBuffer> BufferFactory::CreateVertexBuffer(std::int32_t allocatorSize)
     {
         switch (Renderer::GetAPI())
         {
@@ -36,7 +36,7 @@ namespace Motion
      *
      * @note Currently, only the OpenGL API is implemented. Other APIs will trigger an assertion failure.
      */
-    std::shared_ptr<IVertexBuffer> BufferFactory::CreateVertexBuffer(float* data, std::uint32_t size)
+    std::shared_ptr<IVertexBuffer> BufferFactory::CreateVertexBuffer(float* data, std::int32_t size)
     {
         switch (Renderer::GetAPI())
         {
@@ -60,7 +60,7 @@ namespace Motion
      *
      * @note Currently, only the OpenGL API is implemented. Vulkan and DirectX will trigger assertions.
      */
-    std::shared_ptr<IElementBuffer> BufferFactory::CreateElementBuffer(std::uint32_t* data, std::uint32_t size)
+    std::shared_ptr<IElementBuffer> BufferFactory::CreateElementBuffer(std::uint32_t* data, std::int32_t size)
     {
         switch (Renderer::GetAPI())
         {
@@ -81,7 +81,7 @@ namespace Motion
      * @param binding The binding point to which the buffer will be bound in the shader.
      * @return std::shared_ptr<IShaderBuffer> A shared pointer to the created shader buffer, or nullptr if not implemented.
      */
-    std::shared_ptr<IShaderBuffer> BufferFactory::CreateShaderBuffer(std::uint32_t size, BindingPoint binding)
+    std::shared_ptr<IShaderBuffer> BufferFactory::CreateShaderBuffer(std::int32_t size, BindingPoint binding)
     {
         switch (Renderer::GetAPI())
         {
@@ -107,7 +107,7 @@ namespace Motion
      * @note Currently, only the OpenGL implementation is available. Other APIs will trigger
      *       an assertion and return nullptr.
      */
-    std::shared_ptr<IUniformBuffer> BufferFactory::CreateUniformBuffer(std::uint32_t size, BindingPoint binding)
+    std::shared_ptr<IUniformBuffer> BufferFactory::CreateUniformBuffer(std::int32_t size, BindingPoint binding)
     {
         switch (Renderer::GetAPI())
         {

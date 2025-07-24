@@ -15,7 +15,7 @@ namespace Motion
 
         void Process(FrameTextureID inputTextureID);
         FrameTextureID GetOutputTextureID() const;
-        void OnResize(std::uint32_t width, std::uint32_t height);
+        void OnResize(std::int32_t width, std::int32_t height);
 
     private:
         std::shared_ptr<IFrameBuffer> m_FrameBuffer{ nullptr };

@@ -225,24 +225,6 @@ namespace Motion
     }
 
     /**
-     * @brief Sets an unsigned integer uniform variable in the shader program.
-     *
-     * This function uploads a 32-bit unsigned integer value to the specified uniform variable
-     * in the currently active OpenGL shader program.
-     *
-     * @param uniformName The name of the uniform variable to set.
-     * @param value The unsigned integer value to assign to the uniform variable.
-     */
-    void GL_Shader::SetUniform(const std::string_view uniformName, uint32_t value)
-    {
-        UniformLocation location = GetUniformLocation(uniformName);
-        if (location != INVALID_UNIFORM_LOCATION)
-        {
-            glUniform1ui(location, value);
-        }
-    }
-
-    /**
      * @brief Sets a 2-component floating point vector uniform variable in the shader.
      *
      * This function uploads the given glm::vec2 value to the shader program's uniform variable
@@ -349,7 +331,7 @@ namespace Motion
         }
     }
 
-    void GL_Shader::SetUniform(const std::string_view uniformName, std::uint32_t size, std::uint32_t* values)
+    void GL_Shader::SetUniform(const std::string_view uniformName, std::int32_t size, std::uint32_t* values)
     {
         UniformLocation location = GetUniformLocation(uniformName);
         if (location != INVALID_UNIFORM_LOCATION)

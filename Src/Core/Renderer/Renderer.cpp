@@ -151,7 +151,7 @@ namespace Motion
      * @param width The width of the viewport.
      * @param height The height of the viewport.
      */
-    void Renderer::SetViewport(int32_t x, int32_t y, int32_t width, int32_t height)
+    void Renderer::SetViewport(std::int32_t x, std::int32_t y, std::int32_t width, std::int32_t height)
     {
         switch (s_RenderingAPI)
         {
@@ -206,7 +206,7 @@ namespace Motion
          * @param slot The texture unit slot to bind the texture to.
          * @param textureID The identifier of the texture to bind.
          */
-    void Renderer::BindTextureUnit(std::uint32_t slot, TextureID textureID)
+    void Renderer::BindTextureUnit(std::int32_t slot, std::uint32_t textureID)
     {
         switch (s_RenderingAPI)
         {
@@ -235,7 +235,7 @@ namespace Motion
      *
      * @param slot The texture unit slot to unbind.
      */
-    void Renderer::UnbindTextureUnit(std::uint32_t slot)
+    void Renderer::UnbindTextureUnit(std::int32_t slot)
     {
         switch (s_RenderingAPI)
         {
@@ -264,7 +264,7 @@ namespace Motion
      *
      * @param indicesCount The number of indices to draw.
      */
-    void Renderer::DrawIndexed(uint32_t indicesCount)
+    void Renderer::DrawIndexed(std::int32_t indicesCount)
     {
         switch (s_RenderingAPI)
         {

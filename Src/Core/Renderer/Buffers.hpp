@@ -10,15 +10,13 @@
 
 namespace Motion
 {
-    inline constexpr std::uint32_t SHADER_BUFFER_DEFAULT_SIZE = 1024;
-    inline constexpr std::uint32_t SHADER_BUFFER_MAX_SIZE = 65536;
-    inline constexpr std::uint32_t SHADER_BUFFER_MAX_BINDING = 16;
-    inline constexpr std::uint32_t UNIFORM_BUFFER_MAX_BINDING = 16;
-    inline constexpr std::uint32_t UNIFORM_BUFFER_MAX_SIZE = 65536;
+    inline constexpr std::int32_t SHADER_BUFFER_DEFAULT_SIZE = 1024;
+    inline constexpr std::int32_t SHADER_BUFFER_MAX_SIZE = 65536;
+    inline constexpr std::int32_t SHADER_BUFFER_MAX_BINDING = 16;
+    inline constexpr std::int32_t UNIFORM_BUFFER_MAX_BINDING = 16;
+    inline constexpr std::int32_t UNIFORM_BUFFER_MAX_SIZE = 65536;
 
-    using FrameTextureID = std::uint32_t;
-
-    enum class BufferComponents : std::uint32_t
+    enum class BufferComponents : std::int32_t
     {
         X = 1,
         XY = 2,
@@ -32,7 +30,7 @@ namespace Motion
         NAN_ = 0,
     };
 
-    enum class BufferStride : std::uint32_t
+    enum class BufferStride : std::int32_t
     {
         BOOLEAN = sizeof(bool),
         F1 = sizeof(float),
@@ -74,7 +72,8 @@ namespace Motion
     };
 
     using BufferID = std::uint32_t;
-    using BindingPoint = std::uint32_t;
+    using FrameTextureID = std::uint32_t;
+    using BindingPoint = std::int32_t;
     using BufferLayoutPtr = std::shared_ptr<BufferLayout>;
 
     class IVertexBuffer
@@ -87,7 +86,7 @@ namespace Motion
         virtual void Unbind() const = 0;
         virtual BufferID GetID() const = 0;
 
-        virtual void SetData(const void* data, std::uint32_t size) = 0;
+        virtual void SetData(const void* data, std::int32_t size) = 0;
         virtual void SetLayout(const BufferLayout& layout) = 0;
         virtual const BufferLayout& GetLayout() const = 0;
     };
@@ -101,7 +100,7 @@ namespace Motion
         virtual void Bind() const = 0;
         virtual void Unbind() const = 0;
         virtual BufferID GetID() const = 0;
-        virtual std::uint32_t GetElementCount() const = 0;
+        virtual std::int32_t GetElementCount() const = 0;
     };
 
     class IShaderBuffer
@@ -114,12 +113,12 @@ namespace Motion
         virtual void Unbind() const = 0;
         virtual BufferID GetID() const = 0;
 
-        virtual void SetBufferData(std::uint32_t offset, std::uint32_t size, const glm::mat4& data) = 0;
-        virtual void SetBufferData(std::uint32_t offset, std::uint32_t size, const glm::mat3& data) = 0;
-        virtual void SetBufferData(std::uint32_t offset, std::uint32_t size, const glm::vec4& data) = 0;
-        virtual void SetBufferData(std::uint32_t offset, std::uint32_t size, const glm::vec3& data) = 0;
-        virtual void SetBufferData(std::uint32_t offset, std::uint32_t size, const glm::vec2& data) = 0;
-        virtual void SetBufferData(std::uint32_t offset, std::uint32_t size, float data) = 0;
+        virtual void SetBufferData(std::int32_t offset, std::int32_t size, const glm::mat4& data) = 0;
+        virtual void SetBufferData(std::int32_t offset, std::int32_t size, const glm::mat3& data) = 0;
+        virtual void SetBufferData(std::int32_t offset, std::int32_t size, const glm::vec4& data) = 0;
+        virtual void SetBufferData(std::int32_t offset, std::int32_t size, const glm::vec3& data) = 0;
+        virtual void SetBufferData(std::int32_t offset, std::int32_t size, const glm::vec2& data) = 0;
+        virtual void SetBufferData(std::int32_t offset, std::int32_t size, float data) = 0;
     };
 
     class IUniformBuffer
@@ -133,16 +132,16 @@ namespace Motion
         virtual void Bind() const = 0;
         virtual void Unbind() const = 0;
 
-        virtual void SetBufferData(std::uint32_t offset, std::uint32_t size, const glm::mat4& data) = 0;
-        virtual void SetBufferData(std::uint32_t offset, std::uint32_t size, const glm::mat3& data) = 0;
-        virtual void SetBufferData(std::uint32_t offset, std::uint32_t size, const glm::vec4& data) = 0;
-        virtual void SetBufferData(std::uint32_t offset, std::uint32_t size, const glm::vec3& data) = 0;
-        virtual void SetBufferData(std::uint32_t offset, std::uint32_t size, const glm::vec2& data) = 0;
-        virtual void SetBufferData(std::uint32_t offset, std::uint32_t size, float data) = 0;
+        virtual void SetBufferData(std::int32_t offset, std::int32_t size, const glm::mat4& data) = 0;
+        virtual void SetBufferData(std::int32_t offset, std::int32_t size, const glm::mat3& data) = 0;
+        virtual void SetBufferData(std::int32_t offset, std::int32_t size, const glm::vec4& data) = 0;
+        virtual void SetBufferData(std::int32_t offset, std::int32_t size, const glm::vec3& data) = 0;
+        virtual void SetBufferData(std::int32_t offset, std::int32_t size, const glm::vec2& data) = 0;
+        virtual void SetBufferData(std::int32_t offset, std::int32_t size, float data) = 0;
     };
 
 
-    enum class FrameBufferBlitMask : std::uint32_t
+    enum class FrameBufferBlitMask : std::int32_t
     {
         None = 0,
         Color = 1,
@@ -151,16 +150,16 @@ namespace Motion
         All = Color | Depth | Stencil
     };
 
-    inline std::uint32_t operator|(FrameBufferBlitMask lhs, FrameBufferBlitMask rhs) { return static_cast<std::uint32_t>(lhs) | static_cast<std::uint32_t>(rhs); }
-    inline std::uint32_t operator&(FrameBufferBlitMask lhs, FrameBufferBlitMask rhs) { return static_cast<std::uint32_t>(lhs) & static_cast<std::uint32_t>(rhs); }
+    inline std::int32_t operator|(FrameBufferBlitMask lhs, FrameBufferBlitMask rhs) { return static_cast<std::int32_t>(lhs) | static_cast<std::int32_t>(rhs); }
+    inline std::int32_t operator&(FrameBufferBlitMask lhs, FrameBufferBlitMask rhs) { return static_cast<std::int32_t>(lhs) & static_cast<std::int32_t>(rhs); }
 
-    enum class FrameBufferBlitFilter : std::uint32_t
+    enum class FrameBufferBlitFilter : std::int32_t
     {
         Nearest = 1,
         Linear = 2
     };
 
-    enum class FrameBufferColorAttachmentStandards : std::uint32_t
+    enum class FrameBufferColorAttachmentStandards : std::int32_t
     {
         None = 0,
         Standard = 1,
@@ -172,7 +171,7 @@ namespace Motion
         MultiChannelFloat32 = 7,
     };
 
-    enum class FrameBufferDepthAttachmentStandards : std::uint32_t
+    enum class FrameBufferDepthAttachmentStandards : std::int32_t
     {
         None = 0,
         Standard = 1,
@@ -183,29 +182,29 @@ namespace Motion
     };
 
 
-    inline std::uint32_t operator|(FrameBufferBlitFilter lhs, FrameBufferBlitFilter rhs) { return static_cast<std::uint32_t>(lhs) | static_cast<std::uint32_t>(rhs); }
-    inline std::uint32_t operator&(FrameBufferBlitFilter lhs, FrameBufferBlitFilter rhs) { return static_cast<std::uint32_t>(lhs) & static_cast<std::uint32_t>(rhs); }
-    inline std::uint32_t operator|(FrameBufferColorAttachmentStandards lhs, FrameBufferColorAttachmentStandards rhs) { return static_cast<std::uint32_t>(lhs) | static_cast<std::uint32_t>(rhs); }
-    inline std::uint32_t operator&(FrameBufferColorAttachmentStandards lhs, FrameBufferColorAttachmentStandards rhs) { return static_cast<std::uint32_t>(lhs) & static_cast<std::uint32_t>(rhs); }
+    inline std::int32_t operator|(FrameBufferBlitFilter lhs, FrameBufferBlitFilter rhs) { return static_cast<std::int32_t>(lhs) | static_cast<std::int32_t>(rhs); }
+    inline std::int32_t operator&(FrameBufferBlitFilter lhs, FrameBufferBlitFilter rhs) { return static_cast<std::int32_t>(lhs) & static_cast<std::int32_t>(rhs); }
+    inline std::int32_t operator|(FrameBufferColorAttachmentStandards lhs, FrameBufferColorAttachmentStandards rhs) { return static_cast<std::int32_t>(lhs) | static_cast<std::int32_t>(rhs); }
+    inline std::int32_t operator&(FrameBufferColorAttachmentStandards lhs, FrameBufferColorAttachmentStandards rhs) { return static_cast<std::int32_t>(lhs) & static_cast<std::int32_t>(rhs); }
 
     struct ColorAttachments
     {
         FrameTextureID ID{ 0 };
-        std::uint32_t AttachmentPoint{ 0 };
+        std::int32_t AttachmentPoint{ 0 };
         FrameBufferColorAttachmentStandards Format{ FrameBufferColorAttachmentStandards::Standard };
     };
     struct DepthAttachment
     {
         FrameTextureID ID{ 0 };
-        std::uint32_t AttachmentPoint{ 0 };
+        std::int32_t AttachmentPoint{ 0 };
         FrameBufferDepthAttachmentStandards Format{ FrameBufferDepthAttachmentStandards::CommonCombined };
     };
 
     struct FrameBufferSpecification
     {
         std::string Name;
-        std::uint32_t Width{ 0 }, Height{ 0 };
-        std::uint32_t Samples{ 1 };
+        std::int32_t Width{ 0 }, Height{ 0 };
+        std::int32_t Samples{ 1 };
         bool SwapChainTarget{ false };
 
         std::vector<ColorAttachments> Colors
@@ -228,11 +227,11 @@ namespace Motion
         virtual void Bind() = 0;
         virtual void Unbind() = 0;
 
-        virtual void ResizeFrame(std::uint32_t width, std::uint32_t height) = 0;
+        virtual void ResizeFrame(std::int32_t width, std::int32_t height) = 0;
         virtual void BlitTo(IFrameBuffer* targetFrameBuffer, FrameBufferBlitMask mask, FrameBufferBlitFilter filter) = 0;
 
         [[nodiscard]] virtual BufferID GetFrameBufferID() const = 0;
-        [[nodiscard]] virtual std::uint32_t GetAttachmentCount() const = 0;
+        [[nodiscard]] virtual std::int32_t GetAttachmentCount() const = 0;
         [[nodiscard]] virtual FrameBufferSpecification& GetFrameSpecification() = 0;
         [[nodiscard]] virtual FrameTextureID ResolveTo(IFrameBuffer* target) = 0;
         [[nodiscard]] virtual ColorAttachments GetAttachment(FrameBufferColorAttachmentStandards attachment) const = 0;
@@ -251,11 +250,11 @@ namespace Motion
         BufferFactory& operator=(BufferFactory&&) = delete;
 
     public:
-        static std::shared_ptr<IVertexBuffer> CreateVertexBuffer(std::uint32_t allocatorSize);
-        static std::shared_ptr<IVertexBuffer> CreateVertexBuffer(float* data, std::uint32_t size);
-        static std::shared_ptr<IElementBuffer> CreateElementBuffer(std::uint32_t* data, std::uint32_t size);
-        static std::shared_ptr<IShaderBuffer> CreateShaderBuffer(std::uint32_t size, BindingPoint binding);
-        static std::shared_ptr<IUniformBuffer> CreateUniformBuffer(std::uint32_t size, BindingPoint binding);
+        static std::shared_ptr<IVertexBuffer> CreateVertexBuffer(std::int32_t allocatorSize);
+        static std::shared_ptr<IVertexBuffer> CreateVertexBuffer(float* data, std::int32_t size);
+        static std::shared_ptr<IElementBuffer> CreateElementBuffer(std::uint32_t* data, std::int32_t size);
+        static std::shared_ptr<IShaderBuffer> CreateShaderBuffer(std::int32_t size, BindingPoint binding);
+        static std::shared_ptr<IUniformBuffer> CreateUniformBuffer(std::int32_t size, BindingPoint binding);
         static std::shared_ptr<IFrameBuffer> CreateFrameBuffer(const FrameBufferSpecification& specification);
     };
 }

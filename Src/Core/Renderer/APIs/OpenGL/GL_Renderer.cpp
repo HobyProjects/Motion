@@ -85,7 +85,7 @@ namespace Motion
      * @param width The width of the viewport, in pixels.
      * @param height The height of the viewport, in pixels.
      */
-    void GL_SetViewport(int32_t x, int32_t y, int32_t width, int32_t height)
+    void GL_SetViewport(std::int32_t x, std::int32_t y, std::int32_t width, std::int32_t height)
     {
         glViewport(x, y, width, height);
     }
@@ -98,7 +98,7 @@ namespace Motion
      *
      * @param indicesCount The number of indices to be rendered.
      */
-    void GL_DrawIndexed(uint32_t indicesCount)
+    void GL_DrawIndexed(std::int32_t indicesCount)
     {
         glDrawElements(GL_TRIANGLES, indicesCount, GL_UNSIGNED_INT, NULL);
     }
@@ -179,7 +179,7 @@ namespace Motion
      * @param slot The texture unit slot to which the texture will be bound.
      * @param textureID The OpenGL texture ID to bind to the specified slot.
      */
-    void GL_BindTextureUnit(uint32_t slot, TextureID textureID)
+    void GL_BindTextureUnit(std::int32_t slot, std::uint32_t textureID)
     {
         glBindTextureUnit(slot, textureID);
     }
@@ -193,7 +193,7 @@ namespace Motion
      *
      * @param slot The texture unit slot to unbind.
      */
-    void GL_UnbindTextureUnit(std::uint32_t slot)
+    void GL_UnbindTextureUnit(std::int32_t slot)
     {
         glBindTextureUnit(slot, 0);
     }

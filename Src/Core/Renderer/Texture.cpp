@@ -8,7 +8,7 @@ namespace Motion
      * This class provides static methods to manage texture binding points,
      * allowing for efficient texture management during rendering operations.
      */
-    static std::uint32_t s_BindingPoint = 0;
+    static std::int32_t s_BindingPoint = 0;
 
     /**
      * @brief Returns a new binding point for textures.
@@ -18,12 +18,12 @@ namespace Motion
      *
      * @return BindingPoint The next available binding point.
      */
-    std::uint32_t TextureBinding::Point() noexcept
+    std::int32_t TextureBinding::Point() noexcept
     {
         if (s_BindingPoint >= Renderer::GetMaxTextureSlots())
         {
             MOTION_CORE_ERROR("Exceeded maximum texture slots available in the renderer.");
-            return 0; // Return 0 or handle error appropriately
+            return -1; // Return -1 or handle error appropriately
         }
 
         return s_BindingPoint++;
@@ -55,7 +55,7 @@ namespace Motion
      * @return std::shared_ptr<ITexture> A shared pointer to the created texture, or nullptr if the API is unsupported.
      * @note Currently, only the OpenGL API is implemented. Vulkan and DirectX will assert and return nullptr.
      */
-    std::shared_ptr<ITexture> CreateUnregisteredPlainTexture(std::uint32_t width, std::uint32_t height, const glm::vec3& color) noexcept
+    std::shared_ptr<ITexture> CreateUnregisteredPlainTexture(std::int32_t width, std::int32_t height, const glm::vec3& color) noexcept
     {
         switch (Renderer::GetAPI())
         {

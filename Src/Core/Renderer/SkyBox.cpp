@@ -49,7 +49,7 @@ namespace Motion
         Renderer::ApplyDrawFlags(DrawFlags::SkipDepthMask);
 
         s_SkyBoxShader->Bind();
-        std::uint32_t bindingPoint = TextureBinding::Point();
+        std::int32_t bindingPoint = TextureBinding::Point();
         s_SkyBoxCubeTexture->Bind(bindingPoint);
         s_SkyBoxShader->SetUniform(UniformCache::SkyboxTexture, bindingPoint);
     }

@@ -45,12 +45,12 @@ namespace Motion
         static void ResetDrawFlags(DrawFlags flags);
         static void ApplyDrawFlags(DrawFlags flags);
         static void ClearColor(const glm::vec4& color);
-        static void DrawIndexed(std::uint32_t indicesCount);
+        static void DrawIndexed(std::int32_t indicesCount);
         static void SetViewport(std::int32_t x, std::int32_t y, std::int32_t width, std::int32_t height);
 
         static std::int32_t GetMaxTextureSlots() noexcept;
-        static void BindTextureUnit(std::uint32_t slot, TextureID textureID);
-        static void UnbindTextureUnit(std::uint32_t slot);
+        static void BindTextureUnit(std::int32_t slot, std::uint32_t textureID);
+        static void UnbindTextureUnit(std::int32_t slot);
 
         [[nodiscard]] static RenderingAPI GetAPI() noexcept;
     };

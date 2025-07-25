@@ -42,7 +42,7 @@ namespace Motion
         m_Shader->Bind();
 
         Renderer::BindTextureUnit(0, inputTextureID);
-        m_Shader->SetUniform(UniformCache::PostProcessTexture, 0);
+        m_Shader->SetUniform("u_PostProcessTexture", 0);
 
         m_ScreenQuad->Render();
         Renderer::UnbindTextureUnit(0);

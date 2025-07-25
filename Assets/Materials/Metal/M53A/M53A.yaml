@@ -1,0 +1,17 @@
+Material:
+  Name: M53A
+  Parameters:
+    BaseColor: [1.0, 0.9, 0.8]
+    Metallic: 0.9
+    Roughness: 0.3
+    AmbientOcclusion: 1.0
+    Opacity: 1.0
+    DisplacementScale: 0.05
+
+  Textures:
+    BaseColor: Assets/Materials/Metal/M53A/M53A_Color.png
+    Normal: Assets/Materials/Metal/M53A/M53A_NormalGL.png
+    Roughness: Assets/Materials/Metal/M53A/M53A_Roughness.png
+    AmbientOcclusion: Assets/Materials/Metal/M53A/M53A_AO.png
+    Metallic: Assets/Materials/Metal/M53A/M53A_Metalness.png
+    Displacement: Assets/Materials/Metal/M53A/M53A_Displacement.png

@@ -24,8 +24,8 @@ namespace Motion
         static std::shared_ptr<StaticMesh> ImportModel(const std::string& modelName, const std::filesystem::path& path);
 
     private:
-        static void LoadMesh(const std::shared_ptr<StaticMesh>& modelPtr, aiMesh* mesh, const aiScene* scene);
+        static void LoadCurrentNodeMeshes(const aiScene* currentScene, std::uint32_t meshIndex, aiMesh* currentMesh, const std::shared_ptr<StaticMesh>& staticMesh);
         static void LoadNode(const std::shared_ptr<StaticMesh>& modelPtr, aiNode* node, const aiScene* scene);
-        static void LoadMaterials(const std::shared_ptr<StaticMesh::MeshSegment>& meshSegment, const aiScene* scene);
+        static void LoadMaterials(std::uint32_t meshIndex, std::uint32_t materialIndex, const std::shared_ptr<StaticMesh::MeshSegment>& meshSegment, const aiScene* scene);
     };
 }

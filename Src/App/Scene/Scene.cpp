@@ -82,25 +82,24 @@ namespace Motion
                 if (!window.expired())
                 {
                     auto windowPtr = window.lock();
-                    std::filesystem::path filePath = DialogBoxes::OpenFileDialog(windowPtr->GetNativeWindow(), "Import StaticMesh", DialogBoxes::FileType::ModelFile);
+                    std::wstring filter = L"StaticMesh Files\0*.fbx;*.obj;*.gltf;*.glb;*.dae;*.stl;*.ply;\0\0";
+                    std::filesystem::path filePath(DialogBoxes::OpenFileDialog(filter, L"Import Static Mesh").value_or(""));
                     if (!filePath.empty())
                     {
-                        auto& assetManager = AssetManager::GetInstance();
-                        std::string fileName = filePath.filename().string();
-
-                        std::shared_ptr<StaticMesh> staticMesh = assetManager.Create<StaticMesh>(fileName, filePath);
+                        std::string fileName = filePath.filename().stem().string();
+                        std::shared_ptr<StaticMesh> staticMesh = Importer::ImportModel(fileName, filePath);
                         if (staticMesh)
                         {
                             auto& entityFactory = EntityFactory::GetInstance();
                             std::shared_ptr<Entity> entity = entityFactory.CreateEntity(filePath.filename().string());
                             entity->AddComponent<TransformComponent>();
-                            entity->AddComponent<MeshComponent>(filePath.filename().string(), staticMesh);
+                            entity->AddComponent<MeshComponent>(fileName, staticMesh);
                             m_Entities.push_back(entity);
                             m_SelectedEntity = entity;
                         }
                         else
                         {
-                            MOTION_ERROR("Failed to load staticMesh from file: {0}", filePath.string());
+                            MOTION_ERROR("Failed to load static Mesh from file: {0}", filePath.string());
                         }
                     }
                 }

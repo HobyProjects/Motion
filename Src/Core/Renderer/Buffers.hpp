@@ -119,6 +119,7 @@ namespace Motion
         virtual void SetBufferData(std::int32_t offset, std::int32_t size, const glm::vec3& data) = 0;
         virtual void SetBufferData(std::int32_t offset, std::int32_t size, const glm::vec2& data) = 0;
         virtual void SetBufferData(std::int32_t offset, std::int32_t size, float data) = 0;
+        virtual void SetRawBufferData(std::int32_t size, const void* data) = 0;
     };
 
     class IUniformBuffer

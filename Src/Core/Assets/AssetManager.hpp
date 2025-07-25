@@ -340,6 +340,26 @@ namespace Motion
     };
 
     template<>
+    struct AssetBackendsBuilder<MaterialInstance>
+    {
+        /**
+         * @brief Creates a new Material instance with a specified UUID and returns a shared pointer to it.
+         *
+         * This function constructs a MaterialInstance object with the given UUID, name, and an optional base material.
+         * The MaterialInstance is managed by a std::shared_ptr for automatic memory management.
+         *
+         * @param uuid The unique identifier for the material instance.
+         * @param name The name of the material instance.
+         * @param baseMaterial The base material to use for the instance.
+         * @return std::shared_ptr<MaterialInstance> A shared pointer to the newly created MaterialInstance.
+         */
+        static std::shared_ptr<MaterialInstance> Create(UUID uuid, const std::string& name, std::shared_ptr<Material> baseMaterial)
+        {
+            return std::make_shared<MaterialInstance>(uuid, name, baseMaterial);
+        }
+    };
+
+    template<>
     struct AssetBackendsBuilder<StaticMesh>
     {
         /**

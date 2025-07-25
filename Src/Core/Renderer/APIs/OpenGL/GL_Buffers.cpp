@@ -1,4 +1,6 @@
 #include "CorePCH.hpp"
+#include "Material.hpp"
+#include "GL_Buffers.hpp"
 
 namespace Motion
 {
@@ -170,7 +172,7 @@ namespace Motion
     GL_ShaderBuffer::GL_ShaderBuffer(std::int32_t size, BindingPoint binding)
     {
         glCreateBuffers(1, &m_ShaderBufferID);
-        glNamedBufferData(m_ShaderBufferID, size, nullptr, GL_DYNAMIC_STORAGE_BIT);
+        glNamedBufferData(m_ShaderBufferID, size, nullptr, GL_DYNAMIC_DRAW);
         m_BindingPoint = binding;
     }
 
@@ -301,6 +303,19 @@ namespace Motion
         glNamedBufferSubData(m_ShaderBufferID, offset, size, &data);
     }
 
+    /**
+     * @brief Sets raw buffer data for the shader buffer.
+     *
+     * This function uploads raw data to the shader buffer object, allowing for
+     * arbitrary data to be stored in the buffer.
+     *
+     * @param size The size in bytes of the data to upload.
+     * @param data Pointer to the raw data to be uploaded.
+     */
+    void GL_ShaderBuffer::SetRawBufferData(std::int32_t size, const void* data)
+    {
+        glNamedBufferSubData(m_ShaderBufferID, 0, size, data);
+    }
 
     /******************************************************************************************
      *                         GL_UniformBuffer Implementation                                *
@@ -318,7 +333,7 @@ namespace Motion
     GL_UniformBuffer::GL_UniformBuffer(std::int32_t size, BindingPoint binding)
     {
         glCreateBuffers(1, &m_UniformBufferID);
-        glNamedBufferData(m_UniformBufferID, size, nullptr, GL_DYNAMIC_STORAGE_BIT);
+        glNamedBufferData(m_UniformBufferID, size, nullptr, GL_DYNAMIC_DRAW);
         m_BindingPoint = binding;
     }
 

@@ -3,156 +3,166 @@
 #ifdef MOTION_PLATFORM_WINDOWS
 
 #define GLFW_EXPOSE_NATIVE_WIN32
-#define WIN32_LEAN_AND_MEAN
-#define NOMINMAX
-
 #include <GLFW/glfw3native.h>
-#include <Windows.h>
+#include <windows.h>
 #include <commdlg.h>
-#include <Shlwapi.h>
-
-#pragma comment(lib, "Shlwapi.lib")
+#include <algorithm>
+#include <string>
 
 #endif
 
 namespace Motion
 {
-    static const char* ALL_FILES_FILTER = "All Files\0*.*\0\0";
-    static const char* TEXT_FILES_FILTER = "Text Files\0*.txt\0\0";
-    static const char* IMAGE_FILES_FILTER = "Image Files\0*.png;*.jpg;*.jpeg;*.tga;*.bmp;*.dds\0\0";
-    static const char* TEXTURE_FILES_FILTER = "Texture Files\0*.png;*.jpg;*.jpeg;*.tga;*.bmp;*.dds\0\0";
-    static const char* MODEL_FILES_FILTER = "StaticMesh Files\0*.fbx;*.obj;*.gltf;*.glb;*.dae;*.stl;*.ply;\0\0";
-    static const char* SHADER_FILES_FILTER = "Shader Files\0*.glsl;*.hlsl\0\0";
-    static const char* FONT_FILES_FILTER = "Font Files\0*.ttf;*.otf\0\0";
-    static const char* AUDIO_FILES_FILTER = "Audio Files\0*.wav;*.mp3\0\0";
-    static const char* VIDEO_FILES_FILTER = "Video Files\0*.mp4;*.mkv;*.avi\0\0";
 
-    /**
-     * @brief Opens a native file open dialog and returns the selected file path.
-     *
-     * This function displays a platform-specific file open dialog, allowing the user to select a file.
-     * The dialog can be customized with a caption, file type filter, and an initial directory.
-     *
-     * @param window      The native window handle to associate the dialog with.
-     * @param caption     The caption/title to display on the dialog window.
-     * @param fileType    The type of files to filter in the dialog (e.g., all files, text files, images, etc.).
-     * @param defaultPath The initial directory to open in the dialog.
-     * @return std::filesystem::path The path to the selected file, or an empty path if the dialog was cancelled.
-     */
-    std::filesystem::path DialogBoxes::OpenFileDialog(NativeWindow window, const std::string& caption, FileType fileType, const std::filesystem::path& defaultPath)
-    {
 #ifdef MOTION_PLATFORM_WINDOWS
 
-        char szFile[MAX_PATH] = {};
+    /**
+     * @brief Converts a wide string (std::wstring) to a UTF-8 encoded std::string.
+     *
+     * This function uses the Windows API WideCharToMultiByte to perform the conversion.
+     * After conversion, all backslashes ('\\') in the resulting string are replaced with forward slashes ('/').
+     *
+     * @param wstr The wide string to convert.
+     * @return A UTF-8 encoded std::string representation of the input wide string.
+     */
+    static std::string WideToUtf8(const std::wstring& wstr)
+    {
+        if (wstr.empty()) return {};
 
-        OPENFILENAMEA ofn;
+        int size_needed = WideCharToMultiByte(CP_UTF8, 0, wstr.data(), static_cast<int>(wstr.size()), nullptr, 0, nullptr, nullptr);
+        std::string result(size_needed, 0);
+        WideCharToMultiByte(CP_UTF8, 0, wstr.data(), static_cast<int>(wstr.size()), result.data(), size_needed, nullptr, nullptr);
+
+        std::replace(result.begin(), result.end(), '\\', '/');
+        return result;
+    }
+
+    /**
+     * @brief Initializes an OPENFILENAMEW structure for use with file dialog boxes.
+     *
+     * This function sets up the OPENFILENAMEW structure with the provided parameters,
+     * preparing it for use with Windows file dialog APIs. It zeroes out the file buffer
+     * and the structure, sets the owner window, file buffer, filter, and title, and
+     * applies standard flags to ensure valid file and path selection.
+     *
+     * @param ofn Reference to the OPENFILENAMEW structure to initialize.
+     * @param szFile Pointer to a buffer that will receive the selected file path.
+     * @param bufferSize Size of the szFile buffer, in characters.
+     * @param filter File type filter string (pairs of description and pattern, separated by '\0').
+     * @param title Title of the dialog box.
+     */
+    static void InitializeFileDialog(OPENFILENAMEW& ofn, wchar_t* szFile, DWORD bufferSize, const std::wstring& filter, const std::wstring& title)
+    {
+        ZeroMemory(szFile, bufferSize);
         ZeroMemory(&ofn, sizeof(ofn));
+
+        auto& windowManager = WindowManager::GetInstance();
+        std::shared_ptr<IWindow> window = windowManager.GetActiveWindow();
+
         ofn.lStructSize = sizeof(ofn);
-        ofn.hwndOwner = glfwGetWin32Window((GLFWwindow*)window);
+        ofn.hwndOwner = glfwGetWin32Window((GLFWwindow*)window->GetNativeWindow());
         ofn.lpstrFile = szFile;
-        ofn.nMaxFile = sizeof(szFile);
-
-        switch (fileType)
-        {
-        case FileType::AllFiles: ofn.lpstrFilter = ALL_FILES_FILTER; break;
-        case FileType::TextFile: ofn.lpstrFilter = TEXT_FILES_FILTER; break;
-        case FileType::TextureFile: ofn.lpstrFilter = TEXTURE_FILES_FILTER; break;
-        case FileType::ModelFile: ofn.lpstrFilter = MODEL_FILES_FILTER; break;
-        case FileType::ShaderFile: ofn.lpstrFilter = SHADER_FILES_FILTER; break;
-        case FileType::FontFile: ofn.lpstrFilter = FONT_FILES_FILTER; break;
-        case FileType::AudioFile: ofn.lpstrFilter = AUDIO_FILES_FILTER; break;
-        case FileType::VideoFile: ofn.lpstrFilter = VIDEO_FILES_FILTER; break;
-        case FileType::ImageFile: ofn.lpstrFilter = IMAGE_FILES_FILTER; break;
-        };
-
+        ofn.nMaxFile = bufferSize;
+        ofn.lpstrFilter = filter.c_str();
         ofn.nFilterIndex = 1;
-        ofn.lpstrFileTitle = nullptr;
-        ofn.nMaxFileTitle = 0;
-
-        std::string initDirStr = defaultPath.string();
-        ofn.lpstrInitialDir = initDirStr.c_str();
-
-        ofn.lpstrTitle = caption.c_str();
         ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST | OFN_EXPLORER;
-
-        if (GetOpenFileNameA(&ofn)) {
-            return std::filesystem::path(ofn.lpstrFile);
-        }
-
-        // If the user cancels the dialog, return an empty path
-        return std::filesystem::path();
-
-#else
-
-#error "OpenFileDialog is not implemented for this platform."
-
-#endif
+        ofn.lpstrTitle = title.c_str();
+        std::wstring initDirStr = std::filesystem::current_path().wstring();
+        ofn.lpstrInitialDir = initDirStr.c_str();
+        ofn.lpstrDefExt = L"";
+        ofn.lpstrFileTitle = nullptr;
     }
+
 
     /**
-     * @brief Opens a native Save File dialog and returns the selected file path.
+     * @brief Opens a file dialog for the user to select a file.
      *
-     * This function displays a platform-specific Save File dialog, allowing the user to choose
-     * a location and name for saving a file. The dialog is customized with a caption, file type filter,
-     * and an optional default path. If the user selects a file and confirms, the chosen file path is returned.
-     * If the dialog is canceled, an empty path is returned.
+     * Displays a standard Windows "Open File" dialog box with the specified filter and title.
+     * If the user selects a file, the function returns the file path as a UTF-8 encoded string.
+     * If the user cancels the dialog or an error occurs, returns std::nullopt.
+     * Logs critical errors if the dialog fails or an exception is thrown.
      *
-     * @param window      The native window handle to associate the dialog with.
-     * @param caption     The caption/title to display on the dialog window.
-     * @param fileType    The type of file filter to apply (e.g., text, image, model).
-     * @param defaultPath The initial directory or file path to display when the dialog opens.
-     * @return std::filesystem::path The path selected by the user, or an empty path if canceled.
-     *
-     * @note This function is currently implemented only for Windows platforms.
-     * @throws Compilation error on unsupported platforms.
+     * @param filter The file type filter for the dialog (e.g., L"Text Files (*.txt)\0*.txt\0").
+     * @param title The title of the dialog window.
+     * @return std::optional<std::string> The selected file path in UTF-8 encoding, or std::nullopt if no file was selected or an error occurred.
      */
-    std::filesystem::path DialogBoxes::SaveFileDialog(NativeWindow window, const std::string& caption, FileType fileType, const std::filesystem::path& defaultPath)
+    std::optional<std::string> DialogBoxes::OpenFileDialog(const std::wstring& filter, const std::wstring& title)
     {
-#ifdef MOTION_PLATFORM_WINDOWS
-
-        char szFile[MAX_PATH] = {};
-
-        OPENFILENAMEA ofn;
-        ZeroMemory(&ofn, sizeof(ofn));
-        ofn.lStructSize = sizeof(ofn);
-        ofn.hwndOwner = glfwGetWin32Window((GLFWwindow*)window);
-        ofn.lpstrFile = szFile;
-        ofn.nMaxFile = sizeof(szFile);
-
-        switch (fileType)
+        try
         {
-        case FileType::AllFiles: ofn.lpstrFilter = ALL_FILES_FILTER; break;
-        case FileType::TextFile: ofn.lpstrFilter = TEXT_FILES_FILTER; break;
-        case FileType::TextureFile: ofn.lpstrFilter = TEXTURE_FILES_FILTER; break;
-        case FileType::ModelFile: ofn.lpstrFilter = MODEL_FILES_FILTER; break;
-        case FileType::ShaderFile: ofn.lpstrFilter = SHADER_FILES_FILTER; break;
-        case FileType::FontFile: ofn.lpstrFilter = FONT_FILES_FILTER; break;
-        case FileType::AudioFile: ofn.lpstrFilter = AUDIO_FILES_FILTER; break;
-        case FileType::VideoFile: ofn.lpstrFilter = VIDEO_FILES_FILTER; break;
-        case FileType::ImageFile: ofn.lpstrFilter = IMAGE_FILES_FILTER; break;
-        };
+            wchar_t szFile[MAX_PATH];
+            OPENFILENAMEW ofn;
+            InitializeFileDialog(ofn, szFile, MAX_PATH, filter, title);
 
-        ofn.lpstrFileTitle = nullptr;
-        ofn.nMaxFileTitle = 0;
+            if (GetOpenFileNameW(&ofn))
+            {
+                return WideToUtf8(ofn.lpstrFile);
+            }
+            else
+            {
+                DWORD err = CommDlgExtendedError();
+                if (err != 0)
+                {
+                    MOTION_CORE_CRITICAL("Dialog Error: {}", err);
+                }
+                return std::nullopt;
+            }
+        }
+        catch (const std::exception& e)
+        {
+            MOTION_CORE_CRITICAL("Exception in OpenFileDialog: {}", e.what());
+            return std::nullopt;
+        }
+    }
 
-        std::string initDirStr = defaultPath.string();
-        ofn.lpstrInitialDir = initDirStr.c_str();
 
-        ofn.lpstrTitle = caption.c_str();
+    /**
+     * @brief Displays a Save File dialog box and returns the selected file path.
+     *
+     * This function shows a standard Windows Save File dialog using the specified filter and title.
+     * If the user selects a file and confirms, the file path is returned as a UTF-8 encoded string.
+     * If the user cancels or an error occurs, std::nullopt is returned.
+     * Any errors encountered during the dialog operation are logged.
+     *
+     * @param filter The file type filter string (e.g., L"Text Files (*.txt)\0*.txt\0").
+     * @param title The title of the dialog window.
+     * @return std::optional<std::string> The selected file path in UTF-8 encoding, or std::nullopt if cancelled or an error occurs.
+     */
+    std::optional<std::string> DialogBoxes::SaveFileDialog(const std::wstring& filter, const std::wstring& title)
+    {
+        try
+        {
+            wchar_t szFile[MAX_PATH];
+            OPENFILENAMEW ofn;
+            InitializeFileDialog(ofn, szFile, MAX_PATH, filter, title);
 
-        ofn.Flags = OFN_OVERWRITEPROMPT | OFN_PATHMUSTEXIST | OFN_EXPLORER;
+            ofn.Flags |= OFN_OVERWRITEPROMPT;
 
-        if (GetSaveFileNameA(&ofn)) {
-            return std::filesystem::path(ofn.lpstrFile);
+            if (GetSaveFileNameW(&ofn))
+            {
+                return WideToUtf8(ofn.lpstrFile);
+            }
+            else
+            {
+                DWORD err = CommDlgExtendedError();
+                if (err != 0)
+                {
+                    MOTION_CORE_CRITICAL("Dialog Error: {}", err);
+                }
+
+                return std::nullopt;
+            }
+        }
+        catch (const std::exception& e)
+        {
+            MOTION_CORE_CRITICAL("Exception in SaveFileDialog: {}", e.what());
+            return std::nullopt;
         }
 
-        // If the user cancels the dialog, return an empty path
-        return std::filesystem::path();
+    }
 
 #else
-
-#error "SaveFileDialog is not implemented for this platform."
-
+#error "OpenFileDialog and SaveFileDialog are only implemented for Windows."
 #endif
-    }
+
 }

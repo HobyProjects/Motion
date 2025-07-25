@@ -27,8 +27,10 @@
 #include <glad/glad.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/sinks/basic_file_sink.h>
+
 #include <stb/stb_image.h>
 #include <stb/stb_image_resize2.h>
+
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
@@ -46,6 +48,8 @@
 #include <imgui/imgui_impl_opengl3.h>
 #include <imgui/imgui_impl_glfw.h>
 #include <imgui/imgui_internal.h>
+
+#include <yaml-cpp/yaml.h>
 
 //Base
 #include "Base.hpp"

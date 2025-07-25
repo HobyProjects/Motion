@@ -14,72 +14,73 @@
 
 #define MAX_MATERIAL_LAYERS 4
 
-
 namespace Motion
 {
-    using MaterialTexture = std::shared_ptr<ITexture>;
-
-    struct MaterialDefaultValues
+    struct MaterialAttributes
     {
-        static constexpr glm::vec3 EmissiveColor = { 0.0f, 0.0f, 0.0f };
-        static constexpr glm::vec3 BaseColor = { 1.0f, 1.0f, 1.0f };
-        static constexpr float Metallic = 0.0f;
-        static constexpr float Roughness = 1.0f;
-        static constexpr float Opacity = 1.0f;
-        static constexpr float AmbientOcclusion = 1.0f;
-        static constexpr float ClearCoat = 0.0f;
-        static constexpr float ClearCoatRoughness = 0.0f;
-        static constexpr float Sheen = 0.0f;
-        static constexpr float SheenRoughness = 0.5f;
-        static constexpr float Transmission = 0.0f;
-        static constexpr float IOR = 1.5f;
-        static constexpr float Blend = 1.0f;
+        glm::vec3 BaseColor{ 1.0f, 1.0f, 1.0f };
+        float Metallic{ 0.0f };
+        float Roughness{ 1.0f };
+        float AmbientOcclusion{ 1.0f };
+        float Opacity{ 1.0f };
+        float DisplacementScale{ 0.05f };
+        float PADDING1{ 0.0f }; // Padding to ensure proper alignment
+        float PADDING2{ 0.0f }; // Padding to ensure proper alignment
     };
 
-    struct MaterialLayerData
-    {
-        glm::vec3 BaseColor{ MaterialDefaultValues::BaseColor };
-        float Metallic{ MaterialDefaultValues::Metallic };
-        float Roughness{ MaterialDefaultValues::Roughness };
-        float Opacity{ MaterialDefaultValues::Opacity };
-        float AmbientOcclusion{ MaterialDefaultValues::AmbientOcclusion };
-        float ClearCoat{ MaterialDefaultValues::ClearCoat };
-        float ClearCoatRoughness{ MaterialDefaultValues::ClearCoatRoughness };
-        float Sheen{ MaterialDefaultValues::Sheen };
-        float SheenRoughness{ MaterialDefaultValues::SheenRoughness };
-        float Transmission{ MaterialDefaultValues::Transmission };
-        float IOR{ MaterialDefaultValues::IOR };
-        float Blend{ MaterialDefaultValues::Blend };
-    };
-
-    struct MaterialLayer
-    {
-        MaterialLayerData Data{};
-        std::unordered_map<std::string_view, std::shared_ptr<ITexture>> Textures;
-    };
+    constexpr std::size_t MATERIAL_ATTRIBUTES_SIZE = sizeof(MaterialAttributes);
 
     class Material : public AssetBase<IAsset>
     {
     public:
         Material() = default;
-        Material(const UUID& uuid, const std::string& name);
+        Material(UUID uniqueID, const std::string& materialName);
         virtual ~Material() = default;
 
-        void Bind() noexcept;
-        void Unbind() noexcept;
-
-        [[nodiscard]] MaterialLayer& GetLayer(std::uint32_t index) noexcept;
-
-        void InsertLayerData(std::uint32_t layerIndex, const MaterialLayerData& data) noexcept;
-        void InsertLayerTexture(std::uint32_t layerIndex, std::string_view textureName, const std::shared_ptr<ITexture>& texture) noexcept;
-
-    private:
-        std::array<MaterialLayer, MAX_MATERIAL_LAYERS> m_Layers{};
-        std::shared_ptr<IShaderBuffer> m_ShaderBuffer{ nullptr };
-        std::shared_ptr<IShader> m_Shader{ nullptr };
+        void Bind();
+        void Unbind();
 
     public:
-        glm::vec3 EmissiveColor{ MaterialDefaultValues::EmissiveColor };
-        std::shared_ptr<ITexture> EmissiveTexture{ nullptr };
+        std::unordered_map<std::string_view, std::shared_ptr<ITexture>> Texture{};
+        MaterialAttributes Attributes{ };
+
+    private:
+        std::shared_ptr<IShader> Shader{ nullptr };
+        std::shared_ptr<IShaderBuffer> UniformBuffer{ nullptr };
+    };
+
+    class MaterialInstance : public AssetBase<IAsset>
+    {
+    public:
+        MaterialInstance() = default;
+        MaterialInstance(UUID uniqueID, const std::string& name, std::shared_ptr<Material> baseMaterial);
+        virtual ~MaterialInstance() = default;
+
+        void Bind();
+        void Unbind();
+
+    public:
+        std::shared_ptr<Material> BaseMaterial{ nullptr };
+        std::unordered_map<std::string_view, std::shared_ptr<ITexture>> Texture{};
+        MaterialAttributes Attributes{};
+
+    private:
+        std::shared_ptr<IShader> Shader{ nullptr };
+        std::shared_ptr<IShaderBuffer> UniformBuffer{ nullptr };
+    };
+
+    class MaterialImporter
+    {
+    private:
+        MaterialImporter() = default;
+        ~MaterialImporter() = default;
+
+        MaterialImporter(const MaterialImporter&) = delete;
+        MaterialImporter& operator=(const MaterialImporter&) = delete;
+        MaterialImporter(MaterialImporter&&) = delete;
+        MaterialImporter& operator=(MaterialImporter&&) = delete;
+
+    public:
+        static void ImportMaterial(const std::filesystem::path& materialYAML);
     };
 }

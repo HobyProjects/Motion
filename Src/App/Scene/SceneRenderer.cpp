@@ -112,14 +112,17 @@ namespace Motion
      */
     void SceneRenderer::EndScene() noexcept
     {
+        if (s_CommandQueue.empty())
+            return;
+
         std::sort(s_CommandQueue.begin(), s_CommandQueue.end(), [](const SceneDrawCommand& a, const SceneDrawCommand& b) { return a < b; });
 
         AssetManager& assetManager = AssetManager::GetInstance();
-        std::shared_ptr<IShader> shader = assetManager.Get<IShader>("PBRShader");
+        std::shared_ptr<IShader> shader = assetManager.Get<IShader>("PBR");
 
         for (const auto& command : s_CommandQueue)
         {
-            std::shared_ptr<Material> material = assetManager.Get<Material>(command.MaterialID);
+            std::shared_ptr<MaterialInstance> material = assetManager.Get<MaterialInstance>(command.MaterialID);
             std::shared_ptr<Mesh> mesh = assetManager.Get<Mesh>(command.MeshID);
 
             shader->Bind();

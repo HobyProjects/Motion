@@ -17,6 +17,7 @@ namespace Motion
         MetallicTexture,
         RoughnessTexture,
         AmbientOcclusionTexture,
+        DisplacementTexture,
         EmissiveTexture,
         ClearCoatTexture,
         SheenTexture,

@@ -156,45 +156,75 @@ namespace Motion
      */
     bool GL_Texture::LoadTextureFromFile(const std::filesystem::path& textureFile, bool flip)
     {
-        MOTION_ASSERT(std::filesystem::exists(textureFile), "Unable to load texture file {0}", textureFile.string());
+        MOTION_ASSERT(std::filesystem::exists(textureFile), "Texture file not found: {}", textureFile.string());
 
         stbi_set_flip_vertically_on_load(flip);
-        std::int32_t width, height, channels;
-        std::uint8_t* data = stbi_load(textureFile.string().c_str(), &width, &height, &channels, 0);
-        if (!data)
-        {
-            MOTION_CORE_ERROR("Failed to load texture file {0}: {1}", textureFile.string(), stbi_failure_reason());
+        int width, height, channels;
+        stbi_uc* data = stbi_load(textureFile.string().c_str(), &width, &height, &channels, 0);
+
+        if (!data) {
+            MOTION_CORE_ERROR("Failed to load texture: {} - {}", textureFile.string(), stbi_failure_reason());
             return false;
         }
 
-        if (data)
-        {
-            m_Specification.Width = width;
-            m_Specification.Height = height;
-            m_Specification.Channels = channels;
-            m_Specification.InternalDataFormat = (channels == 4) ? GL_RGBA8 : GL_RGB8;
-            m_Specification.TextureDataFormat = (channels == 4) ? GL_RGBA : GL_RGB;
+        m_Specification.Width = width;
+        m_Specification.Height = height;
+        m_Specification.Channels = channels;
 
-            glCreateTextures(GL_TEXTURE_2D, 1, &m_Specification.TexID);
-            glBindTexture(GL_TEXTURE_2D, m_Specification.TexID);
+        // Format logic
+        GLenum internalFormat = GL_RGB8;
+        GLenum dataFormat = GL_RGB;
 
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-            glTexImage2D(GL_TEXTURE_2D, 0, m_Specification.InternalDataFormat, m_Specification.Width, m_Specification.Height, 0, m_Specification.TextureDataFormat, GL_UNSIGNED_BYTE, data);
-            glGenerateMipmap(GL_TEXTURE_2D);
-            glBindTexture(GL_TEXTURE_2D, 0);
-
-            AssetInfo.AssetName = textureFile.filename().string();
-            AssetInfo.AssetSource = textureFile.string();
-            AssetInfo.IsInitialized = true;
-
+        switch (channels) {
+        case 1:
+            internalFormat = GL_R8;
+            dataFormat = GL_RED;
+            break;
+        case 2:
+            internalFormat = GL_RG8;
+            dataFormat = GL_RG;
+            break;
+        case 3:
+            internalFormat = GL_RGB8;
+            dataFormat = GL_RGB;
+            break;
+        case 4:
+            internalFormat = GL_RGBA8;
+            dataFormat = GL_RGBA;
+            break;
+        default:
+            MOTION_CORE_ERROR("Unsupported channel count: {}", channels);
             stbi_image_free(data);
-            return true;
+            return false;
         }
 
-        return false;
+        m_Specification.InternalDataFormat = internalFormat;
+        m_Specification.TextureDataFormat = dataFormat;
+
+        // Create texture
+        glCreateTextures(GL_TEXTURE_2D, 1, &m_Specification.TexID);
+        glBindTexture(GL_TEXTURE_2D, m_Specification.TexID);
+        glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, width, height, 0, dataFormat, GL_UNSIGNED_BYTE, data);
+
+        // Mipmap calculation based on resolution
+        int mipLevels = 1 + static_cast<int>(std::floor(std::log2(std::max(width, height))));
+        glGenerateTextureMipmap(m_Specification.TexID);
+
+        // Set filtering and wrapping
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+        // Anisotropy (if supported)
+        GLfloat maxAniso = 0.0f;
+        glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY, &maxAniso);
+        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY, std::min(4.0f, maxAniso)); // Cap to 4x for compatibility
+
+        glBindTexture(GL_TEXTURE_2D, 0);
+        stbi_image_free(data);
+
+        return true;
     }
 
 
@@ -215,34 +245,35 @@ namespace Motion
         m_Specification.InternalDataFormat = GL_RGBA8;
         m_Specification.TextureDataFormat = GL_RGBA;
 
-        std::int32_t textureAllocateSize = m_Specification.Width * m_Specification.Height * m_Specification.Channels;
-        std::uint8_t* textureData = new std::uint8_t[textureAllocateSize];
-
-        // Convert glm::vec3 (0.0f - 1.0f) to uint8_t (0 - 255)
-        std::uint8_t r = static_cast<std::uint8_t>(glm::clamp(color.r, 0.0f, 1.0f) * 255.0f);
-        std::uint8_t g = static_cast<std::uint8_t>(glm::clamp(color.g, 0.0f, 1.0f) * 255.0f);
-        std::uint8_t b = static_cast<std::uint8_t>(glm::clamp(color.b, 0.0f, 1.0f) * 255.0f);
-        std::uint8_t a = 255; // Fully opaque
-
-        // Fill the texture buffer with RGBA
-        for (std::int32_t i = 0; i < (width * height); ++i)
-        {
-            std::int32_t index = i * 4;
-            textureData[index + 0] = r;
-            textureData[index + 1] = g;
-            textureData[index + 2] = b;
-            textureData[index + 3] = a;
+        uint32_t textureSize = width * height * m_Specification.Channels;
+        std::uint8_t* textureData = new std::uint8_t[textureSize];
+        for (uint32_t i = 0; i < width * height; ++i) {
+            textureData[i * 4 + 0] = static_cast<uint8_t>(color.r * 255);
+            textureData[i * 4 + 1] = static_cast<uint8_t>(color.g * 255);
+            textureData[i * 4 + 2] = static_cast<uint8_t>(color.b * 255);
+            textureData[i * 4 + 3] = 255;
         }
 
+        // Compute mip levels
+        int mipLevels = static_cast<int>(std::floor(std::log2(std::max(width, height)))) + 1;
+
         glCreateTextures(GL_TEXTURE_2D, 1, &m_Specification.TexID);
-        glBindTexture(GL_TEXTURE_2D, m_Specification.TexID);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-        glTexImage2D(GL_TEXTURE_2D, 0, m_Specification.InternalDataFormat, m_Specification.Width, m_Specification.Height, 0, m_Specification.TextureDataFormat, GL_UNSIGNED_BYTE, textureData);
-        glGenerateMipmap(GL_TEXTURE_2D);
-        glBindTexture(GL_TEXTURE_2D, 0);
+        glTextureStorage2D(m_Specification.TexID, mipLevels, m_Specification.InternalDataFormat, width, height);
+        glTextureSubImage2D(m_Specification.TexID, 0, 0, 0, width, height, m_Specification.TextureDataFormat, GL_UNSIGNED_BYTE, textureData);
+
+        // Filtering and wrapping
+        glTextureParameteri(m_Specification.TexID, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+        glTextureParameteri(m_Specification.TexID, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTextureParameteri(m_Specification.TexID, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        glTextureParameteri(m_Specification.TexID, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+        // Mipmaps
+        glGenerateTextureMipmap(m_Specification.TexID);
+
+        // Anisotropy
+        GLfloat maxAniso = 0.0f;
+        glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY, &maxAniso);
+        glTextureParameterf(m_Specification.TexID, GL_TEXTURE_MAX_ANISOTROPY, std::min(4.0f, maxAniso));
 
         delete[] textureData;
         return true;

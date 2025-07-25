@@ -21,10 +21,8 @@ namespace Motion
             MeshSegment() = default;
             ~MeshSegment() = default;
 
-            std::int32_t MeshIndex{ 0 };
-            std::int32_t MaterialIndex{ 0 };
             std::shared_ptr<Mesh> MeshSelf{ nullptr };
-            std::shared_ptr<Material> Materials{};
+            std::shared_ptr<MaterialInstance> Materials{ nullptr };
         };
 
     public:

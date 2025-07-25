@@ -1,0 +1,17 @@
+Material:
+  Name: M53C
+  Parameters:
+    BaseColor: [1.0, 0.9, 0.8]
+    Metallic: 1.0
+    Roughness: 0.2
+    AmbientOcclusion: 1.0
+    Opacity: 1.0
+    DisplacementScale: 0.05
+
+  Textures:
+    BaseColor: Assets/Materials/Metal/M53C/M53C_Color.png
+    Normal: Assets/Materials/Metal/M53C/M53C_NormalGL.png
+    Roughness: Assets/Materials/Metal/M53C/M53C_Roughness.png
+    AmbientOcclusion: Assets/Materials/Metal/M53C/M53C_AO.png
+    Metallic: Assets/Materials/Metal/M53C/M53C_Metalness.png
+    Displacement: Assets/Materials/Metal/M53C/M53C_Displacement.png

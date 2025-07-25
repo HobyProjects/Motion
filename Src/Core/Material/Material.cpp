@@ -1,196 +1,173 @@
 #include "CorePCH.hpp"
 
-
 namespace Motion
 {
-    /**
-     * @brief Constructs a Material object with the specified UUID, name, and shading method.
-     *
-     * @param uuid The universally unique identifier for the material.
-     * @param name The name of the material.
-     * @param shadingMethod The shading method used by the material.
-     */
-    Material::Material(const UUID& uuid, const std::string& name) :
-        AssetBase(uuid, name, AssetType::Material, "Undefined")
+    void MaterialImporter::ImportMaterial(const std::filesystem::path& materialYAML)
+    {
+        if (!std::filesystem::exists(materialYAML)) {
+            MOTION_CORE_ERROR("Material file '{}' does not exist!", materialYAML.string());
+            return;
+        }
+
+        if (materialYAML.extension() != ".yaml" && materialYAML.extension() != ".yml") {
+            MOTION_CORE_ERROR("Material file '{}' is not a valid YAML file!", materialYAML.string());
+            return;
+        }
+
+        try
+        {
+            YAML::Node root = YAML::LoadFile(std::filesystem::absolute(materialYAML).string());
+            YAML::Node materialNode = root["Material"];
+
+            std::string name = materialNode["Name"].as<std::string>();
+
+            auto& assetManager = AssetManager::GetInstance();
+            auto material = assetManager.Create<Material>(name);
+
+            // Load parameters
+            auto& data = material->Attributes;
+            auto params = materialNode["Parameters"];
+            if (params) {
+                if (params["BaseColor"])
+                    data.BaseColor = glm::vec3(params["BaseColor"][0].as<float>(), params["BaseColor"][1].as<float>(), params["BaseColor"][2].as<float>());
+                if (params["Metallic"])
+                    data.Metallic = params["Metallic"].as<float>();
+                if (params["Roughness"])
+                    data.Roughness = params["Roughness"].as<float>();
+                if (params["AmbientOcclusion"])
+                    data.AmbientOcclusion = params["AmbientOcclusion"].as<float>();
+                if (params["Opacity"])
+                    data.Opacity = params["Opacity"].as<float>();
+                if (params["DisplacementScale"])
+                    data.DisplacementScale = params["DisplacementScale"].as<float>();
+            }
+
+            // Load textures
+            auto textures = materialNode["Textures"];
+            if (textures)
+            {
+                auto tryLoad =
+                    [&](const std::string& key, TextureType type, const std::string_view uniformName)
+                    {
+                        if (textures[key]) {
+                            std::filesystem::path texPath = textures[key].as<std::string>();
+                            auto tex = assetManager.Create<ITexture>(texPath.filename().string(), texPath, type, true);
+                            material->Texture[uniformName] = tex;
+                        }
+                    };
+
+                tryLoad("BaseColor", TextureType::BaseColorTexture, UniformCache::BaseColorTextures);
+                tryLoad("Normal", TextureType::NormalTexture, UniformCache::NormalTextures);
+                tryLoad("Roughness", TextureType::RoughnessTexture, UniformCache::RoughnessTextures);
+                tryLoad("AmbientOcclusion", TextureType::RoughnessTexture, UniformCache::AmbientOcclusionTextures);
+                tryLoad("Metallic", TextureType::MetallicTexture, UniformCache::MetallicTextures);
+                tryLoad("Displacement", TextureType::DisplacementTexture, UniformCache::DisplacementTextures);
+            }
+        }
+        catch (const std::exception& e)
+        {
+            MOTION_CORE_ERROR("Failed to import material from '{}': {}", materialYAML.string(), e.what());
+            return;
+        }
+    }
+
+    Material::Material(UUID uniqueID, const std::string& materialName) : AssetBase<IAsset>(uniqueID, materialName, AssetType::Material, "MaterialFile")
     {
         auto& assetManager = AssetManager::GetInstance();
-        m_Shader = assetManager.Get<IShader>("PBRShader");
-        m_ShaderBuffer = BufferFactory::CreateShaderBuffer(static_cast<std::uint32_t>(sizeof(MaterialLayerData) * MAX_MATERIAL_LAYERS), 0);
-        AssetInfo.IsInitialized = true;
+        Shader = assetManager.Get<IShader>("PBR");
+        UniformBuffer = BufferFactory::CreateShaderBuffer(MATERIAL_ATTRIBUTES_SIZE, 0);
     }
 
-    // Offset values for the material buffer
-    enum MATERIAL_BUFFER_OFFSET : std::uint32_t
+    void Material::Bind()
     {
-        BASE_COLOR_FACTOR = 0,
-        METALLIC_FACTOR = 16,
-        ROUGHNESS_FACTOR = 20,
-        OPACITY = 24,
-        AO_FACTOR = 28,
-        CLEAR_COAT_FACTOR = 32,
-        CLEAR_COAT_ROUGHNESS = 36,
-        SHEEN_FACTOR = 40,
-        SHEEN_ROUGHNESS = 44,
-        TRANSMISSION = 48,
-        IOR = 52,
-        BLEND_FACTOR = 56
-    };
+        //[TODO]: Implement a way check if shader is bind befor material binding
 
-    // Size of various data types in bytes
-    enum MATERIAL_SIZE : std::uint32_t
-    {
-        VEC3 = sizeof(glm::vec3),
-        VEC4 = sizeof(glm::vec4),
-        FLOAT = sizeof(float),
-    };
+        UniformBuffer->Bind();
+        UniformBuffer->SetRawBufferData(MATERIAL_ATTRIBUTES_SIZE, &Attributes);
 
-    // Size of a single material layer in bytes
-    constexpr std::uint32_t LAYER_SIZE = sizeof(MaterialLayerData);
-
-    /**
-     * @brief Binds the material and its associated textures.
-     *
-     * This function binds the shader buffer and sets the uniform values for each material layer.
-     * It also binds the textures associated with each layer to the appropriate binding points.
-     */
-    void Material::Bind() noexcept
-    {
-        m_ShaderBuffer->Bind();
-
-        for (std::uint32_t i = 0; i < MAX_MATERIAL_LAYERS; i++)
-        {
-            const auto& layer = m_Layers[i];
-            std::uint32_t baseOffset = i * LAYER_SIZE;
-
-            m_ShaderBuffer->SetBufferData(baseOffset + BASE_COLOR_FACTOR, VEC3, layer.Data.BaseColor);
-            m_ShaderBuffer->SetBufferData(baseOffset + METALLIC_FACTOR, FLOAT, layer.Data.Metallic);
-            m_ShaderBuffer->SetBufferData(baseOffset + ROUGHNESS_FACTOR, FLOAT, layer.Data.Roughness);
-            m_ShaderBuffer->SetBufferData(baseOffset + OPACITY, FLOAT, layer.Data.Opacity);
-            m_ShaderBuffer->SetBufferData(baseOffset + AO_FACTOR, FLOAT, layer.Data.AmbientOcclusion);
-            m_ShaderBuffer->SetBufferData(baseOffset + CLEAR_COAT_FACTOR, FLOAT, layer.Data.ClearCoat);
-            m_ShaderBuffer->SetBufferData(baseOffset + CLEAR_COAT_ROUGHNESS, FLOAT, layer.Data.ClearCoatRoughness);
-            m_ShaderBuffer->SetBufferData(baseOffset + SHEEN_FACTOR, FLOAT, layer.Data.Sheen);
-            m_ShaderBuffer->SetBufferData(baseOffset + SHEEN_ROUGHNESS, FLOAT, layer.Data.SheenRoughness);
-            m_ShaderBuffer->SetBufferData(baseOffset + TRANSMISSION, FLOAT, layer.Data.Transmission);
-            m_ShaderBuffer->SetBufferData(baseOffset + IOR, FLOAT, layer.Data.IOR);
-            m_ShaderBuffer->SetBufferData(baseOffset + BLEND_FACTOR, FLOAT, layer.Data.Blend);
-
-            auto BindTexture =
-                [&](std::string_view uniformBase)
-                {
-                    auto it = layer.Textures.find(uniformBase);
-                    if (it != layer.Textures.end() && it->second)
-                    {
-                        std::uint32_t binding = TextureBinding::Point();
-                        it->second->Bind(binding);
-                        std::string uniformName = std::format("{}[{}]", uniformBase, i);
-                        m_Shader->SetUniform(uniformName, static_cast<std::int32_t>(binding));
-                    }
-                };
-
-            BindTexture(UniformCache::BaseColorTextures);
-            BindTexture(UniformCache::MetallicTextures);
-            BindTexture(UniformCache::RoughnessTextures);
-            BindTexture(UniformCache::AmbientOcclusionTextures);
-            BindTexture(UniformCache::NormalTextures);
-            BindTexture(UniformCache::OpacityTextures);
-            BindTexture(UniformCache::BlendMaskTextures);
-
-            m_Shader->SetUniform(UniformCache::EmissiveColor, EmissiveColor);
-            if (EmissiveTexture)
+        auto bindTex = [&](const std::string_view& name) {
+            auto it = Texture.find(name);
+            if (it != Texture.end())
             {
-                std::uint32_t binding = TextureBinding::Point();
-                EmissiveTexture->Bind(binding);
-                m_Shader->SetUniform(UniformCache::EmissiveTexture, static_cast<std::int32_t>(binding));
+                std::int32_t slot = TextureBinding::Point();
+                it->second->Bind(slot);
+                Shader->SetUniform(name, slot);
             }
-        }
+            };
+
+        bindTex(UniformCache::BaseColorTextures);
+        bindTex(UniformCache::NormalTextures);
+        bindTex(UniformCache::RoughnessTextures);
+        bindTex(UniformCache::AmbientOcclusionTextures);
+        bindTex(UniformCache::MetallicTextures);
+        bindTex(UniformCache::DisplacementTextures);
     }
 
-    /**
-     * @brief Unbinds the material and its associated textures.
-     *
-     * This function unbinds the shader buffer and all textures associated with the material layers.
-     * It ensures that the GPU resources are released and no longer used in rendering.
-     */
-    void Material::Unbind() noexcept
+    void Material::Unbind()
     {
-        m_ShaderBuffer->Unbind();
-        for (std::uint32_t i = 0; i < MAX_MATERIAL_LAYERS; i++)
-        {
-            const auto& layer = m_Layers[i];
-            for (const auto& [textureName, texture] : layer.Textures)
+        for (const auto& [name, texture] : Texture)
+            texture->Unbind();
+
+        UniformBuffer->Unbind();
+    }
+
+    MaterialInstance::MaterialInstance(UUID uniqueID, const std::string& name, std::shared_ptr<Material> baseMaterial) :
+        AssetBase<IAsset>(uniqueID, name, AssetType::Material, "MaterialInstanceFile"), BaseMaterial(baseMaterial)
+    {
+        auto& assetManager = AssetManager::GetInstance();
+        Shader = assetManager.Get<IShader>("PBR");
+        UniformBuffer = BufferFactory::CreateShaderBuffer(MATERIAL_ATTRIBUTES_SIZE, 0);
+    }
+
+    void MaterialInstance::Bind()
+    {
+        UniformBuffer->Bind();
+        UniformBuffer->SetRawBufferData(MATERIAL_ATTRIBUTES_SIZE, &Attributes);
+
+        auto bindTex =
+            [&](const std::string_view& name)
             {
-                if (texture)
+                auto it = Texture.find(name);
+                if (it != Texture.end())
                 {
-                    texture->Unbind();
+                    std::int32_t slot = TextureBinding::Point();
+                    it->second->Bind(slot);
+                    Shader->SetUniform(name, slot);
                 }
-            }
-        }
+                else
+                {
+                    // If the texture is not found, bind the base material's texture if available
+                    if (BaseMaterial && BaseMaterial->Texture.contains(name))
+                    {
+                        std::int32_t slot = TextureBinding::Point();
+                        BaseMaterial->Texture.at(name)->Bind(slot);
+                        Shader->SetUniform(name, slot);
+                    }
+                    else
+                    {
+                        MOTION_CORE_WARN("Texture '{}' not found in MaterialInstance '{}'", name, GetName());
+                    }
+                }
+            };
 
-        if (EmissiveTexture)
-        {
-            EmissiveTexture->Unbind();
-        }
+        bindTex(UniformCache::BaseColorTextures);
+        bindTex(UniformCache::NormalTextures);
+        bindTex(UniformCache::RoughnessTextures);
+        bindTex(UniformCache::AmbientOcclusionTextures);
+        bindTex(UniformCache::MetallicTextures);
+        bindTex(UniformCache::DisplacementTextures);
     }
 
-    /**
-     * @brief Inserts layer data into the material at the specified index.
-     *
-     * This function updates the material's layer data at the given index with the provided MaterialLayerData.
-     * It asserts that the index is within bounds to prevent out-of-range access.
-     *
-     * @param layerIndex The index of the layer to update.
-     * @param data The MaterialLayerData to insert into the specified layer.
-     */
-    void Material::InsertLayerData(std::uint32_t layerIndex, const MaterialLayerData& data) noexcept
+    void MaterialInstance::Unbind()
     {
-        MOTION_ASSERT(layerIndex < MAX_MATERIAL_LAYERS, "Layer index out of bounds for material layers.");
-        m_Layers[layerIndex].Data = data;
+        for (const auto& [name, texture] : Texture)
+            texture->Unbind();
+
+        UniformBuffer->Unbind();
     }
 
 
-    /**
-     * @brief Inserts a texture into the specified layer of the material.
-     *
-     * This function adds a texture to the material layer at the specified index, using the provided texture name.
-     * If a texture with the same name already exists in the layer, it overwrites it with the new texture.
-     *
-     * @param layerIndex The index of the layer to insert the texture into.
-     * @param textureName The name of the texture to insert.
-     * @param texture The shared pointer to the ITexture to insert.
-     */
-    void Material::InsertLayerTexture(std::uint32_t layerIndex, std::string_view textureName, const std::shared_ptr<ITexture>& texture) noexcept
-    {
-        auto& layer = m_Layers[layerIndex];
-        if (layer.Textures.find(textureName) != layer.Textures.end())
-        {
-            MOTION_CORE_WARN("Texture {0} already exists in layer {1}. Overwriting....", textureName, layerIndex);
-            layer.Textures[textureName] = std::move(texture);
-        }
-        else
-        {
-            layer.Textures[textureName] = std::move(texture);
-        }
-
-    }
-
-
-    /**
-     * @brief Retrieves a material layer by index.
-     *
-     * This function provides access to a specific material layer by its index. It asserts that the index
-     * is within bounds and returns a reference to the requested layer.
-     *
-     * @param index The index of the material layer to retrieve.
-     * @return MaterialLayer& Reference to the requested material layer.
-     */
-    MaterialLayer& Material::GetLayer(std::uint32_t index) noexcept
-    {
-        MOTION_ASSERT(index < MAX_MATERIAL_LAYERS, "Index out of bounds for material layers.");
-        return m_Layers[index];
-    }
 
 
 }
-
 

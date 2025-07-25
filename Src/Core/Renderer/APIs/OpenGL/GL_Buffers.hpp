@@ -59,6 +59,7 @@ namespace Motion
         virtual void SetBufferData(std::int32_t offset, std::int32_t size, const glm::vec3& data) override;
         virtual void SetBufferData(std::int32_t offset, std::int32_t size, const glm::vec2& data) override;
         virtual void SetBufferData(std::int32_t offset, std::int32_t size, float data) override;
+        virtual void SetRawBufferData(std::int32_t size, const void* data) override;
 
     private:
         BufferID m_ShaderBufferID{ 0 };

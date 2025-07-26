@@ -293,7 +293,7 @@ namespace Motion
      * is marked as loaded.
      */
     GL_CubeMapTexture::GL_CubeMapTexture(UUID uuid, const std::string& name, const std::filesystem::path& textureFile)
-        : AssetBase<ICubeMapTexture>(uuid, name, AssetType::CubeMapTexture, textureFile.string())
+        : AssetBase<ICubeTexture>(uuid, name, AssetType::CubeTexture, textureFile.string())
     {
         if (!std::filesystem::exists(textureFile))
         {
@@ -369,7 +369,7 @@ namespace Motion
 
 
     GL_CubeMapTexture::GL_CubeMapTexture(UUID uuid, const std::string& name, const std::filesystem::path& posX_texture, const std::filesystem::path& negX_texture, const std::filesystem::path& posY_texture, const std::filesystem::path& negY_texture, const std::filesystem::path& posZ_texture, const std::filesystem::path& negZ_texture) :
-        AssetBase<ICubeMapTexture>(uuid, name, AssetType::CubeMapTexture, "CubeMapTexture")
+        AssetBase<ICubeTexture>(uuid, name, AssetType::CubeTexture, "CubeMapTexture")
     {
         if (!std::filesystem::exists(posX_texture) || !std::filesystem::exists(negX_texture) ||
             !std::filesystem::exists(posY_texture) || !std::filesystem::exists(negY_texture) ||
@@ -513,6 +513,391 @@ namespace Motion
         {
             MOTION_ASSERT(false, "Data pointer is null for setting cube map face {0} at mip level {1}", face, mipLevel);
         }
+    }
+
+
+
+    // s_CaptureProjection is a static 4x4 projection matrix used for capturing environment maps.
+    // It is initialized as a perspective projection with a 90-degree field of view, 
+    // an aspect ratio of 1.0, and near/far planes at 0.1 and 10.0 units, respectively.
+    // This setup is commonly used for rendering to cubemaps in OpenGL.
+    static glm::mat4 s_CaptureProjection = glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 10.0f);
+
+    // s_CaptureViews is an array of 6 view matrices used for cubemap rendering.
+    // Each matrix represents a camera view looking in one of the six directions (+X, -X, +Y, -Y, +Z, -Z)
+    // from the origin, with appropriate up vectors for each face.
+    // These are typically used for environment mapping or rendering to cubemap textures.
+    static glm::mat4 s_CaptureViews[6] =
+    {
+        glm::lookAt(glm::vec3(0), glm::vec3(1, 0, 0), glm::vec3(0,-1, 0)),
+        glm::lookAt(glm::vec3(0), glm::vec3(-1, 0, 0), glm::vec3(0,-1, 0)),
+        glm::lookAt(glm::vec3(0), glm::vec3(0, 1, 0), glm::vec3(0, 0, 1)),
+        glm::lookAt(glm::vec3(0), glm::vec3(0,-1, 0), glm::vec3(0, 0,-1)),
+        glm::lookAt(glm::vec3(0), glm::vec3(0, 0, 1), glm::vec3(0,-1, 0)),
+        glm::lookAt(glm::vec3(0), glm::vec3(0, 0,-1), glm::vec3(0,-1, 0)),
+    };
+
+    // s_SimpleCubeVertices defines the 3D coordinates of the 8 corners of a cube centered at the origin.
+    // Each group of three floats represents the (x, y, z) position of a vertex.
+    // The vertices are ordered as follows:
+    // 0: top-left-back     (-1.0f,  1.0f, -1.0f)
+    // 1: bottom-left-back  (-1.0f, -1.0f, -1.0f)
+    // 2: bottom-right-back ( 1.0f, -1.0f, -1.0f)
+    // 3: top-right-back    ( 1.0f,  1.0f, -1.0f)
+    // 4: top-left-front    (-1.0f,  1.0f,  1.0f)
+    // 5: bottom-left-front (-1.0f, -1.0f,  1.0f)
+    // 6: bottom-right-front( 1.0f, -1.0f,  1.0f)
+    // 7: top-right-front   ( 1.0f,  1.0f,  1.0f)
+    static std::array<float, 24> s_SimpleCubeVertices =
+    {
+        -1.0f,  1.0f, -1.0f,    // 0 top-left-back
+        -1.0f, -1.0f, -1.0f,    // 1 bottom-left-back
+        1.0f, -1.0f, -1.0f,     // 2 bottom-right-back
+        1.0f,  1.0f, -1.0f,     // 3 top-right-back
+        -1.0f,  1.0f,  1.0f,    // 4 top-left-front
+        -1.0f, -1.0f,  1.0f,    // 5 bottom-left-front
+        1.0f, -1.0f,  1.0f,     // 6 bottom-right-front
+        1.0f,  1.0f,  1.0f      // 7 top-right-front
+    };
+
+    /**
+     * @brief Indices for rendering a simple cube using triangles.
+     *
+     * This static array defines the index order for drawing the six faces of a cube,
+     * with each face composed of two triangles (totaling 12 triangles, 36 indices).
+     * The indices reference the cube's 8 vertices, assumed to be defined elsewhere.
+     *
+     * Face order and corresponding triangles:
+     * - Back face:   0, 1, 2 and 2, 3, 0
+     * - Front face:  4, 5, 6 and 6, 7, 4
+     * - Left face:   4, 5, 1 and 1, 0, 4
+     * - Right face:  3, 2, 6 and 6, 7, 3
+     * - Bottom face: 1, 5, 6 and 6, 2, 1
+     * - Top face:    4, 0, 3 and 3, 7, 4
+     *
+     * @note The winding order is counter-clockwise for front-facing triangles.
+     */
+    static std::array<std::uint32_t, 36> s_SimpleCubeIndices =
+    {
+        // back face
+        0, 1, 2,
+        2, 3, 0,
+
+        // front face
+        4, 5, 6,
+        6, 7, 4,
+
+        // left face
+        4, 5, 1,
+        1, 0, 4,
+
+        // right face
+        3, 2, 6,
+        6, 7, 3,
+
+        // bottom face
+        1, 5, 6,
+        6, 2, 1,
+
+        // top face
+        4, 0, 3,
+        3, 7, 4
+    };
+
+
+    /**
+     * @brief Constructs a GL_EnvironmentIrradianceTexture object with the specified resolution.
+     *
+     * This constructor initializes the vertex buffer, element buffer, and vertex array for rendering a simple cube.
+     * It also sets up the OpenGL texture parameters for an irradiance cube map texture with the given resolution.
+     * The shader for generating the irradiance texture is loaded from the asset manager.
+     *
+     * @param resolution The resolution of the irradiance texture (width and height).
+     */
+    GL_EnvironmentIrradianceTexture::GL_EnvironmentIrradianceTexture(std::int32_t resolution)
+    {
+        m_CubeVBO = BufferFactory::CreateVertexBuffer(s_SimpleCubeVertices.data(), static_cast<std::int32_t>(s_SimpleCubeVertices.size()));
+        m_CubeEBO = BufferFactory::CreateElementBuffer(s_SimpleCubeIndices.data(), static_cast<std::int32_t>(s_SimpleCubeIndices.size()));
+        m_CubeVAO = std::make_shared<GL_VertexArray>();
+
+        BufferLayout layout({ { UniformCache::Position, BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Position) } });
+        m_CubeVBO->SetLayout(layout);
+        m_CubeVAO->EmplaceVertexBuffer(m_CubeVBO);
+        m_CubeVAO->EmplaceIndexBuffer(m_CubeEBO);
+
+        m_Specification.Width = resolution;
+        m_Specification.Height = resolution;
+        m_Specification.Type = TextureType::IrradianceTexture;
+        m_Specification.Source = TextureSource::GeneratedTexture;
+        m_Specification.InternalDataFormat = GL_RGBA16F;
+        m_Specification.TextureDataFormat = GL_RGBA;
+
+        glGenTextures(1, &m_Specification.TexID);
+        glBindTexture(GL_TEXTURE_CUBE_MAP, m_Specification.TexID);
+
+        for (std::uint32_t i = 0; i < 6; ++i)
+        {
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, m_Specification.InternalDataFormat, resolution, resolution, 0, m_Specification.TextureDataFormat, GL_FLOAT, nullptr);
+        }
+
+        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
+        glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
+
+        auto& assetManager = AssetManager::GetInstance();
+        m_IrradianceShader = assetManager.Get<IShader>("EnvironmentIrradiance");
+    }
+
+    /**
+     * @brief Destructor for GL_IrradianceCubeTexture.
+     *
+     * This destructor cleans up the OpenGL texture resources associated with this irradiance texture.
+     * It deletes the texture ID to ensure no memory leaks occur.
+     */
+    GL_EnvironmentIrradianceTexture::~GL_EnvironmentIrradianceTexture()
+    {
+        glDeleteTextures(1, &m_Specification.TexID);
+    }
+
+
+    /**
+     * @brief Resizes the irradiance cube texture to the specified resolution.
+     *
+     * This function checks if the new resolution is different from the current one.
+     * If so, it deletes the existing texture, generates a new one with the specified resolution,
+     * and sets up the texture parameters accordingly. If the resolution is unchanged, it logs a warning.
+     *
+     * @param resolution The new resolution for both width and height of the irradiance texture.
+     */
+    void GL_EnvironmentIrradianceTexture::Resize(std::int32_t resolution)
+    {
+        if (resolution != m_Specification.Width || resolution != m_Specification.Height)
+        {
+            m_Specification.Width = resolution;
+            m_Specification.Height = resolution;
+
+            glDeleteTextures(1, &m_Specification.TexID);
+            m_Specification.TexID = 0; // Reset TexID to ensure it is recreated
+
+            glGenTextures(1, &m_Specification.TexID);
+            glBindTexture(GL_TEXTURE_CUBE_MAP, m_Specification.TexID);
+
+            for (std::uint32_t i = 0; i < 6; ++i)
+            {
+                glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, m_Specification.InternalDataFormat, resolution, resolution, 0, m_Specification.TextureDataFormat, GL_FLOAT, nullptr);
+            }
+
+            glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+            glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+            glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+            glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
+            glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
+        }
+        else
+        {
+            MOTION_CORE_WARN("Irradiance texture resize called with same dimensions: {0}x{1}", resolution, resolution);
+            return;
+        }
+    }
+
+    /**
+     * @brief Generates the irradiance texture from the specified environment map ID.
+     *
+     * This function binds the capture frame buffer, sets up the irradiance shader, and renders the cube faces
+     * to generate the irradiance texture. It uses the provided environment map ID as input.
+     *
+     * @param environmentMapID The OpenGL texture ID of the environment map to use for generating irradiance.
+     * @param captureFrameBuffer The frame buffer used for capturing the rendered irradiance texture.
+     */
+    void GL_EnvironmentIrradianceTexture::GenerateIrradiance(std::uint32_t environmentMapID, const std::shared_ptr<ICaptureFrameBuffer>& captureFrameBuffer)
+    {
+        m_IrradianceShader->Bind();
+        std::int32_t bindingPoint = TextureBinding::Point();
+        glBindTextureUnit(bindingPoint, environmentMapID);
+        m_IrradianceShader->SetUniform(UniformCache::EnvironmentTexture, bindingPoint);
+        m_IrradianceShader->SetUniform(UniformCache::ProjectionMatrix, s_CaptureProjection);
+
+        captureFrameBuffer->ResizeFrame(m_Specification.Width, m_Specification.Height);
+        captureFrameBuffer->BindFrameBuffer();
+        glViewport(0, 0, m_Specification.Width, m_Specification.Height);
+
+        for (unsigned int i = 0; i < 6; ++i)
+        {
+            m_IrradianceShader->SetUniform(UniformCache::ViewMatrix, s_CaptureViews[i]);
+            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, m_Specification.TexID, 0);
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+            RenderCube();
+        }
+
+        glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
+        captureFrameBuffer->UnbindFrameBuffer();
+        m_IrradianceShader->Unbind();
+    }
+
+
+    /**
+     * @brief Renders the cube faces using the bound vertex array object.
+     *
+     * This function binds the cube vertex array object and issues a draw call to render the cube faces.
+     * It uses the element buffer object to determine the indices for rendering.
+     */
+    void GL_EnvironmentIrradianceTexture::RenderCube()
+    {
+        m_CubeVAO->Bind();
+        glDrawElements(GL_TRIANGLES, m_CubeEBO->GetElementCount(), GL_UNSIGNED_INT, nullptr);
+        m_CubeVAO->Unbind();
+    }
+
+
+    /**
+     * @brief Constructs a GL_EnvironmentPrefilteredTexture object with the specified resolution.
+     *
+     * This constructor initializes the prefiltered texture with the given resolution, sets its type to EnvironmentPrefilteredTexture,
+     * and generates a cube map texture with the appropriate parameters.
+     *
+     * @param resolution The resolution for both width and height of the prefiltered texture.
+     */
+    GL_EnvironmentPrefilteredTexture::GL_EnvironmentPrefilteredTexture(std::int32_t resolution)
+    {
+        m_CubeVBO = BufferFactory::CreateVertexBuffer(s_SimpleCubeVertices.data(), static_cast<std::int32_t>(s_SimpleCubeVertices.size()));
+        m_CubeEBO = BufferFactory::CreateElementBuffer(s_SimpleCubeIndices.data(), static_cast<std::int32_t>(s_SimpleCubeIndices.size()));
+        m_CubeVAO = std::make_shared<GL_VertexArray>();
+
+        BufferLayout layout({ { UniformCache::Position, BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Position) } });
+        m_CubeVBO->SetLayout(layout);
+        m_CubeVAO->EmplaceVertexBuffer(m_CubeVBO);
+        m_CubeVAO->EmplaceIndexBuffer(m_CubeEBO);
+
+        m_Specification.Width = resolution;
+        m_Specification.Height = resolution;
+        m_Specification.Type = TextureType::IrradianceTexture;
+        m_Specification.Source = TextureSource::GeneratedTexture;
+        m_Specification.InternalDataFormat = GL_RGBA16F;
+        m_Specification.TextureDataFormat = GL_RGBA;
+
+        glGenTextures(1, &m_Specification.TexID);
+        glBindTexture(GL_TEXTURE_CUBE_MAP, m_Specification.TexID);
+
+        for (std::uint32_t i = 0; i < 6; ++i)
+        {
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, m_Specification.InternalDataFormat, m_Specification.Width, m_Specification.Height, 0, m_Specification.TextureDataFormat, GL_FLOAT, nullptr);
+        }
+
+        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
+        glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
+
+        auto& assetManager = AssetManager::GetInstance();
+        m_PrefilteredShader = assetManager.Get<IShader>("EnvironmentPrefiltered");
+    }
+
+    /**
+     * @brief Destructor for GL_EnvironmentPrefilteredTexture.
+     *
+     * This destructor cleans up the OpenGL texture resources associated with this prefiltered texture.
+     * It deletes the texture ID to ensure no memory leaks occur.
+     */
+    GL_EnvironmentPrefilteredTexture::~GL_EnvironmentPrefilteredTexture()
+    {
+        glDeleteTextures(1, &m_Specification.TexID);
+    }
+
+
+    /**
+     * @brief Resizes the prefiltered texture to the specified resolution.
+     *
+     * This function checks if the new resolution differs from the current one. If it does, it deletes the existing texture,
+     * generates a new one with the updated dimensions, and sets the appropriate parameters for cube map textures.
+     *
+     * @param resolution The new resolution for both width and height of the prefiltered texture.
+     */
+    void GL_EnvironmentPrefilteredTexture::Resize(std::int32_t resolution)
+    {
+        if (resolution != m_Specification.Width || resolution != m_Specification.Height)
+        {
+            m_Specification.Width = resolution;
+            m_Specification.Height = resolution;
+
+            glDeleteTextures(1, &m_Specification.TexID);
+            m_Specification.TexID = 0; // Reset TexID to ensure it is recreated
+
+            glGenTextures(1, &m_Specification.TexID);
+            glBindTexture(GL_TEXTURE_CUBE_MAP, m_Specification.TexID);
+
+            for (std::uint32_t i = 0; i < 6; ++i)
+            {
+                glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, m_Specification.InternalDataFormat, m_Specification.Width, m_Specification.Height, 0, m_Specification.TextureDataFormat, GL_FLOAT, nullptr);
+            }
+
+            glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+            glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+            glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+            glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
+            glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
+        }
+        else
+        {
+            MOTION_CORE_WARN("Irradiance texture resize called with same dimensions: {0}x{1}", resolution, resolution);
+            return;
+        }
+    }
+
+    /**
+     * @brief Generates the prefiltered texture from the specified environment map ID.
+     *
+     * This function binds the capture frame buffer, sets up the prefiltered shader, and renders the cube faces
+     * to generate the prefiltered texture. It uses the provided environment map ID as input.
+     *
+     * @param environmentMapID The OpenGL texture ID of the environment map to use for generating the prefiltered texture.
+     * @param captureFrameBuffer The frame buffer used for capturing the rendered prefiltered texture.
+     */
+    void GL_EnvironmentPrefilteredTexture::GeneratePrefliteredTexture(std::uint32_t environmentMapID, const std::shared_ptr<ICaptureFrameBuffer>& captureFrameBuffer)
+    {
+        m_PrefilteredShader->Bind();
+        std::int32_t bindingPoint = TextureBinding::Point();
+        glBindTextureUnit(bindingPoint, environmentMapID);
+        m_PrefilteredShader->SetUniform(UniformCache::EnvironmentTexture, bindingPoint);
+        m_PrefilteredShader->SetUniform(UniformCache::ProjectionMatrix, s_CaptureProjection);
+
+        captureFrameBuffer->ResizeFrame(m_Specification.Width, m_Specification.Height);
+        captureFrameBuffer->BindFrameBuffer();
+
+        std::uint32_t maxMipLevels = 5;
+        for (std::uint32_t mip = 0; mip < maxMipLevels; mip++)
+        {
+            std::uint32_t mipWidth = static_cast<std::uint32_t>(m_Specification.Width * std::pow(0.5, mip));
+            std::uint32_t mipHeight = static_cast<std::uint32_t>(m_Specification.Height * std::pow(0.5, mip));
+            captureFrameBuffer->BindRenderBuffer();
+            glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, mipWidth, mipHeight);
+            glViewport(0, 0, mipWidth, mipHeight);
+
+            float roughness = (float)mip / (float)(maxMipLevels - 1);
+            m_PrefilteredShader->SetUniform(UniformCache::PrefilteredRoughness, roughness);
+
+            for (std::uint32_t i = 0; i < 6; ++i)
+            {
+                m_PrefilteredShader->SetUniform(UniformCache::ViewMatrix, s_CaptureViews[i]);
+                glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, m_Specification.TexID, mip);
+                glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+                RenderCube();
+            }
+        }
+
+        captureFrameBuffer->UnbindRenderBuffer();
+        captureFrameBuffer->UnbindFrameBuffer();
+        m_PrefilteredShader->Unbind();
     }
 
     /**

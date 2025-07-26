@@ -135,7 +135,7 @@ namespace Motion
 
             material->Bind();
 
-            std::shared_ptr<ICubeMapTexture> environmentTexture = SkyBox::GetTexture();
+            std::shared_ptr<ICubeTexture> environmentTexture = SkyBox::GetTexture();
             if (environmentTexture)
             {
                 std::int32_t bindingPoint = TextureBinding::Point();

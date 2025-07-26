@@ -6,6 +6,7 @@
 #include <concepts>
 
 #include "Asset.hpp"
+#include "Buffers.hpp"
 
 namespace Motion
 {
@@ -25,7 +26,8 @@ namespace Motion
         NormalTexture,
         OpacityTexture,
 
-        CubeMapTexture,
+        CubeTexture,
+        IrradianceTexture,
         UnknownTexture
     };
 
@@ -87,11 +89,11 @@ namespace Motion
     };
 
 
-    class ICubeMapTexture : public IAsset
+    class ICubeTexture : public IAsset
     {
     public:
-        ICubeMapTexture() = default;
-        virtual ~ICubeMapTexture() = default;
+        ICubeTexture() = default;
+        virtual ~ICubeTexture() = default;
 
         virtual void Bind(std::int32_t bindingPoint = 0) const noexcept = 0;
         virtual void Bind() const noexcept = 0;
@@ -99,6 +101,32 @@ namespace Motion
         virtual void SetFace(std::int32_t face, std::int32_t mipLevel, std::int32_t width, std::int32_t height, std::int32_t format, const void* data) = 0;
 
         [[nodiscard]] virtual TextureID GetID() const noexcept = 0;
+    };
+
+    class EnvironmentIrradianceTexture
+    {
+    public:
+        EnvironmentIrradianceTexture() = default;
+        virtual ~EnvironmentIrradianceTexture() = default;
+
+        virtual void Resize(std::int32_t resolution) = 0;
+        virtual void GenerateIrradiance(std::uint32_t environmentMapID, const std::shared_ptr<ICaptureFrameBuffer>& captureFrameBuffer) = 0;
+
+        [[nodiscard]] virtual TextureID GetID() const noexcept = 0;
+        [[nodiscard]] virtual TextureSpecification& GetSpecification() noexcept = 0;
+    };
+
+    class EnvironmentPrefilteredTexture
+    {
+    public:
+        EnvironmentPrefilteredTexture() = default;
+        virtual ~EnvironmentPrefilteredTexture() = default;
+
+        virtual void Resize(std::int32_t resolution) = 0;
+        virtual void GeneratePrefliteredTexture(std::uint32_t environmentMapID, const std::shared_ptr<ICaptureFrameBuffer>& captureFrameBuffer) = 0;
+
+        [[nodiscard]] virtual TextureID GetID() const noexcept = 0;
+        [[nodiscard]] virtual TextureSpecification& GetSpecification() noexcept = 0;
     };
 
     /**
@@ -115,9 +143,6 @@ namespace Motion
 
     [[nodiscard]] std::shared_ptr<ITexture> CreateUnregisteredPlainTexture(std::int32_t width = 100, std::int32_t height = 100, const glm::vec3& color = { 1.0f, 1.0f, 1.0f }) noexcept;
     [[nodiscard]] std::shared_ptr<ITexture> CreateUnregisteredTextureFromFile(const std::filesystem::path& textureFile, TextureType type = TextureType::BaseColorTexture, bool flip = true) noexcept;
-    [[nodiscard]] std::shared_ptr<ICubeMapTexture> CreateUnregisteredCubeMapTexture(const std::filesystem::path& textureFile) noexcept;
-    [[nodiscard]] std::shared_ptr<ICubeMapTexture> CreateUnregisteredCubeMapTexture(
-        const std::filesystem::path& posX_texture, const std::filesystem::path& negX_texture,
-        const std::filesystem::path& posY_texture, const std::filesystem::path& negY_texture,
-        const std::filesystem::path& posZ_texture, const std::filesystem::path& negZ_texture) noexcept;
+    [[nodiscard]] std::shared_ptr<ICubeTexture> CreateUnregisteredCubeMapTexture(const std::filesystem::path& textureFile) noexcept;
+    [[nodiscard]] std::shared_ptr<ICubeTexture> CreateUnregisteredCubeMapTexture(const std::filesystem::path& posX_texture, const std::filesystem::path& negX_texture, const std::filesystem::path& posY_texture, const std::filesystem::path& negY_texture, const std::filesystem::path& posZ_texture, const std::filesystem::path& negZ_texture) noexcept;
 }

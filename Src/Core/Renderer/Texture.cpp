@@ -114,12 +114,12 @@ namespace Motion
      *
      * @param name The name to associate with the cube map texture.
      * @param textureFile The filesystem path to the texture file.
-     * @return std::shared_ptr<ICubeMapTexture> A shared pointer to the created cube map texture,
+     * @return std::shared_ptr<ICubeTexture> A shared pointer to the created cube map texture,
      *         or nullptr if the API is not implemented or an error occurs.
      *
      * @note Currently, only the OpenGL API is implemented for cube map textures.
      */
-    std::shared_ptr<ICubeMapTexture> CreateUnregisteredCubeMapTexture(const std::filesystem::path& textureFile) noexcept
+    std::shared_ptr<ICubeTexture> CreateUnregisteredCubeMapTexture(const std::filesystem::path& textureFile) noexcept
     {
         switch (Renderer::GetAPI())
         {
@@ -151,7 +151,7 @@ namespace Motion
      * @param negZ_texture The filesystem path to the negative Z face texture.
      * @return std::shared_ptr<GL_CubeMapTexture> A shared pointer to the newly created GL_CubeMapTexture object.
      */
-    std::shared_ptr<ICubeMapTexture> Motion::CreateUnregisteredCubeMapTexture(const std::filesystem::path& posX_texture, const std::filesystem::path& negX_texture, const std::filesystem::path& posY_texture, const std::filesystem::path& negY_texture, const std::filesystem::path& posZ_texture, const std::filesystem::path& negZ_texture) noexcept
+    std::shared_ptr<ICubeTexture> Motion::CreateUnregisteredCubeMapTexture(const std::filesystem::path& posX_texture, const std::filesystem::path& negX_texture, const std::filesystem::path& posY_texture, const std::filesystem::path& negY_texture, const std::filesystem::path& posZ_texture, const std::filesystem::path& negZ_texture) noexcept
     {
         switch (Renderer::GetAPI())
         {

@@ -1,4 +1,5 @@
 #include "CorePCH.hpp"
+#include "Buffers.hpp"
 
 namespace Motion
 {
@@ -142,4 +143,26 @@ namespace Motion
     }
 
 
+    /**
+     * @brief Creates a capture frame buffer for the specified rendering API.
+     *
+     * This function creates and returns a shared pointer to an ICaptureFrameBuffer object,
+     * initialized with the specified width and height. The actual implementation depends
+     * on the currently selected rendering API (e.g., OpenGL, Vulkan, DirectX).
+     *
+     * @param width The width of the capture frame buffer in pixels.
+     * @param height The height of the capture frame buffer in pixels.
+     * @return std::shared_ptr<ICaptureFrameBuffer> A shared pointer to the created capture frame buffer,
+     *         or nullptr if the rendering API is not implemented or unknown.
+     */
+    std::shared_ptr<ICaptureFrameBuffer> BufferFactory::CreateCaptureFrameBuffer(std::int32_t width, std::int32_t height)
+    {
+        switch (Renderer::GetAPI())
+        {
+        case RenderingAPI::OpenGL:         return GL_CreateCaptureFrameBuffer(width, height);
+        case RenderingAPI::Vulkan:         MOTION_ASSERT(false, "Vulkan is not implemented yet!"); return nullptr;
+        case RenderingAPI::DirectX:        MOTION_ASSERT(false, "DirectX is not implemented yet!"); return nullptr;
+        default:                           MOTION_ASSERT(false, "Unknown rendering API!"); return nullptr;
+        };
+    }
 }

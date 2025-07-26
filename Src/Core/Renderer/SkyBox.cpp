@@ -2,7 +2,7 @@
 
 namespace Motion
 {
-    static std::shared_ptr<ICubeMapTexture> s_SkyBoxCubeTexture = nullptr;
+    static std::shared_ptr<ICubeTexture> s_SkyBoxCubeTexture = nullptr;
     static std::shared_ptr<IShader> s_SkyBoxShader = nullptr;
 
     static std::shared_ptr<IVertexArray> s_SkyBoxVAO = nullptr;
@@ -18,18 +18,11 @@ namespace Motion
     void SkyBox::Init() noexcept
     {
         auto& assetManager = AssetManager::GetInstance();
-        s_SkyBoxCubeTexture = CreateUnregisteredCubeMapTexture(
-            "Assets/SkyBox/RooitouPark/px.png",
-            "Assets/SkyBox/RooitouPark/nx.png",
-            "Assets/SkyBox/RooitouPark/py.png",
-            "Assets/SkyBox/RooitouPark/ny.png",
-            "Assets/SkyBox/RooitouPark/pz.png",
-            "Assets/SkyBox/RooitouPark/nz.png"
-        );
+        s_SkyBoxCubeTexture = CreateUnregisteredCubeMapTexture("Assets/SkyBox/RooitouPark/px.png", "Assets/SkyBox/RooitouPark/nx.png", "Assets/SkyBox/RooitouPark/py.png", "Assets/SkyBox/RooitouPark/ny.png", "Assets/SkyBox/RooitouPark/pz.png", "Assets/SkyBox/RooitouPark/nz.png");
 
         if (!s_SkyBoxCubeTexture)
         {
-            MOTION_CORE_ERROR("Failed to create CubeMapTexture for SkyBox");
+            MOTION_CORE_ERROR("Failed to create CubeTexture for SkyBox");
             return;
         }
 
@@ -134,7 +127,7 @@ namespace Motion
      *
      * @return std::shared_ptr<ICubeMapTexture> The currently bound SkyBox cube map texture.
      */
-    std::shared_ptr<ICubeMapTexture> SkyBox::GetTexture() noexcept
+    std::shared_ptr<ICubeTexture> SkyBox::GetTexture() noexcept
     {
         return s_SkyBoxCubeTexture;
     }

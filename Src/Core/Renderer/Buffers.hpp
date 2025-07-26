@@ -227,7 +227,6 @@ namespace Motion
 
         virtual void Bind() = 0;
         virtual void Unbind() = 0;
-
         virtual void ResizeFrame(std::int32_t width, std::int32_t height) = 0;
         virtual void BlitTo(IFrameBuffer* targetFrameBuffer, FrameBufferBlitMask mask, FrameBufferBlitFilter filter) = 0;
 
@@ -237,6 +236,25 @@ namespace Motion
         [[nodiscard]] virtual FrameTextureID ResolveTo(IFrameBuffer* target) = 0;
         [[nodiscard]] virtual ColorAttachments GetAttachment(FrameBufferColorAttachmentStandards attachment) const = 0;
         [[nodiscard]] virtual std::int32_t ReadPixel(FrameBufferColorAttachmentStandards attachment, std::int32_t x, std::int32_t y) = 0;
+    };
+
+    class ICaptureFrameBuffer
+    {
+    public:
+        ICaptureFrameBuffer() = default;
+        virtual ~ICaptureFrameBuffer() = default;
+
+        virtual void BindFrameBuffer() = 0;
+        virtual void UnbindFrameBuffer() = 0;
+        virtual void BindRenderBuffer() = 0;
+        virtual void UnbindRenderBuffer() = 0;
+
+        virtual void ResizeFrame(std::int32_t width, std::int32_t height) = 0;
+
+        [[nodiscard]] virtual BufferID GetCaptureFrameBufferID() const = 0;
+        [[nodiscard]] virtual FrameTextureID GetCaptureTextureID() const = 0;
+        [[nodiscard]] virtual std::int32_t GetWidth() const = 0;
+        [[nodiscard]] virtual std::int32_t GetHeight() const = 0;
     };
 
     class BufferFactory
@@ -257,5 +275,6 @@ namespace Motion
         static std::shared_ptr<IShaderBuffer> CreateShaderBuffer(std::int32_t size, BindingPoint binding);
         static std::shared_ptr<IUniformBuffer> CreateUniformBuffer(std::int32_t size, BindingPoint binding);
         static std::shared_ptr<IFrameBuffer> CreateFrameBuffer(const FrameBufferSpecification& specification);
+        static std::shared_ptr<ICaptureFrameBuffer> CreateCaptureFrameBuffer(std::int32_t width, std::int32_t height);
     };
 }

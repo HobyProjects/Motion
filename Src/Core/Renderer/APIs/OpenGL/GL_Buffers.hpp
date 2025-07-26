@@ -98,7 +98,6 @@ namespace Motion
 
         virtual void Bind() override;
         virtual void Unbind() override;
-
         virtual void ResizeFrame(std::int32_t width, std::int32_t height) override;
         virtual void BlitTo(IFrameBuffer* targetFrameBuffer, FrameBufferBlitMask mask, FrameBufferBlitFilter filter) override;
 
@@ -119,10 +118,36 @@ namespace Motion
         BufferID m_FrameBufferID{ 0 };
     };
 
+    class GL_CaptureFrameBuffer final : public ICaptureFrameBuffer
+    {
+    public:
+        GL_CaptureFrameBuffer(std::int32_t width, std::int32_t height);
+        virtual ~GL_CaptureFrameBuffer() = default;
+
+        virtual void BindFrameBuffer() override;
+        virtual void UnbindFrameBuffer() override;
+        virtual void BindRenderBuffer() override;
+        virtual void UnbindRenderBuffer() override;
+        virtual void ResizeFrame(std::int32_t width, std::int32_t height) override;
+
+        [[nodiscard]] virtual BufferID GetCaptureFrameBufferID() const override { return m_CaptureFrameBufferID; }
+        [[nodiscard]] virtual FrameTextureID GetCaptureTextureID() const override { return m_CaptureTextureID; }
+        [[nodiscard]] virtual std::int32_t GetWidth() const override { return m_Width; }
+        [[nodiscard]] virtual std::int32_t GetHeight() const override { return m_Height; }
+
+    private:
+        BufferID m_CaptureFrameBufferID{ 0 };
+        FrameTextureID m_CaptureTextureID{ 0 };
+        FrameTextureID m_CaptureRenderTextureID{ 0 };
+        std::int32_t m_Width{ 0 };
+        std::int32_t m_Height{ 0 };
+    };
+
     std::shared_ptr<GL_VertexBuffer> GL_CreateVertexBuffer(std::int32_t allocatorSize);
     std::shared_ptr<GL_VertexBuffer> GL_CreateVertexBuffer(float* data, std::int32_t size);
     std::shared_ptr<GL_ElementBuffer> GL_CreateElementBuffer(std::uint32_t* data, std::int32_t size);
     std::shared_ptr<GL_ShaderBuffer> GL_CreateShaderBuffer(std::int32_t size, BindingPoint binding);
     std::shared_ptr<GL_UniformBuffer> GL_CreateUniformBuffer(std::int32_t size, BindingPoint binding);
     std::shared_ptr<GL_FrameBuffer> GL_CreateFrameBuffer(const FrameBufferSpecification& specification);
+    std::shared_ptr<GL_CaptureFrameBuffer> GL_CreateCaptureFrameBuffer(std::int32_t width, std::int32_t height);
 }

@@ -205,7 +205,7 @@ namespace Motion
     };
 
     template<>
-    struct AssetBackendsBuilder<ICubeMapTexture>
+    struct AssetBackendsBuilder<ICubeTexture>
     {
         /**
          * @brief Creates a cube map texture object based on the current rendering API.
@@ -221,7 +221,7 @@ namespace Motion
          * @return std::shared_ptr<ICubeMapTexture> A shared pointer to the created cube map texture object,
          *         or nullptr if the API is unsupported.
          */
-        static std::shared_ptr<ICubeMapTexture> Create(UUID uuid, const std::string& name, const std::filesystem::path& textureFile)
+        static std::shared_ptr<ICubeTexture> Create(UUID uuid, const std::string& name, const std::filesystem::path& textureFile)
         {
             switch (Renderer::GetAPI())
             {
@@ -266,7 +266,7 @@ namespace Motion
          * @return std::shared_ptr<ICubeMapTexture> A shared pointer to the created cube map texture object,
          *         or nullptr if the API is unsupported.
          */
-        static std::shared_ptr<ICubeMapTexture> Create(UUID uuid, const std::string& name,
+        static std::shared_ptr<ICubeTexture> Create(UUID uuid, const std::string& name,
             const std::filesystem::path& posX_texture, const std::filesystem::path& negX_texture,
             const std::filesystem::path& posY_texture, const std::filesystem::path& negY_texture,
             const std::filesystem::path& posZ_texture, const std::filesystem::path& negZ_texture)

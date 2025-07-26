@@ -9,7 +9,7 @@ namespace Motion
         None = 0,
         Shader,
         Texture,
-        CubeMapTexture,
+        CubeTexture,
         Material,
         Mesh,
         StaticMesh,

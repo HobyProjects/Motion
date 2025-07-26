@@ -980,6 +980,135 @@ namespace Motion
     }
 
     /******************************************************************************************
+     *                         GL_CaptureFrameBuffer Implementation                            *
+     *******************************************************************************************/
+
+
+     /**
+      * @brief Constructs a GL_CaptureFrameBuffer object with the specified width and height.
+      *
+      * This constructor creates and configures an OpenGL framebuffer and a renderbuffer for depth storage.
+      * It generates the framebuffer and renderbuffer objects, binds them, allocates storage for the renderbuffer
+      * with a 24-bit depth component, and attaches the renderbuffer to the framebuffer as a depth attachment.
+      * After setup, it unbinds both the renderbuffer and framebuffer. The constructor also asserts that the
+      * framebuffer is complete.
+      *
+      * @param width  The width of the framebuffer and renderbuffer in pixels.
+      * @param height The height of the framebuffer and renderbuffer in pixels.
+      */
+    GL_CaptureFrameBuffer::GL_CaptureFrameBuffer(std::int32_t width, std::int32_t height)
+    {
+        glGenFramebuffers(1, &m_CaptureFrameBufferID);
+        glGenRenderbuffers(1, &m_CaptureRenderTextureID);
+
+        glBindFramebuffer(GL_FRAMEBUFFER, m_CaptureFrameBufferID);
+        glBindRenderbuffer(GL_RENDERBUFFER, m_CaptureRenderTextureID);
+        glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, width, height);
+        glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, m_CaptureRenderTextureID);
+        glBindRenderbuffer(GL_RENDERBUFFER, 0);
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+        m_Width = width;
+        m_Height = height;
+
+        MOTION_ASSERT(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE, "Capture Framebuffer is not complete!");
+    }
+
+    /**
+     * @brief Binds the framebuffer for capturing and sets the viewport.
+     *
+     * This method binds the framebuffer identified by m_CaptureFrameBufferID
+     * as the current framebuffer target using glBindFramebuffer. It also sets
+     * the OpenGL viewport to match the dimensions specified by m_Width and m_Height,
+     * ensuring that rendering operations are directed to the correct region of the framebuffer.
+     */
+    void GL_CaptureFrameBuffer::BindFrameBuffer()
+    {
+        glBindFramebuffer(GL_FRAMEBUFFER, m_CaptureFrameBufferID);
+    }
+
+    /**
+     * @brief Unbinds the currently bound OpenGL framebuffer.
+     *
+     * This method resets the framebuffer binding to the default framebuffer (0),
+     * effectively unbinding any custom framebuffer that was previously bound.
+     * It is typically called after rendering to a framebuffer is complete,
+     * to resume rendering to the default window framebuffer.
+     */
+    void GL_CaptureFrameBuffer::UnbindFrameBuffer()
+    {
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    }
+
+    /**
+     * @brief Binds the renderbuffer for capturing depth information.
+     *
+     * This method binds the renderbuffer identified by m_CaptureRenderTextureID
+     * as the current renderbuffer target using glBindRenderbuffer. It is typically
+     * used to prepare the renderbuffer for depth storage operations in OpenGL.
+     */
+    void GL_CaptureFrameBuffer::BindRenderBuffer()
+    {
+        glBindRenderbuffer(GL_RENDERBUFFER, m_CaptureRenderTextureID);
+    }
+
+    /**
+     * @brief Unbinds the currently bound OpenGL renderbuffer.
+     *
+     * This method resets the renderbuffer binding to 0, effectively unbinding any
+     * custom renderbuffer that was previously bound. It is typically called after
+     * rendering operations involving the renderbuffer are complete.
+     */
+    void GL_CaptureFrameBuffer::UnbindRenderBuffer()
+    {
+        glBindRenderbuffer(GL_RENDERBUFFER, 0);
+    }
+
+    /**
+     * @brief Resizes the capture framebuffer to the specified width and height.
+     *
+     * This method checks if the new dimensions are different from the current ones.
+     * If they are, it deletes the existing framebuffer and renderbuffer, generates new ones,
+     * and sets up the renderbuffer storage with the new dimensions. It also updates the
+     * internal width and height variables and asserts that the framebuffer is complete.
+     *
+     * @param width The new width of the framebuffer in pixels.
+     * @param height The new height of the framebuffer in pixels.
+     */
+    void GL_CaptureFrameBuffer::ResizeFrame(std::int32_t width, std::int32_t height)
+    {
+        if (width == m_Width && height == m_Height)
+        {
+            MOTION_CORE_WARN("Capture FrameBuffer Resize called with same dimensions, ignoring.");
+            return;
+        }
+        else
+        {
+            glDeleteFramebuffers(1, &m_CaptureFrameBufferID);
+            glDeleteRenderbuffers(1, &m_CaptureRenderTextureID);
+
+            m_CaptureFrameBufferID = 0;
+            m_CaptureRenderTextureID = 0;
+
+            glGenFramebuffers(1, &m_CaptureFrameBufferID);
+            glGenRenderbuffers(1, &m_CaptureRenderTextureID);
+
+            glBindFramebuffer(GL_FRAMEBUFFER, m_CaptureFrameBufferID);
+            glBindRenderbuffer(GL_RENDERBUFFER, m_CaptureRenderTextureID);
+            glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, width, height);
+            glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, m_CaptureRenderTextureID);
+            glBindRenderbuffer(GL_RENDERBUFFER, 0);
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+            m_Width = width;
+            m_Height = height;
+
+            MOTION_ASSERT(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE, "Capture Framebuffer is not complete!");
+        }
+    }
+
+
+    /******************************************************************************************
      *                         GL_BufferFactory Implementation                                 *
      *******************************************************************************************/
 
@@ -1072,5 +1201,23 @@ namespace Motion
     {
         return std::make_shared<GL_FrameBuffer>(specification);
     }
+
+    /**
+     * @brief Creates a new OpenGL capture frame buffer with the specified width and height.
+     *
+     * This function constructs and returns a shared pointer to a GL_CaptureFrameBuffer instance,
+     * which is used for capturing frames in OpenGL. The capture frame buffer is initialized with
+     * the specified width and height, allowing it to be used for rendering operations that require
+     * frame capture.
+     *
+     * @param width The width of the capture frame buffer in pixels.
+     * @param height The height of the capture frame buffer in pixels.
+     * @return std::shared_ptr<GL_CaptureFrameBuffer> A shared pointer to the newly created GL_CaptureFrameBuffer object.
+     */
+    std::shared_ptr<GL_CaptureFrameBuffer> GL_CreateCaptureFrameBuffer(std::int32_t width, std::int32_t height)
+    {
+        return std::make_shared<GL_CaptureFrameBuffer>(width, height);
+    }
+
 
 }

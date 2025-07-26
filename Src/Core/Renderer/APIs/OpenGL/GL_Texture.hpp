@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Texture.hpp"
+#include "Arrays.hpp"
 #include "Asset.hpp"
 
 namespace Motion
@@ -28,7 +29,7 @@ namespace Motion
         TextureSpecification m_Specification{};
     };
 
-    class GL_CubeMapTexture final : public AssetBase<ICubeMapTexture>
+    class GL_CubeMapTexture final : public AssetBase<ICubeTexture>
     {
     public:
         GL_CubeMapTexture(UUID uuid, const std::string& name, const std::filesystem::path& textureFile);
@@ -49,10 +50,57 @@ namespace Motion
         TextureID m_TexID{ 0 };
     };
 
+    class GL_EnvironmentIrradianceTexture : public EnvironmentIrradianceTexture
+    {
+    public:
+        GL_EnvironmentIrradianceTexture(std::int32_t resolution);
+        virtual ~GL_EnvironmentIrradianceTexture();
+
+        virtual void Resize(std::int32_t resolution) override;
+        virtual void GenerateIrradiance(std::uint32_t environmentMapID, const std::shared_ptr<ICaptureFrameBuffer>& captureFrameBuffer) override;
+
+        [[nodiscard]] virtual TextureID GetID() const noexcept override { return m_Specification.TexID; }
+        [[nodiscard]] virtual TextureSpecification& GetSpecification() noexcept override { return m_Specification; }
+
+    private:
+        void RenderCube();
+
+    private:
+        TextureSpecification m_Specification{};
+        std::shared_ptr<IShader> m_IrradianceShader{ nullptr };
+
+        std::shared_ptr<IVertexArray> m_CubeVAO{ nullptr };
+        std::shared_ptr<IVertexBuffer> m_CubeVBO{ nullptr };
+        std::shared_ptr<IElementBuffer> m_CubeEBO{ nullptr };
+    };
+
+    class GL_EnvironmentPrefilteredTexture : public EnvironmentPrefilteredTexture
+    {
+    public:
+        GL_EnvironmentPrefilteredTexture(std::int32_t resolution);
+        virtual ~GL_EnvironmentPrefilteredTexture();
+
+        virtual void Resize(std::int32_t resolution) override;
+        virtual void GeneratePrefliteredTexture(std::uint32_t environmentMapID, const std::shared_ptr<ICaptureFrameBuffer>& captureFrameBuffer) override;
+
+        [[nodiscard]] virtual TextureID GetID() const noexcept override { return m_Specification.TexID; }
+        [[nodiscard]] virtual TextureSpecification& GetSpecification() noexcept override { return m_Specification; }
+
+    private:
+        void RenderCube();
+
+    private:
+        TextureSpecification m_Specification{};
+        std::shared_ptr<IShader> m_PrefilteredShader{ nullptr };
+
+        std::shared_ptr<IVertexArray> m_CubeVAO{ nullptr };
+        std::shared_ptr<IVertexBuffer> m_CubeVBO{ nullptr };
+        std::shared_ptr<IElementBuffer> m_CubeEBO{ nullptr };
+    };
+
+
     [[nodiscard]] std::shared_ptr<GL_Texture> GL_CreateUnregisteredPlainTexture(std::int32_t width = 100, std::int32_t height = 100, const glm::vec3& color = { 1.0f, 1.0f, 1.0f }) noexcept;
     [[nodiscard]] std::shared_ptr<GL_Texture> GL_CreateUnregisteredTextureFromFile(const std::filesystem::path& textureFile, TextureType type = TextureType::BaseColorTexture, bool flip = true) noexcept;
     [[nodiscard]] std::shared_ptr<GL_CubeMapTexture> GL_CreateUnregisteredCubeMapTexture(const std::filesystem::path& textureFile) noexcept;
-    [[nodiscard]] std::shared_ptr<GL_CubeMapTexture> GL_CreateUnregisteredCubeMapTexture(const std::filesystem::path& posX_texture, const std::filesystem::path& negX_texture,
-        const std::filesystem::path& posY_texture, const std::filesystem::path& negY_texture,
-        const std::filesystem::path& posZ_texture, const std::filesystem::path& negZ_texture) noexcept;
+    [[nodiscard]] std::shared_ptr<GL_CubeMapTexture> GL_CreateUnregisteredCubeMapTexture(const std::filesystem::path& posX_texture, const std::filesystem::path& negX_texture, const std::filesystem::path& posY_texture, const std::filesystem::path& negY_texture, const std::filesystem::path& posZ_texture, const std::filesystem::path& negZ_texture) noexcept;
 }

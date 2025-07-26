@@ -21,6 +21,6 @@ namespace Motion
         static void Init() noexcept;
         static void Render(const glm::mat4& viewMatrix, const glm::mat4& projectionMatrix) noexcept;
 
-        [[nodiscard]] static std::shared_ptr<ICubeMapTexture> GetTexture() noexcept;
+        [[nodiscard]] static std::shared_ptr<ICubeTexture> GetTexture() noexcept;
     };
 }

@@ -57,10 +57,7 @@ namespace Motion
         inline static constexpr std::string_view DisplacementTextures = "u_DisplacementTextures";
         inline static constexpr std::string_view NormalTextures = "u_NormalTextures";
         inline static constexpr std::string_view EnvironmentTexture = "u_EnvironmentTexture";
-
-
-        // Skybox specific uniforms
-        inline static constexpr std::string_view SkyboxTexture = "u_SkyboxTexture";
+        inline static constexpr std::string_view PrefilteredRoughness = "u_PrefilteredRoughness";
 
     };
 

@@ -28,6 +28,8 @@ namespace Motion
 
         CubeTexture,
         IrradianceTexture,
+        PrefilteredTexture,
+        BRDFTexture,
         UnknownTexture
     };
 
@@ -109,11 +111,16 @@ namespace Motion
         EnvironmentIrradianceTexture() = default;
         virtual ~EnvironmentIrradianceTexture() = default;
 
+        virtual void Bind(std::int32_t bindingPoint = 0) const noexcept = 0;
+        virtual void Unbind() const noexcept = 0;
+
         virtual void Resize(std::int32_t resolution) = 0;
         virtual void GenerateIrradiance(std::uint32_t environmentMapID, const std::shared_ptr<ICaptureFrameBuffer>& captureFrameBuffer) = 0;
 
         [[nodiscard]] virtual TextureID GetID() const noexcept = 0;
         [[nodiscard]] virtual TextureSpecification& GetSpecification() noexcept = 0;
+
+        static std::shared_ptr<EnvironmentIrradianceTexture> Create(std::int32_t resolution = 512);
     };
 
     class EnvironmentPrefilteredTexture
@@ -122,11 +129,34 @@ namespace Motion
         EnvironmentPrefilteredTexture() = default;
         virtual ~EnvironmentPrefilteredTexture() = default;
 
+        virtual void Bind(std::int32_t bindingPoint = 0) const noexcept = 0;
+        virtual void Unbind() const noexcept = 0;
+
         virtual void Resize(std::int32_t resolution) = 0;
         virtual void GeneratePrefliteredTexture(std::uint32_t environmentMapID, const std::shared_ptr<ICaptureFrameBuffer>& captureFrameBuffer) = 0;
 
         [[nodiscard]] virtual TextureID GetID() const noexcept = 0;
         [[nodiscard]] virtual TextureSpecification& GetSpecification() noexcept = 0;
+
+        static std::shared_ptr<EnvironmentPrefilteredTexture> Create(std::int32_t resolution = 512);
+    };
+
+    class EnvironmentBRDFTexture
+    {
+    public:
+        EnvironmentBRDFTexture() = default;
+        virtual ~EnvironmentBRDFTexture() = default;
+
+        virtual void Bind(std::int32_t bindingPoint = 0) const noexcept = 0;
+        virtual void Unbind() const noexcept = 0;
+
+        virtual void Resize(std::int32_t width, std::int32_t height) = 0;
+        virtual void Generate(const std::shared_ptr<ICaptureFrameBuffer>& captureFrameBuffer) = 0;
+
+        [[nodiscard]] virtual TextureID GetID() const noexcept = 0;
+        [[nodiscard]] virtual TextureSpecification& GetSpecification() noexcept = 0;
+
+        static std::shared_ptr<EnvironmentBRDFTexture> Create(std::int32_t width = 512, std::int32_t height = 512);
     };
 
     /**

@@ -1,5 +1,6 @@
 #include "CorePCH.hpp"
 #include "GL_Texture.hpp"
+#include "Texture.hpp"
 
 namespace Motion
 {
@@ -604,16 +605,35 @@ namespace Motion
         3, 7, 4
     };
 
+    static std::array<float, 16> s_SimpleQuadVertices =
+    {
+        //Position       //TexCoord
+        -1.0f, -1.0f,   0.0f, 0.0f,
+         1.0f, -1.0f,   1.0f, 0.0f,
+         1.0f,  1.0f,   1.0f, 1.0f,
+        -1.0f,  1.0f,   0.0f, 1.0f,
+    };
 
-    /**
-     * @brief Constructs a GL_EnvironmentIrradianceTexture object with the specified resolution.
-     *
-     * This constructor initializes the vertex buffer, element buffer, and vertex array for rendering a simple cube.
-     * It also sets up the OpenGL texture parameters for an irradiance cube map texture with the given resolution.
-     * The shader for generating the irradiance texture is loaded from the asset manager.
-     *
-     * @param resolution The resolution of the irradiance texture (width and height).
-     */
+    static std::array<std::uint32_t, 6> s_SimpleQuadIndices =
+    {
+        0, 1, 2,   // First triangle
+        2, 3, 0    // Second triangle
+    };
+
+    /******************************************************************************************
+     *                         GL_EnvironmentIrradianceTexture Implementation                 *
+     ******************************************************************************************/
+
+
+     /**
+      * @brief Constructs a GL_EnvironmentIrradianceTexture object with the specified resolution.
+      *
+      * This constructor initializes the vertex buffer, element buffer, and vertex array for rendering a simple cube.
+      * It also sets up the OpenGL texture parameters for an irradiance cube map texture with the given resolution.
+      * The shader for generating the irradiance texture is loaded from the asset manager.
+      *
+      * @param resolution The resolution of the irradiance texture (width and height).
+      */
     GL_EnvironmentIrradianceTexture::GL_EnvironmentIrradianceTexture(std::int32_t resolution)
     {
         m_CubeVBO = BufferFactory::CreateVertexBuffer(s_SimpleCubeVertices.data(), static_cast<std::int32_t>(s_SimpleCubeVertices.size()));
@@ -663,6 +683,29 @@ namespace Motion
         glDeleteTextures(1, &m_Specification.TexID);
     }
 
+    /**
+     * @brief Binds the irradiance texture to the specified binding point.
+     *
+     * This function binds the OpenGL texture represented by this object to the given binding point,
+     * making it active for subsequent rendering operations.
+     *
+     * @param bindingPoint The texture unit or binding point to which the texture should be bound.
+     */
+    void GL_EnvironmentIrradianceTexture::Bind(std::int32_t bindingPoint) const noexcept
+    {
+        glBindTextureUnit(bindingPoint, m_Specification.TexID);
+    }
+
+    /**
+     * @brief Binds the irradiance texture to the current OpenGL context.
+     *
+     * This method makes the irradiance texture specified by m_Specification.TexID
+     * active for subsequent OpenGL operations. It is a no-throw operation.
+     */
+    void GL_EnvironmentIrradianceTexture::Unbind() const noexcept
+    {
+        glBindTextureUnit(0, 0);
+    }
 
     /**
      * @brief Resizes the irradiance cube texture to the specified resolution.
@@ -740,7 +783,6 @@ namespace Motion
         m_IrradianceShader->Unbind();
     }
 
-
     /**
      * @brief Renders the cube faces using the bound vertex array object.
      *
@@ -754,15 +796,18 @@ namespace Motion
         m_CubeVAO->Unbind();
     }
 
+    /******************************************************************************************
+     *                         GL_EnvironmentPrefilteredTexture Implementation                *
+     ******************************************************************************************/
 
-    /**
-     * @brief Constructs a GL_EnvironmentPrefilteredTexture object with the specified resolution.
-     *
-     * This constructor initializes the prefiltered texture with the given resolution, sets its type to EnvironmentPrefilteredTexture,
-     * and generates a cube map texture with the appropriate parameters.
-     *
-     * @param resolution The resolution for both width and height of the prefiltered texture.
-     */
+     /**
+      * @brief Constructs a GL_EnvironmentPrefilteredTexture object with the specified resolution.
+      *
+      * This constructor initializes the prefiltered texture with the given resolution, sets its type to EnvironmentPrefilteredTexture,
+      * and generates a cube map texture with the appropriate parameters.
+      *
+      * @param resolution The resolution for both width and height of the prefiltered texture.
+      */
     GL_EnvironmentPrefilteredTexture::GL_EnvironmentPrefilteredTexture(std::int32_t resolution)
     {
         m_CubeVBO = BufferFactory::CreateVertexBuffer(s_SimpleCubeVertices.data(), static_cast<std::int32_t>(s_SimpleCubeVertices.size()));
@@ -812,6 +857,29 @@ namespace Motion
         glDeleteTextures(1, &m_Specification.TexID);
     }
 
+    /**
+     * @brief Binds the prefiltered texture to the specified binding point.
+     *
+     * This function binds the OpenGL texture represented by this object to the given binding point,
+     * making it active for subsequent rendering operations.
+     *
+     * @param bindingPoint The texture unit or binding point to which the texture should be bound.
+     */
+    void GL_EnvironmentPrefilteredTexture::Bind(std::int32_t bindingPoint) const noexcept
+    {
+        glBindTextureUnit(bindingPoint, m_Specification.TexID);
+    }
+
+    /**
+     * @brief Binds the prefiltered texture to the current OpenGL context.
+     *
+     * This method makes the prefiltered texture specified by m_Specification.TexID
+     * active for subsequent OpenGL operations. It is a no-throw operation.
+     */
+    void GL_EnvironmentPrefilteredTexture::Unbind() const noexcept
+    {
+        glBindTextureUnit(0, 0);
+    }
 
     /**
      * @brief Resizes the prefiltered texture to the specified resolution.
@@ -898,6 +966,165 @@ namespace Motion
         captureFrameBuffer->UnbindRenderBuffer();
         captureFrameBuffer->UnbindFrameBuffer();
         m_PrefilteredShader->Unbind();
+    }
+
+    /******************************************************************************************
+     *                         GL_EnvironmentPrefilteredTexture Implementation                *
+     ******************************************************************************************/
+
+     /**
+      * @brief Constructs a GL_EnvironmentBRDFTexture object with the specified width and height.
+      *
+      * This constructor initializes the OpenGL resources required for generating a BRDF (Bidirectional Reflectance Distribution Function)
+      * environment texture. It sets up the vertex buffer, element buffer, and vertex array for rendering a simple quad, and configures
+      * the texture specification for a generated BRDF texture. The OpenGL texture is created with the specified dimensions and format,
+      * and texture parameters are set for proper sampling. The constructor also retrieves the shader required for BRDF environment rendering.
+      *
+      * @param width  The width of the BRDF texture to be generated.
+      * @param height The height of the BRDF texture to be generated.
+      */
+    GL_EnvironmentBRDFTexture::GL_EnvironmentBRDFTexture(std::int32_t width, std::int32_t height)
+    {
+        m_QuadVBO = BufferFactory::CreateVertexBuffer(s_SimpleQuadVertices.data(), static_cast<std::int32_t>(s_SimpleQuadVertices.size()));
+        m_QuadEBO = BufferFactory::CreateElementBuffer(s_SimpleQuadIndices.data(), static_cast<std::int32_t>(s_SimpleQuadIndices.size()));
+        m_QuadVAO = std::make_shared<GL_VertexArray>();
+
+        BufferLayout layout({ { UniformCache::Position, BufferComponents::XY, BufferStride::F2, false, offsetof(Vertex, Position) },
+                              { UniformCache::TexCoords, BufferComponents::UV, BufferStride::F2, false, offsetof(Vertex, TexCoord) } });
+
+        m_QuadVBO->SetLayout(layout);
+        m_QuadVAO->EmplaceVertexBuffer(m_QuadVBO);
+
+        m_Specification.Width = width;
+        m_Specification.Height = height;
+        m_Specification.Type = TextureType::BRDFTexture;
+        m_Specification.Source = TextureSource::GeneratedTexture;
+        m_Specification.InternalDataFormat = GL_RG16F;
+        m_Specification.TextureDataFormat = GL_RG;
+
+        glGenTextures(1, &m_Specification.TexID);
+        glBindTexture(GL_TEXTURE_2D, m_Specification.TexID);
+        glTexImage2D(GL_TEXTURE_2D, 0, m_Specification.InternalDataFormat, width, height, 0, m_Specification.TextureDataFormat, GL_FLOAT, nullptr);
+
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glBindTexture(GL_TEXTURE_2D, 0);
+
+        auto& assetManager = AssetManager::GetInstance();
+        m_BRDFShader = assetManager.Get<IShader>("EnvironmentBRDF");
+    }
+
+    /**
+     * @brief Destructor for GL_EnvironmentBRDFTexture.
+     *
+     * This destructor cleans up the OpenGL texture resources associated with this BRDF texture.
+     * It deletes the texture ID to ensure no memory leaks occur.
+     */
+    GL_EnvironmentBRDFTexture::~GL_EnvironmentBRDFTexture()
+    {
+        glDeleteTextures(1, &m_Specification.TexID);
+    }
+
+    /**
+     * @brief Binds the BRDF texture to the specified binding point.
+     *
+     * This function binds the OpenGL texture represented by this object to the given binding point,
+     * making it active for subsequent rendering operations.
+     *
+     * @param bindingPoint The texture unit or binding point to which the texture should be bound.
+     */
+    void GL_EnvironmentBRDFTexture::Bind(std::int32_t bindingPoint) const noexcept
+    {
+        glBindTextureUnit(bindingPoint, m_Specification.TexID);
+    }
+
+    /**
+     * @brief Unbinds the BRDF texture from the current OpenGL context.
+     *
+     * This method makes the BRDF texture specified by m_Specification.TexID
+     * inactive for subsequent OpenGL operations. It is a no-throw operation.
+     */
+    void GL_EnvironmentBRDFTexture::Unbind() const noexcept
+    {
+        glBindTextureUnit(0, 0);
+    }
+
+    /**
+     * @brief Resizes the BRDF texture to the specified width and height.
+     *
+     * This function checks if the new dimensions differ from the current ones. If they do, it deletes the existing texture,
+     * generates a new one with the updated dimensions, and sets the appropriate parameters for 2D textures.
+     * If the dimensions are unchanged, it logs a warning and does not perform any operations.
+     *
+     * @param width  The new width for the BRDF texture.
+     * @param height The new height for the BRDF texture.
+     */
+    void GL_EnvironmentBRDFTexture::Resize(std::int32_t width, std::int32_t height)
+    {
+        if (width != m_Specification.Width || height != m_Specification.Height)
+        {
+            m_Specification.Width = width;
+            m_Specification.Height = height;
+
+            glDeleteTextures(1, &m_Specification.TexID);
+            m_Specification.TexID = 0; // Reset TexID to ensure it is recreated
+
+            glGenTextures(1, &m_Specification.TexID);
+            glBindTexture(GL_TEXTURE_2D, m_Specification.TexID);
+            glTexImage2D(GL_TEXTURE_2D, 0, m_Specification.InternalDataFormat, width, height, 0, m_Specification.TextureDataFormat, GL_FLOAT, nullptr);
+
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            glBindTexture(GL_TEXTURE_2D, 0);
+        }
+        else
+        {
+            MOTION_CORE_WARN("BRDF texture resize called with same dimensions: {0}x{1}", width, height);
+            return;
+        }
+    }
+
+    /**
+     * @brief Generates the BRDF texture using the specified capture frame buffer.
+     *
+     * This function binds the capture frame buffer, sets up the BRDF shader, and renders a quad to generate the BRDF texture.
+     * It clears the color and depth buffers before rendering and unbinds the frame buffer after rendering is complete.
+     *
+     * @param captureFrameBuffer The frame buffer used for capturing the rendered BRDF texture.
+     */
+    void GL_EnvironmentBRDFTexture::Generate(const std::shared_ptr<ICaptureFrameBuffer>& captureFrameBuffer)
+    {
+        captureFrameBuffer->ResizeFrame(m_Specification.Width, m_Specification.Height);
+        captureFrameBuffer->BindFrameBuffer();
+
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_Specification.TexID, 0);
+
+        glViewport(0, 0, m_Specification.Width, m_Specification.Height);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+
+        m_BRDFShader->Bind();
+        RenderQuad();
+
+        m_BRDFShader->Unbind();
+        captureFrameBuffer->UnbindFrameBuffer();
+    }
+
+    /**
+     * @brief Renders a quad using the bound vertex array object.
+     *
+     * This function binds the quad vertex array object and issues a draw call to render the quad.
+     * It uses the element buffer object to determine the indices for rendering.
+     */
+    void GL_EnvironmentBRDFTexture::RenderQuad()
+    {
+        m_QuadVAO->Bind();
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+        m_QuadVAO->Unbind();
     }
 
     /**

@@ -56,6 +56,9 @@ namespace Motion
         GL_EnvironmentIrradianceTexture(std::int32_t resolution);
         virtual ~GL_EnvironmentIrradianceTexture();
 
+        virtual void Bind(std::int32_t bindingPoint = 0) const noexcept override;
+        virtual void Unbind() const noexcept override;
+
         virtual void Resize(std::int32_t resolution) override;
         virtual void GenerateIrradiance(std::uint32_t environmentMapID, const std::shared_ptr<ICaptureFrameBuffer>& captureFrameBuffer) override;
 
@@ -80,6 +83,9 @@ namespace Motion
         GL_EnvironmentPrefilteredTexture(std::int32_t resolution);
         virtual ~GL_EnvironmentPrefilteredTexture();
 
+        virtual void Bind(std::int32_t bindingPoint = 0) const noexcept override;
+        virtual void Unbind() const noexcept override;
+
         virtual void Resize(std::int32_t resolution) override;
         virtual void GeneratePrefliteredTexture(std::uint32_t environmentMapID, const std::shared_ptr<ICaptureFrameBuffer>& captureFrameBuffer) override;
 
@@ -96,6 +102,33 @@ namespace Motion
         std::shared_ptr<IVertexArray> m_CubeVAO{ nullptr };
         std::shared_ptr<IVertexBuffer> m_CubeVBO{ nullptr };
         std::shared_ptr<IElementBuffer> m_CubeEBO{ nullptr };
+    };
+
+    class GL_EnvironmentBRDFTexture : public EnvironmentBRDFTexture
+    {
+    public:
+        GL_EnvironmentBRDFTexture(std::int32_t width, std::int32_t height);
+        virtual ~GL_EnvironmentBRDFTexture();
+
+        virtual void Bind(std::int32_t bindingPoint = 0) const noexcept override;
+        virtual void Unbind() const noexcept override;
+
+        virtual void Resize(std::int32_t width, std::int32_t height) override;
+        virtual void Generate(const std::shared_ptr<ICaptureFrameBuffer>& captureFrameBuffer) override;
+
+        [[nodiscard]] virtual TextureID GetID() const noexcept override { return m_Specification.TexID; }
+        [[nodiscard]] virtual TextureSpecification& GetSpecification() noexcept override { return m_Specification; }
+
+    private:
+        void RenderQuad();
+
+    private:
+        TextureSpecification m_Specification{};
+        std::shared_ptr<IShader> m_BRDFShader{ nullptr };
+
+        std::shared_ptr<IVertexArray> m_QuadVAO{ nullptr };
+        std::shared_ptr<IVertexBuffer> m_QuadVBO{ nullptr };
+        std::shared_ptr<IElementBuffer> m_QuadEBO{ nullptr };
     };
 
 

@@ -168,5 +168,89 @@ namespace Motion
             return nullptr;
         }
     }
+
+
+    /**
+     * @brief Creates an environment irradiance texture with the specified resolution.
+     *
+     * This function constructs a shared pointer to an EnvironmentIrradianceTexture object based on the current rendering API.
+     * It allows for the creation of irradiance textures used in environment mapping.
+     *
+     * @param resolution The resolution of the irradiance texture (default is 512).
+     * @return std::shared_ptr<EnvironmentIrradianceTexture> A shared pointer to the created EnvironmentIrradianceTexture object.
+     */
+    std::shared_ptr<EnvironmentIrradianceTexture> EnvironmentIrradianceTexture::Create(std::int32_t resolution)
+    {
+        switch (Renderer::GetAPI())
+        {
+        case RenderingAPI::OpenGL:
+            return std::make_shared<GL_EnvironmentIrradianceTexture>(resolution);
+        case RenderingAPI::Vulkan:
+            MOTION_ASSERT(false, "Vulkan API is not yet implemented for environment irradiance textures.");
+            return nullptr;
+        case RenderingAPI::DirectX:
+            MOTION_ASSERT(false, "DirectX API is not yet implemented for environment irradiance textures.");
+            return nullptr;
+        default:
+            MOTION_ASSERT(false, "Unknown rendering API.");
+            return nullptr;
+        }
+    }
+
+    /**
+     * @brief Creates an environment prefiltered texture with the specified resolution.
+     *
+     * This function constructs a shared pointer to an EnvironmentPrefilteredTexture object based on the current rendering API.
+     * It allows for the creation of prefiltered textures used in environment mapping.
+     *
+     * @param resolution The resolution of the prefiltered texture (default is 512).
+     * @return std::shared_ptr<EnvironmentPrefilteredTexture> A shared pointer to the created EnvironmentPrefilteredTexture object.
+     */
+    std::shared_ptr<EnvironmentPrefilteredTexture> EnvironmentPrefilteredTexture::Create(std::int32_t resolution)
+    {
+        switch (Renderer::GetAPI())
+        {
+        case RenderingAPI::OpenGL:
+            return std::make_shared<GL_EnvironmentPrefilteredTexture>(resolution);
+        case RenderingAPI::Vulkan:
+            MOTION_ASSERT(false, "Vulkan API is not yet implemented for environment prefiltered textures.");
+            return nullptr;
+        case RenderingAPI::DirectX:
+            MOTION_ASSERT(false, "DirectX API is not yet implemented for environment prefiltered textures.");
+            return nullptr;
+        default:
+            MOTION_ASSERT(false, "Unknown rendering API.");
+            return nullptr;
+        }
+    }
+
+    /**
+     * @brief Creates an environment BRDF texture with the specified width and height.
+     *
+     * This function constructs a shared pointer to an EnvironmentBRDFTexture object based on the current rendering API.
+     * It allows for the creation of BRDF textures used in physically based rendering.
+     *
+     * @param width The width of the BRDF texture (default is 512).
+     * @param height The height of the BRDF texture (default is 512).
+     * @return std::shared_ptr<EnvironmentBRDFTexture> A shared pointer to the created EnvironmentBRDFTexture object.
+     */
+    std::shared_ptr<EnvironmentBRDFTexture> EnvironmentBRDFTexture::Create(std::int32_t width, std::int32_t height)
+    {
+        switch (Renderer::GetAPI())
+        {
+        case RenderingAPI::OpenGL:
+            return std::make_shared<GL_EnvironmentBRDFTexture>(width, height);
+        case RenderingAPI::Vulkan:
+            MOTION_ASSERT(false, "Vulkan API is not yet implemented for environment BRDF textures.");
+            return nullptr;
+        case RenderingAPI::DirectX:
+            MOTION_ASSERT(false, "DirectX API is not yet implemented for environment BRDF textures.");
+            return nullptr;
+        default:
+            MOTION_ASSERT(false, "Unknown rendering API.");
+            return nullptr;
+        }
+    }
+
 }
 

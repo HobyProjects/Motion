@@ -192,6 +192,7 @@
         "ENULL",
         "FILEMUSTEXIST",
         "Floatv",
+        "fract",
         "GLAPIENTRY",
         "GLFW",
         "GLTF",
@@ -237,6 +238,7 @@
         "skybox",
         "stbi",
         "STBIR",
+        "verts",
         "xyww"
     ]
 }

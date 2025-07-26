@@ -17,7 +17,8 @@ namespace Motion
         UUID MeshID{ 0 };
 
         glm::mat4 ModelMatrix{ 1.0f };
-        glm::mat4 ViewProjectionMatrix{ 1.0f };
+        glm::mat4 ViewMatrix{ 1.0f };
+        glm::mat4 ProjectionMatrix{ 1.0f };
 
         glm::vec3 CameraPosition{ 0.0f, 0.0f, 0.0f };
         glm::vec3 LightPosition{ 0.0f, 0.0f, 0.0f };

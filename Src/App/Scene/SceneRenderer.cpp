@@ -91,7 +91,8 @@ namespace Motion
                     command.ModelMatrix = glm::mat4(1.0f);
                 }
 
-                command.ViewProjectionMatrix = scene->m_SceneCamera->SceneViewCamera.MVP;
+                command.ViewMatrix = scene->m_SceneCamera->SceneViewCamera.View;
+                command.ProjectionMatrix = scene->m_SceneCamera->SceneViewCamera.Projection;
                 command.CameraPosition = scene->m_SceneCamera->SceneViewCamera.Position;
                 command.LightPosition = scene->m_Environment.DirectionalLight.Direction;
                 command.LightColor = scene->m_Environment.DirectionalLight.Color;
@@ -126,22 +127,37 @@ namespace Motion
             std::shared_ptr<Mesh> mesh = assetManager.Get<Mesh>(command.MeshID);
 
             shader->Bind();
+
+            std::shared_ptr<ICubeTexture> environmentTexture = SkyBox::GetTexture();
+            std::shared_ptr<EnvironmentIrradianceTexture> irradianceTexture = SkyBox::GetIrradianceTexture();
+            std::shared_ptr<EnvironmentPrefilteredTexture> prefilteredTexture = SkyBox::GetPrefilteredTexture();
+            std::shared_ptr<EnvironmentBRDFTexture> brdfTexture = SkyBox::GetBRDFTexture();
+
+            if (environmentTexture && irradianceTexture && prefilteredTexture && brdfTexture)
+            {
+                std::int32_t bindingPoint = TextureBinding::Point();
+
+                irradianceTexture->Bind(bindingPoint);
+                shader->SetUniform(UniformCache::IrradianceTextures, bindingPoint);
+
+                bindingPoint = TextureBinding::Point();
+                prefilteredTexture->Bind(bindingPoint);
+                shader->SetUniform(UniformCache::PrefilteredTextures, bindingPoint);
+
+                bindingPoint = TextureBinding::Point();
+                brdfTexture->Bind(bindingPoint);
+                shader->SetUniform(UniformCache::BRDFLUT, bindingPoint);
+            }
+
             shader->SetUniform(UniformCache::ModelMatrix, command.ModelMatrix);
-            shader->SetUniform(UniformCache::ViewProjMatrix, command.ViewProjectionMatrix);
+            shader->SetUniform(UniformCache::ViewMatrix, command.ViewMatrix);
+            shader->SetUniform(UniformCache::ProjectionMatrix, command.ProjectionMatrix);
             shader->SetUniform(UniformCache::CameraPosition, command.CameraPosition);
             shader->SetUniform(UniformCache::LightPosition, command.LightPosition);
             shader->SetUniform(UniformCache::LightColor, command.LightColor);
             shader->SetUniform(UniformCache::LightIntensity, command.LightIntensity);
 
             material->Bind();
-
-            std::shared_ptr<ICubeTexture> environmentTexture = SkyBox::GetTexture();
-            if (environmentTexture)
-            {
-                std::int32_t bindingPoint = TextureBinding::Point();
-                environmentTexture->Bind(bindingPoint);
-                shader->SetUniform(UniformCache::EnvironmentTexture, bindingPoint);
-            }
 
             mesh->Render();
 

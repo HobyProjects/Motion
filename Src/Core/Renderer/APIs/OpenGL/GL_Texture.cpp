@@ -968,6 +968,19 @@ namespace Motion
         m_PrefilteredShader->Unbind();
     }
 
+    /**
+     * @brief Renders the cube faces using the bound vertex array object.
+     *
+     * This function binds the cube vertex array object and issues a draw call to render the cube faces.
+     * It uses the element buffer object to determine the indices for rendering.
+     */
+    void GL_EnvironmentPrefilteredTexture::RenderCube()
+    {
+        m_CubeVAO->Bind();
+        glDrawElements(GL_TRIANGLES, m_CubeEBO->GetElementCount(), GL_UNSIGNED_INT, nullptr);
+        m_CubeVAO->Unbind();
+    }
+
     /******************************************************************************************
      *                         GL_EnvironmentPrefilteredTexture Implementation                *
      ******************************************************************************************/
@@ -987,13 +1000,20 @@ namespace Motion
     {
         m_QuadVBO = BufferFactory::CreateVertexBuffer(s_SimpleQuadVertices.data(), static_cast<std::int32_t>(s_SimpleQuadVertices.size()));
         m_QuadEBO = BufferFactory::CreateElementBuffer(s_SimpleQuadIndices.data(), static_cast<std::int32_t>(s_SimpleQuadIndices.size()));
-        m_QuadVAO = std::make_shared<GL_VertexArray>();
+        m_QuadVAO = ArrayFactory::CreateVertexArray();
 
-        BufferLayout layout({ { UniformCache::Position, BufferComponents::XY, BufferStride::F2, false, offsetof(Vertex, Position) },
-                              { UniformCache::TexCoords, BufferComponents::UV, BufferStride::F2, false, offsetof(Vertex, TexCoord) } });
+        struct QuadVertex
+        {
+            glm::vec2 Position; // Position in 2D space
+            glm::vec2 TexCoord; // Texture coordinates
+        };
+
+        BufferLayout layout({ { UniformCache::Position, BufferComponents::XY, BufferStride::F2, false, offsetof(QuadVertex, Position) },
+                              { UniformCache::TexCoords, BufferComponents::UV, BufferStride::F2, false, offsetof(QuadVertex, TexCoord) } });
 
         m_QuadVBO->SetLayout(layout);
         m_QuadVAO->EmplaceVertexBuffer(m_QuadVBO);
+        m_QuadVAO->EmplaceIndexBuffer(m_QuadEBO);
 
         m_Specification.Width = width;
         m_Specification.Height = height;
@@ -1106,11 +1126,10 @@ namespace Motion
         glViewport(0, 0, m_Specification.Width, m_Specification.Height);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-
         m_BRDFShader->Bind();
         RenderQuad();
-
         m_BRDFShader->Unbind();
+
         captureFrameBuffer->UnbindFrameBuffer();
     }
 

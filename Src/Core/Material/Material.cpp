@@ -100,7 +100,6 @@ namespace Motion
         bindTex(UniformCache::RoughnessTextures);
         bindTex(UniformCache::AmbientOcclusionTextures);
         bindTex(UniformCache::MetallicTextures);
-        bindTex(UniformCache::DisplacementTextures);
     }
 
     void Material::Unbind()
@@ -155,7 +154,6 @@ namespace Motion
         bindTex(UniformCache::RoughnessTextures);
         bindTex(UniformCache::AmbientOcclusionTextures);
         bindTex(UniformCache::MetallicTextures);
-        bindTex(UniformCache::DisplacementTextures);
     }
 
     void MaterialInstance::Unbind()

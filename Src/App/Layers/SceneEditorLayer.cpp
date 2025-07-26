@@ -15,7 +15,10 @@ namespace Motion
     {
         //TEMP
         auto& assetManager = AssetManager::GetInstance();
-        assetManager.Create<IShader>("SkyBoxShader", "Assets/Shaders/SkyBoxShader.glsl");
+        assetManager.Create<IShader>("Environment", "Assets/Shaders/Environment.glsl");
+        assetManager.Create<IShader>("EnvironmentIrradiance", "Assets/Shaders/EnvironmentIrradiance.glsl");
+        assetManager.Create<IShader>("EnvironmentPrefiltered", "Assets/Shaders/EnvironmentPrefiltered.glsl");
+        assetManager.Create<IShader>("EnvironmentBRDF", "Assets/Shaders/EnvironmentBRDF.glsl");
         assetManager.Create<IShader>("PBR", "Assets/Shaders/PBR.glsl");
         SkyBox::Init();
 
@@ -59,14 +62,17 @@ namespace Motion
 
 
         m_Framebuffer->Bind();
+
         Renderer::ClearColor({ 0.243, 0.243, 0.243, 1.0f });
         Renderer::Clear();
+
         SceneRenderer::BeginScene();
+
         SkyBox::Render(m_ActiveScene->GetViewMatrix(), m_ActiveScene->GetProjectionMatrix());
         SceneRenderer::Submit(m_ActiveScene.get());
+
         SceneRenderer::EndScene();
         m_Framebuffer->Unbind();
-
         m_SceneTextures[m_ActiveScene] = m_Framebuffer->GetAttachment(FrameBufferColorAttachmentStandards::Standard).ID;
     }
 

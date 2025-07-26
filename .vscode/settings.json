@@ -176,6 +176,7 @@
         "Blits",
         "blitting",
         "BRDF",
+        "BRDFLUT",
         "CLEARCOAT",
         "cubemap",
         "cubemaps",
@@ -238,6 +239,7 @@
         "skybox",
         "stbi",
         "STBIR",
+        "tonemapping",
         "verts",
         "xyww"
     ]

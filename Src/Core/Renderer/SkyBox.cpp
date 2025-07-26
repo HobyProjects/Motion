@@ -1,4 +1,5 @@
 #include "CorePCH.hpp"
+#include "SkyBox.hpp"
 
 namespace Motion
 {
@@ -8,6 +9,12 @@ namespace Motion
     static std::shared_ptr<IVertexArray> s_SkyBoxVAO = nullptr;
     static std::shared_ptr<IVertexBuffer> s_SkyBoxVBO = nullptr;
     static std::shared_ptr<IElementBuffer> s_SkyBoxEBO = nullptr;
+
+    static std::shared_ptr<EnvironmentIrradianceTexture> s_IrradianceTexture = nullptr;
+    static std::shared_ptr<EnvironmentPrefilteredTexture> s_PrefilteredTexture = nullptr;
+    static std::shared_ptr<EnvironmentBRDFTexture> s_BRDFTexture = nullptr;
+    static std::shared_ptr<ICaptureFrameBuffer> s_CaptureFrameBuffer = nullptr;
+    static constexpr std::int32_t CAPTURE_RESOLUTION = 512;
 
     /**
      * @brief Initializes the SkyBox by loading the cube map texture and shader.
@@ -26,10 +33,10 @@ namespace Motion
             return;
         }
 
-        s_SkyBoxShader = assetManager.Get<IShader>("SkyBoxShader");
+        s_SkyBoxShader = assetManager.Get<IShader>("Environment");
         if (!s_SkyBoxShader)
         {
-            MOTION_CORE_ERROR("Failed to retrieve SkyBoxShader");
+            MOTION_CORE_ERROR("Failed to retrieve Environment");
             return;
         }
 
@@ -78,6 +85,21 @@ namespace Motion
         s_SkyBoxVBO->SetLayout(layout);
         s_SkyBoxVAO->EmplaceVertexBuffer(s_SkyBoxVBO);
         s_SkyBoxVAO->EmplaceIndexBuffer(s_SkyBoxEBO);
+
+        s_IrradianceTexture = EnvironmentIrradianceTexture::Create(CAPTURE_RESOLUTION);
+        s_PrefilteredTexture = EnvironmentPrefilteredTexture::Create(CAPTURE_RESOLUTION);
+        s_BRDFTexture = EnvironmentBRDFTexture::Create(CAPTURE_RESOLUTION, CAPTURE_RESOLUTION);
+        s_CaptureFrameBuffer = BufferFactory::CreateCaptureFrameBuffer(CAPTURE_RESOLUTION, CAPTURE_RESOLUTION);
+
+        if (!s_IrradianceTexture || !s_PrefilteredTexture || !s_BRDFTexture || !s_CaptureFrameBuffer)
+        {
+            MOTION_CORE_ERROR("Failed to create environment textures or capture frame buffer for SkyBox");
+            return;
+        }
+
+        s_IrradianceTexture->GenerateIrradiance(s_SkyBoxCubeTexture->GetID(), s_CaptureFrameBuffer);
+        s_PrefilteredTexture->GeneratePrefliteredTexture(s_SkyBoxCubeTexture->GetID(), s_CaptureFrameBuffer);
+        s_BRDFTexture->Generate(s_CaptureFrameBuffer);
     }
 
     /**
@@ -106,9 +128,9 @@ namespace Motion
         s_SkyBoxShader->SetUniform(UniformCache::ViewMatrix, view);
         s_SkyBoxShader->SetUniform(UniformCache::ProjectionMatrix, projection);
 
-        std::int32_t bindingPoint = TextureBinding::Point();
-        s_SkyBoxCubeTexture->Bind(bindingPoint);
-        s_SkyBoxShader->SetUniform(UniformCache::SkyboxTexture, bindingPoint);
+        std::int32_t skyBoxBindingPoint = TextureBinding::Point();
+        s_SkyBoxCubeTexture->Bind(skyBoxBindingPoint);
+        s_SkyBoxShader->SetUniform(UniformCache::EnvironmentTexture, skyBoxBindingPoint);
 
         s_SkyBoxVAO->Bind();
         Renderer::DrawIndexed(s_SkyBoxEBO->GetElementCount());
@@ -132,4 +154,42 @@ namespace Motion
         return s_SkyBoxCubeTexture;
     }
 
+    /**
+     * @brief Retrieves the environment irradiance texture used for the SkyBox.
+     *
+     * This function returns the shared pointer to the environment irradiance texture,
+     * which is used for lighting calculations in the SkyBox rendering.
+     *
+     * @return std::shared_ptr<EnvironmentIrradianceTexture> The environment irradiance texture.
+     */
+    std::shared_ptr<EnvironmentIrradianceTexture> SkyBox::GetIrradianceTexture() noexcept
+    {
+        return s_IrradianceTexture;
+    }
+
+    /**
+     * @brief Retrieves the prefiltered environment texture used for the SkyBox.
+     *
+     * This function returns the shared pointer to the prefiltered environment texture,
+     * which is used for reflections in the SkyBox rendering.
+     *
+     * @return std::shared_ptr<EnvironmentPrefilteredTexture> The prefiltered environment texture.
+     */
+    std::shared_ptr<EnvironmentPrefilteredTexture> SkyBox::GetPrefilteredTexture() noexcept
+    {
+        return s_PrefilteredTexture;
+    }
+
+    /**
+     * @brief Retrieves the BRDF texture used for the SkyBox.
+     *
+     * This function returns the shared pointer to the BRDF texture,
+     * which is used for calculating the bidirectional reflectance distribution function in the SkyBox rendering.
+     *
+     * @return std::shared_ptr<EnvironmentBRDFTexture> The BRDF texture.
+     */
+    std::shared_ptr<EnvironmentBRDFTexture> SkyBox::GetBRDFTexture() noexcept
+    {
+        return s_BRDFTexture;
+    }
 }

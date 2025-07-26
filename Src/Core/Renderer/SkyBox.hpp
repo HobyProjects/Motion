@@ -22,5 +22,8 @@ namespace Motion
         static void Render(const glm::mat4& viewMatrix, const glm::mat4& projectionMatrix) noexcept;
 
         [[nodiscard]] static std::shared_ptr<ICubeTexture> GetTexture() noexcept;
+        [[nodiscard]] static std::shared_ptr<EnvironmentIrradianceTexture> GetIrradianceTexture() noexcept;
+        [[nodiscard]] static std::shared_ptr<EnvironmentPrefilteredTexture> GetPrefilteredTexture() noexcept;
+        [[nodiscard]] static std::shared_ptr<EnvironmentBRDFTexture> GetBRDFTexture() noexcept;
     };
 }

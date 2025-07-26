@@ -45,6 +45,7 @@ namespace Motion
         inline static constexpr std::string_view ViewMatrix = "u_ViewMatrix";
         inline static constexpr std::string_view ProjectionMatrix = "u_ProjectionMatrix";
         inline static constexpr std::string_view ModelMatrix = "u_ModelMatrix";
+
         inline static constexpr std::string_view CameraPosition = "u_CameraPosition";
         inline static constexpr std::string_view LightPosition = "u_LightPosition";
         inline static constexpr std::string_view LightColor = "u_LightColor";
@@ -56,8 +57,12 @@ namespace Motion
         inline static constexpr std::string_view AmbientOcclusionTextures = "u_AmbientOcclusionTextures";
         inline static constexpr std::string_view DisplacementTextures = "u_DisplacementTextures";
         inline static constexpr std::string_view NormalTextures = "u_NormalTextures";
+
         inline static constexpr std::string_view EnvironmentTexture = "u_EnvironmentTexture";
         inline static constexpr std::string_view PrefilteredRoughness = "u_PrefilteredRoughness";
+        inline static constexpr std::string_view IrradianceTextures = "u_IrradianceTextures";
+        inline static constexpr std::string_view PrefilteredTextures = "u_PrefilteredTextures";
+        inline static constexpr std::string_view BRDFLUT = "u_BRDFLUT";
 
     };
 

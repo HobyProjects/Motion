@@ -100,6 +100,7 @@ namespace Motion
         s_IrradianceTexture->GenerateIrradiance(s_SkyBoxCubeTexture->GetID(), s_CaptureFrameBuffer);
         s_PrefilteredTexture->GeneratePrefliteredTexture(s_SkyBoxCubeTexture->GetID(), s_CaptureFrameBuffer);
         s_BRDFTexture->Generate(s_CaptureFrameBuffer);
+        TextureBinding::Reset();
     }
 
     /**

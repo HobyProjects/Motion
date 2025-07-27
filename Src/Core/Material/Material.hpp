@@ -40,6 +40,8 @@ namespace Motion
         void Bind();
         void Unbind();
 
+        [[nodiscard]] std::int32_t GetTexturesCount() const noexcept { return Texture.size(); }
+
     public:
         std::unordered_map<std::string_view, std::shared_ptr<ITexture>> Texture{};
         MaterialAttributes Attributes{ };
@@ -58,6 +60,8 @@ namespace Motion
 
         void Bind();
         void Unbind();
+
+        [[nodiscard]] std::int32_t GetTexturesCount() const noexcept { return Texture.size() + (BaseMaterial ? BaseMaterial->Texture.size() : 0); }
 
     public:
         std::shared_ptr<Material> BaseMaterial{ nullptr };

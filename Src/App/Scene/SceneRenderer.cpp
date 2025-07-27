@@ -22,6 +22,128 @@ namespace Motion
     }
 
     /**
+     * @brief Flushes the accumulated draw commands by sorting and executing them.
+     *
+     * This method sorts the draw commands based on their sort key, material ID, and mesh ID,
+     * then iterates through the sorted commands to render each mesh with its associated material.
+     * It uses the AssetManager to retrieve the necessary shader, material, and mesh resources for rendering.
+     */
+    static void FlushQueue() noexcept
+    {
+        if (s_CommandQueue.empty())
+            return;
+
+        std::sort(s_CommandQueue.begin(), s_CommandQueue.end(), [](const SceneDrawCommand& a, const SceneDrawCommand& b) { return a < b; });
+
+        AssetManager& assetManager = AssetManager::GetInstance();
+
+        std::shared_ptr<IShader> currentShader = nullptr;
+        std::shared_ptr<MaterialInstance> currentMaterial = nullptr;
+        std::shared_ptr<Mesh> currentMesh = nullptr;
+
+        std::int32_t TextureBindingPoint = 0;
+        const std::int32_t MAX_TEXTURE_SLOTS = Renderer::GetMaxTextureSlots();
+
+        std::shared_ptr<EnvironmentIrradianceTexture> irradianceTexture = SkyBox::GetIrradianceTexture();
+        std::shared_ptr<EnvironmentPrefilteredTexture> prefilteredTexture = SkyBox::GetPrefilteredTexture();
+        std::shared_ptr<EnvironmentBRDFTexture> brdfTexture = SkyBox::GetBRDFTexture();
+
+        for (const auto& command : s_CommandQueue)
+        {
+            auto shader = assetManager.Get<IShader>("PBR");
+            auto material = assetManager.Get<MaterialInstance>(command.MaterialID);
+            auto mesh = assetManager.Get<Mesh>(command.MeshID);
+
+            if (!shader || !material || !mesh) continue;
+
+            std::int32_t requiredTextureSlots = material->GetTexturesCount() + 4; //< Fore Environment Textures and SkyBox Textures
+            if (TextureBindingPoint + requiredTextureSlots > MAX_TEXTURE_SLOTS)
+            {
+                if (currentShader) currentShader->Unbind();
+                if (currentMaterial) currentMaterial->Unbind();
+                if (currentMesh) currentMesh->Unbind();
+                currentMaterial = nullptr;
+                currentMesh = nullptr;
+                currentShader = nullptr;
+                TextureBindingPoint = 0; // Reset texture binding point
+            }
+
+            if (shader != currentShader)
+            {
+                if (currentShader) currentShader->Unbind();
+                currentShader = shader;
+                currentShader->Bind();
+
+                irradianceTexture->Bind(TextureBindingPoint);
+                currentShader->SetUniform(UniformCache::IrradianceTextures, TextureBindingPoint++);
+
+                prefilteredTexture->Bind(TextureBindingPoint);
+                currentShader->SetUniform(UniformCache::PrefilteredTextures, TextureBindingPoint++);
+
+                brdfTexture->Bind(TextureBindingPoint);
+                currentShader->SetUniform(UniformCache::BRDFLUT, TextureBindingPoint++);
+
+                currentShader->SetUniform(UniformCache::ViewMatrix, command.ViewMatrix);
+                currentShader->SetUniform(UniformCache::ProjectionMatrix, command.ProjectionMatrix);
+                currentShader->SetUniform(UniformCache::ModelMatrix, command.ModelMatrix);
+                currentShader->SetUniform(UniformCache::NormalMatrix, glm::transpose(glm::inverse(glm::mat3(command.ModelMatrix))));
+
+                currentShader->SetUniform(UniformCache::CameraPosition, command.CameraPosition);
+                currentShader->SetUniform(UniformCache::LightPosition, command.LightPosition);
+                currentShader->SetUniform(UniformCache::LightColor, command.LightColor);
+                currentShader->SetUniform(UniformCache::LightIntensity, command.LightIntensity);
+            }
+
+            if (material != currentMaterial)
+            {
+                if (currentMaterial) currentMaterial->Unbind();
+                currentMaterial = material;
+
+                auto bindTexture =
+                    [&](const std::string_view name, const std::shared_ptr<MaterialInstance>& material)
+                    {
+                        if (material->Texture.contains(name) && material->Texture.at(name) != nullptr)
+                        {
+                            material->Texture.at(name)->Bind(TextureBindingPoint);
+                            currentShader->SetUniform(name, TextureBindingPoint++);
+                        }
+                        else
+                        {
+                            material->BaseMaterial->Texture.at(name)->Bind(TextureBindingPoint);
+                            currentShader->SetUniform(name, TextureBindingPoint++);
+                        }
+                    };
+
+                bindTexture(UniformCache::BaseColorTextures, currentMaterial);
+                bindTexture(UniformCache::MetallicTextures, currentMaterial);
+                bindTexture(UniformCache::RoughnessTextures, currentMaterial);
+                bindTexture(UniformCache::AmbientOcclusionTextures, currentMaterial);
+                bindTexture(UniformCache::NormalTextures, currentMaterial);
+
+                currentMaterial->Bind();
+            }
+
+            if (mesh != currentMesh)
+            {
+                if (currentMesh) currentMesh->Unbind();
+                currentMesh = mesh;
+
+                currentMesh->Bind();
+                currentMesh->Render();
+                s_DrawCallsCount++;
+            }
+        }
+
+        if (currentMesh) currentMesh->Unbind();
+        if (currentMaterial) currentMaterial->Unbind();
+        if (currentShader) currentShader->Unbind();
+
+        s_CommandQueue.clear();
+        s_DrawCallsCount = 0;
+    }
+
+
+    /**
      * @brief Submits draw commands for all valid mesh entities in the given scene.
      *
      * Iterates through all entities in the provided scene, checking for the presence of a MeshComponent
@@ -104,6 +226,7 @@ namespace Motion
     }
 
 
+
     /**
      * @brief Ends the current scene rendering by sorting and executing the draw commands.
      *
@@ -116,54 +239,6 @@ namespace Motion
         if (s_CommandQueue.empty())
             return;
 
-        std::sort(s_CommandQueue.begin(), s_CommandQueue.end(), [](const SceneDrawCommand& a, const SceneDrawCommand& b) { return a < b; });
-
-        AssetManager& assetManager = AssetManager::GetInstance();
-        std::shared_ptr<IShader> shader = assetManager.Get<IShader>("PBR");
-
-        for (const auto& command : s_CommandQueue)
-        {
-            std::shared_ptr<MaterialInstance> material = assetManager.Get<MaterialInstance>(command.MaterialID);
-            std::shared_ptr<Mesh> mesh = assetManager.Get<Mesh>(command.MeshID);
-
-            shader->Bind();
-
-            std::shared_ptr<ICubeTexture> environmentTexture = SkyBox::GetTexture();
-            std::shared_ptr<EnvironmentIrradianceTexture> irradianceTexture = SkyBox::GetIrradianceTexture();
-            std::shared_ptr<EnvironmentPrefilteredTexture> prefilteredTexture = SkyBox::GetPrefilteredTexture();
-            std::shared_ptr<EnvironmentBRDFTexture> brdfTexture = SkyBox::GetBRDFTexture();
-
-            if (environmentTexture && irradianceTexture && prefilteredTexture && brdfTexture)
-            {
-                std::int32_t bindingPoint = TextureBinding::Point();
-
-                irradianceTexture->Bind(bindingPoint);
-                shader->SetUniform(UniformCache::IrradianceTextures, bindingPoint);
-
-                bindingPoint = TextureBinding::Point();
-                prefilteredTexture->Bind(bindingPoint);
-                shader->SetUniform(UniformCache::PrefilteredTextures, bindingPoint);
-
-                bindingPoint = TextureBinding::Point();
-                brdfTexture->Bind(bindingPoint);
-                shader->SetUniform(UniformCache::BRDFLUT, bindingPoint);
-            }
-
-            shader->SetUniform(UniformCache::ModelMatrix, command.ModelMatrix);
-            shader->SetUniform(UniformCache::ViewMatrix, command.ViewMatrix);
-            shader->SetUniform(UniformCache::ProjectionMatrix, command.ProjectionMatrix);
-            shader->SetUniform(UniformCache::CameraPosition, command.CameraPosition);
-            shader->SetUniform(UniformCache::LightPosition, command.LightPosition);
-            shader->SetUniform(UniformCache::LightColor, command.LightColor);
-            shader->SetUniform(UniformCache::LightIntensity, command.LightIntensity);
-
-            material->Bind();
-
-            mesh->Render();
-
-            material->Unbind();
-            shader->Unbind();
-            s_DrawCallsCount++;
-        }
+        FlushQueue();
     }
 }

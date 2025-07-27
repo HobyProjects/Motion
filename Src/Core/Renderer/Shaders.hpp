@@ -45,6 +45,7 @@ namespace Motion
         inline static constexpr std::string_view ViewMatrix = "u_ViewMatrix";
         inline static constexpr std::string_view ProjectionMatrix = "u_ProjectionMatrix";
         inline static constexpr std::string_view ModelMatrix = "u_ModelMatrix";
+        inline static constexpr std::string_view NormalMatrix = "u_NormalMatrix";
 
         inline static constexpr std::string_view CameraPosition = "u_CameraPosition";
         inline static constexpr std::string_view LightPosition = "u_LightPosition";

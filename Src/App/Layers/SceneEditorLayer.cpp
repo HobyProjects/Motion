@@ -22,10 +22,7 @@ namespace Motion
         assetManager.Create<IShader>("PBR", "Assets/Shaders/PBR.glsl");
         SkyBox::Init();
 
-        MaterialImporter::ImportMaterial("Assets/Materials/Metal/M49A/M49A.yaml");
-        MaterialImporter::ImportMaterial("Assets/Materials/Metal/M50A/M50A.yaml");
-        MaterialImporter::ImportMaterial("Assets/Materials/Metal/M53A/M53A.yaml");
-        MaterialImporter::ImportMaterial("Assets/Materials/Metal/M53C/M53C.yaml");
+        MaterialImporter::ImportMaterial("Assets/Materials/Base/Base.yaml");
 
         m_Viewport.FrameSpec.Name = "SceneEditorFrame";
         m_Viewport.FrameSpec.Width = static_cast<uint32_t>(m_ViewportWidth);

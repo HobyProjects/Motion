@@ -80,33 +80,12 @@ namespace Motion
 
     void Material::Bind()
     {
-        //[TODO]: Implement a way check if shader is bind befor material binding
-
         UniformBuffer->Bind();
         UniformBuffer->SetRawBufferData(MATERIAL_ATTRIBUTES_SIZE, &Attributes);
-
-        auto bindTex = [&](const std::string_view& name) {
-            auto it = Texture.find(name);
-            if (it != Texture.end())
-            {
-                std::int32_t slot = TextureBinding::Point();
-                it->second->Bind(slot);
-                Shader->SetUniform(name, slot);
-            }
-            };
-
-        bindTex(UniformCache::BaseColorTextures);
-        bindTex(UniformCache::NormalTextures);
-        bindTex(UniformCache::RoughnessTextures);
-        bindTex(UniformCache::AmbientOcclusionTextures);
-        bindTex(UniformCache::MetallicTextures);
     }
 
     void Material::Unbind()
     {
-        for (const auto& [name, texture] : Texture)
-            texture->Unbind();
-
         UniformBuffer->Unbind();
     }
 
@@ -122,45 +101,10 @@ namespace Motion
     {
         UniformBuffer->Bind();
         UniformBuffer->SetRawBufferData(MATERIAL_ATTRIBUTES_SIZE, &Attributes);
-
-        auto bindTex =
-            [&](const std::string_view& name)
-            {
-                auto it = Texture.find(name);
-                if (it != Texture.end())
-                {
-                    std::int32_t slot = TextureBinding::Point();
-                    it->second->Bind(slot);
-                    Shader->SetUniform(name, slot);
-                }
-                else
-                {
-                    // If the texture is not found, bind the base material's texture if available
-                    if (BaseMaterial && BaseMaterial->Texture.contains(name))
-                    {
-                        std::int32_t slot = TextureBinding::Point();
-                        BaseMaterial->Texture.at(name)->Bind(slot);
-                        Shader->SetUniform(name, slot);
-                    }
-                    else
-                    {
-                        MOTION_CORE_WARN("Texture '{}' not found in MaterialInstance '{}'", name, GetName());
-                    }
-                }
-            };
-
-        bindTex(UniformCache::BaseColorTextures);
-        bindTex(UniformCache::NormalTextures);
-        bindTex(UniformCache::RoughnessTextures);
-        bindTex(UniformCache::AmbientOcclusionTextures);
-        bindTex(UniformCache::MetallicTextures);
     }
 
     void MaterialInstance::Unbind()
     {
-        for (const auto& [name, texture] : Texture)
-            texture->Unbind();
-
         UniformBuffer->Unbind();
     }
 

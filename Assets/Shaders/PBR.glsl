@@ -10,26 +10,19 @@ layout(location = 4) in vec3 a_Bitangents;
 out vec3 v_WorldPosition;
 out vec2 v_UV;
 out vec3 v_Normal;
-out mat3 v_TBN;
 
 uniform mat4 u_ModelMatrix;
 uniform mat4 u_ViewMatrix;
 uniform mat4 u_ProjectionMatrix;
+uniform mat3 u_NormalMatrix;
 
 void main()
 {
-    mat3 normalMatrix = mat3(u_ModelMatrix);
-
-    vec3 T = normalize(normalMatrix * a_Tangents);
-    vec3 B = normalize(normalMatrix * a_Bitangents);
-    vec3 N = normalize(normalMatrix * a_Normals);
-    v_TBN = mat3(T, B, N);
-
-    v_WorldPosition = vec3(u_ModelMatrix * vec4(a_Position, 1.0));
-    v_Normal = normalize(normalMatrix * a_Normals);
     v_UV = a_TexCoords;
+    v_WorldPosition = vec3(u_ModelMatrix * vec4(a_Position, 1.0));
+    v_Normal = u_NormalMatrix * a_Normals;
 
-    gl_Position = u_ProjectionMatrix * u_ViewMatrix * vec4(v_WorldPosition, 1.0);
+    gl_Position =  u_ProjectionMatrix * u_ViewMatrix * vec4(v_WorldPosition, 1.0);
 }
 
 #type fragment
@@ -40,7 +33,6 @@ layout(location = 0) out vec4 FragColor;
 in vec3 v_WorldPosition;
 in vec2 v_UV;
 in vec3 v_Normal;
-in mat3 v_TBN;
 
 // Texture Samplers
 uniform sampler2D u_BaseColorTextures;
@@ -81,7 +73,18 @@ const float PI = 3.14159265359;
 vec3 GetNormalFromMap()
 {
     vec3 tangentNormal = texture(u_NormalTextures, v_UV).xyz * 2.0 - 1.0;
-    return normalize(v_TBN * tangentNormal);
+
+    vec3 Q1  = dFdx(v_WorldPosition);
+    vec3 Q2  = dFdy(v_WorldPosition);
+    vec2 st1 = dFdx(v_UV);
+    vec2 st2 = dFdy(v_UV);
+
+    vec3 N   = normalize(v_Normal);
+    vec3 T  = normalize(Q1*st2.t - Q2*st1.t);
+    vec3 B  = -normalize(cross(N, T));
+    mat3 TBN = mat3(T, B, N);
+
+    return normalize(TBN * tangentNormal);
 }
 
 float DistributionGGX(vec3 N, vec3 H, float roughness)

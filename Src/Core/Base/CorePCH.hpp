@@ -89,7 +89,7 @@
 #include "Importer.hpp"
 #include "Thumbnail.hpp"
 #include "PostProcessor.hpp"
-#include "SkyBox.hpp"
+#include "Environment.hpp"
 #include "Renderer.hpp"
 
 //Renderer - OpenGL
@@ -99,6 +99,7 @@
 #include "GL_Shaders.hpp"
 #include "GL_Texture.hpp"
 #include "GL_Arrays.hpp"
+#include "GL_Environment.hpp"
 #include "GLFW_GL_Context.hpp"
 
 //Window

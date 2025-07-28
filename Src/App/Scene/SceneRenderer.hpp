@@ -5,6 +5,7 @@
 #include "Entity.hpp"
 #include "Model.hpp"
 #include "SceneEnviroment.hpp"
+#include "Environment.hpp"
 
 namespace Motion
 {
@@ -16,9 +17,14 @@ namespace Motion
         UUID MaterialID{ 0 };
         UUID MeshID{ 0 };
 
+        TextureID IrradianceTexture{ 0 };
+        TextureID PrefilteredTexture{ 0 };
+        TextureID BRDFLUTTexture{ 0 };
+
         glm::mat4 ModelMatrix{ 1.0f };
         glm::mat4 ViewMatrix{ 1.0f };
         glm::mat4 ProjectionMatrix{ 1.0f };
+        glm::mat3 NormalMatrix{ 1.0f };
 
         glm::vec3 CameraPosition{ 0.0f, 0.0f, 0.0f };
         glm::vec3 LightPosition{ 0.0f, 0.0f, 0.0f };
@@ -47,9 +53,7 @@ namespace Motion
 
     public:
         static void BeginScene() noexcept;
-        static void Submit(Scene* scene) noexcept;
+        static void Submit(const std::shared_ptr<Scene>& scene, const std::shared_ptr<IEnvironment>& environment) noexcept;
         static void EndScene() noexcept;
     };
-
-
 }

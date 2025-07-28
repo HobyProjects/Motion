@@ -44,10 +44,6 @@ namespace Motion
         std::int32_t TextureBindingPoint = 0;
         const std::int32_t MAX_TEXTURE_SLOTS = Renderer::GetMaxTextureSlots();
 
-        std::shared_ptr<EnvironmentIrradianceTexture> irradianceTexture = SkyBox::GetIrradianceTexture();
-        std::shared_ptr<EnvironmentPrefilteredTexture> prefilteredTexture = SkyBox::GetPrefilteredTexture();
-        std::shared_ptr<EnvironmentBRDFTexture> brdfTexture = SkyBox::GetBRDFTexture();
-
         for (const auto& command : s_CommandQueue)
         {
             auto shader = assetManager.Get<IShader>("PBR");
@@ -56,12 +52,13 @@ namespace Motion
 
             if (!shader || !material || !mesh) continue;
 
-            std::int32_t requiredTextureSlots = material->GetTexturesCount() + 4; //< Fore Environment Textures and SkyBox Textures
+            std::int32_t requiredTextureSlots = material->GetTexturesCount() + 3; //< Fore Environment Textures
             if (TextureBindingPoint + requiredTextureSlots > MAX_TEXTURE_SLOTS)
             {
                 if (currentShader) currentShader->Unbind();
                 if (currentMaterial) currentMaterial->Unbind();
                 if (currentMesh) currentMesh->Unbind();
+
                 currentMaterial = nullptr;
                 currentMesh = nullptr;
                 currentShader = nullptr;
@@ -74,19 +71,17 @@ namespace Motion
                 currentShader = shader;
                 currentShader->Bind();
 
-                irradianceTexture->Bind(TextureBindingPoint);
+                Renderer::BindTextureUnit(TextureBindingPoint, command.IrradianceTexture);
                 currentShader->SetUniform(UniformCache::IrradianceTextures, TextureBindingPoint++);
-
-                prefilteredTexture->Bind(TextureBindingPoint);
+                Renderer::BindTextureUnit(TextureBindingPoint, command.PrefilteredTexture);
                 currentShader->SetUniform(UniformCache::PrefilteredTextures, TextureBindingPoint++);
-
-                brdfTexture->Bind(TextureBindingPoint);
+                Renderer::BindTextureUnit(TextureBindingPoint, command.BRDFLUTTexture);
                 currentShader->SetUniform(UniformCache::BRDFLUT, TextureBindingPoint++);
 
                 currentShader->SetUniform(UniformCache::ViewMatrix, command.ViewMatrix);
                 currentShader->SetUniform(UniformCache::ProjectionMatrix, command.ProjectionMatrix);
                 currentShader->SetUniform(UniformCache::ModelMatrix, command.ModelMatrix);
-                currentShader->SetUniform(UniformCache::NormalMatrix, glm::transpose(glm::inverse(glm::mat3(command.ModelMatrix))));
+                currentShader->SetUniform(UniformCache::NormalMatrix, command.NormalMatrix);
 
                 currentShader->SetUniform(UniformCache::CameraPosition, command.CameraPosition);
                 currentShader->SetUniform(UniformCache::LightPosition, command.LightPosition);
@@ -150,14 +145,14 @@ namespace Motion
      * and a valid mesh. For each valid mesh segment, constructs a SceneDrawCommand with the appropriate
      * transformation and material information, and appends it to the renderer's draw command list.
      *
-     * @param scene Pointer to the Scene object containing entities to be rendered.
-     * @param viewProjectionMatrix The combined view and projection matrix to be used for rendering.
+     * @param scene The scene containing entities to be rendered.
+     * @param environment The environment settings to be used during rendering.
      *
      * @note If the scene or its main camera is null, the function logs an error and returns early.
      *       Entities without a StaticMeshComponent or with invalid mesh data are skipped with a warning.
      *       If an entity lacks a TransformComponent, an identity matrix is used as its transform.
      */
-    void SceneRenderer::Submit(Scene* scene) noexcept
+    void SceneRenderer::Submit(const std::shared_ptr<Scene>& scene, const std::shared_ptr<IEnvironment>& environment) noexcept
     {
         if (!scene)
         {
@@ -182,45 +177,64 @@ namespace Motion
                 continue;
             }
 
-            const auto& meshComponent = entity->GetComponent<StaticMeshComponent>();
-            if (!meshComponent.Mesh)
+            const auto& staticMeshComponent = entity->GetComponent<StaticMeshComponent>();
+            if (!staticMeshComponent.Model || staticMeshComponent.Model->GetMeshesCount() == 0)
             {
-                MOTION_WARN("StaticMeshComponent has no mesh assigned. {} >> SKIPPING SUBMISSION", meshComponent.Name);
+                MOTION_WARN("StaticMeshComponent has no mesh assigned. {} >> SKIPPING SUBMISSION", staticMeshComponent.Name);
                 continue;
             }
-
-            for (auto it = meshComponent.Mesh->begin(); it != meshComponent.Mesh->end(); ++it)
+            else
             {
-                const auto& meshSegment = *it;
-                if (!meshSegment || !meshSegment->MeshSelf)
+                if (entity->HasComponent<MeshCollectionComponent>())
                 {
-                    MOTION_WARN("MeshSegment is null or has no Mesh assigned >> SKIPPING SUBMISSION");
-                    continue;
-                }
+                    const auto& meshCollection = entity->GetComponent<MeshCollectionComponent>();
+                    if (meshCollection.Meshes.empty())
+                    {
+                        MOTION_WARN("MeshCollectionComponent has no meshes assigned >> SKIPPING SUBMISSION");
+                        continue;
+                    }
+                    else
+                    {
+                        for (const auto& meshEntity : meshCollection.Meshes)
+                        {
+                            if (!meshEntity->HasComponent<MeshComponent>() || !meshEntity->HasComponent<MeshNodeComponent>())
+                            {
+                                MOTION_WARN("MeshEntity does not have MeshComponent or MeshNodeComponent >> SKIPPING SUBMISSION");
+                                continue;
+                            }
+                            else
+                            {
+                                auto& meshNode = meshEntity->GetComponent<MeshNodeComponent>();
+                                auto& meshSegment = meshEntity->GetComponent<MeshComponent>();
 
-                command.SortKey = scene->GetSceneID();
-                command.MaterialID = meshSegment->Materials->GetUUID();
-                command.MeshID = meshSegment->MeshSelf->GetUUID();
+                                command.SortKey = scene->GetSceneID();
+                                command.MaterialID = meshSegment.MeshSegment->Materials->GetUUID();
+                                command.MeshID = meshSegment.MeshSegment->MeshSelf->GetUUID();
 
-                if (entity->HasComponent<TransformComponent>())
-                {
-                    const auto& transform = entity->GetComponent<TransformComponent>();
-                    command.ModelMatrix = transform.GetTransform();
+                                command.ModelMatrix = meshNode.Node->Transform != glm::mat4(1.0f) ? meshNode.Node->Transform : glm::mat4(1.0f);
+                                command.ViewMatrix = scene->m_SceneCamera->SceneViewCamera.View;
+                                command.ProjectionMatrix = scene->m_SceneCamera->SceneViewCamera.Projection;
+                                command.NormalMatrix = glm::transpose(glm::inverse(glm::mat3(command.ModelMatrix)));
+
+                                command.IrradianceTexture = environment->GetIrradianceTexture();
+                                command.PrefilteredTexture = environment->GetPrefilteredTexture();
+                                command.BRDFLUTTexture = environment->GetBRDFLUTTexture();
+
+                                command.CameraPosition = scene->m_SceneCamera->SceneViewCamera.Position;
+                                command.LightPosition = scene->m_Environment.DirectionalLight.Direction;
+                                command.LightColor = scene->m_Environment.DirectionalLight.Color;
+                                command.LightIntensity = scene->m_Environment.DirectionalLight.AmbientIntensity;
+
+                                s_CommandQueue.push_back(command);
+                            }
+                        }
+                    }
                 }
                 else
                 {
-                    MOTION_WARN("Entity has no TransformComponent, using identity matrix for transform");
-                    command.ModelMatrix = glm::mat4(1.0f);
+                    MOTION_WARN("Entity does not have a MeshCollectionComponent >> SKIPPING SUBMISSION");
+                    continue;
                 }
-
-                command.ViewMatrix = scene->m_SceneCamera->SceneViewCamera.View;
-                command.ProjectionMatrix = scene->m_SceneCamera->SceneViewCamera.Projection;
-                command.CameraPosition = scene->m_SceneCamera->SceneViewCamera.Position;
-                command.LightPosition = scene->m_Environment.DirectionalLight.Direction;
-                command.LightColor = scene->m_Environment.DirectionalLight.Color;
-                command.LightIntensity = scene->m_Environment.DirectionalLight.AmbientIntensity;
-
-                s_CommandQueue.push_back(command);
             }
         }
     }

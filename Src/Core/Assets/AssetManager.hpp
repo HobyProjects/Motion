@@ -275,8 +275,7 @@ namespace Motion
             {
             case RenderingAPI::OpenGL:
             {
-                return std::make_shared<GL_CubeMapTexture>(uuid, name,
-                    posX_texture, negX_texture, posY_texture, negY_texture, posZ_texture, negZ_texture);
+                return std::make_shared<GL_CubeMapTexture>(uuid, name, posX_texture, negX_texture, posY_texture, negY_texture, posZ_texture, negZ_texture);
             }
             case RenderingAPI::Vulkan:
             {

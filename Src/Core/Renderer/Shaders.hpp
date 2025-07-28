@@ -63,6 +63,8 @@ namespace Motion
         inline static constexpr std::string_view PrefilteredRoughness = "u_PrefilteredRoughness";
         inline static constexpr std::string_view IrradianceTextures = "u_IrradianceTextures";
         inline static constexpr std::string_view PrefilteredTextures = "u_PrefilteredTextures";
+        inline static constexpr std::string_view PrefilteredResolution = "u_PrefilteredResolution";
+        inline static constexpr std::string_view EquiRectangular = "u_EquiRectangular";
         inline static constexpr std::string_view BRDFLUT = "u_BRDFLUT";
 
     };

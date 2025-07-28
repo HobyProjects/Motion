@@ -2,14 +2,14 @@
 #version 460 core
 layout(location = 0) in vec3 a_Position;
 
-out vec3 v_LocalPositions;
+out vec3 v_WorldPositions;
 
 uniform mat4 u_ViewMatrix;
 uniform mat4 u_ProjectionMatrix;
 
 void main() {
 
-    v_LocalPositions = a_Position;
+    v_WorldPositions = a_Position;
     gl_Position = u_ProjectionMatrix * u_ViewMatrix * vec4(a_Position, 1.0);
 
 }
@@ -19,14 +19,14 @@ void main() {
 
 out vec4 FragColor;
 
-in vec3 v_LocalPositions;
+in vec3 v_WorldPositions;
 uniform samplerCube u_EnvironmentTexture;
 
 const float PI = 3.14159265359;
 
 void main() {
 
-    vec3 N = normalize(v_LocalPositions);
+    vec3 N = normalize(v_WorldPositions);
     vec3 up    = vec3(0.0, 1.0, 0.0);
     vec3 right = normalize(cross(up, N));
     up         = normalize(cross(N, right));

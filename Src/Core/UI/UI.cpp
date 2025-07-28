@@ -1,4 +1,5 @@
 #include "CorePCH.hpp"
+#include "UI.hpp"
 
 namespace Motion
 {
@@ -328,4 +329,26 @@ namespace Motion
         ImGui::PopStyleVar(2);
         ImGui::PopID();
     }
+
+    /**
+     * @brief Displays a draggable UI control for editing the x, y, and z components of a quaternion.
+     *
+     * This function presents a UI element that allows the user to modify the x, y, and z components
+     * of a given quaternion using a drag controller. The w component of the quaternion is not handled
+     * or modified by this function.
+     *
+     * @param label        The label to display for the UI control.
+     * @param values       Reference to the quaternion whose x, y, and z components will be edited.
+     * @param resetValue   The value to reset the components to when requested.
+     */
+    void Motion::CustomUIControl::DragControllerVec3(const char* label, glm::quat& values, float resetValue)
+    {
+        glm::vec3 vec(values.x, values.y, values.z);
+        DragControllerVec3(label, vec, resetValue);
+        values.x = vec.x;
+        values.y = vec.y;
+        values.z = vec.z;
+        // Note: w component is not handled here.
+    }
 }
+

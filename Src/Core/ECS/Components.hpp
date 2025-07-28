@@ -21,6 +21,56 @@ namespace Motion
         ~TagComponent() = default;
     };
 
+    struct MeshNodeComponent
+    {
+        UUID ID{ 0 };
+        std::shared_ptr<MeshNode> Node{ nullptr };
+        Entity* EntityPointer{ nullptr };
+
+        MeshNodeComponent() : ID(UniqueIdentity::GetUniqueID()) {};
+        MeshNodeComponent(const std::shared_ptr<MeshNode>& meshNode) : Node(meshNode) { ID = UniqueIdentity::GetUniqueID(); }
+        ~MeshNodeComponent() = default;
+    };
+
+    struct MeshComponent
+    {
+        UUID ID{ 0 };
+        std::shared_ptr<StaticMesh::MeshSegment> MeshSegment{ nullptr };
+        Entity* EntityPointer{ nullptr };
+
+        MeshComponent() : ID(UniqueIdentity::GetUniqueID()) {};
+        MeshComponent(const std::shared_ptr<StaticMesh::MeshSegment>& meshSegment) : MeshSegment(meshSegment) { ID = UniqueIdentity::GetUniqueID(); }
+        ~MeshComponent() = default;
+    };
+
+    struct MeshCollectionComponent
+    {
+        UUID ID{ 0 };
+        std::vector<std::shared_ptr<Entity>> Meshes{ nullptr };
+        Entity* EntityPointer{ nullptr };
+
+        MeshCollectionComponent() : ID(UniqueIdentity::GetUniqueID()) {};
+        MeshCollectionComponent(std::vector<std::shared_ptr<Entity>>& meshes)
+        {
+            ID = UniqueIdentity::GetUniqueID();
+            Meshes.swap(meshes);
+        }
+
+        ~MeshCollectionComponent() = default;
+    };
+
+    struct StaticMeshComponent
+    {
+        UUID ID{ 0 };
+        std::string Name{ "unamed" };
+        std::shared_ptr<StaticMesh> Model{ nullptr };
+        Entity* EntityPointer{ nullptr };
+
+        StaticMeshComponent() : ID(UniqueIdentity::GetUniqueID()) {};
+        StaticMeshComponent(const std::string& name, const std::shared_ptr<StaticMesh>& model) : Name(name), Model(model), ID(UniqueIdentity::GetUniqueID()) {}
+        ~StaticMeshComponent() = default;
+    };
+
     struct TransformComponent
     {
         UUID ID{ 0 };
@@ -80,55 +130,6 @@ namespace Motion
 
             return TRS;
         }
-    };
-
-    struct MeshNodeComponent
-    {
-        UUID ID{ 0 };
-        std::shared_ptr<MeshNode> Node{ nullptr };
-        Entity* EntityPointer{ nullptr };
-
-        MeshNodeComponent() : ID(UniqueIdentity::GetUniqueID()) {};
-        MeshNodeComponent(const std::shared_ptr<MeshNode>& meshNode) : Node(meshNode) { ID = UniqueIdentity::GetUniqueID(); }
-        ~MeshNodeComponent() = default;
-    };
-
-    struct MeshComponent
-    {
-        UUID ID{ 0 };
-        std::shared_ptr<Mesh> MeshSegment{ nullptr };
-        Entity* EntityPointer{ nullptr };
-
-        MeshComponent() : ID(UniqueIdentity::GetUniqueID()) {};
-        MeshComponent(const std::shared_ptr<Mesh>& mesh) : MeshSegment(mesh) { ID = UniqueIdentity::GetUniqueID(); }
-        ~MeshComponent() = default;
-    };
-
-    struct MeshCollectionComponent
-    {
-        UUID ID{ 0 };
-        std::vector<std::shared_ptr<Entity>> Meshes{ nullptr };
-        Entity* EntityPointer{ nullptr };
-
-        MeshCollectionComponent(std::vector<std::shared_ptr<Entity>>& meshes)
-        {
-            ID = UniqueIdentity::GetUniqueID();
-            Meshes.swap(meshes);
-        }
-
-        ~MeshCollectionComponent() = default;
-    };
-
-    struct StaticMeshComponent
-    {
-        UUID ID{ 0 };
-        std::string Name{ "unamed" };
-        std::shared_ptr<StaticMesh> Mesh{ nullptr };
-        Entity* EntityPointer{ nullptr };
-
-        StaticMeshComponent() : ID(UniqueIdentity::GetUniqueID()) {};
-        StaticMeshComponent(const std::string& name, const std::shared_ptr<StaticMesh>& mesh) : Name(name), Mesh(mesh), ID(UniqueIdentity::GetUniqueID()) {}
-        ~StaticMeshComponent() = default;
     };
 
     struct PhysicsBodyComponent

@@ -69,7 +69,6 @@ namespace Motion
 
             if (ConvertToGLB(scene, finalOutputPath))
             {
-                MOTION_CORE_INFO("Assimp Importer: StaticMesh {0} successfully converted to GLB format.", modelName);
                 auto staticMesh = ReadGLB(finalOutputPath);
                 if (staticMesh)
                 {
@@ -139,7 +138,7 @@ namespace Motion
             CopyTextures(material, aiTextureType_AMBIENT_OCCLUSION, outputPath);
         }
 
-        MOTION_CORE_INFO("Scene successfully exported to {0} in glTF format.", outputPath.string());
+        MOTION_CORE_INFO("Assimp Exporter: Scene successfully exported to {0} in glb format.", outputPath.string());
         return true;
     }
 
@@ -336,18 +335,10 @@ namespace Motion
                 );
 
                 auto meshSegment = std::make_shared<StaticMesh::MeshSegment>();
-                meshSegment->MeshSelf = assetManager.Create<Mesh>(
-                    std::format("MSH_{}-{}", staticMesh->GetName(), meshIndex),
-                    vertices.data(), static_cast<std::int32_t>(vertices.size()),
-                    indices.data(), static_cast<std::int32_t>(indices.size()),
-                    layout, staticMesh
-                );
+                meshSegment->MeshSelf = assetManager.Create<Mesh>(std::format("MSH_{}-{}", staticMesh->GetName(), meshIndex), vertices.data(), static_cast<std::int32_t>(vertices.size()), indices.data(), static_cast<std::int32_t>(indices.size()), layout, staticMesh);
 
                 aiMaterial* material = scene->mMaterials[mesh->mMaterialIndex];
-                meshSegment->Materials = assetManager.Create<MaterialInstance>(
-                    std::format("MAT_{}-{}", staticMesh->GetName(), meshIndex),
-                    assetManager.Get<Material>("BaseMaterial")
-                );
+                meshSegment->Materials = assetManager.Create<MaterialInstance>(std::format("MAT_{}-{}", staticMesh->GetName(), meshIndex), assetManager.Get<Material>("BaseMaterial"));
 
                 if (!material)
                 {
@@ -442,6 +433,8 @@ namespace Motion
                 {
                     loadNodes(node->mChildren[i], scene);
                 }
+
+                return headNode;
             };
 
 

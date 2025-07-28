@@ -18,16 +18,20 @@ namespace Motion
      */
     void GL_Init()
     {
-        glEnable(GL_BLEND);
         glDepthMask(GL_TRUE);
-        glEnable(GL_DEPTH_TEST);
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+        glEnable(GL_BLEND);
+        glEnable(GL_DEPTH_TEST);
+        glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
+
 
 #ifdef MOTION_BUILD_DEBUG
 
         glEnable(GL_DEBUG_OUTPUT);
         glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+
         glDebugMessageCallback(GL_MessageCallBack, nullptr);
         glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DEBUG_SEVERITY_NOTIFICATION, 0, nullptr, GL_FALSE);
 

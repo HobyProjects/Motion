@@ -15,14 +15,15 @@ namespace Motion
     {
         //TEMP
         auto& assetManager = AssetManager::GetInstance();
-        assetManager.Create<IShader>("Environment", "Assets/Shaders/Environment.glsl");
-        assetManager.Create<IShader>("EnvironmentIrradiance", "Assets/Shaders/EnvironmentIrradiance.glsl");
-        assetManager.Create<IShader>("EnvironmentPrefiltered", "Assets/Shaders/EnvironmentPrefiltered.glsl");
-        assetManager.Create<IShader>("EnvironmentBRDF", "Assets/Shaders/EnvironmentBRDF.glsl");
+        assetManager.Create<IShader>("ENV", "Assets/Shaders/Environment.glsl");
+        assetManager.Create<IShader>("ENV_IRR", "Assets/Shaders/EnvironmentIrradiance.glsl");
+        assetManager.Create<IShader>("ENV_PRE", "Assets/Shaders/EnvironmentPrefiltered.glsl");
+        assetManager.Create<IShader>("ENV_CUB", "Assets/Shaders/EnvironmentCubeConverter.glsl");
+        assetManager.Create<IShader>("ENV_BRD", "Assets/Shaders/EnvironmentBRDF.glsl");
         assetManager.Create<IShader>("PBR", "Assets/Shaders/PBR.glsl");
-        SkyBox::Init();
 
         MaterialImporter::ImportMaterial("Assets/Materials/Base/Base.yaml");
+        m_Environment = IEnvironment::Create("Assets/HDRI/Scene.hdr");
 
         m_Viewport.FrameSpec.Name = "SceneEditorFrame";
         m_Viewport.FrameSpec.Width = static_cast<uint32_t>(m_ViewportWidth);
@@ -65,10 +66,12 @@ namespace Motion
 
         SceneRenderer::BeginScene();
 
-        SkyBox::Render(m_ActiveScene->GetViewMatrix(), m_ActiveScene->GetProjectionMatrix());
-        SceneRenderer::Submit(m_ActiveScene.get());
+        m_Environment->Render(m_ActiveScene->GetViewMatrix(), m_ActiveScene->GetProjectionMatrix());
+        SceneRenderer::Submit(m_ActiveScene, m_Environment);
 
         SceneRenderer::EndScene();
+
+
         m_Framebuffer->Unbind();
         m_SceneTextures[m_ActiveScene] = m_Framebuffer->GetAttachment(FrameBufferColorAttachmentStandards::Standard).ID;
     }

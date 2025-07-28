@@ -5,7 +5,7 @@
 
 #include "ImguiLayer.hpp"
 #include "Scene.hpp"
-#include "SkyBox.hpp"
+#include "Environment.hpp"
 
 namespace Motion
 {
@@ -27,12 +27,12 @@ namespace Motion
     private:
         float m_ViewportWidth{ 1280.0f }, m_ViewportHeight{ 720.0f };
         std::shared_ptr<IFrameBuffer> m_Framebuffer{ nullptr };
+        std::shared_ptr<IEnvironment> m_Environment{ nullptr };
 
         //SCENE
         SceneViewport m_Viewport{};
         std::shared_ptr<Scene> m_ActiveScene{ nullptr };
         std::vector<std::shared_ptr<Scene>> m_Scenes{};
         std::unordered_map<std::shared_ptr<Scene>, FrameTextureID> m_SceneTextures{};
-
     };
 }

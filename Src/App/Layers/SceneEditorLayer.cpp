@@ -64,13 +64,12 @@ namespace Motion
         Renderer::ClearColor({ 0.243, 0.243, 0.243, 1.0f });
         Renderer::Clear();
 
+        m_Environment->Render(m_ActiveScene->GetViewMatrix(), m_ActiveScene->GetProjectionMatrix());
         SceneRenderer::BeginScene();
 
-        m_Environment->Render(m_ActiveScene->GetViewMatrix(), m_ActiveScene->GetProjectionMatrix());
         SceneRenderer::Submit(m_ActiveScene, m_Environment);
 
         SceneRenderer::EndScene();
-
 
         m_Framebuffer->Unbind();
         m_SceneTextures[m_ActiveScene] = m_Framebuffer->GetAttachment(FrameBufferColorAttachmentStandards::Standard).ID;

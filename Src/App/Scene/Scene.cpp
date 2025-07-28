@@ -91,43 +91,10 @@ namespace Motion
                         std::shared_ptr<StaticMesh> staticMesh = Importer::ImportModel(filePath);
                         if (staticMesh)
                         {
-                            std::function<std::shared_ptr<MeshNode>(const std::shared_ptr<MeshNode>&, const std::shared_ptr<StaticMesh::MeshSegment>&)> getNode =
-                                [&](const std::shared_ptr<MeshNode>& node, const std::shared_ptr<StaticMesh::MeshSegment>& segment) -> std::shared_ptr<MeshNode>
-                                {
-                                    if (node->MeshIndex == segment->MeshIndex)
-                                        return node;
-
-                                    if (node->Next)
-                                        return getNode(node->Next, segment);
-
-                                    return nullptr;
-
-                                };
-
                             auto& entityFactory = EntityFactory::GetInstance();
                             std::shared_ptr<Entity> entity = entityFactory.CreateEntity(staticMesh->GetName());
                             entity->AddComponent<StaticMeshComponent>(staticMesh->GetName(), staticMesh).EntityPointer = entity.get();
-                            std::vector<std::shared_ptr<Entity>> meshEntities(staticMesh->GetMeshesCount());
-
-                            for (std::vector<std::shared_ptr<StaticMesh::MeshSegment>>::iterator it = staticMesh->begin(); it != staticMesh->end(); ++it)
-                            {
-                                auto mesh = *it;
-                                auto entityMeshSegment = entityFactory.CreateEntity(mesh->MeshSelf->GetName());
-                                entityMeshSegment->AddComponent<MeshComponent>(mesh).EntityPointer = entityMeshSegment.get();
-
-                                auto nodePtr = getNode(staticMesh->GetRootMeshNode(), mesh);
-                                entityMeshSegment->AddComponent<MeshNodeComponent>(nodePtr).EntityPointer = entityMeshSegment.get();
-                                entityMeshSegment->AddComponent<TransformComponent>(nodePtr->Position, nodePtr->Rotation, nodePtr->Scale).EntityPointer = entityMeshSegment.get();
-
-                                meshEntities.push_back(entityMeshSegment);
-                            }
-
-                            if (!meshEntities.empty())
-                            {
-                                auto& meshCollection = entity->AddComponent<MeshCollectionComponent>(meshEntities);
-                                meshCollection.EntityPointer = entity.get();
-                            }
-
+                            entity->AddComponent<TransformComponent>(glm::vec3(0.0f), glm::quat(), glm::vec3(1.0f)).EntityPointer = entity.get();
                             m_Entities.push_back(entity);
                         }
                         else
@@ -222,9 +189,6 @@ namespace Motion
                 CustomUIControl::DragControllerVec3("Translation", component.Translation, 0.0f);
                 CustomUIControl::DragControllerVec3("Rotation", component.Rotation, 0.0f);
                 CustomUIControl::DragControllerVec3("Scale", component.Scale, 1.0f);
-
-                // To Update the mesh transform if it exists
-                component.GetTransform();
 
                 ImGui::PopStyleVar();
 

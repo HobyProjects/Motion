@@ -178,62 +178,36 @@ namespace Motion
             }
 
             const auto& staticMeshComponent = entity->GetComponent<StaticMeshComponent>();
-            if (!staticMeshComponent.Model || staticMeshComponent.Model->GetMeshesCount() == 0)
+            if (!staticMeshComponent.Model || staticMeshComponent.Model->GetMeshesCount() <= 0)
             {
                 MOTION_WARN("StaticMeshComponent has no mesh assigned. {} >> SKIPPING SUBMISSION", staticMeshComponent.Name);
                 continue;
             }
             else
             {
-                if (entity->HasComponent<MeshCollectionComponent>())
+                auto& model = staticMeshComponent.Model;
+                for (auto it = model->begin(); it != model->end(); ++it)
                 {
-                    const auto& meshCollection = entity->GetComponent<MeshCollectionComponent>();
-                    if (meshCollection.Meshes.empty())
-                    {
-                        MOTION_WARN("MeshCollectionComponent has no meshes assigned >> SKIPPING SUBMISSION");
-                        continue;
-                    }
-                    else
-                    {
-                        for (const auto& meshEntity : meshCollection.Meshes)
-                        {
-                            if (!meshEntity->HasComponent<MeshComponent>() || !meshEntity->HasComponent<MeshNodeComponent>())
-                            {
-                                MOTION_WARN("MeshEntity does not have MeshComponent or MeshNodeComponent >> SKIPPING SUBMISSION");
-                                continue;
-                            }
-                            else
-                            {
-                                auto& meshNode = meshEntity->GetComponent<MeshNodeComponent>();
-                                auto& meshSegment = meshEntity->GetComponent<MeshComponent>();
+                    auto& meshSegment = *it;
+                    command.SortKey = scene->GetSceneID();
+                    command.MaterialID = meshSegment->Materials->GetUUID();
+                    command.MeshID = meshSegment->MeshSelf->GetUUID();
 
-                                command.SortKey = scene->GetSceneID();
-                                command.MaterialID = meshSegment.MeshSegment->Materials->GetUUID();
-                                command.MeshID = meshSegment.MeshSegment->MeshSelf->GetUUID();
+                    command.ModelMatrix = entity->HasComponent<TransformComponent>() ? entity->GetComponent<TransformComponent>().GetTransform() : glm::mat4(1.0f);
+                    command.ViewMatrix = scene->m_SceneCamera->SceneViewCamera.View;
+                    command.ProjectionMatrix = scene->m_SceneCamera->SceneViewCamera.Projection;
+                    command.NormalMatrix = glm::transpose(glm::inverse(glm::mat3(command.ModelMatrix)));
 
-                                command.ModelMatrix = meshNode.Node->Transform != glm::mat4(1.0f) ? meshNode.Node->Transform : glm::mat4(1.0f);
-                                command.ViewMatrix = scene->m_SceneCamera->SceneViewCamera.View;
-                                command.ProjectionMatrix = scene->m_SceneCamera->SceneViewCamera.Projection;
-                                command.NormalMatrix = glm::transpose(glm::inverse(glm::mat3(command.ModelMatrix)));
+                    command.IrradianceTexture = environment->GetIrradianceTexture();
+                    command.PrefilteredTexture = environment->GetPrefilteredTexture();
+                    command.BRDFLUTTexture = environment->GetBRDFLUTTexture();
 
-                                command.IrradianceTexture = environment->GetIrradianceTexture();
-                                command.PrefilteredTexture = environment->GetPrefilteredTexture();
-                                command.BRDFLUTTexture = environment->GetBRDFLUTTexture();
+                    command.CameraPosition = scene->m_SceneCamera->SceneViewCamera.Position;
+                    command.LightPosition = scene->m_Environment.DirectionalLight.Direction;
+                    command.LightColor = scene->m_Environment.DirectionalLight.Color;
+                    command.LightIntensity = scene->m_Environment.DirectionalLight.AmbientIntensity;
 
-                                command.CameraPosition = scene->m_SceneCamera->SceneViewCamera.Position;
-                                command.LightPosition = scene->m_Environment.DirectionalLight.Direction;
-                                command.LightColor = scene->m_Environment.DirectionalLight.Color;
-                                command.LightIntensity = scene->m_Environment.DirectionalLight.AmbientIntensity;
-
-                                s_CommandQueue.push_back(command);
-                            }
-                        }
-                    }
-                }
-                else
-                {
-                    MOTION_WARN("Entity does not have a MeshCollectionComponent >> SKIPPING SUBMISSION");
-                    continue;
+                    s_CommandQueue.push_back(command);
                 }
             }
         }

@@ -394,51 +394,27 @@ namespace Motion
                 rotation = { aiRot.w, aiRot.x, aiRot.y, aiRot.z }; // GLM uses (w, x, y, z)
             };
 
-        std::function<std::shared_ptr<MeshNode>(aiNode*, const aiScene*)> loadNodes =
-            [&](aiNode* node, const aiScene* scene) -> std::shared_ptr<MeshNode>
+        std::function<void(aiNode*, const aiScene*)> loadNodes =
+            [&](aiNode* node, const aiScene* scene)
             {
-                std::shared_ptr<MeshNode> headNode = nullptr;
-                MeshNode* currentNode = nullptr;
-
                 for (std::uint32_t i = 0; i < node->mNumMeshes; i++)
                 {
-                    auto meshNode = std::make_shared<MeshNode>();
-                    meshNode->Name = node->mName.C_Str();
-                    glm::mat4 transformMatrix = convertMatrix(node->mTransformation);
-                    decomposeTransform(node->mTransformation, meshNode->Position, meshNode->Rotation, meshNode->Scale);
-                    meshNode->Transform = transformMatrix;
-                    meshNode->MeshIndex = node->mMeshes[i];
-                    meshNode->Next = nullptr;
-
-                    aiMesh* mesh = scene->mMeshes[meshNode->MeshIndex];
+                    std::uint32_t meshIndex = node->mMeshes[i];
+                    aiMesh* mesh = scene->mMeshes[meshIndex];
                     if (mesh)
                     {
-                        loadMeshes(node, meshNode->MeshIndex, mesh, scene);
+                        loadMeshes(node, meshIndex, mesh, scene);
                     }
-
-                    if (!headNode)
-                    {
-                        headNode = std::move(meshNode);
-                        currentNode = headNode.get();
-                    }
-                    else
-                    {
-                        currentNode->Next = std::move(meshNode);
-                        currentNode = currentNode->Next.get();
-                    }
-
                 }
 
                 for (std::uint32_t i = 0; i < node->mNumChildren; i++)
                 {
                     loadNodes(node->mChildren[i], scene);
                 }
-
-                return headNode;
             };
 
 
-        staticMesh->m_RootMeshNode = std::move(loadNodes(scene->mRootNode, scene));
+        loadNodes(scene->mRootNode, scene);
         return staticMesh;
     }
 }

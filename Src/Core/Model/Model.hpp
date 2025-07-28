@@ -31,7 +31,6 @@ namespace Motion
         StaticMesh(UUID uuid, const std::string& name, const std::filesystem::path& modelFile);
         virtual ~StaticMesh() = default;
 
-        [[nodiscard]] std::shared_ptr<MeshNode> GetRootMeshNode() const noexcept { return m_RootMeshNode; }
         [[nodiscard]] std::size_t GetMeshesCount() const noexcept { return m_Meshes.size(); }
 
         std::vector<std::shared_ptr<MeshSegment>>::iterator begin() { return m_Meshes.begin(); }
@@ -44,7 +43,6 @@ namespace Motion
         std::vector<std::shared_ptr<MeshSegment>>::const_reverse_iterator crend() const { return m_Meshes.crend(); }
 
     private:
-        std::shared_ptr<MeshNode> m_RootMeshNode{ nullptr };
         std::vector<std::shared_ptr<MeshSegment>> m_Meshes;
         friend class Importer;
     };

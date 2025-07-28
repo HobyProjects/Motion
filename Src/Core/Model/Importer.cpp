@@ -63,11 +63,59 @@ namespace Motion
             std::string modelName = path.filename().stem().string();
             MOTION_CORE_INFO("Assimp Importer: StaticMesh {0} file successfully loaded to memory from {1} > Converting...", modelName, path.string());
 
-            std::string exportPathString = (exportPath == "default") ? (std::filesystem::current_path() / "Assets/Models").string() : exportPath;
+            std::filesystem::path appRoot = std::filesystem::absolute(std::filesystem::path(".")); // Adjust if needed
+            std::string exportPathString = (exportPath == "default") ? (appRoot / "Assets/Models").string() : exportPath;
             std::filesystem::path outputFilePath = GetAvailableCopyName(std::filesystem::path(std::format("{}/{}/{}.glb", exportPathString, modelName, modelName)));
             std::filesystem::path finalOutputPath = std::filesystem::absolute(outputFilePath);
+            aiScene* mutableScene;
 
-            if (ConvertToGLB(scene, finalOutputPath))
+            auto computeSceneBoundingBox =
+                [](const aiScene* scene, glm::vec3& minBounds, glm::vec3& maxBounds)
+                {
+                    for (unsigned int m = 0; m < scene->mNumMeshes; ++m) {
+                        aiMesh* mesh = scene->mMeshes[m];
+                        for (unsigned int v = 0; v < mesh->mNumVertices; ++v) {
+                            const aiVector3D& vtx = mesh->mVertices[v];
+
+                            minBounds.x = std::min(minBounds.x, vtx.x);
+                            minBounds.y = std::min(minBounds.y, vtx.y);
+                            minBounds.z = std::min(minBounds.z, vtx.z);
+
+                            maxBounds.x = std::max(maxBounds.x, vtx.x);
+                            maxBounds.y = std::max(maxBounds.y, vtx.y);
+                            maxBounds.z = std::max(maxBounds.z, vtx.z);
+                        }
+                    }
+                };
+
+            auto normalizeModelScale =
+                [](aiScene* scene, float scaleFactor, const glm::vec3& center)
+                {
+                    for (unsigned int m = 0; m < scene->mNumMeshes; ++m) {
+                        aiMesh* mesh = scene->mMeshes[m];
+                        for (unsigned int v = 0; v < mesh->mNumVertices; ++v) {
+                            aiVector3D& vertex = mesh->mVertices[v];
+
+                            vertex.x = (vertex.x - center.x) * scaleFactor;
+                            vertex.y = (vertex.y - center.y) * scaleFactor;
+                            vertex.z = (vertex.z - center.z) * scaleFactor;
+                        }
+                    }
+                };
+
+            glm::vec3 minBounds(FLT_MAX);
+            glm::vec3 maxBounds(-FLT_MAX);
+
+            computeSceneBoundingBox(const_cast<aiScene*>(scene), minBounds, maxBounds);
+
+            glm::vec3 center = (maxBounds + minBounds) * 0.5f;
+            glm::vec3 size = maxBounds - minBounds;
+            float desiredSize = 1.0f; // e.g., fit in [-1, 1]
+            float scaleFactor = desiredSize / std::max({ size.x, size.y, size.z });
+
+            normalizeModelScale(const_cast<aiScene*>(scene), scaleFactor, center);
+
+            if (ConvertToGLB(const_cast<aiScene*>(scene), finalOutputPath))
             {
                 auto staticMesh = ReadGLB(finalOutputPath);
                 if (staticMesh)
@@ -103,7 +151,7 @@ namespace Motion
      * @param exportFormat The export format identifier (e.g., "gltf2").
      * @return true if the export and texture copying succeed, false otherwise.
      */
-    bool Importer::ConvertToGLB(const aiScene* scene, const std::filesystem::path& outputPath)
+    bool Importer::ConvertToGLB(aiScene* scene, const std::filesystem::path& outputPath)
     {
         if (!std::filesystem::exists(outputPath))
         {
@@ -220,6 +268,7 @@ namespace Motion
             MOTION_CORE_ERROR("Assimp Importer Error: {0}", importer.GetErrorString());
             return nullptr;
         }
+
 
         auto& assetManager = AssetManager::GetInstance();
         std::string modelName = std::format("SMSH_{}", outputPath.filename().stem().string());

@@ -384,13 +384,20 @@ namespace Motion
             return;
         }
 
+        glDepthFunc(GL_LEQUAL);  // or GL_LESS before/after
+        glDepthMask(GL_FALSE);
+
         m_EnvironmentShader->Bind();
-        m_EnvironmentShader->SetUniform(UniformCache::ViewMatrix, viewMatrix);
+        glm::mat4 view = glm::mat4(glm::mat3(viewMatrix)); // remove translation part of the view matrix
+        m_EnvironmentShader->SetUniform(UniformCache::ViewMatrix, view);
         m_EnvironmentShader->SetUniform(UniformCache::ProjectionMatrix, projectionMatrix);
         m_EnvironmentShader->SetUniform(UniformCache::EnvironmentTexture, 0);
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_CUBE_MAP, m_EnvironmentCubeTextureID);
         RenderCube();
+
+        glDepthMask(GL_TRUE);
+        glDepthFunc(GL_LESS);
     }
 }
 

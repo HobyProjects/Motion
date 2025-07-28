@@ -146,7 +146,7 @@ namespace Motion
     /**
      * @brief Submits draw commands for all valid mesh entities in the given scene.
      *
-     * Iterates through all entities in the provided scene, checking for the presence of a MeshComponent
+     * Iterates through all entities in the provided scene, checking for the presence of a StaticMeshComponent
      * and a valid mesh. For each valid mesh segment, constructs a SceneDrawCommand with the appropriate
      * transformation and material information, and appends it to the renderer's draw command list.
      *
@@ -154,7 +154,7 @@ namespace Motion
      * @param viewProjectionMatrix The combined view and projection matrix to be used for rendering.
      *
      * @note If the scene or its main camera is null, the function logs an error and returns early.
-     *       Entities without a MeshComponent or with invalid mesh data are skipped with a warning.
+     *       Entities without a StaticMeshComponent or with invalid mesh data are skipped with a warning.
      *       If an entity lacks a TransformComponent, an identity matrix is used as its transform.
      */
     void SceneRenderer::Submit(Scene* scene) noexcept
@@ -176,16 +176,16 @@ namespace Motion
 
         for (const auto& entity : scene->m_Entities)
         {
-            if (!entity || !entity->HasComponent<MeshComponent>())
+            if (!entity || !entity->HasComponent<StaticMeshComponent>())
             {
                 MOTION_WARN("Entity is null or does not have a MeshComponent >> SKIPPING SUBMISSION");
                 continue;
             }
 
-            const auto& meshComponent = entity->GetComponent<MeshComponent>();
+            const auto& meshComponent = entity->GetComponent<StaticMeshComponent>();
             if (!meshComponent.Mesh)
             {
-                MOTION_WARN("MeshComponent has no mesh assigned. {} >> SKIPPING SUBMISSION", meshComponent.Name);
+                MOTION_WARN("StaticMeshComponent has no mesh assigned. {} >> SKIPPING SUBMISSION", meshComponent.Name);
                 continue;
             }
 

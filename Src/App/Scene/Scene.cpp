@@ -77,6 +77,8 @@ namespace Motion
             if (m_SimulationStarted) ImGui::BeginDisabled();
             if (ImGui::MenuItem("Import StaticMesh"))
             {
+                //[TODO]: This should happen on different thread
+
                 auto& windowManager = WindowManager::GetInstance();
                 std::weak_ptr<IWindow> window = windowManager.GetWindow(handle);
                 if (!window.expired())
@@ -86,16 +88,40 @@ namespace Motion
                     std::filesystem::path filePath(DialogBoxes::OpenFileDialog(filter, L"Import Static Mesh").value_or(""));
                     if (!filePath.empty())
                     {
-                        std::string fileName = filePath.filename().stem().string();
-                        std::shared_ptr<StaticMesh> staticMesh = Importer::ImportModel(fileName, filePath);
+                        std::shared_ptr<StaticMesh> staticMesh = Importer::ImportModel(filePath);
                         if (staticMesh)
                         {
+                            std::function<std::shared_ptr<MeshNode>(const std::shared_ptr<MeshNode>&, const std::shared_ptr<StaticMesh::MeshSegment>&)> getNode =
+                                [&](const std::shared_ptr<MeshNode>& node, const std::shared_ptr<StaticMesh::MeshSegment>& segment) -> std::shared_ptr<MeshNode>
+                                {
+                                    if (node->MeshIndex == segment->MeshIndex)
+                                        return node;
+
+                                    if (node->Next)
+                                        return getNode(node->Next, segment);
+
+                                    return nullptr;
+
+                                };
+
                             auto& entityFactory = EntityFactory::GetInstance();
-                            std::shared_ptr<Entity> entity = entityFactory.CreateEntity(filePath.filename().string());
-                            entity->AddComponent<TransformComponent>();
-                            entity->AddComponent<MeshComponent>(fileName, staticMesh);
+                            std::shared_ptr<Entity> entity = entityFactory.CreateEntity(staticMesh->GetName());
+                            std::vector<std::shared_ptr<Entity>> meshEntities(staticMesh->GetMeshesCount());
+
+                            for (std::vector<std::shared_ptr<StaticMesh::MeshSegment>>::iterator it = staticMesh->begin(); it != staticMesh->end(); ++it)
+                            {
+                                auto mesh = *it;
+                                auto entityMeshSegment = entityFactory.CreateEntity(mesh->MeshSelf->GetName());
+                                entityMeshSegment->AddComponent<MeshComponent>(mesh->MeshSelf).EntityPointer = entityMeshSegment.get();
+
+                                auto nodePtr = getNode(staticMesh->GetRootMeshNode(), mesh);
+                                entityMeshSegment->AddComponent<MeshNodeComponent>(nodePtr).EntityPointer = entityMeshSegment.get();
+                                entityMeshSegment->AddComponent<TransformComponent>(nodePtr->Position, nodePtr->Rotation, nodePtr->Scale).EntityPointer = entityMeshSegment.get();
+                                meshEntities.push_back(entityMeshSegment);
+                            }
+
+                            entity->AddComponent<MeshCollectionComponent>(meshEntities).EntityPointer = entity.get();
                             m_Entities.push_back(entity);
-                            m_SelectedEntity = entity;
                         }
                         else
                         {

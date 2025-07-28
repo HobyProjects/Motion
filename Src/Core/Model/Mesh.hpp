@@ -19,6 +19,20 @@ namespace Motion
         glm::vec3 Bitangent{ 0.0f, 0.0f, 0.0f };
     };
 
+    struct MeshNode
+    {
+        std::string Name;
+
+        glm::vec3 Position{ 0.0f };
+        glm::vec3 Scale{ 1.0f };
+        glm::quat Rotation{ 1.0f, 0.0f, 0.0f, 0.0f };
+        glm::mat4 Transform{ 1.0f };
+
+        std::uint32_t MeshIndex = std::numeric_limits<std::uint32_t>::max();
+        std::shared_ptr<MeshNode> Next{ nullptr };
+    };
+
+
     class Mesh : public AssetBase<IAsset>
     {
     public:

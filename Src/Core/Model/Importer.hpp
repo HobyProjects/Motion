@@ -1,6 +1,7 @@
 #pragma once
 
 #include <assimp/Importer.hpp>
+#include <assimp/Exporter.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
 
@@ -21,11 +22,11 @@ namespace Motion
         Importer& operator=(Importer&&) = delete;
 
     public:
-        static std::shared_ptr<StaticMesh> ImportModel(const std::string& modelName, const std::filesystem::path& path);
+        static std::shared_ptr<StaticMesh> ImportModel(const std::filesystem::path& path, const std::string& exportPath = "default");
 
     private:
-        static void LoadCurrentNodeMeshes(const aiScene* currentScene, std::uint32_t meshIndex, aiMesh* currentMesh, const std::shared_ptr<StaticMesh>& staticMesh);
-        static void LoadNode(const std::shared_ptr<StaticMesh>& modelPtr, aiNode* node, const aiScene* scene);
-        static void LoadMaterials(std::uint32_t meshIndex, std::uint32_t materialIndex, const std::shared_ptr<StaticMesh::MeshSegment>& meshSegment, const aiScene* scene);
+        static bool ConvertToGLB(const aiScene* scene, const std::filesystem::path& outputPath);
+        static void CopyTextures(aiMaterial* material, const aiTextureType textureType, const std::filesystem::path& outputPath);
+        static std::shared_ptr<StaticMesh> ReadGLB(const std::filesystem::path& outputPath);
     };
 }

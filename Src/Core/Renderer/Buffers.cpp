@@ -1,5 +1,4 @@
 #include "CorePCH.hpp"
-#include "Buffers.hpp"
 
 namespace Motion
 {
@@ -37,7 +36,7 @@ namespace Motion
      *
      * @note Currently, only the OpenGL API is implemented. Other APIs will trigger an assertion failure.
      */
-    std::shared_ptr<IVertexBuffer> BufferFactory::CreateVertexBuffer(float* data, std::int32_t size)
+    std::shared_ptr<IVertexBuffer> BufferFactory::CreateVertexBuffer(Vertex* data, std::uint32_t size)
     {
         switch (Renderer::GetAPI())
         {
@@ -61,7 +60,7 @@ namespace Motion
      *
      * @note Currently, only the OpenGL API is implemented. Vulkan and DirectX will trigger assertions.
      */
-    std::shared_ptr<IElementBuffer> BufferFactory::CreateElementBuffer(std::uint32_t* data, std::int32_t size)
+    std::shared_ptr<IElementBuffer> BufferFactory::CreateElementBuffer(std::uint32_t* data, std::uint32_t size)
     {
         switch (Renderer::GetAPI())
         {

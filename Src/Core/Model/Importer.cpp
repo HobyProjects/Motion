@@ -52,7 +52,16 @@ namespace Motion
         auto& assetManager = AssetManager::GetInstance();
 
         Assimp::Importer importer;
-        const aiScene* scene = importer.ReadFile(path.string(), aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_GenSmoothNormals | aiProcess_JoinIdenticalVertices | aiProcess_CalcTangentSpace);
+        const std::uint32_t importFlags =
+            aiProcess_Triangulate |
+            aiProcess_GenSmoothNormals |
+            aiProcess_CalcTangentSpace |
+            aiProcess_ImproveCacheLocality |
+            aiProcess_RemoveRedundantMaterials |
+            aiProcess_ValidateDataStructure |
+            aiProcess_FlipUVs;
+
+        const aiScene* scene = importer.ReadFile(path.string(), importFlags);
         if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)
         {
             MOTION_CORE_ERROR("Assimp Importer Error: {0}", importer.GetErrorString());
@@ -65,57 +74,27 @@ namespace Motion
 
             std::filesystem::path appRoot = std::filesystem::absolute(std::filesystem::path(".")); // Adjust if needed
             std::string exportPathString = (exportPath == "default") ? (appRoot / "Assets/Models").string() : exportPath;
-            std::filesystem::path outputFilePath = GetAvailableCopyName(std::filesystem::path(std::format("{}/{}/{}.glb", exportPathString, modelName, modelName)));
-            std::filesystem::path finalOutputPath = std::filesystem::absolute(outputFilePath);
-            aiScene* mutableScene;
 
-            auto computeSceneBoundingBox =
-                [](const aiScene* scene, glm::vec3& minBounds, glm::vec3& maxBounds)
-                {
-                    for (unsigned int m = 0; m < scene->mNumMeshes; ++m) {
-                        aiMesh* mesh = scene->mMeshes[m];
-                        for (unsigned int v = 0; v < mesh->mNumVertices; ++v) {
-                            const aiVector3D& vtx = mesh->mVertices[v];
+            std::filesystem::path finalOutputPath{};
+            std::filesystem::path file = std::filesystem::path(std::format("{}/{}/{}.glb", exportPathString, modelName, modelName));
+            if (!std::filesystem::exists(file))
+            {
+                std::filesystem::path outputFilePath = GetAvailableCopyName(file);
+                std::filesystem::path finalOutputPath = std::filesystem::absolute(outputFilePath);
+            }
+            else
+            {
+                finalOutputPath = std::filesystem::absolute(file);
+            }
 
-                            minBounds.x = std::min(minBounds.x, vtx.x);
-                            minBounds.y = std::min(minBounds.y, vtx.y);
-                            minBounds.z = std::min(minBounds.z, vtx.z);
+            aiScene* mutableScene = importer.GetOrphanedScene();
+            if (!mutableScene)
+            {
+                MOTION_CORE_ERROR("Failed to get mutable scene from Assimp importer.");
+                return nullptr;
+            }
 
-                            maxBounds.x = std::max(maxBounds.x, vtx.x);
-                            maxBounds.y = std::max(maxBounds.y, vtx.y);
-                            maxBounds.z = std::max(maxBounds.z, vtx.z);
-                        }
-                    }
-                };
-
-            auto normalizeModelScale =
-                [](aiScene* scene, float scaleFactor, const glm::vec3& center)
-                {
-                    for (unsigned int m = 0; m < scene->mNumMeshes; ++m) {
-                        aiMesh* mesh = scene->mMeshes[m];
-                        for (unsigned int v = 0; v < mesh->mNumVertices; ++v) {
-                            aiVector3D& vertex = mesh->mVertices[v];
-
-                            vertex.x = (vertex.x - center.x) * scaleFactor;
-                            vertex.y = (vertex.y - center.y) * scaleFactor;
-                            vertex.z = (vertex.z - center.z) * scaleFactor;
-                        }
-                    }
-                };
-
-            glm::vec3 minBounds(FLT_MAX);
-            glm::vec3 maxBounds(-FLT_MAX);
-
-            computeSceneBoundingBox(const_cast<aiScene*>(scene), minBounds, maxBounds);
-
-            glm::vec3 center = (maxBounds + minBounds) * 0.5f;
-            glm::vec3 size = maxBounds - minBounds;
-            float desiredSize = 1.0f; // e.g., fit in [-1, 1]
-            float scaleFactor = desiredSize / std::max({ size.x, size.y, size.z });
-
-            normalizeModelScale(const_cast<aiScene*>(scene), scaleFactor, center);
-
-            if (ConvertToGLB(const_cast<aiScene*>(scene), finalOutputPath))
+            if (ConvertToGLB(mutableScene, finalOutputPath))
             {
                 auto staticMesh = ReadGLB(finalOutputPath);
                 if (staticMesh)
@@ -167,6 +146,12 @@ namespace Motion
 
         }
 
+        if (std::filesystem::exists(outputPath))
+        {
+            MOTION_CORE_INFO("Output file already exists: {0}", outputPath.string());
+            return true;
+        }
+
         Assimp::Exporter exporter{};
         std::uint32_t exportFlags = aiProcess_Triangulate | aiProcess_GenSmoothNormals | aiProcess_JoinIdenticalVertices | aiProcess_OptimizeMeshes | aiProcess_OptimizeGraph;
 
@@ -176,59 +161,272 @@ namespace Motion
             return false;
         }
 
-        for (std::uint32_t i = 0; i < scene->mNumMaterials; ++i)
-        {
-            aiMaterial* material = scene->mMaterials[i];
-            CopyTextures(material, aiTextureType_BASE_COLOR, outputPath);
-            CopyTextures(material, aiTextureType_METALNESS, outputPath);
-            CopyTextures(material, aiTextureType_DIFFUSE_ROUGHNESS, outputPath);
-            CopyTextures(material, aiTextureType_NORMALS, outputPath);
-            CopyTextures(material, aiTextureType_AMBIENT_OCCLUSION, outputPath);
-        }
-
         MOTION_CORE_INFO("Assimp Exporter: Scene successfully exported to {0} in glb format.", outputPath.string());
         return true;
     }
 
     /**
-     * @brief Copies a texture file referenced by the given material to the specified output path.
+     * @brief Generates tangents and bitangents for the given vertices based on their positions and texture coordinates.
      *
-     * This function retrieves the texture path from the provided Assimp material for the specified
-     * texture type. If the texture file exists, it is copied to the output directory. The material's
-     * texture property is then updated to reference the new texture location. If the texture file
-     * does not exist or an error occurs during copying, an error is logged and the function returns.
+     * This function computes tangents and bitangents for each triangle defined by the indices vector.
+     * It uses the positions and texture coordinates of the vertices to calculate the tangent space vectors,
+     * which are essential for normal mapping in 3D graphics.
      *
-     * @param material Pointer to the aiMaterial from which to retrieve the texture.
-     * @param textureType The type of texture to copy (e.g., aiTextureType_DIFFUSE).
-     * @param outputPath The directory to which the texture file should be copied.
+     * @param vertices A vector of Vertex structures containing position and texture coordinate data.
+     * @param indices A vector of indices defining the triangles in the mesh.
      */
-    void Importer::CopyTextures(aiMaterial* material, const aiTextureType textureType, const std::filesystem::path& outputPath)
+    static void GenerateTangents(std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices)
     {
-        aiString texturePath;
-        if (material->GetTexture(textureType, 0, &texturePath) != AI_SUCCESS)
-            return;
-
-        std::filesystem::path sourcePath(texturePath.C_Str());
-        if (!std::filesystem::exists(sourcePath))
-            return;
-
-        std::filesystem::path finalTextureOutputPath = outputPath / sourcePath.filename();
-        try
+        for (size_t i = 0; i < indices.size(); i += 3)
         {
-            std::filesystem::create_directories(outputPath);
-            std::filesystem::copy_file(sourcePath, finalTextureOutputPath, std::filesystem::copy_options::overwrite_existing);
+            Vertex& v0 = vertices[indices[i + 0]];
+            Vertex& v1 = vertices[indices[i + 1]];
+            Vertex& v2 = vertices[indices[i + 2]];
 
-            const std::string resolvedTexturePath = finalTextureOutputPath.string();
-            aiString resolvedTexturePathString(resolvedTexturePath.c_str());
+            glm::vec3 pos1 = v0.Position;
+            glm::vec3 pos2 = v1.Position;
+            glm::vec3 pos3 = v2.Position;
 
-            material->AddProperty(&resolvedTexturePathString, AI_MATKEY_TEXTURE(textureType, 0));
+            glm::vec2 uv1 = v0.TexCoord;
+            glm::vec2 uv2 = v1.TexCoord;
+            glm::vec2 uv3 = v2.TexCoord;
+
+            glm::vec3 edge1 = pos2 - pos1;
+            glm::vec3 edge2 = pos3 - pos1;
+            glm::vec2 deltaUV1 = uv2 - uv1;
+            glm::vec2 deltaUV2 = uv3 - uv1;
+
+            float f = (deltaUV1.x * deltaUV2.y - deltaUV2.x * deltaUV1.y);
+            if (fabs(f) < 1e-6f) f = 1.0f;
+            else f = 1.0f / f;
+
+            glm::vec3 tangent = f * (deltaUV2.y * edge1 - deltaUV1.y * edge2);
+            glm::vec3 bitangent = f * (-deltaUV2.x * edge1 + deltaUV1.x * edge2);
+
+            v0.Tangent += tangent;
+            v1.Tangent += tangent;
+            v2.Tangent += tangent;
+
+            v0.Bitangent += bitangent;
+            v1.Bitangent += bitangent;
+            v2.Bitangent += bitangent;
         }
-        catch (const std::exception& e)
+
+        // Normalize all tangents/bitangents
+        for (auto& v : vertices)
         {
-            MOTION_CORE_ERROR("Failed to copy texture: {0}", e.what());
-            return;
+            v.Tangent = glm::normalize(v.Tangent);
+            v.Bitangent = glm::normalize(v.Bitangent);
         }
     }
+
+    /**
+     * @brief Generates normals for the given vertices based on their positions and indices.
+     *
+     * This function computes vertex normals by averaging the normals of adjacent faces.
+     * It iterates through the indices to form triangles, calculates face normals, and accumulates them
+     * for each vertex. Finally, it normalizes the accumulated normals to produce smooth shading.
+     *
+     * @param vertices A vector of Vertex structures containing position and normal data.
+     * @param indices A vector of indices defining the triangles in the mesh.
+     */
+    void GenerateNormals(std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices)
+    {
+        // Clear existing normals
+        for (auto& v : vertices)
+            v.Normal = glm::vec3(0.0f);
+
+        // Accumulate face normals
+        for (size_t i = 0; i < indices.size(); i += 3)
+        {
+            uint32_t i0 = indices[i];
+            uint32_t i1 = indices[i + 1];
+            uint32_t i2 = indices[i + 2];
+
+            glm::vec3& p0 = vertices[i0].Position;
+            glm::vec3& p1 = vertices[i1].Position;
+            glm::vec3& p2 = vertices[i2].Position;
+
+            glm::vec3 edge1 = p1 - p0;
+            glm::vec3 edge2 = p2 - p0;
+
+            glm::vec3 faceNormal = glm::normalize(glm::cross(edge1, edge2));
+
+            vertices[i0].Normal += faceNormal;
+            vertices[i1].Normal += faceNormal;
+            vertices[i2].Normal += faceNormal;
+        }
+
+        // Normalize the result
+        for (auto& v : vertices)
+            v.Normal = glm::normalize(v.Normal);
+    }
+
+    /**
+     * @brief Generates triplanar UV coordinates for each vertex based on its normal.
+     *
+     * This function computes UV coordinates for each vertex by projecting it onto the three principal axes
+     * (X, Y, Z) and using the absolute value of the normal to determine which axis to use for the UV mapping.
+     * It ensures that the UVs are normalized to the range [0, 1].
+     *
+     * @param vertices A vector of Vertex structures containing position and texture coordinate data.
+     */
+    static void GenerateTriplanarUVs(std::vector<Vertex>& vertices)
+    {
+        for (auto& vertex : vertices)
+        {
+            glm::vec3 n = glm::abs(vertex.Normal);
+
+            if (n.x >= n.y && n.x >= n.z)
+                vertex.TexCoord = glm::vec2(vertex.Position.y, vertex.Position.z);
+            else if (n.y >= n.z)
+                vertex.TexCoord = glm::vec2(vertex.Position.x, vertex.Position.z);
+            else
+                vertex.TexCoord = glm::vec2(vertex.Position.x, vertex.Position.y);
+
+            vertex.TexCoord = vertex.TexCoord * 0.5f + 0.5f; // Normalize to [0, 1]
+        }
+    }
+
+    /**
+     * @brief Checks if a glm::vec2 or glm::vec3 contains finite values.
+     *
+     * This function checks if all components of the vector are finite (not NaN or Inf).
+     * It is used to validate mesh attributes before processing.
+     *
+     * @param v The vector to check.
+     * @return true if all components are finite, false otherwise.
+     */
+    static bool IsFinite(const glm::vec2& v)
+    {
+        return std::isfinite(v.x) && std::isfinite(v.y);
+    }
+
+
+    /**
+     * @brief Checks if a glm::vec3 contains finite values.
+     *
+     * This function checks if all components of the vector are finite (not NaN or Inf).
+     * It is used to validate mesh attributes before processing.
+     *
+     * @param v The vector to check.
+     * @return true if all components are finite, false otherwise.
+     */
+    static bool IsFinite(const glm::vec3& v)
+    {
+        return std::isfinite(v.x) && std::isfinite(v.y) && std::isfinite(v.z);
+    }
+
+    /**
+     * @brief Validates and fixes mesh attributes such as normals, UVs, and tangents.
+     *
+     * This function checks if the mesh has valid normals, UVs, and tangents.
+     * If any of these attributes are missing or invalid, it generates fallback values
+     * (e.g., generating normals or triplanar UVs) to ensure the mesh is usable.
+     *
+     * @param mesh The Assimp mesh to validate.
+     * @param vertices The vector of vertices to check and modify.
+     * @param indices The vector of indices defining the mesh triangles.
+     * @param meshIndex The index of the mesh being processed (for logging).
+     */
+    static void ValidateAndFixMeshAttributes(const aiMesh* mesh, std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices, uint32_t meshIndex)
+    {
+        bool regenerateNormals = false;
+        bool regenerateUVs = false;
+        bool regenerateTangents = false;
+
+        // Validate Normals
+        if (!mesh->HasNormals())
+        {
+            regenerateNormals = true;
+        }
+        else
+        {
+            bool allZero = true;
+            for (auto& v : vertices)
+            {
+                if (!IsFinite(v.Normal) || glm::length(v.Normal) < 0.001f)
+                {
+                    regenerateNormals = true;
+                    break;
+                }
+                if (glm::length(v.Normal) > 0.001f)
+                    allZero = false;
+            }
+            if (allZero)
+                regenerateNormals = true;
+        }
+
+        // Validate UVs
+        if (!mesh->HasTextureCoords(0))
+        {
+            regenerateUVs = true;
+        }
+        else
+        {
+            bool uvHasVariation = false;
+            glm::vec2 firstUV = vertices.front().TexCoord;
+
+            for (const auto& v : vertices)
+            {
+                if (!IsFinite(v.TexCoord))
+                {
+                    regenerateUVs = true;
+                    break;
+                }
+                if (glm::distance(v.TexCoord, firstUV) > 0.01f)
+                    uvHasVariation = true;
+            }
+            if (!uvHasVariation)
+                regenerateUVs = true;
+        }
+
+        // Validate Tangents and Bitangents
+        if (!mesh->HasTangentsAndBitangents())
+        {
+            regenerateTangents = true;
+        }
+        else
+        {
+            bool allZero = true;
+            for (auto& v : vertices)
+            {
+                if (!IsFinite(v.Tangent) || !IsFinite(v.Bitangent) ||
+                    glm::length(v.Tangent) < 0.001f || glm::length(v.Bitangent) < 0.001f)
+                {
+                    regenerateTangents = true;
+                    break;
+                }
+                if (glm::length(v.Tangent) > 0.001f || glm::length(v.Bitangent) > 0.001f)
+                    allZero = false;
+
+                // Optional: Gram-Schmidt orthogonalization
+                v.Tangent = glm::normalize(v.Tangent - glm::dot(v.Tangent, v.Normal) * v.Normal);
+                v.Bitangent = glm::normalize(glm::cross(v.Normal, v.Tangent));
+            }
+            if (allZero)
+                regenerateTangents = true;
+        }
+
+        if (regenerateNormals)
+        {
+            MOTION_CORE_WARN("Mesh [{}] has invalid or missing normals — generating fallback normals...", meshIndex);
+            GenerateNormals(vertices, indices);
+        }
+
+        if (regenerateUVs)
+        {
+            MOTION_CORE_WARN("Mesh [{}] has invalid or missing UVs — generating triplanar fallback...", meshIndex);
+            GenerateTriplanarUVs(vertices);
+        }
+
+        if (regenerateTangents)
+        {
+            MOTION_CORE_WARN("Mesh [{}] has invalid or missing tangents — generating...", meshIndex);
+            GenerateTangents(vertices, indices);
+        }
+    }
+
 
     /**
      * @brief Imports a GLB file and constructs a StaticMesh object from its contents.
@@ -260,210 +458,195 @@ namespace Motion
         }
 
         Assimp::Importer importer{};
-        std::uint32_t importFlags = aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_GenSmoothNormals | aiProcess_JoinIdenticalVertices | aiProcess_CalcTangentSpace;
-        const aiScene* scene = importer.ReadFile(outputPath.string(), importFlags);
+        const std::uint32_t importFlags =
+            aiProcess_Triangulate |
+            aiProcess_GenSmoothNormals |
+            aiProcess_CalcTangentSpace |
+            aiProcess_ImproveCacheLocality |
+            aiProcess_RemoveRedundantMaterials |
+            aiProcess_ValidateDataStructure |
+            aiProcess_FlipUVs;
 
+        const aiScene* scene = importer.ReadFile(outputPath.string(), importFlags);
         if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)
         {
             MOTION_CORE_ERROR("Assimp Importer Error: {0}", importer.GetErrorString());
             return nullptr;
         }
-
-
-        auto& assetManager = AssetManager::GetInstance();
-        std::string modelName = std::format("SMSH_{}", outputPath.filename().stem().string());
-        auto staticMesh = assetManager.Create<StaticMesh>(modelName, outputPath);
-
-        std::vector<float> vertices;
-        std::vector<std::uint32_t> indices;
-
-        auto getMaterialFloat =
-            [](aiMaterial* material, const char* key, int type, int idx, float defaultValue) -> float
+        else
+        {
+            aiScene* mutableScene = importer.GetOrphanedScene();
+            if (!mutableScene)
             {
-                float value{ 0.0f };
-                if (material->Get(key, type, idx, value) == AI_SUCCESS)
-                    return value;
-
-                return defaultValue;
-            };
-
-        auto getMaterialVec3Data =
-            [](aiMaterial* material, const char* key, int type, int idx, const glm::vec3& defaultValue) -> glm::vec3
-            {
-                aiVector3D value{ 0.0f, 0.0f, 0.0f };
-                if (material->Get(key, type, idx, value) == AI_SUCCESS)
-                    return { value.x, value.y, value.z };
-
-                return { defaultValue.x, defaultValue.y, defaultValue.z };
-            };
-
-        auto getMaterialTexture =
-            [&](aiMaterial* material, aiTextureType assimpTextureType, TextureType engineTextureType) -> std::shared_ptr<ITexture>
-            {
-                aiString texturePath;
-                if (material->GetTexture(assimpTextureType, 0, &texturePath) == AI_SUCCESS)
-                {
-                    std::filesystem::path sourcePath(texturePath.C_Str());
-                    if (std::filesystem::exists(sourcePath))
-                    {
-                        std::string textureName = sourcePath.filename().stem().string();
-                        return assetManager.Create<ITexture>(textureName, sourcePath, engineTextureType, true);
-                    }
-                    else
-                    {
-                        MOTION_CORE_ERROR("Texture file does not exist: {0}", sourcePath.string());
-                    }
-                }
-
+                MOTION_CORE_ERROR("Failed to get mutable scene from Assimp importer.");
                 return nullptr;
-            };
+            }
 
-        auto loadMeshes =
-            [&](const aiNode* meshNode, const std::uint32_t meshIndex, const aiMesh* mesh, const aiScene* scene)
-            {
-                for (std::uint32_t verticesIndex = 0; verticesIndex < mesh->mNumVertices; verticesIndex++)
+            auto& assetManager = AssetManager::GetInstance();
+            std::string modelName = std::format("SMSH_{}", outputPath.filename().stem().string());
+            auto staticMesh = assetManager.Create<StaticMesh>(modelName, outputPath);
+
+            auto getMaterialFloat =
+                [](aiMaterial* material, const char* key, int type, int idx, float defaultValue) -> float
                 {
-                    // Extract vertex data
-                    const aiVector3D& vertexPoint = mesh->mVertices[verticesIndex];
-                    vertices.insert(vertices.end(), { vertexPoint.x, vertexPoint.y, vertexPoint.z });
+                    float value{ 0.0f };
+                    if (material->Get(key, type, idx, value) == AI_SUCCESS)
+                        return value;
 
-                    // Extract texture coordinates, normals, tangents, and bitangents
-                    if (mesh->HasTextureCoords(0))
+                    return defaultValue;
+                };
+
+            auto getMaterialVec3Data =
+                [](aiMaterial* material, const char* key, int type, int idx, const glm::vec3& defaultValue) -> glm::vec3
+                {
+                    aiVector3D value{ 0.0f, 0.0f, 0.0f };
+                    if (material->Get(key, type, idx, value) == AI_SUCCESS)
+                        return { value.x, value.y, value.z };
+
+                    return { defaultValue.x, defaultValue.y, defaultValue.z };
+                };
+
+            auto getMaterialTexture =
+                [&](aiMaterial* material, aiTextureType assimpTextureType, TextureType engineTextureType) -> std::shared_ptr<ITexture>
+                {
+                    aiString texturePath;
+                    if (material->GetTexture(assimpTextureType, 0, &texturePath) == AI_SUCCESS)
                     {
-                        const aiVector3D& texCoord = mesh->mTextureCoords[0][verticesIndex];
-                        vertices.insert(vertices.end(), { texCoord.x, texCoord.y });
+                        std::filesystem::path sourcePath(texturePath.C_Str());
+                        if (std::filesystem::exists(sourcePath))
+                        {
+                            std::string textureName = sourcePath.filename().stem().string();
+                            return assetManager.Create<ITexture>(textureName, sourcePath, engineTextureType, true);
+                        }
+                        else
+                        {
+                            MOTION_CORE_ERROR("Texture file does not exist: {0}", sourcePath.string());
+                        }
+                    }
+
+                    return nullptr;
+                };
+
+            auto loadMeshes =
+                [&](aiNode* meshNode, std::uint32_t meshIndex, aiMesh* mesh, aiScene* scene)
+                {
+                    std::vector<Vertex> vertices;
+                    std::vector<std::uint32_t> indices;
+
+                    for (std::uint32_t verticesIndex = 0; verticesIndex < mesh->mNumVertices; verticesIndex++)
+                    {
+                        // Extract vertex data
+                        Vertex vertex{};
+                        const aiVector3D& vertexPoint = mesh->mVertices[verticesIndex];
+                        vertex.Position = { vertexPoint.x, vertexPoint.y, vertexPoint.z };
+
+                        // Extract texture coordinates, normals, tangents, and bitangents
+                        if (mesh->HasTextureCoords(0))
+                        {
+                            const aiVector3D& texCoord = mesh->mTextureCoords[0][verticesIndex];
+                            vertex.TexCoord = { texCoord.x, texCoord.y };
+                        }
+
+                        if (mesh->HasNormals())
+                        {
+                            const aiVector3D& normal = mesh->mNormals[verticesIndex];
+                            vertex.Normal = { normal.x, normal.y, normal.z };
+                        }
+
+                        if (mesh->HasTangentsAndBitangents())
+                        {
+                            vertex.Tangent = { mesh->mTangents[verticesIndex].x, mesh->mTangents[verticesIndex].y, mesh->mTangents[verticesIndex].z };
+                            vertex.Bitangent = { mesh->mBitangents[verticesIndex].x, mesh->mBitangents[verticesIndex].y, mesh->mBitangents[verticesIndex].z };
+                        }
+
+                        vertices.push_back(vertex);
+                    }
+
+                    for (std::uint32_t faceIndex = 0; faceIndex < mesh->mNumFaces; faceIndex++)
+                    {
+                        const aiFace& face = mesh->mFaces[faceIndex];
+                        for (std::uint32_t index = 0; index < face.mNumIndices; index++)
+                        {
+                            indices.push_back(face.mIndices[index]);
+                        }
+                    }
+
+
+                    ValidateAndFixMeshAttributes(mesh, vertices, indices, meshIndex);
+
+                    BufferLayout layout
+                    (
+                        {
+                            { UniformCache::Position, BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Position) },
+                            { UniformCache::TexCoords, BufferComponents::UV, BufferStride::F2, false, offsetof(Vertex, TexCoord) },
+                            { UniformCache::Normals, BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Normal) },
+                            { UniformCache::Tangents, BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Tangent) },
+                            { UniformCache::Bitangents, BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Bitangent) }
+                        }
+                    );
+
+                    auto meshSegment = std::make_shared<StaticMesh::MeshSegment>();
+                    meshSegment->MeshSelf = assetManager.Create<Mesh>(std::format("MSH_{}-{}", staticMesh->GetName(), meshIndex), vertices.data(), static_cast<std::uint32_t>(vertices.size()), indices.data(), static_cast<std::uint32_t>(indices.size()), layout, staticMesh);
+
+                    aiMaterial* material = scene->mMaterials[mesh->mMaterialIndex];
+                    meshSegment->Materials = assetManager.Create<MaterialInstance>(std::format("MAT_{}-{}", staticMesh->GetName(), meshIndex), assetManager.Get<Material>("BaseMaterial"));
+
+                    if (!material)
+                    {
+                        // If no material is found, use a default material (base materials)
+                        meshSegment->Materials->Attributes.BaseColor = { 1.0f, 1.0f, 1.0f };
+                        meshSegment->Materials->Attributes.Metallic = 0.0f;
+                        meshSegment->Materials->Attributes.Roughness = 1.0f;
+                        meshSegment->Materials->Attributes.Opacity = 1.0f;
+                        meshSegment->Materials->Attributes.AmbientOcclusion = 1.0f;
+
+                        meshSegment->Materials->Texture[UniformCache::BaseColorTextures] = nullptr;
+                        meshSegment->Materials->Texture[UniformCache::MetallicTextures] = nullptr;
+                        meshSegment->Materials->Texture[UniformCache::RoughnessTextures] = nullptr;
+                        meshSegment->Materials->Texture[UniformCache::AmbientOcclusionTextures] = nullptr;
+                        meshSegment->Materials->Texture[UniformCache::NormalTextures] = nullptr;
                     }
                     else
                     {
-                        vertices.insert(vertices.end(), { 0.0f, 0.0f });
+                        meshSegment->Materials->Attributes.BaseColor = getMaterialVec3Data(material, AI_MATKEY_COLOR_DIFFUSE, { 1.0f, 1.0f, 1.0f });
+                        meshSegment->Materials->Attributes.Metallic = getMaterialFloat(material, AI_MATKEY_METALLIC_FACTOR, 0.0f);
+                        meshSegment->Materials->Attributes.Roughness = getMaterialFloat(material, AI_MATKEY_ROUGHNESS_FACTOR, 1.0f);
+                        meshSegment->Materials->Attributes.Opacity = getMaterialFloat(material, AI_MATKEY_OPACITY, 1.0f);
+                        meshSegment->Materials->Attributes.AmbientOcclusion = 1.0f; // Assimp does not provide ambient occlusion factor, set to 1.0f
+
+                        meshSegment->Materials->Texture[UniformCache::BaseColorTextures] = getMaterialTexture(material, aiTextureType_BASE_COLOR, TextureType::BaseColorTexture);
+                        meshSegment->Materials->Texture[UniformCache::MetallicTextures] = getMaterialTexture(material, aiTextureType_METALNESS, TextureType::MetallicTexture);
+                        meshSegment->Materials->Texture[UniformCache::RoughnessTextures] = getMaterialTexture(material, aiTextureType_DIFFUSE_ROUGHNESS, TextureType::RoughnessTexture);
+                        meshSegment->Materials->Texture[UniformCache::AmbientOcclusionTextures] = getMaterialTexture(material, aiTextureType_AMBIENT_OCCLUSION, TextureType::AmbientOcclusionTexture);
+                        meshSegment->Materials->Texture[UniformCache::NormalTextures] = getMaterialTexture(material, aiTextureType_NORMALS, TextureType::NormalTexture);
                     }
 
-                    if (mesh->HasNormals())
-                    {
-                        const aiVector3D& normal = mesh->mNormals[verticesIndex];
-                        vertices.insert(vertices.end(), { normal.x, normal.y, normal.z });
-                    }
-                    else
-                    {
-                        vertices.insert(vertices.end(), { 0.0f, 0.0f, 0.0f });
-                    }
+                    meshSegment->MeshIndex = meshIndex;
+                    staticMesh->m_Meshes.emplace_back(meshSegment);
+                };
 
-                    if (mesh->HasTangentsAndBitangents())
-                    {
-                        const aiVector3D& tangent = mesh->mTangents[verticesIndex];
-                        vertices.insert(vertices.end(), { tangent.x, tangent.y, tangent.z });
-
-                        const aiVector3D& bitangent = mesh->mBitangents[verticesIndex];
-                        vertices.insert(vertices.end(), { bitangent.x, bitangent.y, bitangent.z });
-                    }
-                    else
-                    {
-                        vertices.insert(vertices.end(), { 0.0f, 0.0f, 0.0f });
-
-                    }
-                }
-
-                for (std::uint32_t faceIndex = 0; faceIndex < mesh->mNumFaces; faceIndex++)
+            std::function<void(aiNode*, aiScene*)> loadNodes =
+                [&](aiNode* node, aiScene* scene)
                 {
-                    const aiFace& face = mesh->mFaces[faceIndex];
-                    for (std::uint32_t index = 0; index < face.mNumIndices; index++)
+                    for (std::uint32_t i = 0; i < node->mNumMeshes; i++)
                     {
-                        indices.push_back(face.mIndices[index]);
+                        std::uint32_t meshIndex = node->mMeshes[i];
+                        aiMesh* mesh = scene->mMeshes[meshIndex];
+                        if (mesh)
+                        {
+                            loadMeshes(node, meshIndex, mesh, mutableScene);
+                        }
                     }
-                }
 
-                BufferLayout layout
-                (
+                    for (std::uint32_t i = 0; i < node->mNumChildren; i++)
                     {
-                        { UniformCache::Position, BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Position) },
-                        { UniformCache::TexCoords, BufferComponents::UV, BufferStride::F2, false, offsetof(Vertex, TexCoord) },
-                        { UniformCache::Normals, BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Normal) },
-                        { UniformCache::Tangents, BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Tangent) },
-                        { UniformCache::Bitangents, BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Bitangent) }
+                        loadNodes(node->mChildren[i], mutableScene);
                     }
-                );
-
-                auto meshSegment = std::make_shared<StaticMesh::MeshSegment>();
-                meshSegment->MeshSelf = assetManager.Create<Mesh>(std::format("MSH_{}-{}", staticMesh->GetName(), meshIndex), vertices.data(), static_cast<std::int32_t>(vertices.size()), indices.data(), static_cast<std::int32_t>(indices.size()), layout, staticMesh);
-
-                aiMaterial* material = scene->mMaterials[mesh->mMaterialIndex];
-                meshSegment->Materials = assetManager.Create<MaterialInstance>(std::format("MAT_{}-{}", staticMesh->GetName(), meshIndex), assetManager.Get<Material>("BaseMaterial"));
-
-                if (!material)
-                {
-                    // If no material is found, use a default material (base materials)
-                    meshSegment->Materials->Attributes.BaseColor = { 1.0f, 1.0f, 1.0f };
-                    meshSegment->Materials->Attributes.Metallic = 0.0f;
-                    meshSegment->Materials->Attributes.Roughness = 1.0f;
-                    meshSegment->Materials->Attributes.Opacity = 1.0f;
-                    meshSegment->Materials->Attributes.AmbientOcclusion = 1.0f;
-
-                    meshSegment->Materials->Texture[UniformCache::BaseColorTextures] = nullptr;
-                    meshSegment->Materials->Texture[UniformCache::MetallicTextures] = nullptr;
-                    meshSegment->Materials->Texture[UniformCache::RoughnessTextures] = nullptr;
-                    meshSegment->Materials->Texture[UniformCache::AmbientOcclusionTextures] = nullptr;
-                    meshSegment->Materials->Texture[UniformCache::NormalTextures] = nullptr;
-                }
-                else
-                {
-                    meshSegment->Materials->Attributes.BaseColor = getMaterialVec3Data(material, AI_MATKEY_COLOR_DIFFUSE, { 1.0f, 1.0f, 1.0f });
-                    meshSegment->Materials->Attributes.Metallic = getMaterialFloat(material, AI_MATKEY_METALLIC_FACTOR, 0.0f);
-                    meshSegment->Materials->Attributes.Roughness = getMaterialFloat(material, AI_MATKEY_ROUGHNESS_FACTOR, 1.0f);
-                    meshSegment->Materials->Attributes.Opacity = getMaterialFloat(material, AI_MATKEY_OPACITY, 1.0f);
-                    meshSegment->Materials->Attributes.AmbientOcclusion = 1.0f; // Assimp does not provide ambient occlusion factor, set to 1.0f
-
-                    meshSegment->Materials->Texture[UniformCache::BaseColorTextures] = getMaterialTexture(material, aiTextureType_BASE_COLOR, TextureType::BaseColorTexture);
-                    meshSegment->Materials->Texture[UniformCache::MetallicTextures] = getMaterialTexture(material, aiTextureType_METALNESS, TextureType::MetallicTexture);
-                    meshSegment->Materials->Texture[UniformCache::RoughnessTextures] = getMaterialTexture(material, aiTextureType_DIFFUSE_ROUGHNESS, TextureType::RoughnessTexture);
-                    meshSegment->Materials->Texture[UniformCache::AmbientOcclusionTextures] = getMaterialTexture(material, aiTextureType_AMBIENT_OCCLUSION, TextureType::AmbientOcclusionTexture);
-                    meshSegment->Materials->Texture[UniformCache::NormalTextures] = getMaterialTexture(material, aiTextureType_NORMALS, TextureType::NormalTexture);
-                }
-
-                meshSegment->MeshIndex = meshIndex;
-                staticMesh->m_Meshes.emplace_back(meshSegment);
-                vertices.clear();
-                indices.clear();
-            };
-
-        auto convertMatrix =
-            [](const aiMatrix4x4& aiMat) -> glm::mat4
-            {
-                return glm::transpose(glm::make_mat4(&aiMat.a1));
-            };
-
-        auto decomposeTransform =
-            [&](const aiMatrix4x4& matrix, glm::vec3& position, glm::quat& rotation, glm::vec3& scale)
-            {
-                aiVector3D aiPos, aiScale;
-                aiQuaternion aiRot;
-                matrix.Decompose(aiScale, aiRot, aiPos);
-
-                position = { aiPos.x, aiPos.y, aiPos.z };
-                scale = { aiScale.x, aiScale.y, aiScale.z };
-                rotation = { aiRot.w, aiRot.x, aiRot.y, aiRot.z }; // GLM uses (w, x, y, z)
-            };
-
-        std::function<void(aiNode*, const aiScene*)> loadNodes =
-            [&](aiNode* node, const aiScene* scene)
-            {
-                for (std::uint32_t i = 0; i < node->mNumMeshes; i++)
-                {
-                    std::uint32_t meshIndex = node->mMeshes[i];
-                    aiMesh* mesh = scene->mMeshes[meshIndex];
-                    if (mesh)
-                    {
-                        loadMeshes(node, meshIndex, mesh, scene);
-                    }
-                }
-
-                for (std::uint32_t i = 0; i < node->mNumChildren; i++)
-                {
-                    loadNodes(node->mChildren[i], scene);
-                }
-            };
+                };
 
 
-        loadNodes(scene->mRootNode, scene);
-        return staticMesh;
+            loadNodes(mutableScene->mRootNode, mutableScene);
+            return staticMesh;
+        }
     }
 }

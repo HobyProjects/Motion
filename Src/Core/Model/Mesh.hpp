@@ -10,20 +10,11 @@ namespace Motion
 {
     class StaticMesh; // Forward declaration
 
-    struct Vertex
-    {
-        glm::vec3 Position{ 0.0f, 0.0f, 0.0f };
-        glm::vec2 TexCoord{ 0.0f, 0.0f };
-        glm::vec3 Normal{ 0.0f, 0.0f, 0.0f };
-        glm::vec3 Tangent{ 0.0f, 0.0f, 0.0f };
-        glm::vec3 Bitangent{ 0.0f, 0.0f, 0.0f };
-    };
-
     class Mesh : public AssetBase<IAsset>
     {
     public:
         Mesh() = default;
-        Mesh(UUID uuid, const std::string& name, float* vertices, std::int32_t verticesSize, std::uint32_t* indices, std::int32_t indicesCount, const BufferLayout& layout, const std::shared_ptr<StaticMesh>& parentModel);
+        Mesh(UUID uuid, const std::string& name, Vertex* vertices, std::uint32_t verticesSize, std::uint32_t* indices, std::uint32_t indicesCount, const BufferLayout& layout, const std::shared_ptr<StaticMesh>& parentModel);
         ~Mesh() = default;
 
         void Bind() const noexcept;
@@ -40,22 +31,5 @@ namespace Motion
         uint32_t m_IndicesCount{ 0 };
 
         friend class StaticMesh; // Allow StaticMesh to access private members
-    };
-
-    class QuickMesh
-    {
-    public:
-        QuickMesh() = default;
-        ~QuickMesh() = default;
-
-        QuickMesh(const QuickMesh&) = delete;
-        QuickMesh& operator=(const QuickMesh&) = delete;
-        QuickMesh(QuickMesh&&) = delete;
-        QuickMesh& operator=(QuickMesh&&) = delete;
-
-        static std::shared_ptr<Mesh> CreatePlane(bool isRegistered, const std::string name, float width, float height, std::int32_t widthSegments = 1, std::int32_t heightSegments = 1);
-        static std::shared_ptr<Mesh> CreateCube(bool isRegistered, const std::string name, float width, float height, float depth);
-        static std::shared_ptr<Mesh> CreateSphere(bool isRegistered, const std::string name, std::int32_t sectorCount, std::int32_t stackCount);
-        static std::shared_ptr<Mesh> CreateQuad(bool isRegistered, const std::string name, std::int32_t width, std::int32_t height);
     };
 }

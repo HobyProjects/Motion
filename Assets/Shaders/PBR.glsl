@@ -10,6 +10,8 @@ layout(location = 4) in vec3 a_Bitangents;
 out vec3 v_WorldPosition;
 out vec2 v_UV;
 out vec3 v_Normal;
+out vec3 v_Tangent;
+out vec3 v_Bitangent;
 
 uniform mat4 u_ModelMatrix;
 uniform mat4 u_ViewMatrix;
@@ -20,9 +22,12 @@ void main()
 {
     v_UV = a_TexCoords;
     v_WorldPosition = vec3(u_ModelMatrix * vec4(a_Position, 1.0));
+    
     v_Normal = u_NormalMatrix * a_Normals;
+    v_Tangent = u_NormalMatrix * a_Tangents;
+    v_Bitangent = u_NormalMatrix * a_Bitangents;
 
-    gl_Position =  u_ProjectionMatrix * u_ViewMatrix * vec4(v_WorldPosition, 1.0);
+    gl_Position = u_ProjectionMatrix * u_ViewMatrix * vec4(v_WorldPosition, 1.0);
 }
 
 #type fragment
@@ -33,6 +38,8 @@ layout(location = 0) out vec4 FragColor;
 in vec3 v_WorldPosition;
 in vec2 v_UV;
 in vec3 v_Normal;
+in vec3 v_Tangent;
+in vec3 v_Bitangent;
 
 // Texture Samplers
 uniform sampler2D u_BaseColorTextures;
@@ -70,20 +77,23 @@ layout(std430, binding = 0) buffer MaterialData {
 
 const float PI = 3.14159265359;
 
+mat3 GetTBN(vec3 normal, vec3 tangent, vec3 bitangent)
+{
+    vec3 N = normalize(normal);
+    vec3 T = normalize(tangent - dot(tangent, N) * N); // Gram-Schmidt
+    vec3 B = cross(N, T);
+    return mat3(T, B, N);
+}
+
 vec3 GetNormalFromMap()
 {
     vec3 tangentNormal = texture(u_NormalTextures, v_UV).xyz * 2.0 - 1.0;
+    if (length(tangentNormal) < 0.01)
+        tangentNormal = vec3(0.0, 0.0, 1.0);
 
-    vec3 Q1  = dFdx(v_WorldPosition);
-    vec3 Q2  = dFdy(v_WorldPosition);
-    vec2 st1 = dFdx(v_UV);
-    vec2 st2 = dFdy(v_UV);
+    tangentNormal = clamp(tangentNormal, vec3(-1.0), vec3(1.0));
 
-    vec3 N   = normalize(v_Normal);
-    vec3 T  = normalize(Q1*st2.t - Q2*st1.t);
-    vec3 B  = -normalize(cross(N, T));
-    mat3 TBN = mat3(T, B, N);
-
+    mat3 TBN = GetTBN(v_Normal, v_Tangent, v_Bitangent);
     return normalize(TBN * tangentNormal);
 }
 

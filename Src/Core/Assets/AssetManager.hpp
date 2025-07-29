@@ -313,7 +313,7 @@ namespace Motion
          * @param parentModel Shared pointer to the parent StaticMesh object.
          * @return std::shared_ptr<Mesh> Shared pointer to the newly created Mesh object.
          */
-        static std::shared_ptr<Mesh> Create(UUID uuid, const std::string& name, float* vertices, std::int32_t verticesSize, std::uint32_t* indices, std::int32_t indicesCount, const BufferLayout& layout, const std::shared_ptr<StaticMesh>& parentModel)
+        static std::shared_ptr<Mesh> Create(UUID uuid, const std::string& name, Vertex* vertices, std::uint32_t verticesSize, std::uint32_t* indices, std::uint32_t indicesCount, const BufferLayout& layout, const std::shared_ptr<StaticMesh>& parentModel)
         {
             return std::make_shared<Mesh>(uuid, name, vertices, verticesSize, indices, indicesCount, layout, parentModel);
         }

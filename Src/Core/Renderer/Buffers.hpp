@@ -42,6 +42,15 @@ namespace Motion
         NAN_ = 0,
     };
 
+    struct Vertex
+    {
+        glm::vec3 Position{ 0.0f, 0.0f, 0.0f };
+        glm::vec2 TexCoord{ 0.0f, 0.0f };
+        glm::vec3 Normal{ 0.0f, 0.0f, 0.0f };
+        glm::vec3 Tangent{ 0.0f, 0.0f, 0.0f };
+        glm::vec3 Bitangent{ 0.0f, 0.0f, 0.0f };
+    };
+
     struct BufferElements
     {
         std::string_view AttributeName;
@@ -270,8 +279,8 @@ namespace Motion
 
     public:
         static std::shared_ptr<IVertexBuffer> CreateVertexBuffer(std::int32_t allocatorSize);
-        static std::shared_ptr<IVertexBuffer> CreateVertexBuffer(float* data, std::int32_t size);
-        static std::shared_ptr<IElementBuffer> CreateElementBuffer(std::uint32_t* data, std::int32_t size);
+        static std::shared_ptr<IVertexBuffer> CreateVertexBuffer(Vertex* data, std::uint32_t size);
+        static std::shared_ptr<IElementBuffer> CreateElementBuffer(std::uint32_t* data, std::uint32_t size);
         static std::shared_ptr<IShaderBuffer> CreateShaderBuffer(std::int32_t size, BindingPoint binding);
         static std::shared_ptr<IUniformBuffer> CreateUniformBuffer(std::int32_t size, BindingPoint binding);
         static std::shared_ptr<IFrameBuffer> CreateFrameBuffer(const FrameBufferSpecification& specification);

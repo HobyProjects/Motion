@@ -30,10 +30,10 @@ namespace Motion
      * @param data Pointer to the array of vertex data to be stored in the buffer.
      * @param dataSize The number of elements in the data array.
      */
-    GL_VertexBuffer::GL_VertexBuffer(float* data, std::int32_t dataSize)
+    GL_VertexBuffer::GL_VertexBuffer(Vertex* data, std::uint32_t dataSize)
     {
         glCreateBuffers(1, &m_VertexBufferID);
-        glNamedBufferData(m_VertexBufferID, sizeof(data[0]) * dataSize, data, GL_STATIC_DRAW);
+        glNamedBufferData(m_VertexBufferID, sizeof(Vertex) * dataSize, data, GL_STATIC_DRAW);
     }
 
     /**
@@ -112,7 +112,7 @@ namespace Motion
       * @param data Pointer to the array of index data (of type std::int32_t) to be uploaded.
       * @param indicesCount The number of indices in the data array.
       */
-    GL_ElementBuffer::GL_ElementBuffer(std::uint32_t* data, std::int32_t indicesCount) : m_Count(indicesCount)
+    GL_ElementBuffer::GL_ElementBuffer(std::uint32_t* data, std::uint32_t indicesCount) : m_Count(indicesCount)
     {
         glCreateBuffers(1, &m_ElementBufferID);
         glNamedBufferData(m_ElementBufferID, indicesCount * sizeof(std::uint32_t), data, GL_STATIC_DRAW);
@@ -1136,7 +1136,7 @@ namespace Motion
      * @param size The size of the vertex data in bytes.
      * @return std::shared_ptr<GL_VertexBuffer> Shared pointer to the created GL_VertexBuffer.
      */
-    std::shared_ptr<GL_VertexBuffer> GL_CreateVertexBuffer(float* data, std::int32_t size)
+    std::shared_ptr<GL_VertexBuffer> GL_CreateVertexBuffer(Vertex* data, std::uint32_t size)
     {
         return std::make_shared<GL_VertexBuffer>(data, size);
     }
@@ -1152,7 +1152,7 @@ namespace Motion
      * @param size The number of elements in the data array.
      * @return std::shared_ptr<GL_ElementBuffer> A shared pointer to the created GL_ElementBuffer.
      */
-    std::shared_ptr<GL_ElementBuffer> GL_CreateElementBuffer(std::uint32_t* data, std::int32_t size)
+    std::shared_ptr<GL_ElementBuffer> GL_CreateElementBuffer(std::uint32_t* data, std::uint32_t size)
     {
         return std::make_shared<GL_ElementBuffer>(data, size);
     }

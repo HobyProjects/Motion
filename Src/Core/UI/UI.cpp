@@ -330,25 +330,23 @@ namespace Motion
         ImGui::PopID();
     }
 
+
     /**
-     * @brief Displays a draggable UI control for editing the x, y, and z components of a quaternion.
+     * @brief Displays a draggable UI control for editing a quaternion as Euler angles.
      *
-     * This function presents a UI element that allows the user to modify the x, y, and z components
-     * of a given quaternion using a drag controller. The w component of the quaternion is not handled
-     * or modified by this function.
+     * This function presents a UI control that allows the user to manipulate a quaternion (`glm::quat`)
+     * by editing its Euler angles in degrees. The quaternion is converted to Euler angles for display and editing,
+     * and then converted back to a quaternion after user interaction.
      *
-     * @param label        The label to display for the UI control.
-     * @param values       Reference to the quaternion whose x, y, and z components will be edited.
-     * @param resetValue   The value to reset the components to when requested.
+     * @param label The label to display for the UI control.
+     * @param values Reference to the quaternion to be edited.
+     * @param resetValue The value to reset the Euler angles to when requested.
      */
     void Motion::CustomUIControl::DragControllerVec3(const char* label, glm::quat& values, float resetValue)
     {
-        glm::vec3 vec(values.x, values.y, values.z);
-        DragControllerVec3(label, vec, resetValue);
-        values.x = vec.x;
-        values.y = vec.y;
-        values.z = vec.z;
-        // Note: w component is not handled here.
+        glm::vec3 euler = glm::degrees(glm::eulerAngles(values)); // Convert to degrees for user editing
+        DragControllerVec3(label, euler, resetValue);
+        values = glm::quat(glm::radians(euler)); // Convert back to quaternion
     }
 }
 

@@ -9,9 +9,11 @@ uniform mat4 u_ProjectionMatrix;
 
 void main() {
 
+    mat4 rotationOnlyView = mat4(mat3(u_ViewMatrix));
     v_WorldPositions = a_Position;
-    gl_Position = u_ProjectionMatrix * u_ViewMatrix * vec4(a_Position, 1.0);
 
+
+    gl_Position = u_ProjectionMatrix * rotationOnlyView * vec4(a_Position, 1.0);
 }
 
 #type fragment

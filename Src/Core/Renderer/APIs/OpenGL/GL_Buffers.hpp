@@ -10,7 +10,7 @@ namespace Motion
     public:
         GL_VertexBuffer() = default;
         GL_VertexBuffer(std::int32_t allocatorSize);
-        GL_VertexBuffer(float* data, std::int32_t dataSize);
+        GL_VertexBuffer(Vertex* data, std::uint32_t dataSize);
         virtual ~GL_VertexBuffer();
 
         virtual void Bind() const override;
@@ -29,7 +29,7 @@ namespace Motion
     {
     public:
         GL_ElementBuffer() = default;
-        GL_ElementBuffer(std::uint32_t* data, std::int32_t indicesCount);
+        GL_ElementBuffer(std::uint32_t* data, std::uint32_t indicesCount);
         virtual ~GL_ElementBuffer();
 
         virtual void Bind() const override;
@@ -144,8 +144,8 @@ namespace Motion
     };
 
     std::shared_ptr<GL_VertexBuffer> GL_CreateVertexBuffer(std::int32_t allocatorSize);
-    std::shared_ptr<GL_VertexBuffer> GL_CreateVertexBuffer(float* data, std::int32_t size);
-    std::shared_ptr<GL_ElementBuffer> GL_CreateElementBuffer(std::uint32_t* data, std::int32_t size);
+    std::shared_ptr<GL_VertexBuffer> GL_CreateVertexBuffer(Vertex* data, std::uint32_t size);
+    std::shared_ptr<GL_ElementBuffer> GL_CreateElementBuffer(std::uint32_t* data, std::uint32_t size);
     std::shared_ptr<GL_ShaderBuffer> GL_CreateShaderBuffer(std::int32_t size, BindingPoint binding);
     std::shared_ptr<GL_UniformBuffer> GL_CreateUniformBuffer(std::int32_t size, BindingPoint binding);
     std::shared_ptr<GL_FrameBuffer> GL_CreateFrameBuffer(const FrameBufferSpecification& specification);

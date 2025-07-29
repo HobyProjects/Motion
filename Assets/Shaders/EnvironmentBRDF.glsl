@@ -8,14 +8,14 @@ out vec2 v_TexCoords;
 
 void main() 
 {
-    v_TexCoords = a_TexCoords;
+    v_TexCoords = vec2(a_Position.x, a_Position.y) * 0.5 + 0.5;
     gl_Position = vec4(a_Position, 1.0);
 }
 
 #type fragment
 #version 460 core
 
-out vec2 FragColor;
+out vec4 FragColor;
 in vec2 v_TexCoords;
 
 const float PI = 3.14159265359;
@@ -205,5 +205,5 @@ vec2 IntegrateBRDF(float NdotV, float roughness)
 void main() 
 {
     vec2 integratedBRDF = IntegrateBRDF(v_TexCoords.x, v_TexCoords.y);
-    FragColor = integratedBRDF;
+    FragColor = vec4(integratedBRDF, 0.0, 1.0);
 }

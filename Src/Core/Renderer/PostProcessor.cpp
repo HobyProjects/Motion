@@ -17,7 +17,7 @@ namespace Motion
 
         auto& assetManager = AssetManager::GetInstance();
         m_Shader = assetManager.Get<IShader>("PostProcessingShader");
-        m_ScreenQuad = QuickMesh::CreateQuad(false, std::format("{}_{}", "PostProcessQuad", spec.Name), spec.Width, spec.Height);
+        m_ScreenQuad = nullptr;
     }
 
     /**

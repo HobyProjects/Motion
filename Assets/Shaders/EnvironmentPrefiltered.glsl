@@ -9,8 +9,9 @@ uniform mat4 u_ProjectionMatrix;
 
 void main() 
 {
+    mat4 rotationOnlyView = mat4(mat3(u_ViewMatrix));
     v_WorldPositions = a_Position;
-    gl_Position = u_ProjectionMatrix * u_ViewMatrix * vec4(a_Position, 1.0);
+    gl_Position = u_ProjectionMatrix * rotationOnlyView * vec4(a_Position, 1.0);
 }
 
 #type fragment
@@ -158,6 +159,7 @@ void main()
     const uint SAMPLE_COUNT = 1024u;
     vec3 prefilteredColor = vec3(0.0);
     float totalWeight = 0.0;
+    float resolution = max(u_PrefilteredResolution, 1.0);
     
     for(uint i = 0u; i < SAMPLE_COUNT; ++i)
     {
@@ -173,7 +175,7 @@ void main()
             float HdotV = max(dot(H, V), 0.0);
             float pdf = D * NdotH / (4.0 * HdotV) + 0.0001; 
 
-            float saTexel  = 4.0 * PI / (6.0 * u_PrefilteredResolution * u_PrefilteredResolution);
+            float saTexel = 4.0 * PI / (6.0 * resolution * resolution);
             float saSample = 1.0 / (float(SAMPLE_COUNT) * pdf + 0.0001);
 
             float mipLevel = u_PrefilteredRoughness == 0.0 ? 0.0 : 0.5 * log2(saSample / saTexel); 

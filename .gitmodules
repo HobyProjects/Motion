@@ -23,3 +23,6 @@
 [submodule "libs/stb_image/stb"]
 	path = libs/stb_image/stb
 	url = https://github.com/nothings/stb.git
+[submodule "libs/fastgltf"]
+	path = libs/fastgltf
+	url = https://github.com/spnda/fastgltf.git

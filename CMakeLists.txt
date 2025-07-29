@@ -32,6 +32,7 @@ find_package(EnTT CONFIG REQUIRED)
 find_package(Assimp CONFIG REQUIRED)
 find_package(yaml-cpp CONFIG REQUIRED)
 find_package(stb CONFIG REQUIRED)
+find_package(fastgltf CONFIG REQUIRED)
 
 # ##############################################################################
 # Platform Specific Configuration
@@ -175,6 +176,7 @@ target_link_libraries(
     yaml-cpp::yaml-cpp
     EnTT::EnTT
     stb::stb
+    fastgltf::fastgltf
 )
 
 # ##############################################################################

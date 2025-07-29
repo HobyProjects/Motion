@@ -74,6 +74,33 @@ namespace Motion
         const char* source = sourceCode.c_str();
         glShaderSource(shaderID, 1, &source, nullptr);
         glCompileShader(shaderID);
+
+        GLint isCompiled = 0;
+        glGetShaderiv(shaderID, GL_COMPILE_STATUS, &isCompiled);
+
+        std::string typeStr;
+        switch (glShaderType)
+        {
+        case GL_VERTEX_SHADER: typeStr = "Vertex"; break;
+        case GL_FRAGMENT_SHADER: typeStr = "Fragment"; break;
+        case GL_GEOMETRY_SHADER: typeStr = "Geometry"; break;
+        case GL_COMPUTE_SHADER: typeStr = "Compute"; break;
+        case GL_TESS_CONTROL_SHADER: typeStr = "Tessellation Control"; break;
+        case GL_TESS_EVALUATION_SHADER: typeStr = "Tessellation Evaluation"; break;
+        default: typeStr = "Unknown"; break;
+        }
+
+        if (isCompiled == GL_FALSE)
+        {
+            GLint maxLength = 0;
+            glGetShaderiv(shaderID, GL_INFO_LOG_LENGTH, &maxLength);
+
+            std::vector<GLchar> infoLog(maxLength);
+            glGetShaderInfoLog(shaderID, maxLength, &maxLength, infoLog.data());
+            MOTION_CORE_ERROR("Shader Compile Error: Shader Type {} | Compile Errors Message: {}", typeStr, infoLog.data());
+            MOTION_ASSERT(false, "Shader compilation failed: Shader ID {}", shaderID);
+        }
+
         return shaderID;
     }
 
@@ -88,6 +115,21 @@ namespace Motion
     void GL_LinkShaderProgram(ShaderProgramID programID)
     {
         glLinkProgram(programID);
+
+        GLint isLinked = 0;
+        glGetProgramiv(programID, GL_LINK_STATUS, &isLinked);
+
+        if (isLinked == GL_FALSE)
+        {
+            GLint maxLength = 0;
+            glGetProgramiv(programID, GL_INFO_LOG_LENGTH, &maxLength);
+
+            std::vector<GLchar> infoLog(maxLength);
+            glGetProgramInfoLog(programID, maxLength, &maxLength, infoLog.data());
+
+            MOTION_CORE_ERROR("Shader Link Error: Program ID {} | Linker Errors Message: {}", programID, infoLog.data());
+            MOTION_ASSERT(false, "Shader linking failed: {}", programID);
+        }
     }
 
     /**
@@ -129,10 +171,10 @@ namespace Motion
      * compiles each provided shader source, attaches them to the program, and then links
      * and validates the program. Upon successful completion, the shader is marked as loaded.
      */
-    GL_Shader::GL_Shader(UUID uuid, const std::string& name, const std::unordered_map<ShaderType, std::string>& shaderSources, const std::filesystem::path& sourceFile) :
-        AssetBase<IShader>(uuid, name, AssetType::Shader, sourceFile.string())
+    GL_Shader::GL_Shader(UUID uuid, const std::string& name, const std::unordered_map<ShaderType, std::string>& shaderSources, const std::filesystem::path& sourceFile) : AssetBase<IShader>(uuid, name, AssetType::Shader, sourceFile.string())
     {
         m_ProgramID = GL_CreateShaderProgram();
+        MOTION_CORE_INFO("Shader program created with ID: {0} for {1}", m_ProgramID, name);
 
         for (const auto& [type, source] : shaderSources)
         {

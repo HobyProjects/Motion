@@ -80,7 +80,7 @@ namespace Motion
             if (!std::filesystem::exists(file))
             {
                 std::filesystem::path outputFilePath = GetAvailableCopyName(file);
-                std::filesystem::path finalOutputPath = std::filesystem::absolute(outputFilePath);
+                finalOutputPath = std::filesystem::absolute(outputFilePath);
             }
             else
             {
@@ -533,43 +533,50 @@ namespace Motion
                     std::vector<Vertex> vertices;
                     std::vector<std::uint32_t> indices;
 
-                    for (std::uint32_t verticesIndex = 0; verticesIndex < mesh->mNumVertices; verticesIndex++)
-                    {
-                        // Extract vertex data
-                        Vertex vertex{};
-                        const aiVector3D& vertexPoint = mesh->mVertices[verticesIndex];
-                        vertex.Position = { vertexPoint.x, vertexPoint.y, vertexPoint.z };
-
-                        // Extract texture coordinates, normals, tangents, and bitangents
-                        if (mesh->HasTextureCoords(0))
-                        {
-                            const aiVector3D& texCoord = mesh->mTextureCoords[0][verticesIndex];
-                            vertex.TexCoord = { texCoord.x, texCoord.y };
-                        }
-
-                        if (mesh->HasNormals())
-                        {
-                            const aiVector3D& normal = mesh->mNormals[verticesIndex];
-                            vertex.Normal = { normal.x, normal.y, normal.z };
-                        }
-
-                        if (mesh->HasTangentsAndBitangents())
-                        {
-                            vertex.Tangent = { mesh->mTangents[verticesIndex].x, mesh->mTangents[verticesIndex].y, mesh->mTangents[verticesIndex].z };
-                            vertex.Bitangent = { mesh->mBitangents[verticesIndex].x, mesh->mBitangents[verticesIndex].y, mesh->mBitangents[verticesIndex].z };
-                        }
-
-                        vertices.push_back(vertex);
-                    }
-
-                    for (std::uint32_t faceIndex = 0; faceIndex < mesh->mNumFaces; faceIndex++)
+                    for (uint32_t faceIndex = 0; faceIndex < mesh->mNumFaces; faceIndex++)
                     {
                         const aiFace& face = mesh->mFaces[faceIndex];
-                        for (std::uint32_t index = 0; index < face.mNumIndices; index++)
+
+                        for (uint32_t i = 0; i < face.mNumIndices; i++)
                         {
-                            indices.push_back(face.mIndices[index]);
+                            uint32_t idx = face.mIndices[i];
+
+                            // Extract vertex data
+                            Vertex vertex{};
+                            vertex.Position = { mesh->mVertices[idx].x, mesh->mVertices[idx].y, mesh->mVertices[idx].z };
+
+                            // Extract texture coordinates, normals, tangents, and bitangents
+                            if (mesh->HasTextureCoords(0))
+                            {
+                                vertex.TexCoord = { mesh->mTextureCoords[0][idx].x, mesh->mTextureCoords[0][idx].y };
+                            }
+
+                            if (mesh->HasNormals())
+                            {
+                                const aiVector3D& normal = mesh->mNormals[idx];
+                                vertex.Normal = { normal.x, normal.y, normal.z };
+                            }
+
+                            if (mesh->HasTangentsAndBitangents())
+                            {
+                                vertex.Tangent = { mesh->mTangents[idx].x, mesh->mTangents[idx].y, mesh->mTangents[idx].z };
+                                vertex.Bitangent = { mesh->mBitangents[idx].x, mesh->mBitangents[idx].y, mesh->mBitangents[idx].z };
+                            }
+
+                            vertices.push_back(vertex);
+                            indices.push_back(static_cast<uint32_t>(vertices.size() - 1));
                         }
                     }
+
+
+                    // for (std::uint32_t faceIndex = 0; faceIndex < mesh->mNumFaces; faceIndex++)
+                    // {
+                    //     const aiFace& face = mesh->mFaces[faceIndex];
+                    //     for (std::uint32_t index = 0; index < face.mNumIndices; index++)
+                    //     {
+                    //         indices.push_back(face.mIndices[index]);
+                    //     }
+                    // }
 
 
                     ValidateAndFixMeshAttributes(mesh, vertices, indices, meshIndex);
@@ -586,10 +593,15 @@ namespace Motion
                     );
 
                     auto meshSegment = std::make_shared<StaticMesh::MeshSegment>();
-                    meshSegment->MeshSelf = assetManager.Create<Mesh>(std::format("MSH_{}-{}", staticMesh->GetName(), meshIndex), vertices.data(), static_cast<std::uint32_t>(vertices.size()), indices.data(), static_cast<std::uint32_t>(indices.size()), layout, staticMesh);
+                    meshSegment->MeshSelf = assetManager.Create<Mesh>(
+                        std::format("MSH_{}-{}", staticMesh->GetName(), meshIndex),
+                        vertices.data(), static_cast<std::uint32_t>(vertices.size()),
+                        indices.data(), static_cast<std::uint32_t>(indices.size()),
+                        layout, staticMesh);
 
                     aiMaterial* material = scene->mMaterials[mesh->mMaterialIndex];
-                    meshSegment->Materials = assetManager.Create<MaterialInstance>(std::format("MAT_{}-{}", staticMesh->GetName(), meshIndex), assetManager.Get<Material>("BaseMaterial"));
+                    meshSegment->Materials = assetManager.Create<MaterialInstance>(
+                        std::format("MAT_{}-{}", staticMesh->GetName(), meshIndex), assetManager.Get<Material>("BaseMaterial"));
 
                     if (!material)
                     {

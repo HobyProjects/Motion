@@ -67,38 +67,56 @@ def check_cmake():
         sys.exit(1)
 
 def detect_generator():
-    Logger.info("Detecting available generators...")
-    preferred = ["Ninja", "NMake Makefiles", "Unix Makefiles"]
-    found = {}
+    Logger.info("Detecting available CMake generators...")
 
+    # Order of preference: Prefer Visual Studio, fallback to others
+    preferred = [
+        "Visual Studio 17 2022",
+        "Visual Studio 16 2019",
+        "Visual Studio 15 2017",
+        "Ninja",
+        "NMake Makefiles",
+        "Unix Makefiles"
+    ]
+
+    # Tools used to check availability
     commands = {
         "Ninja": ["ninja", "--version"],
-        "NMake Makefiles": ["nmake", "/?"],
+        "NMake Makefiles": ["nmake", "/?" if os.name == "nt" else "--version"],
         "Unix Makefiles": ["make", "--version"]
     }
 
+    found = {}
+
+    # --- Step 1: Check CLI tools (Ninja, NMake, Make)
     for name, cmd in commands.items():
         try:
             subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
             Logger.success(f" -- Found generator: {name}")
             found[name] = True
         except Exception:
-            pass
+            Logger.warn(f" -- Missing: {name}")
 
-    for gen in preferred:
-        if gen in found:
-            return gen
-
-    # Fallback to first listed in cmake help
+    # --- Step 2: Detect Visual Studio generators via `cmake --help`
     try:
         output = subprocess.check_output(["cmake", "--help"], text=True)
         for line in output.splitlines():
-            if "Visual Studio" in line and line.strip().startswith("*"):
-                return line.split("=")[0].strip("* ")
+            for gen in preferred:
+                if gen.startswith("Visual Studio") and gen in line:
+                    Logger.success(f" -- Found generator: {gen}")
+                    found[gen] = True
     except Exception:
-        pass
+        Logger.warn("Could not inspect Visual Studio generators from `cmake --help`.")
 
+    # --- Step 3: Choose the first available generator
+    for gen in preferred:
+        if gen in found:
+            Logger.success(f"Selected generator: {gen}")
+            return gen
+
+    Logger.error("No suitable generator found.")
     return None
+
 
 def generate_presets(dir_path: str, build_type: str, generator: str, packages: list[Package]):
     def hash_data(data):
@@ -147,14 +165,9 @@ def generate_presets(dir_path: str, build_type: str, generator: str, packages: l
             "CMAKE_C_STANDARD_REQUIRED": "ON",
             "CMAKE_C_EXTENSIONS": "OFF",
 
-            # Build Behavior
-            "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
-            "CMAKE_POSITION_INDEPENDENT_CODE": "ON",
-
             # Prefix and Find Paths
             "CMAKE_PREFIX_PATH": prefix_path,
             "CMAKE_INSTALL_PREFIX": prefix_path,
-            "CMAKE_FIND_ROOT_PATH": prefix_path,
 
             # Debug/Release Flags
             "CMAKE_CXX_FLAGS_DEBUG": flags["DEBUG"],
@@ -172,12 +185,6 @@ def generate_presets(dir_path: str, build_type: str, generator: str, packages: l
             "CMAKE_SYSTEM_PROCESSOR": system_processor,
             "CMAKE_SYSTEM_PROCESSOR_ARCHITECTURE": system_arch,
             "CMAKE_SYSTEM_PROCESSOR_ARCHITECTURE_VENDOR": system_vendor,
-
-            # Common Flags
-            "BUILD_SHARED_LIBS": "OFF",
-            "CMAKE_BUILD_TYPE": build_type,
-            "CMAKE_COMPILE_COMMANDS": "ON",
-            "CMAKE_VERBOSE_MAKEFILE": "ON",
         }
 
     configure_presets = [
@@ -334,7 +341,8 @@ def main():
         Package("entt", "libs/entt", "libs/build/config/entt", "build/packages/entt", "-DENTT_INCLUDE_HEADERS=ON -DENTT_INCLUDE_NATVIS=ON -DENTT_INSTALL=ON"),
         Package("assimp", "libs/assimp", "libs/build/config/assimp", "build/packages/assimp", "-DASSIMP_BUILD_TESTS=OFF"),
         Package("stb_image", "libs/stb_image", "libs/build/config/stb_image", "build/packages/stb_image", ""),
-        Package("yaml-cpp", "libs/yaml-cpp", "libs/build/config/yaml-cpp", "build/packages/yaml-cpp", "-DYAML_BUILD_SHARED_LIBS=OFF")
+        Package("yaml-cpp", "libs/yaml-cpp", "libs/build/config/yaml-cpp", "build/packages/yaml-cpp", "-DYAML_BUILD_SHARED_LIBS=OFF"),
+        Package("fastgltf", "libs/fastgltf", "libs/build/config/fastgltf", "build/packages/fastgltf", "-DFASTGLTF_COMPILE_AS_CPP20=ON -DFASTGLTF_ENABLE_KHR_PHYSICS_RIGID_BODIES=ON -DFASTGLTF_ENABLE_KHR_IMPLICIT_SHAPES=ON")
     ]
 
     parser = argparse.ArgumentParser(description="Motion Engine Build Script")

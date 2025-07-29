@@ -101,7 +101,7 @@ float DistributionGGX(vec3 N, vec3 H, float roughness)
 {
     float a = roughness * roughness;
     float a2 = a * a;
-    float NdotH = max(dot(N, H), 0.0);
+    float NdotH = max(max(dot(N, H), 0.0), 0.0);
     float NdotH2 = NdotH * NdotH;
 
     float denom = (NdotH2 * (a2 - 1.0) + 1.0);
@@ -117,8 +117,8 @@ float GeometrySchlickGGX(float NdotV, float roughness)
 
 float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness)
 {
-    float ggx1 = GeometrySchlickGGX(dot(N, V), roughness);
-    float ggx2 = GeometrySchlickGGX(dot(N, L), roughness);
+    float ggx1 = GeometrySchlickGGX(max(dot(N, V), 0.0), roughness);
+    float ggx2 = GeometrySchlickGGX(max(dot(N, L), 0.0), roughness);
     return ggx1 * ggx2;
 }
 
@@ -132,30 +132,33 @@ void main()
     vec3 albedo    = pow(texture(u_BaseColorTextures, v_UV).rgb, vec3(2.2)) * attributes.BaseColor;
     float metallic = texture(u_MetallicTextures, v_UV).r * attributes.Metallic;
     float roughness = texture(u_RoughnessTextures, v_UV).r * attributes.Roughness;
+    roughness = clamp(roughness, 0.04, 1.0);
     float ao       = texture(u_AmbientOcclusionTextures, v_UV).r * attributes.AmbientOcclusion;
 
     vec3 N = GetNormalFromMap();
+    vec3 F0 = vec3(0.04);
+    F0 = mix(F0, albedo, metallic);
     vec3 V = normalize(u_CameraPosition - v_WorldPosition);
     vec3 L = normalize(u_LightPosition - v_WorldPosition);
     vec3 H = normalize(V + L);
     vec3 R = reflect(-V, N);
 
-    float distance = length(u_LightPosition - v_WorldPosition);
-    float attenuation = u_LightIntensity / (distance * distance);
+    float dist = length(u_LightPosition - v_WorldPosition);
+    float attenuation = u_LightIntensity / (dist * dist);
     vec3 radiance = u_LightColor * attenuation;
 
     // Cook-Torrance BRDF
     float NDF = DistributionGGX(N, H, roughness);
     float G = GeometrySmith(N, V, L, roughness);
-    vec3 F0 = mix(vec3(0.04), albedo, metallic);
-    vec3 F = FresnelSchlick(max(dot(H, V), 0.0), F0);
+    F0 = mix(vec3(0.04), albedo, metallic);
+    vec3 F = FresnelSchlick(max(max(dot(H, V), 0.0), 0.0), F0);
 
-    vec3 specularDirect = (NDF * G * F) / (4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 0.001);
+    vec3 specularDirect = (NDF * G * F) / (4.0 * max(max(dot(N, V), 0.0), 0.0) * max(max(dot(N, L), 0.0), 0.0) + 0.001);
 
     vec3 kS = F;
     vec3 kD = (1.0 - kS) * (1.0 - metallic);
 
-    float NdotL = max(dot(N, L), 0.0);
+    float NdotL = max(max(dot(N, L), 0.0), 0.0);
     vec3 directLighting = (kD * albedo / PI + specularDirect) * radiance * NdotL;
 
     // IBL Ambient
@@ -164,7 +167,7 @@ void main()
 
     const float MAX_REFLECTION_LOD = 4.0;
     vec3 prefiltered = textureLod(u_PrefilteredTextures, R, roughness * MAX_REFLECTION_LOD).rgb;
-    vec2 brdf = texture(u_BRDFLUT, vec2(max(dot(N, V), 0.0), roughness)).rg;
+    vec2 brdf = texture(u_BRDFLUT, vec2(max(max(dot(N, V), 0.0), 0.0), roughness)).rg;
     vec3 specularIBL = prefiltered * (F * brdf.x + brdf.y);
 
     vec3 ambient = (kD * diffuse + specularIBL) * ao;

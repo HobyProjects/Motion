@@ -21,6 +21,7 @@ namespace Motion
         virtual const BufferLayout& GetLayout() const override { return m_Layout; }
 
     private:
+
         BufferID m_VertexBufferID{ 0 };
         BufferLayout m_Layout;
     };

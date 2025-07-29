@@ -36,8 +36,7 @@ namespace Motion
         std::sort(s_CommandQueue.begin(), s_CommandQueue.end(), [](const SceneDrawCommand& a, const SceneDrawCommand& b) { return a < b; });
 
         AssetManager& assetManager = AssetManager::GetInstance();
-
-        std::shared_ptr<IShader> currentShader = nullptr;
+        std::shared_ptr<IShader> currentShader = assetManager.Get<IShader>("PBR");
         std::shared_ptr<MaterialInstance> currentMaterial = nullptr;
         std::shared_ptr<Mesh> currentMesh = nullptr;
 
@@ -46,11 +45,10 @@ namespace Motion
 
         for (const auto& command : s_CommandQueue)
         {
-            auto shader = assetManager.Get<IShader>("PBR");
             auto material = assetManager.Get<MaterialInstance>(command.MaterialID);
             auto mesh = assetManager.Get<Mesh>(command.MeshID);
 
-            if (!shader || !material || !mesh) continue;
+            if (!currentShader || !material || !mesh) continue;
 
             std::int32_t requiredTextureSlots = material->GetTexturesCount() + 3; //< Fore Environment Textures
             if (TextureBindingPoint + requiredTextureSlots > MAX_TEXTURE_SLOTS)
@@ -61,14 +59,18 @@ namespace Motion
 
                 currentMaterial = nullptr;
                 currentMesh = nullptr;
-                currentShader = nullptr;
                 TextureBindingPoint = 0; // Reset texture binding point
             }
 
-            if (shader != currentShader)
+            if (mesh != currentMesh)
             {
-                if (currentShader) currentShader->Unbind();
-                currentShader = shader;
+                if (currentMesh) currentMesh->Unbind();
+                currentMesh = mesh;
+                currentMesh->Bind();
+            }
+
+            if (currentShader)
+            {
                 currentShader->Bind();
 
                 Renderer::BindTextureUnit(TextureBindingPoint, command.IrradianceTexture);
@@ -118,15 +120,8 @@ namespace Motion
                 currentMaterial->Bind();
             }
 
-            if (mesh != currentMesh)
-            {
-                if (currentMesh) currentMesh->Unbind();
-                currentMesh = mesh;
-
-                currentMesh->Bind();
-                currentMesh->Render();
-                s_DrawCallsCount++;
-            }
+            currentMesh->Render();
+            s_DrawCallsCount++;
         }
 
         if (currentMesh) currentMesh->Unbind();
@@ -196,7 +191,7 @@ namespace Motion
                     command.ModelMatrix = entity->HasComponent<TransformComponent>() ? entity->GetComponent<TransformComponent>().GetTransform() : glm::mat4(1.0f);
                     command.ViewMatrix = scene->m_SceneCamera->SceneViewCamera.View;
                     command.ProjectionMatrix = scene->m_SceneCamera->SceneViewCamera.Projection;
-                    command.NormalMatrix = glm::transpose(glm::inverse(glm::mat3(command.ModelMatrix)));
+                    command.NormalMatrix = glm::mat3(glm::transpose(glm::inverse(glm::mat3(command.ModelMatrix))));
 
                     command.IrradianceTexture = environment->GetIrradianceTexture();
                     command.PrefilteredTexture = environment->GetPrefilteredTexture();

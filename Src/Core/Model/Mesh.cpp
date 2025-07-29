@@ -81,9 +81,7 @@ namespace Motion
      */
     void Mesh::Render()
     {
-        Bind();
         Renderer::DrawIndexed(m_IndicesCount);
-        Unbind();
     }
 
     /**

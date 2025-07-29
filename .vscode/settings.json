@@ -149,7 +149,8 @@
         "complex": "cpp",
         "expected": "cpp",
         "stack": "cpp",
-        "string_view": "cpp"
+        "string_view": "cpp",
+        "codecvt": "cpp"
     },
     "C_Cpp.default.cppStandard": "c++20",
     "C_Cpp.default.cStandard": "c17",
@@ -229,6 +230,7 @@
         "nmake",
         "occl",
         "OCCLUISION",
+        "OPENFILENAMEA",
         "OPENFILENAMEW",
         "OPENGL",
         "Oriantaion",

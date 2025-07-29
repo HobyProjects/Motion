@@ -21,7 +21,7 @@ namespace Motion
         DialogBoxes& operator=(DialogBoxes&&) = delete;
 
     public:
-        static std::optional<std::string> OpenFileDialog(const std::wstring& filter = L"All Files\0*.*\0", const std::wstring& title = L"Open File");
-        static std::optional<std::string> SaveFileDialog(const std::wstring& filter = L"All Files\0*.*\0", const std::wstring& title = L"Save File");
+        static std::string OpenFileDialog();
+        static std::string SaveFileDialog();
     };
 }

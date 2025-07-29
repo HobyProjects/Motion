@@ -78,29 +78,21 @@ namespace Motion
             if (ImGui::MenuItem("Import StaticMesh"))
             {
                 //[TODO]: This should happen on different thread
-
-                auto& windowManager = WindowManager::GetInstance();
-                std::weak_ptr<IWindow> window = windowManager.GetWindow(handle);
-                if (!window.expired())
+                std::filesystem::path filePath = DialogBoxes::OpenFileDialog();
+                if (!filePath.empty())
                 {
-                    auto windowPtr = window.lock();
-                    std::wstring filter = L"StaticMesh Files\0*.fbx;*.obj;*.gltf;*.glb;*.dae;*.stl;*.ply;\0\0";
-                    std::filesystem::path filePath(DialogBoxes::OpenFileDialog(filter, L"Import Static Mesh").value_or(""));
-                    if (!filePath.empty())
+                    std::shared_ptr<StaticMesh> staticMesh = Importer::ImportModel(filePath);
+                    if (staticMesh)
                     {
-                        std::shared_ptr<StaticMesh> staticMesh = Importer::ImportModel(filePath);
-                        if (staticMesh)
-                        {
-                            auto& entityFactory = EntityFactory::GetInstance();
-                            std::shared_ptr<Entity> entity = entityFactory.CreateEntity(staticMesh->GetName());
-                            entity->AddComponent<StaticMeshComponent>(staticMesh->GetName(), staticMesh).EntityPointer = entity.get();
-                            entity->AddComponent<TransformComponent>(glm::vec3(0.0f), glm::quat(), glm::vec3(1.0f)).EntityPointer = entity.get();
-                            m_Entities.push_back(entity);
-                        }
-                        else
-                        {
-                            MOTION_ERROR("Failed to load static Mesh from file: {0}", filePath.string());
-                        }
+                        auto& entityFactory = EntityFactory::GetInstance();
+                        std::shared_ptr<Entity> entity = entityFactory.CreateEntity(staticMesh->GetName());
+                        entity->AddComponent<StaticMeshComponent>(staticMesh->GetName(), staticMesh).EntityPointer = entity.get();
+                        entity->AddComponent<TransformComponent>(glm::vec3(0.0f), glm::quat(), glm::vec3(1.0f)).EntityPointer = entity.get();
+                        m_Entities.push_back(entity);
+                    }
+                    else
+                    {
+                        MOTION_ERROR("Failed to load static Mesh from file: {0}", filePath.string());
                     }
                 }
             }

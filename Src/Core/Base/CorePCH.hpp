@@ -36,6 +36,11 @@
 #include <assimp/postprocess.h>
 #include <assimp/material.h>
 
+#include <fastgltf/core.hpp>
+#include <fastgltf/types.hpp>
+#include <fastgltf/tools.hpp>
+#include <fastgltf/util.hpp>
+
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/glm.hpp>
 #include <glm/ext/matrix_transform.hpp>
@@ -87,6 +92,7 @@
 #include "Model.hpp"
 #include "Mesh.hpp"
 #include "Importer.hpp"
+#include "Exporter.hpp"
 #include "Thumbnail.hpp"
 #include "PostProcessor.hpp"
 #include "Environment.hpp"

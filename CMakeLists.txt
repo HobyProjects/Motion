@@ -97,6 +97,7 @@ set(
     ${MOTION_CORE_DIR}/Model/Model.hpp
     ${MOTION_CORE_DIR}/Model/Mesh.hpp
     ${MOTION_CORE_DIR}/Model/Importer.hpp
+    ${MOTION_CORE_DIR}/Model/Exporter.hpp
 
     ${MOTION_CORE_DIR}/Material/Material.hpp
 
@@ -137,6 +138,7 @@ set(
 
     ${MOTION_CORE_DIR}/Model/Mesh.cpp
     ${MOTION_CORE_DIR}/Model/Importer.cpp
+    ${MOTION_CORE_DIR}/Model/Exporter.cpp
     ${MOTION_CORE_DIR}/Model/Model.cpp
 
     ${MOTION_CORE_DIR}/Material/Material.cpp

@@ -42,6 +42,7 @@ namespace Motion
         NAN_ = 0,
     };
 
+#pragma pack(push, 1)
     struct Vertex
     {
         glm::vec3 Position{ 0.0f, 0.0f, 0.0f };
@@ -50,6 +51,7 @@ namespace Motion
         glm::vec3 Tangent{ 0.0f, 0.0f, 0.0f };
         glm::vec3 Bitangent{ 0.0f, 0.0f, 0.0f };
     };
+#pragma pack(pop)
 
     struct BufferElements
     {

@@ -153,7 +153,7 @@ namespace Motion
      *
      * @param programID The identifier of the shader program to delete.
      */
-    void GL_DeleteShaderProgram(ShaderProgramID programID)
+    void GL_Shader::DeleteShaderProgram(ShaderProgramID programID)
     {
         glDeleteProgram(programID);
     }
@@ -173,17 +173,17 @@ namespace Motion
      */
     GL_Shader::GL_Shader(UUID uuid, const std::string& name, const std::unordered_map<ShaderType, std::string>& shaderSources, const std::filesystem::path& sourceFile) : AssetBase<IShader>(uuid, name, AssetType::Shader, sourceFile.string())
     {
-        m_ProgramID = GL_Shader::CreateShaderProgram();
+        m_ProgramID = CreateShaderProgram();
         MOTION_CORE_INFO("Shader program created with ID: {0} for {1}", m_ProgramID, name);
 
         for (const auto& [type, source] : shaderSources)
         {
-            ShaderID compiledShaderID = GL_Shader::CompileShader(type, source);
-            GL_Shader::AttachShaderProgram(compiledShaderID, m_ProgramID);
+            ShaderID compiledShaderID = CompileShader(type, source);
+            AttachShaderProgram(compiledShaderID, m_ProgramID);
         }
 
-        GL_Shader::LinkShaderProgram(m_ProgramID);
-        GL_Shader::ValidateShaderProgram(m_ProgramID);
+        LinkShaderProgram(m_ProgramID);
+        ValidateShaderProgram(m_ProgramID);
 
         AssetInfo.IsInitialized = true;
     }
@@ -197,7 +197,7 @@ namespace Motion
      */
     GL_Shader::~GL_Shader()
     {
-        GL_DeleteShaderProgram(m_ProgramID);
+        DeleteShaderProgram(m_ProgramID);
     }
 
     /**

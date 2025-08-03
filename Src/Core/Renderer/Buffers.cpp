@@ -48,6 +48,31 @@ namespace Motion
     }
 
     /**
+     * @brief Creates a vertex buffer using the specified rendering API.
+     *
+     * This function creates and returns a shared pointer to an IVertexBuffer object,
+     * initialized with the provided float data and size. The actual implementation
+     * depends on the currently selected rendering API (e.g., OpenGL, Vulkan, DirectX).
+     *
+     * @param data Pointer to the array of vertex data (float values).
+     * @param size The size of the vertex data array in bytes.
+     * @return std::shared_ptr<IVertexBuffer> A shared pointer to the created vertex buffer,
+     *         or nullptr if the rendering API is not implemented or unknown.
+     *
+     * @note Currently, only the OpenGL API is implemented. Other APIs will trigger an assertion failure.
+     */
+    std::shared_ptr<IVertexBuffer> IVertexBuffer::Create(float* data, std::uint32_t size)
+    {
+        switch (Renderer::GetAPI())
+        {
+        case RenderingAPI::OpenGL:         return GL_VertexBuffer::Create(data, size);
+        case RenderingAPI::Vulkan:         MOTION_ASSERT(false, "Vulkan is not implemented yet!"); return nullptr;
+        case RenderingAPI::DirectX:        MOTION_ASSERT(false, "DirectX is not implemented yet!"); return nullptr;
+        default:                           MOTION_ASSERT(false, "Unknown rendering API!"); return nullptr;
+        };
+    }
+
+    /**
      * @brief Creates an element buffer using the specified rendering API.
      *
      * This factory method creates and returns a shared pointer to an IElementBuffer

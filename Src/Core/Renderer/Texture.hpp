@@ -69,9 +69,9 @@ namespace Motion
         [[nodiscard]] virtual TextureSpecification& GetSpecification() noexcept = 0;
         [[nodiscard]] virtual TextureSource Source() const noexcept = 0;
 
-        [[nodiscard]] static std::shared_ptr<ITexture> Create(std::int32_t width = 100, std::int32_t height = 100, const glm::vec3& color = { 1.0f, 1.0f, 1.0f });
-        [[nodiscard]] static std::shared_ptr<ITexture> Create(const std::filesystem::path& textureFile, TextureType type = TextureType::BaseColorTexture, bool flip = true);
-        [[nodiscard]] static std::shared_ptr<ITexture> Create(std::uint8_t* data, TextureType type, std::int32_t width, std::int32_t height, std::int32_t channels);
+        [[nodiscard]] static std::shared_ptr<ITexture> Create(std::int32_t width = 100, std::int32_t height = 100, const glm::vec3& color = { 1.0f, 1.0f, 1.0f }) noexcept;
+        [[nodiscard]] static std::shared_ptr<ITexture> Create(const std::filesystem::path& textureFile, TextureType type = TextureType::BaseColorTexture, bool flip = true) noexcept;
+        [[nodiscard]] static std::shared_ptr<ITexture> Create(std::uint8_t* data, TextureType type, std::int32_t width, std::int32_t height, std::int32_t channels) noexcept;
 
     protected:
         [[nodiscard]] virtual bool LoadTextureFromFile(const std::filesystem::path& textureFile, bool flip) = 0;

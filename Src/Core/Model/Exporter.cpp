@@ -2,27 +2,9 @@
 
 namespace Motion
 {
-    /**
-     * @brief Forward declaration of the BinaryWriter template structure.
-     *
-     * This structure is intended to provide binary writing functionality for objects of type T.
-     * The full definition should implement methods for serializing objects of type T to a binary format.
-     *
-     * @tparam T The type of object to be written in binary format.
-     */
     template<typename T>
     struct BinaryWriter;
 
-    /**
-     * @brief Writes a section name to the given output stream.
-     *
-     * This function writes the contents of the specified section name to the provided
-     * output stream. The section name is written as raw bytes, without any additional
-     * formatting or delimiters.
-     *
-     * @param outputStream Reference to the output file stream where the section name will be written.
-     * @param sectionName The name of the section to write to the output stream.
-     */
     static void CreateSection(std::ofstream& outputStream, const std::string& sectionName)
     {
         outputStream.write(sectionName.c_str(), sectionName.size());
@@ -31,16 +13,6 @@ namespace Motion
     template<>
     struct BinaryWriter<float>
     {
-        /**
-         * @brief Writes a float value to the given output stream in binary format.
-         *
-         * This function writes the raw bytes of the provided float value to the specified
-         * std::ofstream. The value is written using its memory representation, which may
-         * not be portable across different platforms due to endianness or float format differences.
-         *
-         * @param outputStream Reference to the output file stream where the value will be written.
-         * @param value The float value to write to the stream.
-         */
         static void Write(std::ofstream& outputStream, const float& value)
         {
             outputStream.write(reinterpret_cast<const char*>(&value), sizeof(value));
@@ -120,6 +92,21 @@ namespace Motion
         static void Write(std::ofstream& outputStream, const std::uint8_t* data, std::size_t size)
         {
             outputStream.write(reinterpret_cast<const char*>(data), size);
+        }
+    };
+
+    template<>
+    struct BinaryWriter<MaterialAttributes>
+    {
+        static void Write(std::ofstream& outputStream, const MaterialAttributes& attributes)
+        {
+            BinaryWriter<glm::vec3>::Write(outputStream, attributes.BaseColor);
+            BinaryWriter<float>::Write(outputStream, attributes.Metallic);
+            BinaryWriter<float>::Write(outputStream, attributes.Roughness);
+            BinaryWriter<float>::Write(outputStream, attributes.AmbientOcclusion);
+            BinaryWriter<float>::Write(outputStream, attributes.Opacity);
+            BinaryWriter<float>::Write(outputStream, attributes.DisplacementScale);
+
         }
     };
 
@@ -301,6 +288,30 @@ namespace Motion
         return EmbeddedTexture(data, static_cast<std::size_t>(width * height * channels), width, height, channels, MOTION_TOSTR(type));
     }
 
+    static std::pair<glm::vec3, glm::vec3> ComputeGlobalBounds(const aiScene* scene)
+    {
+        glm::vec3 min = glm::vec3(std::numeric_limits<float>::max());
+        glm::vec3 max = glm::vec3(std::numeric_limits<float>::lowest());
+
+        for (uint32_t m = 0; m < scene->mNumMeshes; ++m)
+        {
+            const aiMesh* mesh = scene->mMeshes[m];
+            for (uint32_t v = 0; v < mesh->mNumVertices; ++v)
+            {
+                glm::vec3 pos(mesh->mVertices[v].x, mesh->mVertices[v].y, mesh->mVertices[v].z);
+                min = glm::min(min, pos);
+                max = glm::max(max, pos);
+            }
+        }
+
+        return { min, max };
+    }
+
+    static std::string HashString(const std::string& input)
+    {
+        return std::format("{:X}", std::hash<std::string>{}(input));
+    }
+
 
     bool Exporter::ExportModel(const aiScene* scene, const std::filesystem::path& output)
     {
@@ -325,22 +336,37 @@ namespace Motion
                 return false;
             }
 
-            CreateSection(meshFile, MOTION_SECTION_FILE_BEGIN);
+            auto [minBounds, maxBounds] = ComputeGlobalBounds(scene);
+            CreateSection(meshFile, MESH_BEGIN);
 
             // --------------------------------------------------------
-            // Section : [M_META]
+            // CREATING THE HEADER
             // --------------------------------------------------------
-            CreateSection(meshFile, MOTION_SECTION_META_BEGIN);
-            CreateSection(meshFile, MOTION_SUBSECTION_META_VERSION("1.0v")); // Version
-            CreateSection(meshFile, MOTION_SUBSECTION_META_MESH_COUNT(scene->mNumMeshes));
-            CreateSection(meshFile, MOTION_SECTION_META_END);
+            CreateSection(meshFile, META_BEGIN);
+            CreateSection(meshFile, META_VERSION("1.0.0"));
+            CreateSection(meshFile, META_ENDIAN("LITTLE"));
+            CreateSection(meshFile, META_COUNT(scene->mNumMeshes));
+            CreateSection(meshFile, META_BOUNDS(minBounds, maxBounds));
+            CreateSection(meshFile, META_ID(UniqueIdentity::GetUniqueID()));
+            CreateSection(meshFile, META_ENGINE("MotionEngine"));
+            CreateSection(meshFile, META_BUILD(DateTime::GetDate()));
+            CreateSection(meshFile, META_END);
             //---------------------------------------------------------
 
-            auto exportMeshes =
+            std::unordered_map<std::uint32_t, std::string> meshMaterialIDs{};
+            std::unordered_map<std::string, MaterialAttributes> meshMaterialAttributesMapper{};
+
+            std::unordered_map<std::string, EmbeddedTexture> materialTextureMapper{};
+            std::unordered_map<std::string, std::vector< std::string>> meshMaterialTexturesMapper{};
+
+            auto loadExportingMesh =
                 [&](std::uint32_t meshIndex, aiMesh* mesh, const aiScene* scene)
                 {
+                    if (!mesh)
+                        return;
+
                     // --------------------------------------------------------
-                    // Loading mesh data
+                    //  GETTING MESH DATA FROM ASSIMP
                     // --------------------------------------------------------
                     bool hasUVs = mesh->HasTextureCoords(0);
                     bool hasNormals = mesh->HasNormals();
@@ -353,12 +379,27 @@ namespace Motion
                     {
                         Vertex vertex{};
                         vertex.Position = glm::vec3(mesh->mVertices[i].x, mesh->mVertices[i].y, mesh->mVertices[i].z);
-                        if (hasUVs) vertex.TexCoord = glm::vec2(mesh->mTextureCoords[0][i].x, mesh->mTextureCoords[0][i].y);
-                        if (hasNormals) vertex.Normal = glm::vec3(mesh->mNormals[i].x, mesh->mNormals[i].y, mesh->mNormals[i].z);
+
+                        if (hasUVs)
+                            vertex.TexCoord = glm::vec2(mesh->mTextureCoords[0][i].x, mesh->mTextureCoords[0][i].y);
+                        else
+                            vertex.TexCoord = glm::vec2(0.0f, 0.0f); // Default UVs if not present
+
+
+                        if (hasNormals)
+                            vertex.Normal = glm::vec3(mesh->mNormals[i].x, mesh->mNormals[i].y, mesh->mNormals[i].z);
+                        else
+                            vertex.Normal = glm::vec3(0.0f, 0.0f, 1.0f); // Default normal if not present
+
                         if (hasTangents)
                         {
                             vertex.Tangent = glm::vec3(mesh->mTangents[i].x, mesh->mTangents[i].y, mesh->mTangents[i].z);
                             vertex.Bitangent = glm::vec3(mesh->mBitangents[i].x, mesh->mBitangents[i].y, mesh->mBitangents[i].z);
+                        }
+                        else
+                        {
+                            vertex.Tangent = glm::vec3(1.0f, 0.0f, 0.0f); // Default tangent if not present
+                            vertex.Bitangent = glm::vec3(0.0f, 1.0f, 0.0f); // Default bitangent if not present
                         }
 
                         vertices.push_back(vertex);
@@ -373,98 +414,116 @@ namespace Motion
                         }
                     }
 
-                    if (!hasNormals) GenerateNormals(vertices, indices);
-                    if (!hasTangents) GenerateTangents(vertices, indices);
-                    if (!hasUVs) GenerateBoxProjectionUVs(vertices);
-
+                    //[TODO]: Need to generate normals and tangents if not present, also generate UVs if not present
+                    //if (!hasNormals) GenerateNormals(vertices, indices);
+                    //if (!hasTangents) GenerateTangents(vertices, indices);
+                    //if (!hasUVs) GenerateBoxProjectionUVs(vertices);
 
                     // --------------------------------------------------------
-                    // Loading material data
+                    // CREATING SECTIONS FOR MESH n VERTEX DATA
                     // --------------------------------------------------------
+                    CreateSection(meshFile, VTX_BEGIN(vertices.size()));
+                    BinaryWriter<std::vector<Vertex>>::Write(meshFile, vertices);
+                    CreateSection(meshFile, VTX_END);
+
+                    // --------------------------------------------------------
+                    // CREATING SECTIONS FOR MESH n INDICES DATA
+                    // --------------------------------------------------------
+                    CreateSection(meshFile, IDX_BEGIN(indices.size()));
+                    BinaryWriter<std::vector<std::uint32_t>>::Write(meshFile, indices);
+                    CreateSection(meshFile, IDX_END);
+
+                    // --------------------------------------------------------
+                    // CREATING SECTIONS FOR MESH n MATERIAL REFERENCE
+                    // --------------------------------------------------------
+                    if (meshMaterialIDs.contains(meshIndex))
+                    {
+                        CreateSection(meshFile, MAT_REF(meshMaterialIDs[meshIndex]));
+                    }
+                };
+
+            auto loadExportingMaterials =
+                [&](std::uint32_t meshIndex, aiMaterial* material)
+                {
+                    if (!material)
+                        return;
+
+                    std::string materialID = std::format("MAT_{}{}", meshIndex, HashString(material->GetName().C_Str()));
+                    MOTION_ASSERT((meshMaterialIDs.contains(meshIndex) || meshMaterialIDs[meshIndex] == materialID), "Hash collision detected for material ID: {}", materialID);
+                    meshMaterialIDs[meshIndex] = materialID;
+
                     MaterialAttributes materialAttributes{};
-                    std::unordered_map<aiTextureType, EmbeddedTexture> texture{};
-                    std::uint32_t materialIndex = mesh->mMaterialIndex;
-                    aiMaterial* material = scene->mMaterials[materialIndex];
-
                     aiColor3D baseColor = GetMaterialAttribute<aiColor3D>(material, AI_MATKEY_BASE_COLOR, aiColor3D(1.0f));
                     materialAttributes.BaseColor = glm::vec3(baseColor.r, baseColor.g, baseColor.b);
                     materialAttributes.Metallic = GetMaterialAttribute<float>(material, AI_MATKEY_METALLIC_FACTOR, 0.0f);
                     materialAttributes.Roughness = GetMaterialAttribute<float>(material, AI_MATKEY_ROUGHNESS_FACTOR, 1.0f);
                     materialAttributes.AmbientOcclusion = 1.0f; // Not provided by Assimp, default to 1.0f
-                    materialAttributes.DisplacementScale = 0.05f; // Not provided by Assimp, default to 1.0f
                     materialAttributes.Opacity = GetMaterialAttribute<float>(material, AI_MATKEY_OPACITY, 1.0f);
-                    materialAttributes.PADDING1 = 0.0f; // Padding for alignment
-                    materialAttributes.PADDING2 = 0.0f; // Padding for alignment
+                    materialAttributes.DisplacementScale = 0.05f; // Not provided by Assimp, default to 1.0f
+                    meshMaterialAttributesMapper[materialID] = materialAttributes;
 
-                    texture[aiTextureType_BASE_COLOR] = GetTexture(material, aiTextureType_BASE_COLOR, TextureType::BaseColorTexture, 0);
-                    texture[aiTextureType_METALNESS] = GetTexture(material, aiTextureType_METALNESS, TextureType::MetallicTexture, 0);
-                    texture[aiTextureType_DIFFUSE_ROUGHNESS] = GetTexture(material, aiTextureType_DIFFUSE_ROUGHNESS, TextureType::RoughnessTexture, 0);
-                    texture[aiTextureType_NORMALS] = GetTexture(material, aiTextureType_NORMALS, TextureType::NormalTexture, 0);
-                    texture[aiTextureType_AMBIENT_OCCLUSION] = GetTexture(material, aiTextureType_AMBIENT_OCCLUSION, TextureType::AmbientOcclusionTexture, 0);
-
-                    // --------------------------------------------------------
-
-                    // --------------------------------------------------------
-                    // Section : [M_VTX_<meshIndex>]
-                    // --------------------------------------------------------
-                    CreateSection(meshFile, MOTION_SECTION_VTX_BEGIN(meshIndex, vertices.size()));
-                    BinaryWriter<std::vector<Vertex>>::Write(meshFile, vertices);
-                    CreateSection(meshFile, MOTION_SECTION_VTX_END(meshIndex));
-
-                    // --------------------------------------------------------
-                    // Section : [M_IDX_<meshIndex>]
-                    // --------------------------------------------------------
-                    CreateSection(meshFile, MOTION_SECTION_IDX_BEGIN(meshIndex, indices.size()));
-                    BinaryWriter<std::vector<std::uint32_t>>::Write(meshFile, indices);
-                    CreateSection(meshFile, MOTION_SECTION_IDX_END(meshIndex));
-
-                    // --------------------------------------------------------
-                    // Section : [M_MAT_<meshIndex>]
-                    // --------------------------------------------------------
-                    CreateSection(meshFile, MOTION_SECTION_MAT_BEGIN(meshIndex));
-
-                    MOTION_SUBSECTION_MAT_TEXTURE(meshFile, TextureType::BaseColorTexture, texture[aiTextureType_BASE_COLOR].Data, texture[aiTextureType_BASE_COLOR].Size,
-                        texture[aiTextureType_BASE_COLOR].Width, texture[aiTextureType_BASE_COLOR].Height, texture[aiTextureType_BASE_COLOR].Channels);
-                    MOTION_SUBSECTION_MAT_TEXTURE(meshFile, TextureType::MetallicTexture, texture[aiTextureType_METALNESS].Data, texture[aiTextureType_METALNESS].Size,
-                        texture[aiTextureType_METALNESS].Width, texture[aiTextureType_METALNESS].Height, texture[aiTextureType_METALNESS].Channels);
-                    MOTION_SUBSECTION_MAT_TEXTURE(meshFile, TextureType::RoughnessTexture, texture[aiTextureType_DIFFUSE_ROUGHNESS].Data, texture[aiTextureType_DIFFUSE_ROUGHNESS].Size,
-                        texture[aiTextureType_DIFFUSE_ROUGHNESS].Width, texture[aiTextureType_DIFFUSE_ROUGHNESS].Height, texture[aiTextureType_DIFFUSE_ROUGHNESS].Channels);
-                    MOTION_SUBSECTION_MAT_TEXTURE(meshFile, TextureType::AmbientOcclusionTexture, texture[aiTextureType_AMBIENT_OCCLUSION].Data, texture[aiTextureType_AMBIENT_OCCLUSION].Size,
-                        texture[aiTextureType_AMBIENT_OCCLUSION].Width, texture[aiTextureType_AMBIENT_OCCLUSION].Height, texture[aiTextureType_AMBIENT_OCCLUSION].Channels);
-                    MOTION_SUBSECTION_MAT_TEXTURE(meshFile, TextureType::NormalTexture, texture[aiTextureType_NORMALS].Data, texture[aiTextureType_NORMALS].Size,
-                        texture[aiTextureType_NORMALS].Width, texture[aiTextureType_NORMALS].Height, texture[aiTextureType_NORMALS].Channels);
-
-                    CreateSection(meshFile, MOTION_SUBSECTION_MAT_ATTRIBUTES_BEGIN);
-                    CreateSection(meshFile, MOTION_SUBSECTION_MAT_ATTRIBUTES_VEC3(MOTION_MAT_ATTRIBUTE_BASE_COLOR, materialAttributes.BaseColor));
-                    CreateSection(meshFile, MOTION_SUBSECTION_MAT_ATTRIBUTES_FLOAT(MOTION_MAT_ATTRIBUTE_METALLIC, materialAttributes.Metallic));
-                    CreateSection(meshFile, MOTION_SUBSECTION_MAT_ATTRIBUTES_FLOAT(MOTION_MAT_ATTRIBUTE_ROUGHNESS, materialAttributes.Roughness));
-                    CreateSection(meshFile, MOTION_SUBSECTION_MAT_ATTRIBUTES_FLOAT(MOTION_MAT_ATTRIBUTE_AMBIENT_OCCLUSION, materialAttributes.AmbientOcclusion));
-                    CreateSection(meshFile, MOTION_SUBSECTION_MAT_ATTRIBUTES_FLOAT(MOTION_MAT_ATTRIBUTE_OPACITY, materialAttributes.Opacity));
-                    CreateSection(meshFile, MOTION_SUBSECTION_MAT_ATTRIBUTES_FLOAT(MOTION_MAT_ATTRIBUTE_DISPLACEMENT_SCALE, materialAttributes.DisplacementScale));
-                    CreateSection(meshFile, MOTION_SUBSECTION_MAT_ATTRIBUTES_END);
-
-                    CreateSection(meshFile, MOTION_SECTION_MAT_END(meshIndex));
-
-                    // --------------------------------------------------------
-                    // Cleanup texture data
-                    for (auto& tex : texture)
-                    {
-                        if (tex.second.Data)
+                    auto loadExportingTexture =
+                        [&](aiTextureType textureType, TextureType type)
                         {
-                            stbi_image_free(tex.second.Data);
-                            tex.second.Data = nullptr;
-                        }
-                    }
+                            aiString property;
+                            if (material->GetTexture(textureType, 0, &property) != aiReturn_SUCCESS)
+                                return;
+
+
+                            std::filesystem::path texturePath(property.C_Str());
+                            if (!std::filesystem::exists(texturePath))
+                                return;
+
+                            std::string textureID = std::format("{}_{}", "TEX", HashString(texturePath.string()));
+                            if (materialTextureMapper.contains(textureID))
+                            {
+                                meshMaterialTexturesMapper[materialID].push_back(textureID);
+                                return;
+                            }
+
+                            stbi_set_flip_vertically_on_load(1);
+                            std::int32_t width{ 0 }, height{ 0 }, channels{ 0 };
+                            std::uint8_t* data = stbi_load(texturePath.string().c_str(), &width, &height, &channels, 4);
+                            if (!data)
+                                return;
+
+                            MOTION_CORE_INFO("Successfully loaded texture: {}", texturePath.string());
+                            materialTextureMapper[textureID] = { data, static_cast<std::size_t>(width * height * channels), width, height, channels, MOTION_TOSTR(type) };
+                            meshMaterialTexturesMapper[materialID].push_back(textureID);
+                        };
+
+                    loadExportingTexture(aiTextureType_BASE_COLOR, TextureType::BaseColorTexture);
+                    loadExportingTexture(aiTextureType_METALNESS, TextureType::MetallicTexture);
+                    loadExportingTexture(aiTextureType_DIFFUSE_ROUGHNESS, TextureType::RoughnessTexture);
+                    loadExportingTexture(aiTextureType_AMBIENT_OCCLUSION, TextureType::AmbientOcclusionTexture);
+                    loadExportingTexture(aiTextureType_NORMALS, TextureType::NormalTexture);
                 };
 
-            std::function<void(aiNode*, const aiScene*)> traverseNodes =
-                [&](aiNode* node, const aiScene* scene)
+            std::function<void(const aiNode*, const aiScene*)> traverseNodes =
+                [&](const aiNode* node, const aiScene* scene)
                 {
                     for (std::uint32_t i = 0; i < node->mNumMeshes; ++i)
                     {
                         std::uint32_t meshIndex = node->mMeshes[i];
                         aiMesh* mesh = scene->mMeshes[meshIndex];
-                        exportMeshes(meshIndex, mesh, scene);
+                        aiMaterial* material = scene->mMaterials[mesh->mMaterialIndex];
+
+                        if (material)
+                        {
+                            loadExportingMaterials(meshIndex, material);
+                        }
+                    }
+
+                    for (std::uint32_t i = 0; i < node->mNumMeshes; ++i)
+                    {
+                        std::uint32_t meshIndex = node->mMeshes[i];
+                        aiMesh* mesh = scene->mMeshes[meshIndex];
+                        if (mesh)
+                        {
+                            CreateSection(meshFile, MESH_BLOCK(i));
+                            loadExportingMesh(meshIndex, mesh, scene);
+                            CreateSection(meshFile, MESH_BLOCK_END(i));
+                        }
                     }
 
                     for (std::uint32_t i = 0; i < node->mNumChildren; ++i)
@@ -474,8 +533,53 @@ namespace Motion
                 };
 
             traverseNodes(scene->mRootNode, scene);
+
             // --------------------------------------------------------
-            CreateSection(meshFile, MOTION_SECTION_FILE_END);
+            // CREATING MATERIAL SECTION
+            // --------------------------------------------------------
+            CreateSection(meshFile, MATERIALS_BEGIN);
+            for (const auto& [materialID, attribute] : meshMaterialAttributesMapper)
+            {
+                CreateSection(meshFile, MATERIAL(materialID));
+
+                CreateSection(meshFile, MAT_ATTR_BEGIN);
+                CreateSection(meshFile, ATTR_VEC3("BaseColor", attribute.BaseColor));
+                CreateSection(meshFile, ATTR_FLOAT("Metallic", attribute.Metallic));
+                CreateSection(meshFile, ATTR_FLOAT("Roughness", attribute.Roughness));
+                CreateSection(meshFile, ATTR_FLOAT("AmbientOcclusion", attribute.AmbientOcclusion));
+                CreateSection(meshFile, ATTR_FLOAT("Opacity", attribute.Opacity));
+                CreateSection(meshFile, ATTR_FLOAT("DisplacementScale", attribute.DisplacementScale));
+                CreateSection(meshFile, MAT_ATTR_END);
+
+                for (const auto& textureID : meshMaterialTexturesMapper[materialID])
+                {
+                    if (materialTextureMapper.contains(textureID))
+                    {
+                        CreateSection(meshFile, TEX_REF(textureID));
+                    }
+                }
+
+                CreateSection(meshFile, MATERIAL_END);
+            }
+            CreateSection(meshFile, MATERIALS_END);
+
+            // --------------------------------------------------------
+            // CREATING TEXTURE SECTION
+            // --------------------------------------------------------
+            CreateSection(meshFile, TEXTURES_BEGIN);
+            for (const auto& [textureID, texture] : materialTextureMapper)
+            {
+                CreateSection(meshFile, TEXTURE(textureID));
+                CreateSection(meshFile, TEX_META(texture.Type, texture.Width, texture.Height, texture.Channels, texture.Size));
+                BinaryWriter<std::uint8_t*>::Write(meshFile, texture.Data, texture.Size);
+                CreateSection(meshFile, TEXTURE_END);
+            }
+            CreateSection(meshFile, TEXTURES_END);
+
+            // --------------------------------------------------------
+            // CREATING FILE END SECTION
+            // --------------------------------------------------------
+            CreateSection(meshFile, MESH_END);
 
             meshFile.close();
             MOTION_CORE_INFO("Model exported successfully to: {}", output.string());

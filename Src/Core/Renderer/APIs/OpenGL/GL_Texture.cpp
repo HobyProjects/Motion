@@ -210,7 +210,7 @@ namespace Motion
      *
      * @return A shared pointer to the created GL_Texture
      */
-    std::shared_ptr<GL_Texture> Create(std::int32_t width, std::int32_t height, const glm::vec3& color) noexcept
+    std::shared_ptr<GL_Texture> GL_Texture::Create(std::int32_t width, std::int32_t height, const glm::vec3& color) noexcept
     {
         return std::make_shared<GL_Texture>(width, height, color);
     }
@@ -224,7 +224,7 @@ namespace Motion
      *
      * @return A shared pointer to the created GL_Texture
      */
-    std::shared_ptr<GL_Texture> Create(const std::filesystem::path& textureFile, TextureType type, bool flip) noexcept
+    std::shared_ptr<GL_Texture> GL_Texture::Create(const std::filesystem::path& textureFile, TextureType type, bool flip) noexcept
     {
         return std::make_shared<GL_Texture>(textureFile, type, flip);
     }
@@ -621,7 +621,7 @@ namespace Motion
      * @param textureFile The filesystem path to the texture file.
      * @return A shared pointer to the created GL_CubeTexture object.
      */
-    std::shared_ptr<GL_CubeTexture> Create(const std::filesystem::path& textureFile) noexcept
+    std::shared_ptr<GL_CubeTexture> GL_CubeTexture::Create(const std::filesystem::path& textureFile) noexcept
     {
         return std::make_shared<GL_CubeTexture>(textureFile);
     }
@@ -639,7 +639,7 @@ namespace Motion
      * @param negZ_texture The filesystem path to the negative Z face texture.
      * @return A shared pointer to the created GL_CubeTexture object.
      */
-    std::shared_ptr<GL_CubeTexture> Create(
+    std::shared_ptr<GL_CubeTexture> GL_CubeTexture::Create(
         const std::filesystem::path& posX_texture, const std::filesystem::path& negX_texture,
         const std::filesystem::path& posY_texture, const std::filesystem::path& negY_texture,
         const std::filesystem::path& posZ_texture, const std::filesystem::path& negZ_texture) noexcept

@@ -16,7 +16,7 @@ namespace Motion
      * @return std::shared_ptr<ITexture> A shared pointer to the created texture, or nullptr if the API is unsupported.
      * @note Currently, only the OpenGL API is implemented. Vulkan and DirectX will assert and return nullptr.
      */
-    std::shared_ptr<ITexture> ITexture::Create(std::int32_t width, std::int32_t height, const glm::vec3& color)
+    std::shared_ptr<ITexture> ITexture::Create(std::int32_t width, std::int32_t height, const glm::vec3& color) noexcept
     {
         switch (Renderer::GetAPI())
         {
@@ -48,7 +48,7 @@ namespace Motion
      * @return std::shared_ptr<ITexture> A shared pointer to the created texture, or nullptr if the API is unsupported.
      * @note Vulkan and DirectX implementations are not yet available.
      */
-    std::shared_ptr<ITexture> ITexture::Create(const std::filesystem::path& textureFile, TextureType type, bool flip)
+    std::shared_ptr<ITexture> ITexture::Create(const std::filesystem::path& textureFile, TextureType type, bool flip) noexcept
     {
         switch (Renderer::GetAPI())
         {
@@ -80,7 +80,7 @@ namespace Motion
      * @param channels The number of color channels in the pixel data.
      * @return std::shared_ptr<ITexture> A shared pointer to the created texture, or nullptr if the API is unsupported.
      */
-    std::shared_ptr<ITexture> ITexture::Create(std::uint8_t* data, TextureType type, std::int32_t width, std::int32_t height, std::int32_t channels)
+    std::shared_ptr<ITexture> ITexture::Create(std::uint8_t* data, TextureType type, std::int32_t width, std::int32_t height, std::int32_t channels) noexcept
     {
         switch (Renderer::GetAPI())
         {

@@ -14,8 +14,8 @@ namespace Motion
     struct SceneDrawCommand
     {
         UUID SortKey{ 0 };
-        UUID MaterialID{ 0 };
-        UUID MeshID{ 0 };
+        MaterialInstance* MaterialInstancePtr{ 0 };
+        Mesh* MeshPtr{ 0 };
 
         TextureID IrradianceTexture{ 0 };
         TextureID PrefilteredTexture{ 0 };
@@ -36,7 +36,7 @@ namespace Motion
 
         bool operator<(const SceneDrawCommand& other) const
         {
-            return std::tie(SortKey, MaterialID, MeshID) < std::tie(other.SortKey, other.MaterialID, other.MeshID);
+            return std::tie(SortKey, MaterialInstancePtr, MeshPtr) < std::tie(other.SortKey, other.MaterialInstancePtr, other.MeshPtr);
         }
     };
 

@@ -18,7 +18,6 @@ namespace Motion
     {
         s_CommandQueue.clear();
         s_DrawCallsCount = 0;
-        TextureBinding::Reset();
     }
 
     /**
@@ -36,21 +35,21 @@ namespace Motion
         std::sort(s_CommandQueue.begin(), s_CommandQueue.end(), [](const SceneDrawCommand& a, const SceneDrawCommand& b) { return a < b; });
 
         AssetManager& assetManager = AssetManager::GetInstance();
-        std::shared_ptr<IShader> currentShader = assetManager.Get<IShader>("PBR");
-        std::shared_ptr<MaterialInstance> currentMaterial = nullptr;
-        std::shared_ptr<Mesh> currentMesh = nullptr;
+        IShader* currentShader = assetManager.Get<IShader>("PBR").get();
+        MaterialInstance* currentMaterial = nullptr;
+        Mesh* currentMesh = nullptr;
 
         std::int32_t TextureBindingPoint = 0;
         const std::int32_t MAX_TEXTURE_SLOTS = Renderer::GetMaxTextureSlots();
 
         for (const auto& command : s_CommandQueue)
         {
-            auto material = assetManager.Get<MaterialInstance>(command.MaterialID);
-            auto mesh = assetManager.Get<Mesh>(command.MeshID);
+            auto material = command.MaterialInstancePtr;
+            auto mesh = command.MeshPtr;
 
             if (!currentShader || !material || !mesh) continue;
 
-            std::int32_t requiredTextureSlots = material->GetTexturesCount() + 3; //< Fore Environment Textures
+            std::int32_t requiredTextureSlots = material->GetTexturesCount() + 3; //< For Environment Textures
             if (TextureBindingPoint + requiredTextureSlots > MAX_TEXTURE_SLOTS)
             {
                 if (currentShader) currentShader->Unbind();
@@ -97,7 +96,7 @@ namespace Motion
                 currentMaterial = material;
 
                 auto bindTexture =
-                    [&](const std::string_view name, const std::shared_ptr<MaterialInstance>& material)
+                    [&](const std::string_view name, const MaterialInstance* material)
                     {
                         if (material->Texture.contains(name) && material->Texture.at(name) != nullptr)
                         {
@@ -185,8 +184,8 @@ namespace Motion
                 {
                     auto& meshSegment = *it;
                     command.SortKey = scene->GetSceneID();
-                    command.MaterialID = meshSegment->Materials->GetUUID();
-                    command.MeshID = meshSegment->MeshSelf->GetUUID();
+                    command.MaterialInstancePtr = meshSegment.Materials.get();
+                    command.MeshPtr = meshSegment.MeshSelf.get();
 
                     command.ModelMatrix = entity->HasComponent<TransformComponent>() ? entity->GetComponent<TransformComponent>().GetTransform() : glm::mat4(1.0f);
                     command.ViewMatrix = scene->m_SceneCamera->SceneViewCamera.View;

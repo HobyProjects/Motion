@@ -124,7 +124,7 @@ namespace Motion
      */
     std::shared_ptr<GL_VertexBuffer> GL_VertexBuffer::Create(std::int32_t allocatorSize)
     {
-        return std::shared_ptr<GL_VertexBuffer>(new GL_VertexBuffer(allocatorSize));
+        return std::make_shared<GL_VertexBuffer>(allocatorSize);
     }
 
 
@@ -141,7 +141,7 @@ namespace Motion
      */
     std::shared_ptr<GL_VertexBuffer> GL_VertexBuffer::Create(Vertex* data, std::uint32_t dataSize)
     {
-        return std::shared_ptr<GL_VertexBuffer>(new GL_VertexBuffer(data, dataSize));
+        return std::make_shared<GL_VertexBuffer>(data, dataSize);
     }
 
 
@@ -158,7 +158,7 @@ namespace Motion
      */
     std::shared_ptr<GL_VertexBuffer> GL_VertexBuffer::Create(float* data, std::uint32_t dataSize)
     {
-        return std::shared_ptr<GL_VertexBuffer>(new GL_VertexBuffer(data, dataSize));
+        return std::make_shared<GL_VertexBuffer>(data, dataSize);
     }
 
 
@@ -228,7 +228,7 @@ namespace Motion
      */
     std::shared_ptr<GL_ElementBuffer> GL_ElementBuffer::Create(std::uint32_t* data, std::uint32_t indicesCount)
     {
-        return std::shared_ptr<GL_ElementBuffer>(new GL_ElementBuffer(data, indicesCount));
+        return std::make_shared<GL_ElementBuffer>(data, indicesCount);
     }
 
     /******************************************************************************************
@@ -391,6 +391,21 @@ namespace Motion
     void GL_ShaderBuffer::SetRawBufferData(std::int32_t size, const void* data)
     {
         glNamedBufferSubData(m_ShaderBufferID, 0, size, data);
+    }
+
+    /**
+     * @brief Creates a shared pointer to a GL_ShaderBuffer with the specified size and binding point.
+     *
+     * This factory method creates and returns a shared pointer to an GL_ShaderBuffer
+     * implementation, initialized with the specified size and binding point.
+     *
+     * @param size The size in bytes to allocate for the shader buffer.
+     * @param binding The binding point to which this buffer will be associated.
+     * @return std::shared_ptr<GL_ShaderBuffer> A shared pointer to the created shader buffer.
+     */
+    std::shared_ptr<GL_ShaderBuffer> GL_ShaderBuffer::Create(std::int32_t size, BindingPoint binding)
+    {
+        return std::make_shared<GL_ShaderBuffer>(size, binding);
     }
 
     /******************************************************************************************
@@ -562,7 +577,7 @@ namespace Motion
     */
     std::shared_ptr<GL_UniformBuffer> GL_UniformBuffer::Create(std::int32_t size, BindingPoint binding)
     {
-        return std::shared_ptr<GL_UniformBuffer>(new GL_UniformBuffer(size, binding));
+        return std::make_shared<GL_UniformBuffer>(size, binding);
     }
 
     /******************************************************************************************
@@ -823,7 +838,7 @@ namespace Motion
      */
     std::shared_ptr<GL_FrameBuffer> GL_FrameBuffer::Create(const FrameBufferSpecification& specification)
     {
-        return std::shared_ptr<GL_FrameBuffer>(new GL_FrameBuffer(specification));
+        return std::make_shared<GL_FrameBuffer>(specification);
     }
 
     /**
@@ -1237,6 +1252,6 @@ namespace Motion
      */
     std::shared_ptr<GL_CaptureFrameBuffer> GL_CaptureFrameBuffer::Create(std::int32_t width, std::int32_t height)
     {
-        return std::shared_ptr<GL_CaptureFrameBuffer>(new GL_CaptureFrameBuffer(width, height));
+        return std::make_shared<GL_CaptureFrameBuffer>(width, height);
     }
 }

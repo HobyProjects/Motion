@@ -97,10 +97,10 @@ namespace Motion
         static void ValidateShaderProgram(ShaderProgramID programID);
         static void DeleteShaderProgram(ShaderProgramID programID);
 
-        [[nodiscard]] static ShaderID CompileShader(ShaderType shaderType, const std::string& sourceCode);
-        [[nodiscard]] static std::string ReadShaderFile(const std::filesystem::path& filePath);
-        [[nodiscard]] static std::unordered_map<ShaderType, std::string> ReadFullShaderFile(const std::filesystem::path& filePath);
         [[nodiscard]] static ShaderProgramID CreateShaderProgram();
+        [[nodiscard]] static std::string ReadShaderFile(const std::filesystem::path& filePath);
+        [[nodiscard]] static ShaderID CompileShader(ShaderType shaderType, const std::string& sourceCode);
+        [[nodiscard]] static std::unordered_map<ShaderType, std::string> ReadFullShaderFile(const std::filesystem::path& filePath);
         [[nodiscard]] static std::unordered_map<ShaderType, std::string> ReadShaderFiles(const std::filesystem::path& vertexPath, const std::filesystem::path& fragmentPath);
     };
 }

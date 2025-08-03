@@ -257,7 +257,7 @@ namespace Motion
         }
 
         T value{ defaultValue };
-        if (material->Get(key, type, index, &value) != aiReturn_SUCCESS)
+        if (material->Get(key, type, index, value) != aiReturn_SUCCESS)
         {
             MOTION_CORE_WARN("Failed to get material attribute: {}. Using default value.", key);
             return defaultValue;
@@ -266,59 +266,39 @@ namespace Motion
         return value;
     }
 
-    struct TextureDetails
-    {
-        std::uint8_t* Data{ nullptr };
-        std::size_t Size{ 0 };
-
-        TextureDetails() = default;
-        TextureDetails(std::uint8_t* data, std::size_t size)
-            : Data(data), Size(size) {
-        }
-
-        ~TextureDetails()
-        {
-            if (Data)
-            {
-                stbi_image_free(Data);
-                Data = nullptr;
-            }
-        }
-    };
-
-    static TextureDetails GetTexture(const aiMaterial* material, aiTextureType textureType, std::uint32_t index)
+    static EmbeddedTexture GetTexture(const aiMaterial* material, aiTextureType textureType, TextureType type, std::uint32_t index)
     {
         if (!material)
         {
             MOTION_CORE_ERROR("Material is null, cannot get texture.");
-            return TextureDetails();
+            return EmbeddedTexture();
         }
 
         aiString property;
         if (material->GetTexture(textureType, index, &property) != aiReturn_SUCCESS)
         {
-            MOTION_CORE_WARN("Failed to get texture of type: {}", textureType);
-            return TextureDetails();
+            MOTION_CORE_WARN("Failed to get texture of type: {}", static_cast<std::int32_t>(textureType));
+            return EmbeddedTexture();
         }
 
         std::filesystem::path texturePath(property.C_Str());
         if (!std::filesystem::exists(texturePath))
         {
             MOTION_CORE_WARN("Texture file does not exist: {}", texturePath.string());
-            return TextureDetails();
+            return EmbeddedTexture();
         }
 
-        int width, height, channels;
+        std::int32_t width, height, channels;
         stbi_set_flip_vertically_on_load(1);
         std::uint8_t* data = stbi_load(texturePath.string().c_str(), &width, &height, &channels, 4);
         if (!data)
         {
             MOTION_CORE_ERROR("Failed to load texture data from: {}", texturePath.string());
-            return TextureDetails();
+            return EmbeddedTexture();
         }
 
         MOTION_CORE_INFO("Successfully loaded texture: {}", texturePath.string());
-        return TextureDetails(data, static_cast<std::size_t>(width * height * channels));
+        return EmbeddedTexture(data, static_cast<std::size_t>(width * height * channels), width, height, channels, MOTION_TOSTR(type));
     }
 
 
@@ -402,11 +382,12 @@ namespace Motion
                     // Loading material data
                     // --------------------------------------------------------
                     MaterialAttributes materialAttributes{};
-                    std::unordered_map<aiTextureType, TextureDetails> texture{};
+                    std::unordered_map<aiTextureType, EmbeddedTexture> texture{};
                     std::uint32_t materialIndex = mesh->mMaterialIndex;
                     aiMaterial* material = scene->mMaterials[materialIndex];
 
-                    materialAttributes.BaseColor = GetMaterialAttribute<glm::vec3>(material, AI_MATKEY_BASE_COLOR, glm::vec3(1.0f, 1.0f, 1.0f));
+                    aiColor3D baseColor = GetMaterialAttribute<aiColor3D>(material, AI_MATKEY_BASE_COLOR, aiColor3D(1.0f));
+                    materialAttributes.BaseColor = glm::vec3(baseColor.r, baseColor.g, baseColor.b);
                     materialAttributes.Metallic = GetMaterialAttribute<float>(material, AI_MATKEY_METALLIC_FACTOR, 0.0f);
                     materialAttributes.Roughness = GetMaterialAttribute<float>(material, AI_MATKEY_ROUGHNESS_FACTOR, 1.0f);
                     materialAttributes.AmbientOcclusion = 1.0f; // Not provided by Assimp, default to 1.0f
@@ -415,11 +396,11 @@ namespace Motion
                     materialAttributes.PADDING1 = 0.0f; // Padding for alignment
                     materialAttributes.PADDING2 = 0.0f; // Padding for alignment
 
-                    texture[aiTextureType_BASE_COLOR] = GetTexture(material, aiTextureType_BASE_COLOR, 0);
-                    texture[aiTextureType_METALNESS] = GetTexture(material, aiTextureType_METALNESS, 0);
-                    texture[aiTextureType_DIFFUSE_ROUGHNESS] = GetTexture(material, aiTextureType_DIFFUSE_ROUGHNESS, 0);
-                    texture[aiTextureType_NORMALS] = GetTexture(material, aiTextureType_NORMALS, 0);
-                    texture[aiTextureType_AMBIENT_OCCLUSION] = GetTexture(material, aiTextureType_AMBIENT_OCCLUSION, 0);
+                    texture[aiTextureType_BASE_COLOR] = GetTexture(material, aiTextureType_BASE_COLOR, TextureType::BaseColorTexture, 0);
+                    texture[aiTextureType_METALNESS] = GetTexture(material, aiTextureType_METALNESS, TextureType::MetallicTexture, 0);
+                    texture[aiTextureType_DIFFUSE_ROUGHNESS] = GetTexture(material, aiTextureType_DIFFUSE_ROUGHNESS, TextureType::RoughnessTexture, 0);
+                    texture[aiTextureType_NORMALS] = GetTexture(material, aiTextureType_NORMALS, TextureType::NormalTexture, 0);
+                    texture[aiTextureType_AMBIENT_OCCLUSION] = GetTexture(material, aiTextureType_AMBIENT_OCCLUSION, TextureType::AmbientOcclusionTexture, 0);
 
                     // --------------------------------------------------------
 
@@ -442,11 +423,16 @@ namespace Motion
                     // --------------------------------------------------------
                     CreateSection(meshFile, MOTION_SECTION_MAT_BEGIN(meshIndex));
 
-                    MOTION_SUBSECTION_MAT_TEXTURE(meshFile, TextureType::BaseColorTexture, texture[aiTextureType_BASE_COLOR].Data, texture[aiTextureType_BASE_COLOR].Size);
-                    MOTION_SUBSECTION_MAT_TEXTURE(meshFile, TextureType::MetallicTexture, texture[aiTextureType_METALNESS].Data, texture[aiTextureType_METALNESS].Size);
-                    MOTION_SUBSECTION_MAT_TEXTURE(meshFile, TextureType::RoughnessTexture, texture[aiTextureType_DIFFUSE_ROUGHNESS].Data, texture[aiTextureType_DIFFUSE_ROUGHNESS].Size);
-                    MOTION_SUBSECTION_MAT_TEXTURE(meshFile, TextureType::AmbientOcclusionTexture, texture[aiTextureType_AMBIENT_OCCLUSION].Data, texture[aiTextureType_AMBIENT_OCCLUSION].Size);
-                    MOTION_SUBSECTION_MAT_TEXTURE(meshFile, TextureType::NormalTexture, texture[aiTextureType_NORMALS].Data, texture[aiTextureType_NORMALS].Size);
+                    MOTION_SUBSECTION_MAT_TEXTURE(meshFile, TextureType::BaseColorTexture, texture[aiTextureType_BASE_COLOR].Data, texture[aiTextureType_BASE_COLOR].Size,
+                        texture[aiTextureType_BASE_COLOR].Width, texture[aiTextureType_BASE_COLOR].Height, texture[aiTextureType_BASE_COLOR].Channels);
+                    MOTION_SUBSECTION_MAT_TEXTURE(meshFile, TextureType::MetallicTexture, texture[aiTextureType_METALNESS].Data, texture[aiTextureType_METALNESS].Size,
+                        texture[aiTextureType_METALNESS].Width, texture[aiTextureType_METALNESS].Height, texture[aiTextureType_METALNESS].Channels);
+                    MOTION_SUBSECTION_MAT_TEXTURE(meshFile, TextureType::RoughnessTexture, texture[aiTextureType_DIFFUSE_ROUGHNESS].Data, texture[aiTextureType_DIFFUSE_ROUGHNESS].Size,
+                        texture[aiTextureType_DIFFUSE_ROUGHNESS].Width, texture[aiTextureType_DIFFUSE_ROUGHNESS].Height, texture[aiTextureType_DIFFUSE_ROUGHNESS].Channels);
+                    MOTION_SUBSECTION_MAT_TEXTURE(meshFile, TextureType::AmbientOcclusionTexture, texture[aiTextureType_AMBIENT_OCCLUSION].Data, texture[aiTextureType_AMBIENT_OCCLUSION].Size,
+                        texture[aiTextureType_AMBIENT_OCCLUSION].Width, texture[aiTextureType_AMBIENT_OCCLUSION].Height, texture[aiTextureType_AMBIENT_OCCLUSION].Channels);
+                    MOTION_SUBSECTION_MAT_TEXTURE(meshFile, TextureType::NormalTexture, texture[aiTextureType_NORMALS].Data, texture[aiTextureType_NORMALS].Size,
+                        texture[aiTextureType_NORMALS].Width, texture[aiTextureType_NORMALS].Height, texture[aiTextureType_NORMALS].Channels);
 
                     CreateSection(meshFile, MOTION_SUBSECTION_MAT_ATTRIBUTES_BEGIN);
                     CreateSection(meshFile, MOTION_SUBSECTION_MAT_ATTRIBUTES_VEC3(MOTION_MAT_ATTRIBUTE_BASE_COLOR, materialAttributes.BaseColor));
@@ -458,6 +444,17 @@ namespace Motion
                     CreateSection(meshFile, MOTION_SUBSECTION_MAT_ATTRIBUTES_END);
 
                     CreateSection(meshFile, MOTION_SECTION_MAT_END(meshIndex));
+
+                    // --------------------------------------------------------
+                    // Cleanup texture data
+                    for (auto& tex : texture)
+                    {
+                        if (tex.second.Data)
+                        {
+                            stbi_image_free(tex.second.Data);
+                            tex.second.Data = nullptr;
+                        }
+                    }
                 };
 
             std::function<void(aiNode*, const aiScene*)> traverseNodes =

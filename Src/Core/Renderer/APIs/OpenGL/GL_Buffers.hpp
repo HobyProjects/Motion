@@ -11,6 +11,7 @@ namespace Motion
         GL_VertexBuffer() = default;
         GL_VertexBuffer(std::int32_t allocatorSize);
         GL_VertexBuffer(Vertex* data, std::uint32_t dataSize);
+        GL_VertexBuffer(float* data, std::uint32_t dataSize);
         virtual ~GL_VertexBuffer();
 
         virtual void Bind() const override;
@@ -19,6 +20,10 @@ namespace Motion
         virtual void SetData(const void* data, std::int32_t size) override;
         virtual void SetLayout(const BufferLayout& layout) override;
         virtual const BufferLayout& GetLayout() const override { return m_Layout; }
+
+        static std::shared_ptr<GL_VertexBuffer> Create(std::int32_t allocatorSize);
+        static std::shared_ptr<GL_VertexBuffer> Create(Vertex* data, std::uint32_t dataSize);
+        static std::shared_ptr<GL_VertexBuffer> Create(float* data, std::uint32_t dataSize);
 
     private:
 
@@ -37,6 +42,8 @@ namespace Motion
         virtual void Unbind() const override;
         virtual BufferID GetID() const override { return m_ElementBufferID; }
         virtual std::int32_t GetElementCount() const override { return m_Count; }
+
+        static std::shared_ptr<GL_ElementBuffer> Create(std::uint32_t* data, std::uint32_t indicesCount);
 
     private:
         BufferID m_ElementBufferID{ 0 };
@@ -62,6 +69,8 @@ namespace Motion
         virtual void SetBufferData(std::int32_t offset, std::int32_t size, float data) override;
         virtual void SetRawBufferData(std::int32_t size, const void* data) override;
 
+        static std::shared_ptr<GL_ShaderBuffer> Create(std::int32_t size, BindingPoint binding);
+
     private:
         BufferID m_ShaderBufferID{ 0 };
         BindingPoint m_BindingPoint{ 0 };
@@ -84,6 +93,9 @@ namespace Motion
         virtual void SetBufferData(std::int32_t offset, std::int32_t size, const glm::vec3& data) override;
         virtual void SetBufferData(std::int32_t offset, std::int32_t size, const glm::vec2& data) override;
         virtual void SetBufferData(std::int32_t offset, std::int32_t size, float data) override;
+        virtual void SetRawBufferData(std::int32_t size, const void* data) override;
+
+        static std::shared_ptr<GL_UniformBuffer> Create(std::int32_t size, BindingPoint binding);
 
     private:
         BufferID m_UniformBufferID{ 0 };
@@ -108,6 +120,8 @@ namespace Motion
         [[nodiscard]] virtual FrameTextureID ResolveTo(IFrameBuffer* target) override;
         [[nodiscard]] virtual ColorAttachments GetAttachment(FrameBufferColorAttachmentStandards attachment) const override;
         [[nodiscard]] virtual std::int32_t ReadPixel(FrameBufferColorAttachmentStandards attachment, std::int32_t x, std::int32_t y) override;
+
+        static std::shared_ptr<GL_FrameBuffer> Create(const FrameBufferSpecification& specification);
 
     private:
         void Invalidate();
@@ -136,6 +150,8 @@ namespace Motion
         [[nodiscard]] virtual std::int32_t GetWidth() const override { return m_Width; }
         [[nodiscard]] virtual std::int32_t GetHeight() const override { return m_Height; }
 
+        static std::shared_ptr<GL_CaptureFrameBuffer> Create(std::int32_t width, std::int32_t height);
+
     private:
         BufferID m_CaptureFrameBufferID{ 0 };
         FrameTextureID m_CaptureTextureID{ 0 };
@@ -144,11 +160,4 @@ namespace Motion
         std::int32_t m_Height{ 0 };
     };
 
-    std::shared_ptr<GL_VertexBuffer> GL_CreateVertexBuffer(std::int32_t allocatorSize);
-    std::shared_ptr<GL_VertexBuffer> GL_CreateVertexBuffer(Vertex* data, std::uint32_t size);
-    std::shared_ptr<GL_ElementBuffer> GL_CreateElementBuffer(std::uint32_t* data, std::uint32_t size);
-    std::shared_ptr<GL_ShaderBuffer> GL_CreateShaderBuffer(std::int32_t size, BindingPoint binding);
-    std::shared_ptr<GL_UniformBuffer> GL_CreateUniformBuffer(std::int32_t size, BindingPoint binding);
-    std::shared_ptr<GL_FrameBuffer> GL_CreateFrameBuffer(const FrameBufferSpecification& specification);
-    std::shared_ptr<GL_CaptureFrameBuffer> GL_CreateCaptureFrameBuffer(std::int32_t width, std::int32_t height);
 }

@@ -100,6 +100,10 @@ namespace Motion
         virtual void SetData(const void* data, std::int32_t size) = 0;
         virtual void SetLayout(const BufferLayout& layout) = 0;
         virtual const BufferLayout& GetLayout() const = 0;
+
+        static std::shared_ptr<IVertexBuffer> Create(std::int32_t allocatorSize);
+        static std::shared_ptr<IVertexBuffer> Create(Vertex* data, std::uint32_t dataSize);
+        static std::shared_ptr<IVertexBuffer> Create(float* data, std::uint32_t dataSize);
     };
 
     class IElementBuffer
@@ -112,6 +116,8 @@ namespace Motion
         virtual void Unbind() const = 0;
         virtual BufferID GetID() const = 0;
         virtual std::int32_t GetElementCount() const = 0;
+
+        static std::shared_ptr<IElementBuffer> Create(std::uint32_t* data, std::uint32_t indicesCount);
     };
 
     class IShaderBuffer
@@ -131,6 +137,8 @@ namespace Motion
         virtual void SetBufferData(std::int32_t offset, std::int32_t size, const glm::vec2& data) = 0;
         virtual void SetBufferData(std::int32_t offset, std::int32_t size, float data) = 0;
         virtual void SetRawBufferData(std::int32_t size, const void* data) = 0;
+
+        static std::shared_ptr<IShaderBuffer> Create(std::int32_t size, BindingPoint binding);
     };
 
     class IUniformBuffer
@@ -150,6 +158,9 @@ namespace Motion
         virtual void SetBufferData(std::int32_t offset, std::int32_t size, const glm::vec3& data) = 0;
         virtual void SetBufferData(std::int32_t offset, std::int32_t size, const glm::vec2& data) = 0;
         virtual void SetBufferData(std::int32_t offset, std::int32_t size, float data) = 0;
+        virtual void SetRawBufferData(std::int32_t size, const void* data) = 0;
+
+        static std::shared_ptr<IUniformBuffer> Create(std::int32_t size, BindingPoint binding);
     };
 
 
@@ -192,7 +203,6 @@ namespace Motion
         CommonCombined = 4,
         HighPrecisionCombined = 5,
     };
-
 
     inline std::int32_t operator|(FrameBufferBlitFilter lhs, FrameBufferBlitFilter rhs) { return static_cast<std::int32_t>(lhs) | static_cast<std::int32_t>(rhs); }
     inline std::int32_t operator&(FrameBufferBlitFilter lhs, FrameBufferBlitFilter rhs) { return static_cast<std::int32_t>(lhs) & static_cast<std::int32_t>(rhs); }
@@ -247,6 +257,8 @@ namespace Motion
         [[nodiscard]] virtual FrameTextureID ResolveTo(IFrameBuffer* target) = 0;
         [[nodiscard]] virtual ColorAttachments GetAttachment(FrameBufferColorAttachmentStandards attachment) const = 0;
         [[nodiscard]] virtual std::int32_t ReadPixel(FrameBufferColorAttachmentStandards attachment, std::int32_t x, std::int32_t y) = 0;
+
+        static std::shared_ptr<IFrameBuffer> Create(const FrameBufferSpecification& specification);
     };
 
     class ICaptureFrameBuffer
@@ -266,26 +278,7 @@ namespace Motion
         [[nodiscard]] virtual FrameTextureID GetCaptureTextureID() const = 0;
         [[nodiscard]] virtual std::int32_t GetWidth() const = 0;
         [[nodiscard]] virtual std::int32_t GetHeight() const = 0;
-    };
 
-    class BufferFactory
-    {
-    private:
-        BufferFactory() = default;
-        ~BufferFactory() = default;
-
-        BufferFactory(const BufferFactory&) = delete;
-        BufferFactory& operator=(const BufferFactory&) = delete;
-        BufferFactory(BufferFactory&&) = delete;
-        BufferFactory& operator=(BufferFactory&&) = delete;
-
-    public:
-        static std::shared_ptr<IVertexBuffer> CreateVertexBuffer(std::int32_t allocatorSize);
-        static std::shared_ptr<IVertexBuffer> CreateVertexBuffer(Vertex* data, std::uint32_t size);
-        static std::shared_ptr<IElementBuffer> CreateElementBuffer(std::uint32_t* data, std::uint32_t size);
-        static std::shared_ptr<IShaderBuffer> CreateShaderBuffer(std::int32_t size, BindingPoint binding);
-        static std::shared_ptr<IUniformBuffer> CreateUniformBuffer(std::int32_t size, BindingPoint binding);
-        static std::shared_ptr<IFrameBuffer> CreateFrameBuffer(const FrameBufferSpecification& specification);
-        static std::shared_ptr<ICaptureFrameBuffer> CreateCaptureFrameBuffer(std::int32_t width, std::int32_t height);
+        static std::shared_ptr<ICaptureFrameBuffer> Create(std::int32_t width, std::int32_t height);
     };
 }

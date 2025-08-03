@@ -35,12 +35,12 @@
 #define MOTION_MAT_ATTRIBUTE_OPACITY "Opacity"
 #define MOTION_MAT_ATTRIBUTE_DISPLACEMENT_SCALE "DisplacementScale"
 
-#define MOTION_SUBSECTION_MAT_TEXTURE_TYPE(textureType) std::format("[MAT_TEXTURE_TYPE:{}]", MOTION_TOSTR(textureType))
+#define MOTION_SUBSECTION_MAT_TEXTURE_TYPE(textureType, width, height, channels) std::format("[MAT_TEXTURE_TYPE:{}|WIDTH:{}|HEIGHT:{}|CHANNELS:{}]", MOTION_TOSTR(textureType), width, height, channels)
 #define MOTION_SUBSECTION_MAT_TEXTURE_DATA_BEGIN(size) std::format("[MAT_TEXTURE_DATA_BEGIN:{}]", size)
 #define MOTION_SUBSECTION_MAT_TEXTURE_DATA_END std::format("[MAT_TEXTURE_DATA_END]")
 
-#define MOTION_SUBSECTION_MAT_TEXTURE(OUTFILE, TEXTURE, DATA_PTR, DATA_SIZE) \
-    CreateSection(OUTFILE, MOTION_SUBSECTION_MAT_TEXTURE_TYPE(TEXTURE));\
+#define MOTION_SUBSECTION_MAT_TEXTURE(OUTFILE, TEXTURE, DATA_PTR, DATA_SIZE, WIDTH, HEIGHT, CHANNELS) \
+    CreateSection(OUTFILE, MOTION_SUBSECTION_MAT_TEXTURE_TYPE(TEXTURE, WIDTH, HEIGHT, CHANNELS));\
     if(DATA_PTR == nullptr || DATA_SIZE == 0)\
     {\
         CreateSection(OUTFILE, MOTION_SUBSECTION_MAT_TEXTURE_DATA_BEGIN(DATA_SIZE)); \
@@ -56,6 +56,23 @@
 
 namespace Motion
 {
+    struct EmbeddedTexture
+    {
+        std::uint8_t* Data{ nullptr };
+        std::size_t Size{ 0 };
+        std::int32_t Width{ 0 };
+        std::int32_t Height{ 0 };
+        std::int32_t Channels{ 0 };
+        std::string Type{ "Unknown" };
+
+        EmbeddedTexture() = default;
+        EmbeddedTexture(std::uint8_t* data, std::size_t size, std::int32_t width, std::int32_t height, std::int32_t channels, const std::string& type)
+            : Data(data), Size(size), Width(width), Height(height), Channels(channels), Type(type) {
+        }
+
+        ~EmbeddedTexture() = default;
+    };
+
     class Exporter
     {
     private:

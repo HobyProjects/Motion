@@ -11,11 +11,11 @@ namespace Motion
      * @param allocatorSize The size (in bytes) to allocate for the vertex buffer.
      * @return std::shared_ptr<IVertexBuffer> A shared pointer to the created vertex buffer, or nullptr if the API is not implemented.
      */
-    std::shared_ptr<IVertexBuffer> BufferFactory::CreateVertexBuffer(std::int32_t allocatorSize)
+    std::shared_ptr<IVertexBuffer> IVertexBuffer::Create(std::int32_t allocatorSize)
     {
         switch (Renderer::GetAPI())
         {
-        case RenderingAPI::OpenGL:         return GL_CreateVertexBuffer(allocatorSize);
+        case RenderingAPI::OpenGL:         return GL_VertexBuffer::Create(allocatorSize);
         case RenderingAPI::Vulkan:         MOTION_ASSERT(false, "Vulkan is not implemented yet!"); return nullptr;
         case RenderingAPI::DirectX:        MOTION_ASSERT(false, "DirectX is not implemented yet!"); return nullptr;
         default:                           MOTION_ASSERT(false, "Unknown rendering API!"); return nullptr;
@@ -36,11 +36,11 @@ namespace Motion
      *
      * @note Currently, only the OpenGL API is implemented. Other APIs will trigger an assertion failure.
      */
-    std::shared_ptr<IVertexBuffer> BufferFactory::CreateVertexBuffer(Vertex* data, std::uint32_t size)
+    std::shared_ptr<IVertexBuffer> IVertexBuffer::Create(Vertex* data, std::uint32_t size)
     {
         switch (Renderer::GetAPI())
         {
-        case RenderingAPI::OpenGL:         return GL_CreateVertexBuffer(data, size);
+        case RenderingAPI::OpenGL:         return GL_VertexBuffer::Create(data, size);
         case RenderingAPI::Vulkan:         MOTION_ASSERT(false, "Vulkan is not implemented yet!"); return nullptr;
         case RenderingAPI::DirectX:        MOTION_ASSERT(false, "DirectX is not implemented yet!"); return nullptr;
         default:                           MOTION_ASSERT(false, "Unknown rendering API!"); return nullptr;
@@ -60,11 +60,11 @@ namespace Motion
      *
      * @note Currently, only the OpenGL API is implemented. Vulkan and DirectX will trigger assertions.
      */
-    std::shared_ptr<IElementBuffer> BufferFactory::CreateElementBuffer(std::uint32_t* data, std::uint32_t size)
+    std::shared_ptr<IElementBuffer> IElementBuffer::Create(std::uint32_t* data, std::uint32_t size)
     {
         switch (Renderer::GetAPI())
         {
-        case RenderingAPI::OpenGL:         return GL_CreateElementBuffer(data, size);
+        case RenderingAPI::OpenGL:         return GL_ElementBuffer::Create(data, size);
         case RenderingAPI::Vulkan:         MOTION_ASSERT(false, "Vulkan is not implemented yet!"); return nullptr;
         case RenderingAPI::DirectX:        MOTION_ASSERT(false, "DirectX is not implemented yet!"); return nullptr;
         default:                           MOTION_ASSERT(false, "Unknown rendering API!"); return nullptr;
@@ -81,11 +81,11 @@ namespace Motion
      * @param binding The binding point to which the buffer will be bound in the shader.
      * @return std::shared_ptr<IShaderBuffer> A shared pointer to the created shader buffer, or nullptr if not implemented.
      */
-    std::shared_ptr<IShaderBuffer> BufferFactory::CreateShaderBuffer(std::int32_t size, BindingPoint binding)
+    std::shared_ptr<IShaderBuffer> IShaderBuffer::Create(std::int32_t size, BindingPoint binding)
     {
         switch (Renderer::GetAPI())
         {
-        case RenderingAPI::OpenGL:         return GL_CreateShaderBuffer(size, binding);
+        case RenderingAPI::OpenGL:         return GL_ShaderBuffer::Create(size, binding);
         case RenderingAPI::Vulkan:         MOTION_ASSERT(false, "Vulkan is not implemented yet!"); return nullptr;
         case RenderingAPI::DirectX:        MOTION_ASSERT(false, "DirectX is not implemented yet!"); return nullptr;
         default:                           MOTION_ASSERT(false, "Unknown rendering API!"); return nullptr;
@@ -107,11 +107,11 @@ namespace Motion
      * @note Currently, only the OpenGL implementation is available. Other APIs will trigger
      *       an assertion and return nullptr.
      */
-    std::shared_ptr<IUniformBuffer> BufferFactory::CreateUniformBuffer(std::int32_t size, BindingPoint binding)
+    std::shared_ptr<IUniformBuffer> IUniformBuffer::Create(std::int32_t size, BindingPoint binding)
     {
         switch (Renderer::GetAPI())
         {
-        case RenderingAPI::OpenGL:         return GL_CreateUniformBuffer(size, binding);
+        case RenderingAPI::OpenGL:         return GL_UniformBuffer::Create(size, binding);
         case RenderingAPI::Vulkan:         MOTION_ASSERT(false, "Vulkan is not implemented yet!"); return nullptr;
         case RenderingAPI::DirectX:        MOTION_ASSERT(false, "DirectX is not implemented yet!"); return nullptr;
         default:                           MOTION_ASSERT(false, "Unknown rendering API!"); return nullptr;
@@ -130,11 +130,11 @@ namespace Motion
      * @return std::shared_ptr<IFrameBuffer> A shared pointer to the created frame buffer object,
      *         or nullptr if the API is not implemented or unknown.
      */
-    std::shared_ptr<IFrameBuffer> BufferFactory::CreateFrameBuffer(const FrameBufferSpecification& specification)
+    std::shared_ptr<IFrameBuffer> IFrameBuffer::Create(const FrameBufferSpecification& specification)
     {
         switch (Renderer::GetAPI())
         {
-        case RenderingAPI::OpenGL:         return GL_CreateFrameBuffer(specification);
+        case RenderingAPI::OpenGL:         return GL_FrameBuffer::Create(specification);
         case RenderingAPI::Vulkan:         MOTION_ASSERT(false, "Vulkan is not implemented yet!"); return nullptr;
         case RenderingAPI::DirectX:        MOTION_ASSERT(false, "DirectX is not implemented yet!"); return nullptr;
         default:                           MOTION_ASSERT(false, "Unknown rendering API!"); return nullptr;
@@ -154,11 +154,11 @@ namespace Motion
      * @return std::shared_ptr<ICaptureFrameBuffer> A shared pointer to the created capture frame buffer,
      *         or nullptr if the rendering API is not implemented or unknown.
      */
-    std::shared_ptr<ICaptureFrameBuffer> BufferFactory::CreateCaptureFrameBuffer(std::int32_t width, std::int32_t height)
+    std::shared_ptr<ICaptureFrameBuffer> ICaptureFrameBuffer::Create(std::int32_t width, std::int32_t height)
     {
         switch (Renderer::GetAPI())
         {
-        case RenderingAPI::OpenGL:         return GL_CreateCaptureFrameBuffer(width, height);
+        case RenderingAPI::OpenGL:         return GL_CaptureFrameBuffer::Create(width, height);
         case RenderingAPI::Vulkan:         MOTION_ASSERT(false, "Vulkan is not implemented yet!"); return nullptr;
         case RenderingAPI::DirectX:        MOTION_ASSERT(false, "DirectX is not implemented yet!"); return nullptr;
         default:                           MOTION_ASSERT(false, "Unknown rendering API!"); return nullptr;

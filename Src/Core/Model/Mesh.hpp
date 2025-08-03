@@ -10,18 +10,25 @@ namespace Motion
 {
     class StaticMesh; // Forward declaration
 
-    class Mesh : public AssetBase<IAsset>
+    class Mesh
     {
     public:
         Mesh() = default;
-        Mesh(UUID uuid, const std::string& name, Vertex* vertices, std::uint32_t verticesSize, std::uint32_t* indices, std::uint32_t indicesCount, const BufferLayout& layout, const std::shared_ptr<StaticMesh>& parentModel);
+        Mesh(Vertex* vertices, std::uint32_t verticesSize, std::uint32_t* indices, std::uint32_t indicesCount, const BufferLayout& layout, const std::shared_ptr<StaticMesh>& parentModel);
+        Mesh(float* vertices, std::uint32_t verticesSize, std::uint32_t* indices, std::uint32_t indicesCount, const BufferLayout& layout, const std::shared_ptr<StaticMesh>& parentModel);
         ~Mesh() = default;
 
         void Bind() const noexcept;
         void Unbind() const noexcept;
         void Render();
-        std::int32_t GetIndicesCount() const noexcept;
-        std::shared_ptr<StaticMesh> GetParentModel() const noexcept;
+
+        [[nodiscard]] std::int32_t GetIndicesCount() const noexcept;
+        [[nodiscard]] std::shared_ptr<StaticMesh> GetParentModel() const noexcept;
+        [[nodiscard]] RendererID GetID() const noexcept { return m_VertexArray->GetID(); }
+
+        [[nodiscard]] static std::shared_ptr<Mesh> Create(Vertex* vertices, std::uint32_t verticesSize, std::uint32_t* indices, std::uint32_t indicesCount, const BufferLayout& layout, const std::shared_ptr<StaticMesh>& parentModel);
+        [[nodiscard]] static std::shared_ptr<Mesh> Create(float* vertices, std::uint32_t verticesSize, std::uint32_t* indices, std::uint32_t indicesCount, const BufferLayout& layout, const std::shared_ptr<StaticMesh>& parentModel);
+
 
     private:
         std::shared_ptr<IVertexBuffer> m_VertexBuffer{ nullptr };

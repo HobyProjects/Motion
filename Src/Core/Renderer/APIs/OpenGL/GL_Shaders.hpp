@@ -28,17 +28,17 @@ namespace Motion
         [[nodiscard]] virtual std::string GetName() const override { return AssetInfo.AssetName; }
         [[nodiscard]] virtual UniformLocation GetUniformLocation(const std::string_view uniformName) override;
 
+        static void LinkShaderProgram(ShaderProgramID programID);
+        static void ValidateShaderProgram(ShaderProgramID programID);
+        static void AttachShaderProgram(ShaderID shaderID, ShaderProgramID programID);
+        static void DeleteShaderProgram(ShaderProgramID programID);
+
+        [[nodiscard]] static ShaderProgramID CreateShaderProgram();
+        [[nodiscard]] static ShaderID CompileShader(ShaderType shaderType, const std::string& sourceCode);
+
     private:
         ShaderProgramID m_ProgramID{ 0 };
         ShaderType m_ShaderType{ ShaderType::None };
         std::unordered_map<std::string_view, UniformLocation> m_UniformLocations{};
     };
-
-    void GL_LinkShaderProgram(ShaderProgramID programID);
-    void GL_ValidateShaderProgram(ShaderProgramID programID);
-    void GL_AttachShaderProgram(ShaderID shaderID, ShaderProgramID programID);
-    void GL_DeleteShaderProgram(ShaderProgramID programID);
-
-    [[nodiscard]] ShaderProgramID GL_CreateShaderProgram();
-    [[nodiscard]] ShaderID GL_CompileShader(ShaderType shaderType, const std::string& sourceCode);
 }

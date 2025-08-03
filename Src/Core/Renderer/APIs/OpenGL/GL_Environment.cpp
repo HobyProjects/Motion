@@ -10,7 +10,7 @@ namespace Motion
 
     static void RenderQuad()
     {
-        if (s_QuadVAO == 0)
+        if (!s_QuadVAO)
         {
             float quadVertices[] = {
                 // positions        // texture Coords
@@ -45,7 +45,7 @@ namespace Motion
     static void RenderCube()
     {
         // initialize (if necessary)
-        if (s_CubeVAO == 0)
+        if (!s_CubeVAO)
         {
             float vertices[] = {
                 // back face

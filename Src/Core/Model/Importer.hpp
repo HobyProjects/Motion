@@ -18,9 +18,5 @@ namespace Motion
 
     public:
         static std::shared_ptr<StaticMesh> ImportModel(const std::filesystem::path& path, const std::string& exportPath = "default");
-
-    private:
-        static bool ConvertToGLB(aiScene* scene, const std::filesystem::path& outputPath);
-        static std::shared_ptr<StaticMesh> ReadGLB(const std::filesystem::path& outputPath);
     };
 }

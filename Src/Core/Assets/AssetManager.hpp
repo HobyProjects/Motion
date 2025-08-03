@@ -41,7 +41,7 @@ namespace Motion
             {
             case RenderingAPI::OpenGL:
             {
-                auto shaderSources = ShaderCompiler::ReadFullShaderFile(sourceFile);
+                auto shaderSources = IShader::ReadFullShaderFile(sourceFile);
 
                 if (shaderSources.empty())
                 {
@@ -90,7 +90,7 @@ namespace Motion
             {
             case RenderingAPI::OpenGL:
             {
-                auto shaderSources = ShaderCompiler::ReadShaderFiles(vertexPath, fragmentPath);
+                auto shaderSources = IShader::ReadShaderFiles(vertexPath, fragmentPath);
 
                 if (shaderSources.empty())
                 {
@@ -120,245 +120,6 @@ namespace Motion
     };
 
     template<>
-    struct AssetBackendsBuilder<ITexture>
-    {
-        /**
-         * @brief Creates a texture object based on the current rendering API.
-         *
-         * This static function instantiates a texture object with the specified UUID, name, width, and height.
-         * The type of texture created depends on the active rendering API (OpenGL, Vulkan, or DirectX).
-         * Currently, only OpenGL is supported; Vulkan and DirectX will log an error and return nullptr.
-         *
-         * @param uuid The unique identifier for the texture.
-         * @param name The name to assign to the texture.
-         * @param width The width of the texture in pixels.
-         * @param height The height of the texture in pixels.
-         * @return std::shared_ptr<ITexture> A shared pointer to the created texture object, or nullptr if the API is unsupported.
-         */
-        static std::shared_ptr<ITexture> Create(UUID uuid, const std::string& name, std::uint32_t width, std::uint32_t height, const glm::vec3& color)
-        {
-            switch (Renderer::GetAPI())
-            {
-            case RenderingAPI::OpenGL:
-            {
-                return std::make_shared<GL_Texture>(uuid, name, width, height, color);
-            }
-            case RenderingAPI::Vulkan:
-            {
-                MOTION_CORE_ERROR("Vulkan API is not yet supported for texture creation!");
-                return nullptr;
-            }
-            case RenderingAPI::DirectX:
-            {
-                MOTION_CORE_ERROR("DirectX API is not yet supported for texture creation!");
-                return nullptr;
-            }
-            default:
-            {
-                MOTION_CORE_ERROR("Unsupported rendering API for texture creation!");
-                return nullptr;
-            }
-            }
-        }
-
-        /**
-         * @brief Creates a texture object based on the current rendering API.
-         *
-         * This static function instantiates a texture object with the specified UUID, name,
-         * texture file path, type, and flip option. The type of texture created depends on the
-         * active rendering API (OpenGL, Vulkan, or DirectX). Currently, only OpenGL is supported;
-         * Vulkan and DirectX will log an error and return nullptr.
-         *
-         * @param uuid        The unique identifier for the texture.
-         * @param name        The name to assign to the texture.
-         * @param textureFile The filesystem path to the texture source file.
-         * @param type        The type of the texture (e.g., diffuse, specular).
-         * @param flip        Whether to vertically flip the texture on load (default: true).
-         * @return std::shared_ptr<ITexture> A shared pointer to the created texture object,
-         *         or nullptr if the API is unsupported.
-         */
-        static std::shared_ptr<ITexture> Create(UUID uuid, const std::string& name, const std::filesystem::path& textureFile, TextureType type, bool flip = true)
-        {
-            switch (Renderer::GetAPI())
-            {
-            case RenderingAPI::OpenGL:
-            {
-                return std::make_shared<GL_Texture>(uuid, name, textureFile, type, flip);
-            }
-            case RenderingAPI::Vulkan:
-            {
-                MOTION_CORE_ERROR("Vulkan API is not yet supported for texture creation!");
-                return nullptr;
-            }
-            case RenderingAPI::DirectX:
-            {
-                MOTION_CORE_ERROR("DirectX API is not yet supported for texture creation!");
-                return nullptr;
-            }
-            default:
-            {
-                MOTION_CORE_ERROR("Unsupported rendering API for texture creation!");
-                return nullptr;
-            }
-            }
-        }
-    };
-
-    template<>
-    struct AssetBackendsBuilder<ICubeTexture>
-    {
-        /**
-         * @brief Creates a cube map texture object based on the current rendering API.
-         *
-         * This static function instantiates a cube map texture object with the specified UUID,
-         * name, and source file path. The type of texture created depends on the active rendering API
-         * (OpenGL, Vulkan, or DirectX). Currently, only OpenGL is supported; Vulkan and DirectX
-         * will log an error and return nullptr.
-         *
-         * @param uuid The unique identifier for the cube map texture.
-         * @param name The name to assign to the cube map texture.
-         * @param textureFile The filesystem path to the cube map texture source file.
-         * @return std::shared_ptr<ICubeMapTexture> A shared pointer to the created cube map texture object,
-         *         or nullptr if the API is unsupported.
-         */
-        static std::shared_ptr<ICubeTexture> Create(UUID uuid, const std::string& name, const std::filesystem::path& textureFile)
-        {
-            switch (Renderer::GetAPI())
-            {
-            case RenderingAPI::OpenGL:
-            {
-                return std::make_shared<GL_CubeMapTexture>(uuid, name, textureFile);
-            }
-            case RenderingAPI::Vulkan:
-            {
-                MOTION_CORE_ERROR("Vulkan API is not yet supported for cube map texture creation!");
-                return nullptr;
-            }
-            case RenderingAPI::DirectX:
-            {
-                MOTION_CORE_ERROR("DirectX API is not yet supported for cube map texture creation!");
-                return nullptr;
-            }
-            default:
-            {
-                MOTION_CORE_ERROR("Unsupported rendering API for cube map texture creation!");
-                return nullptr;
-            }
-            }
-        }
-
-        /**
-         * @brief Creates a cube map texture object with individual face textures based on the current rendering API.
-         *
-         * This static function instantiates a cube map texture object with the specified UUID, name,
-         * and individual face texture file paths. The type of texture created depends on the active rendering API
-         * (OpenGL, Vulkan, or DirectX). Currently, only OpenGL is supported; Vulkan and DirectX
-         * will log an error and return nullptr.
-         *
-         * @param uuid The unique identifier for the cube map texture.
-         * @param name The name to assign to the cube map texture.
-         * @param posX_texture The filesystem path to the positive X face texture.
-         * @param negX_texture The filesystem path to the negative X face texture.
-         * @param posY_texture The filesystem path to the positive Y face texture.
-         * @param negY_texture The filesystem path to the negative Y face texture.
-         * @param posZ_texture The filesystem path to the positive Z face texture.
-         * @param negZ_texture The filesystem path to the negative Z face texture.
-         * @return std::shared_ptr<ICubeMapTexture> A shared pointer to the created cube map texture object,
-         *         or nullptr if the API is unsupported.
-         */
-        static std::shared_ptr<ICubeTexture> Create(UUID uuid, const std::string& name,
-            const std::filesystem::path& posX_texture, const std::filesystem::path& negX_texture,
-            const std::filesystem::path& posY_texture, const std::filesystem::path& negY_texture,
-            const std::filesystem::path& posZ_texture, const std::filesystem::path& negZ_texture)
-        {
-            switch (Renderer::GetAPI())
-            {
-            case RenderingAPI::OpenGL:
-            {
-                return std::make_shared<GL_CubeMapTexture>(uuid, name, posX_texture, negX_texture, posY_texture, negY_texture, posZ_texture, negZ_texture);
-            }
-            case RenderingAPI::Vulkan:
-            {
-                MOTION_CORE_ERROR("Vulkan API is not yet supported for cube map texture creation!");
-                return nullptr;
-            }
-            case RenderingAPI::DirectX:
-            {
-                MOTION_CORE_ERROR("DirectX API is not yet supported for cube map texture creation!");
-                return nullptr;
-            }
-            default:
-            {
-                MOTION_CORE_ERROR("Unsupported rendering API for cube map texture creation!");
-                return nullptr;
-            }
-            }
-        }
-    };
-
-
-    template<>
-    struct AssetBackendsBuilder<Mesh>
-    {
-        /**
-         * @brief Creates a new Mesh object and returns a shared pointer to it.
-         *
-         * @param uuid Unique identifier for the mesh.
-         * @param name Name of the mesh.
-         * @param vertices Pointer to the array of vertex data.
-         * @param verticesSize Size of the vertex data array (in floats).
-         * @param indices Pointer to the array of index data.
-         * @param indicesCount Number of indices in the index array.
-         * @param layout Buffer layout describing the structure of the vertex data.
-         * @param parentModel Shared pointer to the parent StaticMesh object.
-         * @return std::shared_ptr<Mesh> Shared pointer to the newly created Mesh object.
-         */
-        static std::shared_ptr<Mesh> Create(UUID uuid, const std::string& name, Vertex* vertices, std::uint32_t verticesSize, std::uint32_t* indices, std::uint32_t indicesCount, const BufferLayout& layout, const std::shared_ptr<StaticMesh>& parentModel)
-        {
-            return std::make_shared<Mesh>(uuid, name, vertices, verticesSize, indices, indicesCount, layout, parentModel);
-        }
-    };
-
-    template<>
-    struct AssetBackendsBuilder<Material>
-    {
-        /**
-         * @brief Creates a new Material instance with a specified UUID and returns a shared pointer to it.
-         *
-         * This function constructs a Material object with the given UUID, name, and an optional shading method.
-         * The Material is managed by a std::shared_ptr for automatic memory management.
-         *
-         * @param uuid The unique identifier for the material.
-         * @param name The name of the material.
-         * @return std::shared_ptr<Material> A shared pointer to the newly created Material instance.
-         */
-        static std::shared_ptr<Material> Create(UUID uuid, const std::string& name)
-        {
-            return std::make_shared<Material>(uuid, name);
-        }
-    };
-
-    template<>
-    struct AssetBackendsBuilder<MaterialInstance>
-    {
-        /**
-         * @brief Creates a new Material instance with a specified UUID and returns a shared pointer to it.
-         *
-         * This function constructs a MaterialInstance object with the given UUID, name, and an optional base material.
-         * The MaterialInstance is managed by a std::shared_ptr for automatic memory management.
-         *
-         * @param uuid The unique identifier for the material instance.
-         * @param name The name of the material instance.
-         * @param baseMaterial The base material to use for the instance.
-         * @return std::shared_ptr<MaterialInstance> A shared pointer to the newly created MaterialInstance.
-         */
-        static std::shared_ptr<MaterialInstance> Create(UUID uuid, const std::string& name, std::shared_ptr<Material> baseMaterial)
-        {
-            return std::make_shared<MaterialInstance>(uuid, name, baseMaterial);
-        }
-    };
-
-    template<>
     struct AssetBackendsBuilder<StaticMesh>
     {
         /**
@@ -375,6 +136,26 @@ namespace Motion
         static std::shared_ptr<StaticMesh> Create(UUID uuid, const std::string& name, const std::filesystem::path& modelFile)
         {
             return std::make_shared<StaticMesh>(uuid, name, modelFile);
+        }
+    };
+
+    template<>
+    struct AssetBackendsBuilder<Material>
+    {
+        /**
+         * @brief Creates a new Material instance with a specified UUID and returns a shared pointer to it.
+         *
+         * This function constructs a Material object with the given UUID, name, and path to the material file.
+         * The Material is managed by a std::shared_ptr for automatic memory management.
+         *
+         * @param uuid The unique identifier for the material.
+         * @param name The name of the material.
+         * @param materialFile The filesystem path to the material file.
+         * @return std::shared_ptr<Material> A shared pointer to the newly created Material instance.
+         */
+        static std::shared_ptr<Material> Create(UUID uuid, const std::string& name, const std::filesystem::path& materialFile)
+        {
+            return std::make_shared<Material>(uuid, name, materialFile);
         }
     };
 

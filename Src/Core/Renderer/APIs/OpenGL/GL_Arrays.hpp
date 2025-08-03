@@ -19,11 +19,12 @@ namespace Motion
         virtual std::vector<std::shared_ptr<IVertexBuffer>>& GetVertexBuffer() override;
         virtual std::shared_ptr<IElementBuffer>& GetElementBuffer() override;
 
+        static std::shared_ptr<GL_VertexArray> Create();
+
     private:
         RendererID m_RendererID{ 0 };
         std::vector<std::shared_ptr<IVertexBuffer>> m_VertexBuffers{};
         std::shared_ptr<IElementBuffer> m_IndexBuffer{};
     };
 
-    std::shared_ptr<GL_VertexArray> GL_CreateVertexArray();
 }

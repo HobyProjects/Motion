@@ -34,7 +34,7 @@ namespace Motion
      *
      * @throws Assertion failure if the shader program could not be created.
      */
-    ShaderProgramID GL_CreateShaderProgram()
+    ShaderProgramID GL_Shader::CreateShaderProgram()
     {
         ShaderProgramID programID = glCreateProgram();
         MOTION_ASSERT(programID, "Failed to create shader program");
@@ -50,7 +50,7 @@ namespace Motion
      * @param shaderID The identifier of the compiled shader object to attach.
      * @param programID The identifier of the shader program to which the shader will be attached.
      */
-    void GL_AttachShaderProgram(ShaderID shaderID, ShaderProgramID programID)
+    void GL_Shader::AttachShaderProgram(ShaderID shaderID, ShaderProgramID programID)
     {
         glAttachShader(programID, shaderID);
     }
@@ -65,7 +65,7 @@ namespace Motion
      * @param sourceCode The GLSL source code for the shader.
      * @return ShaderID The OpenGL identifier for the compiled shader.
      */
-    ShaderID GL_CompileShader(ShaderType shaderType, const std::string& sourceCode)
+    ShaderID GL_Shader::CompileShader(ShaderType shaderType, const std::string& sourceCode)
     {
         GLenum glShaderType = GetShaderType(shaderType);
         ShaderID shaderID = glCreateShader(glShaderType);
@@ -112,7 +112,7 @@ namespace Motion
      *
      * @param programID The identifier of the shader program to link.
      */
-    void GL_LinkShaderProgram(ShaderProgramID programID)
+    void GL_Shader::LinkShaderProgram(ShaderProgramID programID)
     {
         glLinkProgram(programID);
 
@@ -140,7 +140,7 @@ namespace Motion
      *
      * @param programID The OpenGL identifier of the shader program to validate.
      */
-    void GL_ValidateShaderProgram(ShaderProgramID programID)
+    void GL_Shader::ValidateShaderProgram(ShaderProgramID programID)
     {
         glValidateProgram(programID);
     }
@@ -173,17 +173,17 @@ namespace Motion
      */
     GL_Shader::GL_Shader(UUID uuid, const std::string& name, const std::unordered_map<ShaderType, std::string>& shaderSources, const std::filesystem::path& sourceFile) : AssetBase<IShader>(uuid, name, AssetType::Shader, sourceFile.string())
     {
-        m_ProgramID = GL_CreateShaderProgram();
+        m_ProgramID = GL_Shader::CreateShaderProgram();
         MOTION_CORE_INFO("Shader program created with ID: {0} for {1}", m_ProgramID, name);
 
         for (const auto& [type, source] : shaderSources)
         {
-            ShaderID compiledShaderID = GL_CompileShader(type, source);
-            GL_AttachShaderProgram(compiledShaderID, m_ProgramID);
+            ShaderID compiledShaderID = GL_Shader::CompileShader(type, source);
+            GL_Shader::AttachShaderProgram(compiledShaderID, m_ProgramID);
         }
 
-        GL_LinkShaderProgram(m_ProgramID);
-        GL_ValidateShaderProgram(m_ProgramID);
+        GL_Shader::LinkShaderProgram(m_ProgramID);
+        GL_Shader::ValidateShaderProgram(m_ProgramID);
 
         AssetInfo.IsInitialized = true;
     }

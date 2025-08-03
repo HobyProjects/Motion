@@ -91,20 +91,7 @@ namespace Motion
         [[nodiscard]] virtual ShaderProgramID ProgramID() const = 0;
         [[nodiscard]] virtual std::string GetName() const = 0;
         [[nodiscard]] virtual UniformLocation GetUniformLocation(const std::string_view uniformName) = 0;
-    };
 
-    class ShaderCompiler
-    {
-    private:
-        ShaderCompiler() = default;
-        ~ShaderCompiler() = default;
-
-        ShaderCompiler(const ShaderCompiler&) = delete;
-        ShaderCompiler& operator=(const ShaderCompiler&) = delete;
-        ShaderCompiler(ShaderCompiler&&) = delete;
-        ShaderCompiler& operator=(ShaderCompiler&&) = delete;
-
-    public:
         static void AttachShaderProgram(ShaderID shaderID, ShaderProgramID programID);
         static void LinkShaderProgram(ShaderProgramID programID);
         static void ValidateShaderProgram(ShaderProgramID programID);
@@ -117,4 +104,3 @@ namespace Motion
         [[nodiscard]] static std::unordered_map<ShaderType, std::string> ReadShaderFiles(const std::filesystem::path& vertexPath, const std::filesystem::path& fragmentPath);
     };
 }
-

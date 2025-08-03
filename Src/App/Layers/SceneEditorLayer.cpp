@@ -22,14 +22,14 @@ namespace Motion
         assetManager.Create<IShader>("ENV_BRD", "Assets/Shaders/EnvironmentBRDF.glsl");
         assetManager.Create<IShader>("PBR", "Assets/Shaders/PBR.glsl");
 
-        MaterialImporter::ImportMaterial("Assets/Materials/Base/Base.yaml");
+        Material::ImportMaterial("Assets/Materials/Base/Base.yaml");
         m_Environment = IEnvironment::Create("Assets/HDRI/Scene.hdr");
 
         m_Viewport.FrameSpec.Name = "SceneEditorFrame";
         m_Viewport.FrameSpec.Width = static_cast<uint32_t>(m_ViewportWidth);
         m_Viewport.FrameSpec.Height = static_cast<uint32_t>(m_ViewportHeight);
         m_Viewport.Size = { m_ViewportWidth, m_ViewportHeight };
-        m_Framebuffer = BufferFactory::CreateFrameBuffer(m_Viewport.FrameSpec);
+        m_Framebuffer = IFrameBuffer::Create(m_Viewport.FrameSpec);
 
         if (m_Scenes.empty())
         {

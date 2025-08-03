@@ -98,8 +98,16 @@ namespace Motion
     template<typename CallbackFunc>
     static void ReadSection(const std::string& dataStringVersion, const std::string& sectionBeginRegex, const std::string& sectionEndRegex, const std::vector<std::uint8_t>& rawBytes, CallbackFunc&& callback)
     {
-        auto sectionBeginIterator = std::sregex_iterator(dataStringVersion.begin(), dataStringVersion.end(), sectionBeginRegex);
-        auto sectionEndIterator = std::sregex_iterator(dataStringVersion.begin(), dataStringVersion.end(), sectionEndRegex);
+        std::regex sectionBeginPattern(sectionBeginRegex);
+        std::regex sectionEndPattern(sectionEndRegex);
+
+        auto sectionBeginIterator = std::sregex_iterator(dataStringVersion.begin(), dataStringVersion.end(), sectionBeginPattern);
+        auto sectionEndIterator = std::sregex_iterator(dataStringVersion.begin(), dataStringVersion.end(), sectionEndPattern);
+
+        if (sectionBeginIterator == std::sregex_iterator() || sectionEndIterator == std::sregex_iterator()) {
+            MOTION_CORE_ERROR("No matching sections found for regex: {} and {}", sectionBeginRegex, sectionEndRegex);
+            return;
+        }
 
         while (sectionBeginIterator != std::sregex_iterator() && sectionEndIterator != std::sregex_iterator()) {
             const std::smatch& beginMatch = *sectionBeginIterator;
@@ -122,6 +130,15 @@ namespace Motion
             ++sectionEndIterator;
         }
     }
+
+    struct ImportTexture
+    {
+        MaterialAttributes Attributes{};
+        std::unordered_map<std::string, EmbeddedTexture> Textures{};
+
+        ImportTexture() = default;
+        ~ImportTexture() = default;
+    };
 
     std::shared_ptr<StaticMesh> Importer::ImportModel(const std::filesystem::path& path, const std::string& exportPath)
     {
@@ -160,7 +177,7 @@ namespace Motion
                 std::vector<std::uint8_t> buffer(size);
                 file.read(reinterpret_cast<char*>(buffer.data()), size);
 
-                if (!file)
+                if (!file && buffer.empty())
                 {
                     MOTION_CORE_ERROR("Failed to read the entire file: {}", finalOutputPath.string());
                     return nullptr;
@@ -176,13 +193,15 @@ namespace Motion
                     return nullptr;
                 }
 
+                auto& assetManager = AssetManager::GetInstance();
+                std::string modelFileName = finalOutputPath.filename().stem().string();
+                std::shared_ptr<StaticMesh>  staticMesh = assetManager.Create<StaticMesh>(modelFileName, finalOutputPath);
+
                 for (std::uint32_t i = 0; i < meshCount; ++i)
                 {
                     std::vector<float> vertices;
                     std::vector<std::uint32_t> indices;
-                    std::unordered_map<std::string, std::vector<uint8_t>> textureDataMap;
-                    std::unordered_map<std::string, float> floatAttributes;
-                    std::unordered_map<std::string, glm::vec3> vec3Attributes;
+                    ImportTexture importTexture;
 
                     std::string meshSectionBegin = std::format(R"(\[M_VTX_{}_BEGIN:(\d+)\])", i);
                     std::string meshSectionEnd = std::format(R"(\[M_VTX_{}_END\])", i);
@@ -215,19 +234,42 @@ namespace Motion
                         {
                             std::string sectionStr(reinterpret_cast<const char*>(data), size);
 
-                            std::regex textureRegex(R"(\[MAT_TEXTURE_TYPE:(\w+)\]\[MAT_TEXTURE_DATA_BEGIN:(\d+)\])");
+                            // --- Extract Texture Blocks ---
+                            std::regex textureRegex(
+                                R"(\[MAT_TEXTURE_TYPE:(\w+)\|WIDTH:(\d+)\|HEIGHT:(\d+)\|CHANNELS:(\d+)\]\[MAT_TEXTURE_DATA_BEGIN:(\d+)\])"
+                            );
+
                             std::sregex_iterator it(sectionStr.begin(), sectionStr.end(), textureRegex);
                             std::sregex_iterator end;
+                            ImportTexture importTexture;
 
-                            size_t offset = 0;
-                            while (it != end) {
-                                std::string type = (*it)[1];
-                                std::size_t texSize = std::stoul((*it)[2]);
-                                offset = it->position() + it->length();
+                            while (it != end)
+                            {
+                                std::string texType = (*it)[1];
+                                int32_t width = std::stoi((*it)[2]);
+                                int32_t height = std::stoi((*it)[3]);
+                                int32_t channels = std::stoi((*it)[4]);
+                                size_t texSize = static_cast<size_t>(std::stoul((*it)[5]));
 
-                                const uint8_t* textureStart = reinterpret_cast<const uint8_t*>(sectionStr.data()) + offset;
-                                textureDataMap[type] = std::vector<uint8_t>(textureStart, textureStart + texSize);
+                                std::size_t dataOffset = it->position() + it->length();
+                                const uint8_t* textureStart = reinterpret_cast<const uint8_t*>(sectionStr.data()) + dataOffset;
 
+                                EmbeddedTexture texture;
+                                texture.Width = width;
+                                texture.Height = height;
+                                texture.Channels = channels;
+                                texture.Size = texSize;
+                                texture.Type = texType;
+
+                                if (texSize > 0) {
+                                    texture.Data = new std::uint8_t[texSize];
+                                    std::memcpy(texture.Data, textureStart, texSize);
+                                }
+                                else {
+                                    texture.Data = nullptr;
+                                }
+
+                                importTexture.Textures[texType] = texture;
                                 ++it;
                             }
 
@@ -239,17 +281,99 @@ namespace Motion
                                     std::stof((*i)[3]),
                                     std::stof((*i)[4])
                                 };
-                                vec3Attributes[key] = value;
+
+                                if (key == MOTION_MAT_ATTRIBUTE_BASE_COLOR)
+                                    importTexture.Attributes.BaseColor = value;
                             }
 
                             std::regex floatAttr(R"(\[MAT_ATTRIBUTES:\[(\w+)\]:(.+?)\])");
                             for (std::sregex_iterator i(sectionStr.begin(), sectionStr.end(), floatAttr); i != end; ++i) {
                                 std::string key = (*i)[1];
                                 float value = std::stof((*i)[2]);
-                                floatAttributes[key] = value;
+
+                                if (key == MOTION_MAT_ATTRIBUTE_METALLIC)
+                                    importTexture.Attributes.Metallic = value;
+                                else if (key == MOTION_MAT_ATTRIBUTE_ROUGHNESS)
+                                    importTexture.Attributes.Roughness = value;
+                                else if (key == MOTION_MAT_ATTRIBUTE_AMBIENT_OCCLUSION)
+                                    importTexture.Attributes.AmbientOcclusion = value;
+                                else if (key == MOTION_MAT_ATTRIBUTE_OPACITY)
+                                    importTexture.Attributes.Opacity = value;
+                                else
+                                    importTexture.Attributes.DisplacementScale = value;
                             }
+
+                            //----------------------------------------------------------------------------------------------
+
+                            StaticMesh::MeshSegment meshSegment{};
+
+                            meshSegment.MeshIndex = i;
+                            meshSegment.MeshSelf = Mesh::Create(
+                                vertices.data(),
+                                static_cast<std::uint32_t>(vertices.size()),
+                                indices.data(),
+                                static_cast<std::uint32_t>(indices.size()),
+                                BufferLayout{
+                                    { UniformCache::Position, BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Position) },
+                                    { UniformCache::TexCoords, BufferComponents::UV, BufferStride::F2, false, offsetof(Vertex, TexCoord) },
+                                    { UniformCache::Normals, BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Normal) },
+                                    { UniformCache::Tangents, BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Tangent) },
+                                    { UniformCache::Bitangents, BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Bitangent) }
+                                },
+                                staticMesh
+                            );
+
+                            std::shared_ptr<Material> baseMaterial = assetManager.Get<Material>("BaseMaterial");
+                            if (!baseMaterial)
+                            {
+                                MOTION_ASSERT(baseMaterial, "Base Material not found in AssetManager!");
+                                return;
+                            }
+
+                            meshSegment.Materials = std::make_shared<MaterialInstance>(baseMaterial);
+                            meshSegment.Materials->Attributes = importTexture.Attributes;
+
+                            auto createTexture =
+                                [&](const std::string_view& textureName, TextureType type, const EmbeddedTexture& embeddedTexture)
+                                {
+                                    if (embeddedTexture.Data && embeddedTexture.Size > 0) {
+                                        std::shared_ptr<ITexture> texture = ITexture::Create(embeddedTexture.Data, type, embeddedTexture.Width, embeddedTexture.Height, embeddedTexture.Channels);
+                                        meshSegment.Materials->Texture[textureName] = texture;
+                                    }
+                                    else
+                                    {
+                                        MOTION_CORE_WARN("Texture data for '{}' is empty or invalid.", textureName);
+                                        meshSegment.Materials->Texture[textureName] = nullptr;
+                                    }
+                                };
+
+                            createTexture(UniformCache::BaseColorTextures, TextureType::BaseColorTexture, importTexture.Textures[MOTION_TOSTR(TextureType::BaseColorTexture)]);
+                            createTexture(UniformCache::MetallicTextures, TextureType::MetallicTexture, importTexture.Textures[MOTION_TOSTR(TextureType::MetallicTexture)]);
+                            createTexture(UniformCache::RoughnessTextures, TextureType::RoughnessTexture, importTexture.Textures[MOTION_TOSTR(TextureType::RoughnessTexture)]);
+                            createTexture(UniformCache::AmbientOcclusionTextures, TextureType::AmbientOcclusionTexture, importTexture.Textures[MOTION_TOSTR(TextureType::AmbientOcclusionTexture)]);
+                            createTexture(UniformCache::DisplacementTextures, TextureType::DisplacementTexture, importTexture.Textures[MOTION_TOSTR(TextureType::DisplacementTexture)]);
+                            createTexture(UniformCache::NormalTextures, TextureType::NormalTexture, importTexture.Textures[MOTION_TOSTR(TextureType::NormalTexture)]);
+
+                            staticMesh->m_Meshes.push_back(meshSegment);
                         });
+
+                    //----------------------------------------------------------------------------------------------
+
+                    vertices.clear();
+                    indices.clear();
+
+                    for (auto& [_, texture] : importTexture.Textures)
+                    {
+                        if (texture.Data)
+                            delete[] texture.Data; // Clean up dynamically allocated memory
+                    }
+
+                    importTexture.Textures.clear();
+                    importTexture.Attributes = MaterialAttributes{}; // Reset attributes for the next mesh
+                    MOTION_CORE_INFO("Mesh {0} imported successfully with {1} vertices and {2} indices.", i, vertices.size(), indices.size());
                 }
+
+                return staticMesh;
             }
             catch (const std::exception& e)
             {

@@ -1,47 +1,7 @@
 #include "CorePCH.hpp"
-#include "Texture.hpp"
 
 namespace Motion
 {
-    /**
-     * @brief Represents a binding point for textures in the rendering pipeline.
-     *
-     * This class provides static methods to manage texture binding points,
-     * allowing for efficient texture management during rendering operations.
-     */
-    static std::int32_t s_BindingPoint = 0;
-
-    /**
-     * @brief Returns a new binding point for textures.
-     *
-     * This method increments the static binding point counter and returns the new value.
-     * It is used to assign unique binding points to textures in the rendering pipeline.
-     *
-     * @return BindingPoint The next available binding point.
-     */
-    std::int32_t TextureBinding::Point() noexcept
-    {
-        if (s_BindingPoint >= Renderer::GetMaxTextureSlots())
-        {
-            MOTION_CORE_ERROR("Exceeded maximum texture slots available in the renderer.");
-            return -1; // Return -1 or handle error appropriately
-        }
-
-        return s_BindingPoint++;
-    }
-
-    /**
-     * @brief Resets the texture binding point to zero.
-     *
-     * This method sets the static binding point counter back to zero,
-     * effectively clearing any previously assigned binding points.
-     * It is useful for resetting the state of texture bindings in the rendering pipeline.
-     */
-    void TextureBinding::Reset() noexcept
-    {
-        s_BindingPoint = 0;
-    }
-
     /**
      * @brief Creates an unregistered plain texture with the specified name, width, and height.
      *
@@ -56,12 +16,12 @@ namespace Motion
      * @return std::shared_ptr<ITexture> A shared pointer to the created texture, or nullptr if the API is unsupported.
      * @note Currently, only the OpenGL API is implemented. Vulkan and DirectX will assert and return nullptr.
      */
-    std::shared_ptr<ITexture> CreateUnregisteredPlainTexture(std::int32_t width, std::int32_t height, const glm::vec3& color) noexcept
+    std::shared_ptr<ITexture> ITexture::Create(std::int32_t width, std::int32_t height, const glm::vec3& color)
     {
         switch (Renderer::GetAPI())
         {
         case RenderingAPI::OpenGL:
-            return GL_CreateUnregisteredPlainTexture(width, height, color);
+            return GL_Texture::Create(width, height, color);
         case RenderingAPI::Vulkan:
             MOTION_ASSERT(false, "Vulkan API is not yet implemented for plain textures.");
             return nullptr;
@@ -88,17 +48,49 @@ namespace Motion
      * @return std::shared_ptr<ITexture> A shared pointer to the created texture, or nullptr if the API is unsupported.
      * @note Vulkan and DirectX implementations are not yet available.
      */
-    std::shared_ptr<ITexture> CreateUnregisteredTextureFromFile(const std::filesystem::path& textureFile, TextureType type, bool flip) noexcept
+    std::shared_ptr<ITexture> ITexture::Create(const std::filesystem::path& textureFile, TextureType type, bool flip)
     {
         switch (Renderer::GetAPI())
         {
         case RenderingAPI::OpenGL:
-            return GL_CreateUnregisteredTextureFromFile(textureFile, type, flip);
+            return GL_Texture::Create(textureFile, type, flip);
         case RenderingAPI::Vulkan:
             MOTION_ASSERT(false, "Vulkan API is not yet implemented for texture files.");
             return nullptr;
         case RenderingAPI::DirectX:
             MOTION_ASSERT(false, "DirectX API is not yet implemented for texture files.");
+            return nullptr;
+        default:
+            MOTION_ASSERT(false, "Unknown rendering API.");
+            return nullptr;
+        }
+    }
+
+    /**
+     * @brief Creates an unregistered texture from raw pixel data for the specified rendering API.
+     *
+     * This function creates a texture object from raw pixel data, allowing for custom texture generation.
+     * The implementation depends on the current rendering API (OpenGL, Vulkan, DirectX).
+     * For unsupported APIs, the function asserts and returns nullptr.
+     *
+     * @param data Pointer to the raw pixel data.
+     * @param type The type of texture to create (e.g., 2D, 3D).
+     * @param width The width of the texture in pixels.
+     * @param height The height of the texture in pixels.
+     * @param channels The number of color channels in the pixel data.
+     * @return std::shared_ptr<ITexture> A shared pointer to the created texture, or nullptr if the API is unsupported.
+     */
+    std::shared_ptr<ITexture> ITexture::Create(std::uint8_t* data, TextureType type, std::int32_t width, std::int32_t height, std::int32_t channels)
+    {
+        switch (Renderer::GetAPI())
+        {
+        case RenderingAPI::OpenGL:
+            return GL_Texture::Create(data, type, width, height, channels);
+        case RenderingAPI::Vulkan:
+            MOTION_ASSERT(false, "Vulkan API is not yet implemented for raw texture data.");
+            return nullptr;
+        case RenderingAPI::DirectX:
+            MOTION_ASSERT(false, "DirectX API is not yet implemented for raw texture data.");
             return nullptr;
         default:
             MOTION_ASSERT(false, "Unknown rendering API.");
@@ -119,12 +111,12 @@ namespace Motion
      *
      * @note Currently, only the OpenGL API is implemented for cube map textures.
      */
-    std::shared_ptr<ICubeTexture> CreateUnregisteredCubeMapTexture(const std::filesystem::path& textureFile) noexcept
+    std::shared_ptr<ICubeTexture> ICubeTexture::Create(const std::filesystem::path& textureFile) noexcept
     {
         switch (Renderer::GetAPI())
         {
         case RenderingAPI::OpenGL:
-            return GL_CreateUnregisteredCubeMapTexture(textureFile);
+            return GL_CubeTexture::Create(textureFile);
         case RenderingAPI::Vulkan:
             MOTION_ASSERT(false, "Vulkan API is not yet implemented for cube map textures.");
             return nullptr;
@@ -140,7 +132,7 @@ namespace Motion
     /**
      * @brief Creates an unregistered cube map texture from multiple texture files.
      *
-     * This function constructs a shared pointer to a GL_CubeMapTexture object using the specified paths for each face of the cube map.
+     * This function constructs a shared pointer to a GL_CubeTexture object using the specified paths for each face of the cube map.
      * The created cube map texture is not registered with any texture manager or resource system.
      *
      * @param posX_texture The filesystem path to the positive X face texture.
@@ -149,14 +141,14 @@ namespace Motion
      * @param negY_texture The filesystem path to the negative Y face texture.
      * @param posZ_texture The filesystem path to the positive Z face texture.
      * @param negZ_texture The filesystem path to the negative Z face texture.
-     * @return std::shared_ptr<GL_CubeMapTexture> A shared pointer to the newly created GL_CubeMapTexture object.
+     * @return std::shared_ptr<GL_CubeTexture> A shared pointer to the newly created GL_CubeTexture object.
      */
-    std::shared_ptr<ICubeTexture> Motion::CreateUnregisteredCubeMapTexture(const std::filesystem::path& posX_texture, const std::filesystem::path& negX_texture, const std::filesystem::path& posY_texture, const std::filesystem::path& negY_texture, const std::filesystem::path& posZ_texture, const std::filesystem::path& negZ_texture) noexcept
+    std::shared_ptr<ICubeTexture> ICubeTexture::Create(const std::filesystem::path& posX_texture, const std::filesystem::path& negX_texture, const std::filesystem::path& posY_texture, const std::filesystem::path& negY_texture, const std::filesystem::path& posZ_texture, const std::filesystem::path& negZ_texture) noexcept
     {
         switch (Renderer::GetAPI())
         {
         case RenderingAPI::OpenGL:
-            return GL_CreateUnregisteredCubeMapTexture(posX_texture, negX_texture, posY_texture, negY_texture, posZ_texture, negZ_texture);
+            return GL_CubeTexture::Create(posX_texture, negX_texture, posY_texture, negY_texture, posZ_texture, negZ_texture);
         case RenderingAPI::Vulkan:
             MOTION_ASSERT(false, "Vulkan API is not yet implemented for cube map textures.");
             return nullptr;

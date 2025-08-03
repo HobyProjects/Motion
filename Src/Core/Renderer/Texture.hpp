@@ -55,7 +55,7 @@ namespace Motion
         TextureSource Source{ TextureSource::Undefined };
     };
 
-    class ITexture : public IAsset
+    class ITexture
     {
     public:
         ITexture() = default;
@@ -69,29 +69,16 @@ namespace Motion
         [[nodiscard]] virtual TextureSpecification& GetSpecification() noexcept = 0;
         [[nodiscard]] virtual TextureSource Source() const noexcept = 0;
 
+        [[nodiscard]] static std::shared_ptr<ITexture> Create(std::int32_t width = 100, std::int32_t height = 100, const glm::vec3& color = { 1.0f, 1.0f, 1.0f });
+        [[nodiscard]] static std::shared_ptr<ITexture> Create(const std::filesystem::path& textureFile, TextureType type = TextureType::BaseColorTexture, bool flip = true);
+        [[nodiscard]] static std::shared_ptr<ITexture> Create(std::uint8_t* data, TextureType type, std::int32_t width, std::int32_t height, std::int32_t channels);
+
     protected:
         [[nodiscard]] virtual bool LoadTextureFromFile(const std::filesystem::path& textureFile, bool flip) = 0;
         [[nodiscard]] virtual bool GenerateTexture2D(std::int32_t width, std::int32_t height, const glm::vec3& color) = 0;
     };
 
-    class TextureBinding
-    {
-    private:
-        TextureBinding() = default;
-        ~TextureBinding() = default;
-
-        TextureBinding(const TextureBinding&) = delete;
-        TextureBinding& operator=(const TextureBinding&) = delete;
-        TextureBinding(TextureBinding&&) = delete;
-        TextureBinding& operator=(TextureBinding&&) = delete;
-
-    public:
-        [[nodiscard]] static std::int32_t Point() noexcept;
-        static void Reset() noexcept;
-    };
-
-
-    class ICubeTexture : public IAsset
+    class ICubeTexture
     {
     public:
         ICubeTexture() = default;
@@ -103,6 +90,12 @@ namespace Motion
         virtual void SetFace(std::int32_t face, std::int32_t mipLevel, std::int32_t width, std::int32_t height, std::int32_t format, const void* data) = 0;
 
         [[nodiscard]] virtual TextureID GetID() const noexcept = 0;
+
+        [[nodiscard]] static std::shared_ptr<ICubeTexture> Create(const std::filesystem::path& textureFile) noexcept;
+        [[nodiscard]] static std::shared_ptr<ICubeTexture> Create(
+            const std::filesystem::path& posX_texture, const std::filesystem::path& negX_texture,
+            const std::filesystem::path& posY_texture, const std::filesystem::path& negY_texture,
+            const std::filesystem::path& posZ_texture, const std::filesystem::path& negZ_texture) noexcept;
     };
 
     /**
@@ -116,9 +109,4 @@ namespace Motion
         { texture.Bind() } -> std::same_as<void>;
         { texture.GetID() } -> std::same_as<std::int32_t>;
     };
-
-    [[nodiscard]] std::shared_ptr<ITexture> CreateUnregisteredPlainTexture(std::int32_t width = 100, std::int32_t height = 100, const glm::vec3& color = { 1.0f, 1.0f, 1.0f }) noexcept;
-    [[nodiscard]] std::shared_ptr<ITexture> CreateUnregisteredTextureFromFile(const std::filesystem::path& textureFile, TextureType type = TextureType::BaseColorTexture, bool flip = true) noexcept;
-    [[nodiscard]] std::shared_ptr<ICubeTexture> CreateUnregisteredCubeMapTexture(const std::filesystem::path& textureFile) noexcept;
-    [[nodiscard]] std::shared_ptr<ICubeTexture> CreateUnregisteredCubeMapTexture(const std::filesystem::path& posX_texture, const std::filesystem::path& negX_texture, const std::filesystem::path& posY_texture, const std::filesystem::path& negY_texture, const std::filesystem::path& posZ_texture, const std::filesystem::path& negZ_texture) noexcept;
 }

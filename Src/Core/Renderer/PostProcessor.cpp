@@ -13,7 +13,7 @@ namespace Motion
      */
     PostProcessor::PostProcessor(const FrameBufferSpecification& spec)
     {
-        m_FrameBuffer = BufferFactory::CreateFrameBuffer(spec);
+        m_FrameBuffer = IFrameBuffer::Create(spec);
 
         auto& assetManager = AssetManager::GetInstance();
         m_Shader = assetManager.Get<IShader>("PostProcessingShader");

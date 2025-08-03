@@ -2,7 +2,7 @@
 
 namespace Motion
 {
-    void MaterialImporter::ImportMaterial(const std::filesystem::path& materialYAML)
+    void Material::ImportMaterial(const std::filesystem::path& materialYAML) noexcept
     {
         if (!std::filesystem::exists(materialYAML)) {
             MOTION_CORE_ERROR("Material file '{}' does not exist!", materialYAML.string());
@@ -22,7 +22,7 @@ namespace Motion
             std::string name = materialNode["Name"].as<std::string>();
 
             auto& assetManager = AssetManager::GetInstance();
-            auto material = assetManager.Create<Material>(name);
+            auto material = assetManager.Create<Material>(name, materialYAML);
 
             // Load parameters
             auto& data = material->Attributes;
@@ -49,10 +49,10 @@ namespace Motion
                 auto tryLoad =
                     [&](const std::string& key, TextureType type, const std::string_view uniformName)
                     {
-                        if (textures[key]) {
+                        if (textures[key])
+                        {
                             std::filesystem::path texPath = textures[key].as<std::string>();
-                            auto tex = assetManager.Create<ITexture>(texPath.filename().string(), texPath, type, true);
-                            material->Texture[uniformName] = tex;
+                            material->Texture[uniformName] = ITexture::Create(texPath, type, true);
                         }
                     };
 
@@ -66,16 +66,18 @@ namespace Motion
         }
         catch (const std::exception& e)
         {
-            MOTION_CORE_ERROR("Failed to import material from '{}': {}", materialYAML.string(), e.what());
+            MOTION_CORE_ERROR("Failed to import material from '{}': {}", materialYAML.filename().string(), e.what());
             return;
         }
     }
 
-    Material::Material(UUID uniqueID, const std::string& materialName) : AssetBase<IAsset>(uniqueID, materialName, AssetType::Material, "MaterialFile")
+    Material::Material(UUID uniqueID, const std::string& materialName, const std::filesystem::path& materialFile) :
+        AssetBase<IAsset>(uniqueID, materialName, AssetType::Material, materialFile.string())
     {
+        // Initialize shader and uniform buffer
         auto& assetManager = AssetManager::GetInstance();
         Shader = assetManager.Get<IShader>("PBR");
-        UniformBuffer = BufferFactory::CreateShaderBuffer(MATERIAL_ATTRIBUTES_SIZE, 0);
+        UniformBuffer = IShaderBuffer::Create(MATERIAL_ATTRIBUTES_SIZE, 0);
     }
 
     void Material::Bind()
@@ -89,12 +91,12 @@ namespace Motion
         UniformBuffer->Unbind();
     }
 
-    MaterialInstance::MaterialInstance(UUID uniqueID, const std::string& name, std::shared_ptr<Material> baseMaterial) :
-        AssetBase<IAsset>(uniqueID, name, AssetType::Material, "MaterialInstanceFile"), BaseMaterial(baseMaterial)
+    MaterialInstance::MaterialInstance(const std::shared_ptr<Material>& baseMaterial)
+        : BaseMaterial(baseMaterial)
     {
         auto& assetManager = AssetManager::GetInstance();
         Shader = assetManager.Get<IShader>("PBR");
-        UniformBuffer = BufferFactory::CreateShaderBuffer(MATERIAL_ATTRIBUTES_SIZE, 0);
+        UniformBuffer = IShaderBuffer::Create(MATERIAL_ATTRIBUTES_SIZE, 0);
     }
 
     void MaterialInstance::Bind()
@@ -107,9 +109,5 @@ namespace Motion
     {
         UniformBuffer->Unbind();
     }
-
-
-
-
 }
 

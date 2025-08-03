@@ -34,13 +34,17 @@ namespace Motion
     {
     public:
         Material() = default;
-        Material(UUID uniqueID, const std::string& materialName);
+        Material(UUID uniqueID, const std::string& materialName, const std::filesystem::path& materialFile);
         virtual ~Material() = default;
 
         void Bind();
         void Unbind();
 
+        [[nodiscard]] std::shared_ptr<IShader> GetShader() const noexcept { return Shader; }
+        [[nodiscard]] std::shared_ptr<IShaderBuffer> GetUniformBuffer() const noexcept { return UniformBuffer; }
         [[nodiscard]] std::int32_t GetTexturesCount() const noexcept { return Texture.size(); }
+
+        static void ImportMaterial(const std::filesystem::path& materialYAML) noexcept;
 
     public:
         std::unordered_map<std::string_view, std::shared_ptr<ITexture>> Texture{};
@@ -51,11 +55,11 @@ namespace Motion
         std::shared_ptr<IShaderBuffer> UniformBuffer{ nullptr };
     };
 
-    class MaterialInstance : public AssetBase<IAsset>
+    class MaterialInstance
     {
     public:
         MaterialInstance() = default;
-        MaterialInstance(UUID uniqueID, const std::string& name, std::shared_ptr<Material> baseMaterial);
+        MaterialInstance(const std::shared_ptr<Material>& baseMaterial);
         virtual ~MaterialInstance() = default;
 
         void Bind();
@@ -71,20 +75,5 @@ namespace Motion
     private:
         std::shared_ptr<IShader> Shader{ nullptr };
         std::shared_ptr<IShaderBuffer> UniformBuffer{ nullptr };
-    };
-
-    class MaterialImporter
-    {
-    private:
-        MaterialImporter() = default;
-        ~MaterialImporter() = default;
-
-        MaterialImporter(const MaterialImporter&) = delete;
-        MaterialImporter& operator=(const MaterialImporter&) = delete;
-        MaterialImporter(MaterialImporter&&) = delete;
-        MaterialImporter& operator=(MaterialImporter&&) = delete;
-
-    public:
-        static void ImportMaterial(const std::filesystem::path& materialYAML);
     };
 }

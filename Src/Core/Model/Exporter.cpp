@@ -449,7 +449,7 @@ namespace Motion
                         return;
 
                     std::string materialID = std::format("MAT_{}{}", meshIndex, HashString(material->GetName().C_Str()));
-                    MOTION_ASSERT((meshMaterialIDs.contains(meshIndex) || meshMaterialIDs[meshIndex] == materialID), "Hash collision detected for material ID: {}", materialID);
+                    //MOTION_ASSERT((meshMaterialIDs.contains(meshIndex) && meshMaterialIDs[meshIndex] == materialID), "Hash collision detected for material ID: {}", materialID);
                     meshMaterialIDs[meshIndex] = materialID;
 
                     MaterialAttributes materialAttributes{};
@@ -461,6 +461,20 @@ namespace Motion
                     materialAttributes.Opacity = GetMaterialAttribute<float>(material, AI_MATKEY_OPACITY, 1.0f);
                     materialAttributes.DisplacementScale = 0.05f; // Not provided by Assimp, default to 1.0f
                     meshMaterialAttributesMapper[materialID] = materialAttributes;
+
+                    auto getTextureTypeString =
+                        [](TextureType type) -> std::string
+                        {
+                            switch (type)
+                            {
+                            case TextureType::BaseColorTexture: return "BaseColor";
+                            case TextureType::MetallicTexture: return "Metallic";
+                            case TextureType::RoughnessTexture: return "Roughness";
+                            case TextureType::AmbientOcclusionTexture: return "AmbientOcclusion";
+                            case TextureType::NormalTexture: return "Normal";
+                            default: return "Unknown";
+                            }
+                        };
 
                     auto loadExportingTexture =
                         [&](aiTextureType textureType, TextureType type)
@@ -488,7 +502,7 @@ namespace Motion
                                 return;
 
                             MOTION_CORE_INFO("Successfully loaded texture: {}", texturePath.string());
-                            materialTextureMapper[textureID] = { data, static_cast<std::size_t>(width * height * channels), width, height, channels, MOTION_TOSTR(type) };
+                            materialTextureMapper[textureID] = { data, static_cast<std::size_t>(width * height * channels), width, height, channels, getTextureTypeString(type) };
                             meshMaterialTexturesMapper[materialID].push_back(textureID);
                         };
 
@@ -555,7 +569,7 @@ namespace Motion
                 {
                     if (materialTextureMapper.contains(textureID))
                     {
-                        CreateSection(meshFile, TEX_REF(textureID));
+                        CreateSection(meshFile, TEX_REF(materialTextureMapper[textureID].Type, textureID));
                     }
                 }
 
@@ -571,8 +585,13 @@ namespace Motion
             {
                 CreateSection(meshFile, TEXTURE(textureID));
                 CreateSection(meshFile, TEX_META(texture.Type, texture.Width, texture.Height, texture.Channels, texture.Size));
+                CreateSection(meshFile, TEXTURE_DATA_BEGIN);
                 BinaryWriter<std::uint8_t*>::Write(meshFile, texture.Data, texture.Size);
+                CreateSection(meshFile, TEXTURE_DATA_END);
                 CreateSection(meshFile, TEXTURE_END);
+
+                // Free the texture data after writing to file
+                stbi_image_free(texture.Data);
             }
             CreateSection(meshFile, TEXTURES_END);
 

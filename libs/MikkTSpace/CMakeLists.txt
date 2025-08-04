@@ -1,0 +1,90 @@
+cmake_minimum_required(VERSION 3.15)
+project(MikkTSpace C CXX)
+
+set(MIKKTSPACE_LIBRARY MikkTSpace)
+set(PROJECT_DESCRIPTION "A common standard for tangent space used in baking tools to produce normal maps.")
+set(PROJECT_HOMEPAGE_URL "https://github.com/mmikk/MikkTSpace.git")
+set(PROJECT_VERSION "1.0.0")
+
+set(
+    MIKKTSPACE_HEADERS
+    MikkTSpace/mikktspace.h
+)
+
+set(
+    MIKKTSPACE_SOURCES
+    MikkTSpace/mikktspace.c
+)
+
+add_library(
+    ${MIKKTSPACE_LIBRARY}
+    STATIC
+    ${MIKKTSPACE_HEADERS}
+    ${MIKKTSPACE_SOURCES}
+)
+
+target_include_directories(${MIKKTSPACE_LIBRARY} PRIVATE MikkTSpace)
+add_library(MikkTSpace::MikkTSpace ALIAS ${MIKKTSPACE_LIBRARY})
+
+set_target_properties(
+    ${MIKKTSPACE_LIBRARY} PROPERTIES
+    CXX_STANDARD 20
+    CXX_STANDARD_REQUIRED ON
+    CXX_EXTENSIONS OFF
+    C_STANDARD 17
+    C_STANDARD_REQUIRED ON
+    C_EXTENSIONS OFF
+)
+
+include(GNUInstallDirs)
+
+target_include_directories(
+    ${MIKKTSPACE_LIBRARY} PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+)
+
+install(
+    TARGETS ${MIKKTSPACE_LIBRARY}
+    EXPORT "${MIKKTSPACE_LIBRARY}Targets"
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+    INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+)
+
+install(
+    FILES ${MIKKTSPACE_HEADERS}
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${MIKKTSPACE_LIBRARY}
+)
+
+install(
+    EXPORT "${MIKKTSPACE_LIBRARY}Targets"
+    FILE "${MIKKTSPACE_LIBRARY}Targets.cmake"
+    NAMESPACE MikkTSpace::
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${MIKKTSPACE_LIBRARY}
+)
+
+include(CMakePackageConfigHelpers)
+
+configure_package_config_file(
+    "${CMAKE_CURRENT_LIST_DIR}/config/${MIKKTSPACE_LIBRARY}Config.cmake.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/${MIKKTSPACE_LIBRARY}Config.cmake"
+    INSTALL_DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/${MIKKTSPACE_LIBRARY}"
+)
+
+configure_package_config_file(
+    "${CMAKE_CURRENT_LIST_DIR}/config/${MIKKTSPACE_LIBRARY}.pc.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/${MIKKTSPACE_LIBRARY}.pc"
+    INSTALL_DESTINATION "${CMAKE_INSTALL_LIBDIR}/pkgconfig"
+)
+
+install(
+    FILES "${CMAKE_CURRENT_BINARY_DIR}/${MIKKTSPACE_LIBRARY}Config.cmake"
+    DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/${MIKKTSPACE_LIBRARY}"
+)
+
+install(
+    FILES "${CMAKE_CURRENT_BINARY_DIR}/${MIKKTSPACE_LIBRARY}.pc"
+    DESTINATION "${CMAKE_INSTALL_LIBDIR}/pkgconfig"
+)

@@ -2,51 +2,6 @@
 
 namespace Motion
 {
-    class BinaryReader
-    {
-    public:
-        explicit BinaryReader(std::uint8_t* data, std::size_t size)
-            : m_Data{ data }, m_Size{ size }, m_CurrentPosition{ 0 } {
-        }
-        ~BinaryReader() = default;
-
-        template<typename T>
-        T Read()
-        {
-            static_assert(std::is_trivially_copyable_v<T>, "T must be trivially copyable");
-            if (m_CurrentPosition + sizeof(T) > m_Size) {
-                MOTION_CORE_ERROR("Attempt to read beyond buffer size");
-                return T{};
-            }
-
-            T value;
-            std::memcpy(&value, m_Data + m_CurrentPosition, sizeof(T));
-            m_CurrentPosition += sizeof(T);
-            return value;
-        }
-
-        std::vector<std::uint8_t> ReadBytes(std::size_t size) {
-            if (m_CurrentPosition + size > m_Size) {
-                MOTION_CORE_ERROR("Attempt to read beyond buffer");
-                return {};
-            }
-
-            std::vector<std::uint8_t> out(size);
-            std::memcpy(out.data(), m_Data + m_CurrentPosition, size);
-            m_CurrentPosition += size;
-            return out;
-        }
-
-        bool HasMore() const {
-            return m_CurrentPosition < m_Size;
-        }
-
-    private:
-        std::uint8_t* m_Data{ nullptr };
-        std::size_t m_Size{ 0 };
-        std::size_t m_CurrentPosition{ 0 };
-    };
-
     static std::filesystem::path GetAvailableCopyName(const std::filesystem::path& originalPath) {
         if (!std::filesystem::exists(originalPath)) {
             return originalPath;
@@ -79,71 +34,200 @@ namespace Motion
         }
         else
         {
+            std::string modelName = path.filename().stem().string();
+            MOTION_CORE_INFO("Assimp Importer: StaticMesh {0} file successfully loaded to memory from {1} > Converting...", modelName, path.string());
             return Exporter::ExportModel(scene, exportPath);
         }
 
         return false;
     }
 
-    static std::uint32_t GetMeshCount(const std::string& dataStringVersion)
+    struct LoadedMaterial
     {
-        std::regex meshCountRegex(R"(\[M_MSH_COUNT:(\d+)\])");
-        std::smatch match;
-        if (std::regex_search(dataStringVersion, match, meshCountRegex) && match.size() > 1) {
-            return std::stoul(match[1].str());
-        }
-        return 0; // Default value if not found
-    }
+        std::string ID{};
+        MaterialAttributes Attributes{};
+        std::unordered_map<std::string, std::string> TextureRefs{};
+    };
 
-    template<typename CallbackFunc>
-    static void ReadSection(const std::string& dataStringVersion, const std::string& sectionBeginRegex, const std::string& sectionEndRegex, const std::vector<std::uint8_t>& rawBytes, CallbackFunc&& callback)
+    struct LoadedTexture
     {
-        std::regex sectionBeginPattern(sectionBeginRegex);
-        std::regex sectionEndPattern(sectionEndRegex);
+        std::string ID{};
+        TextureType Type{};
+        std::vector<std::uint8_t> Data{};
+        std::uint32_t Width{};
+        std::uint32_t Height{};
+        std::uint32_t Channels{};
+    };
 
-        auto sectionBeginIterator = std::sregex_iterator(dataStringVersion.begin(), dataStringVersion.end(), sectionBeginPattern);
-        auto sectionEndIterator = std::sregex_iterator(dataStringVersion.begin(), dataStringVersion.end(), sectionEndPattern);
+    struct LoadedMesh
+    {
+        std::vector<Vertex> Vertices{};
+        std::vector<std::uint32_t> Indices{};
+        std::string MaterialID{};
+    };
 
-        if (sectionBeginIterator == std::sregex_iterator() || sectionEndIterator == std::sregex_iterator()) {
-            MOTION_CORE_ERROR("No matching sections found for regex: {} and {}", sectionBeginRegex, sectionEndRegex);
-            return;
+    struct ImportedModel
+    {
+        uint32_t MeshCount = 0;
+        glm::vec3 BoundsMin = {};
+        glm::vec3 BoundsMax = {};
+
+        std::vector<LoadedMesh> Meshes;
+        std::unordered_map<std::string, LoadedMaterial> Materials;
+        std::unordered_map<std::string, LoadedTexture> Textures;
+    };
+
+    static bool Import(const std::filesystem::path& path, ImportedModel& result)
+    {
+        using namespace std::string_view_literals;
+
+        // Read entire file into buffer
+        std::ifstream file(path, std::ios::binary);
+        if (!file.is_open()) return false;
+        std::string buffer((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+
+        // --- META ---
+        if (auto meta_match = std::smatch{}; std::regex_search(buffer, meta_match, std::regex(R"(\[META_BEGIN\]([\s\S]*?)\[META_END\])")))
+        {
+            std::string meta = meta_match[1].str();
+            // [COUNT:x]
+            auto m = std::smatch{};
+            if (std::regex_search(meta, m, std::regex(R"(\[COUNT:(\d+)\])")))
+                result.MeshCount = static_cast<uint32_t>(std::stoul(m[1].str()));
+
+            // [BOUNDS:x,y,z|x,y,z]
+            if (std::regex_search(meta, m, std::regex(R"(\[BOUNDS:([-\d.,]+)\|([-\d.,]+)\])")))
+            {
+                auto parseVec3 =
+                    [](const std::string& s) -> glm::vec3
+                    {
+                        float x, y, z;
+                        std::sscanf(s.c_str(), "%f,%f,%f", &x, &y, &z);
+                        return { x, y, z };
+                    };
+
+                result.BoundsMin = parseVec3(m[1].str());
+                result.BoundsMax = parseVec3(m[2].str());
+            }
         }
 
-        while (sectionBeginIterator != std::sregex_iterator() && sectionEndIterator != std::sregex_iterator()) {
-            const std::smatch& beginMatch = *sectionBeginIterator;
-            const std::smatch& endMatch = *sectionEndIterator;
+        // --- MATERIALS ---
+        if (auto mat_block = std::smatch{}; std::regex_search(buffer, mat_block, std::regex(R"(\[MATERIALS_BEGIN\]([\s\S]*?)\[MATERIALS_END\])")))
+        {
+            std::string mats = mat_block[1].str();
+            std::regex mat_regex(R"(\[MAT:([^\]]+)\]([\s\S]*?)\[MAT_END\])");
+            auto mat_begin = mats.cbegin();
+            auto mat_end = mats.cend();
+            std::smatch m;
 
-            std::size_t matchStartIndex = beginMatch.position(0) + beginMatch.length(0);
-            std::size_t matchEndIndex = endMatch.position(0);
+            while (std::regex_search(mat_begin, mat_end, m, mat_regex))
+            {
+                LoadedMaterial mat{};
+                mat.ID = m[1].str();
+                std::string matbody = m[2].str();
 
-            if (matchEndIndex < matchStartIndex || matchEndIndex > rawBytes.size()) {
-                ++sectionBeginIterator; ++sectionEndIterator;
-                continue;
+                // Attributes
+                if (auto attr = std::smatch{}; std::regex_search(matbody, attr, std::regex(R"(\[ATTR:BaseColor:([-\d.,]+)\])")))
+                {
+                    float r, g, b;
+                    std::sscanf(attr[1].str().c_str(), "%f,%f,%f", &r, &g, &b);
+                    mat.Attributes.BaseColor = { r, g, b };
+                }
+                auto attrf =
+                    [&](const char* name, float& out)
+                    {
+                        std::regex re(std::string(R"(\[ATTR:)") + name + R"(:([-\d.eE]+)\])");
+                        if (auto attr = std::smatch{}; std::regex_search(matbody, attr, re))
+                            out = std::stof(attr[1].str());
+                    };
+
+                attrf("Metallic", mat.Attributes.Metallic);
+                attrf("Roughness", mat.Attributes.Roughness);
+                attrf("AmbientOcclusion", mat.Attributes.AmbientOcclusion);
+                attrf("Opacity", mat.Attributes.Opacity);
+                attrf("DisplacementScale", mat.Attributes.DisplacementScale);
+
+                // Texture references
+                std::regex tref(R"(\[TEX_REF:([A-Za-z0-9_]+)=([A-Za-z0-9_]+)\])");
+                auto tb = matbody.cbegin(), te = matbody.cend();
+                std::smatch tr;
+                while (std::regex_search(tb, te, tr, tref))
+                {
+                    mat.TextureRefs[tr[1].str()] = tr[2].str();
+                    tb += tr.position() + tr.length();
+                }
+
+                result.Materials[mat.ID] = std::move(mat);
+                mat_begin += m.position() + m.length();
+            }
+        }
+
+        // --- TEXTURES ---
+        std::regex tex_block(R"(\[TEX:([^\]]+)\][\s\S]*?\[TEX_META:([^\]]+)\][\s\S]*?\[TEX_DATA_BEGIN\]([\s\S]*?)\[TEX_DATA_END\][\s\S]*?\[TEX_END\])");
+        auto tb = buffer.cbegin(), te = buffer.cend();
+        std::smatch tmatch;
+
+        while (std::regex_search(tb, te, tmatch, tex_block))
+        {
+            std::string texID = tmatch[1].str();
+            std::string meta = tmatch[2].str();
+            size_t w = 0, h = 0, ch = 0, size = 0;
+            std::sscanf(meta.c_str(), "%*[^,],%zu,%zu,%zu,%zu", &w, &h, &ch, &size);
+            std::ptrdiff_t binBeginPos = tmatch.position(3) + std::distance(buffer.cbegin(), tb);
+            LoadedTexture tex;
+            tex.ID = texID;
+            tex.Width = static_cast<uint32_t>(w);
+            tex.Height = static_cast<uint32_t>(h);
+            tex.Channels = static_cast<uint32_t>(ch);
+            tex.Data.resize(size);
+            std::memcpy(tex.Data.data(), buffer.data() + binBeginPos, size);
+            result.Textures[texID] = std::move(tex);
+            tb += tmatch.position() + tmatch.length();
+        }
+
+        // --- MESHES ---
+        std::regex mesh_block(R"(\[M(\d+)_BEGIN\]([\s\S]*?)\[M\1_END\])");
+        auto mb = buffer.cbegin(), me = buffer.cend();
+        std::smatch mmatch;
+
+        while (std::regex_search(mb, me, mmatch, mesh_block))
+        {
+            LoadedMesh mesh{};
+            std::string meshbody = mmatch[2].str();
+            // Vertices
+            if (auto vx = std::smatch{}; std::regex_search(meshbody, vx, std::regex(R"(\[VTX:(\d+)\])")))
+            {
+                size_t count = std::stoul(vx[1].str());
+                // Find binary offset for vertices: locate position after [VTX:count]\n
+                std::ptrdiff_t vtx_pos = mmatch.position(2) + meshbody.find(vx[0].str()) + vx[0].length() + 1;
+                mesh.Vertices.resize(count);
+                std::memcpy(mesh.Vertices.data(), buffer.data() + std::distance(buffer.cbegin(), mb) + vtx_pos, count * sizeof(Vertex));
+            }
+            // Indices
+            if (auto ix = std::smatch{}; std::regex_search(meshbody, ix, std::regex(R"(\[IDX:(\d+)\])")))
+            {
+                size_t count = std::stoul(ix[1].str());
+                std::ptrdiff_t idx_pos = mmatch.position(2) + meshbody.find(ix[0].str()) + ix[0].length() + 1;
+                mesh.Indices.resize(count);
+                std::memcpy(mesh.Indices.data(), buffer.data() + std::distance(buffer.cbegin(), mb) + idx_pos, count * sizeof(uint32_t));
+            }
+            // Material ref
+            if (auto mr = std::smatch{}; std::regex_search(meshbody, mr, std::regex(R"(\[MAT_REF:([^\]]+)\])")))
+            {
+                mesh.MaterialID = mr[1].str();
             }
 
-            std::size_t dataBlockSize = matchEndIndex - matchStartIndex;
-            const std::uint8_t* binaryDataPointer = rawBytes.data() + matchStartIndex;
-
-            callback(beginMatch, binaryDataPointer, dataBlockSize);
-
-            ++sectionBeginIterator;
-            ++sectionEndIterator;
+            result.Meshes.push_back(std::move(mesh));
+            mb += mmatch.position() + mmatch.length();
         }
+
+        return true;
     }
 
-    struct ImportTexture
-    {
-        MaterialAttributes Attributes{};
-        std::unordered_map<std::string, EmbeddedTexture> Textures{};
-
-        ImportTexture() = default;
-        ~ImportTexture() = default;
-    };
 
     std::shared_ptr<StaticMesh> Importer::ImportModel(const std::filesystem::path& path, const std::string& exportPath)
     {
         std::string modelName = path.filename().stem().string();
-        MOTION_CORE_INFO("Assimp Importer: StaticMesh {0} file successfully loaded to memory from {1} > Converting...", modelName, path.string());
 
         std::filesystem::path appRoot = std::filesystem::absolute(std::filesystem::path("."));
         std::string exportPathString = (exportPath == "default") ? (appRoot / "Assets/Models").string() : exportPath;
@@ -164,216 +248,78 @@ namespace Motion
         {
             try
             {
-                std::ifstream file(finalOutputPath, std::ios::binary | std::ios::ate);
-                if (!file.is_open())
+                ImportedModel importedModel{};
+                if (Import(finalOutputPath, importedModel))
                 {
-                    MOTION_CORE_ERROR("Failed to open file: {}", finalOutputPath.string());
-                    return nullptr;
-                }
-
-                std::streamsize size = file.tellg();
-                file.seekg(0, std::ios::beg);
-
-                std::vector<std::uint8_t> buffer(size);
-                file.read(reinterpret_cast<char*>(buffer.data()), size);
-
-                if (!file && buffer.empty())
-                {
-                    MOTION_CORE_ERROR("Failed to read the entire file: {}", finalOutputPath.string());
-                    return nullptr;
-                }
-
-                file.close();
-
-                std::string fileStringVersion(reinterpret_cast<const char*>(buffer.data()), size);
-                std::uint32_t meshCount = GetMeshCount(fileStringVersion);
-                if (meshCount == 0)
-                {
-                    MOTION_CORE_ERROR("No meshes found in the file: {}", finalOutputPath.string());
-                    return nullptr;
-                }
-
-                auto& assetManager = AssetManager::GetInstance();
-                std::string modelFileName = finalOutputPath.filename().stem().string();
-                std::shared_ptr<StaticMesh>  staticMesh = assetManager.Create<StaticMesh>(modelFileName, finalOutputPath);
-
-                for (std::uint32_t i = 0; i < meshCount; ++i)
-                {
-                    std::vector<float> vertices;
-                    std::vector<std::uint32_t> indices;
-                    ImportTexture importTexture;
-
-                    std::string meshSectionBegin = std::format(R"(\[M_VTX_{}_BEGIN:(\d+)\])", i);
-                    std::string meshSectionEnd = std::format(R"(\[M_VTX_{}_END\])", i);
-                    ReadSection(fileStringVersion, meshSectionBegin, meshSectionEnd, buffer,
-                        [&](const std::smatch& match, const std::uint8_t* data, std::size_t size)
-                        {
-                            std::size_t floatCount = size / sizeof(float);
-                            const float* floatData = reinterpret_cast<const float*>(data);
-
-                            // Insert into vector
-                            vertices.insert(vertices.end(), floatData, floatData + floatCount);
-                        });
-
-                    std::string indexSectionBegin = std::format(R"(\[M_IDX_{}_BEGIN:(\d+)\])", i);
-                    std::string indexSectionEnd = std::format(R"(\[M_IDX_{}_END\])", i);
-                    ReadSection(fileStringVersion, indexSectionBegin, indexSectionEnd, buffer,
-                        [&](const std::smatch& match, const std::uint8_t* data, std::size_t size)
-                        {
-                            std::size_t indexCount = size / sizeof(std::uint32_t);
-                            const std::uint32_t* indexData = reinterpret_cast<const std::uint32_t*>(data);
-
-                            // Insert into vector
-                            indices.insert(indices.end(), indexData, indexData + indexCount);
-                        });
-
-                    std::string matSectionBegin = std::format(R"(\[M_MAT_{}_BEGIN\])", i);
-                    std::string matSectionEnd = std::format(R"(\[M_MAT_{}_END\])", i);
-                    ReadSection(fileStringVersion, matSectionBegin, matSectionEnd, buffer,
-                        [&](const std::smatch& match, const uint8_t* data, std::size_t size)
-                        {
-                            std::string sectionStr(reinterpret_cast<const char*>(data), size);
-
-                            // --- Extract Texture Blocks ---
-                            std::regex textureRegex(
-                                R"(\[MAT_TEXTURE_TYPE:(\w+)\|WIDTH:(\d+)\|HEIGHT:(\d+)\|CHANNELS:(\d+)\]\[MAT_TEXTURE_DATA_BEGIN:(\d+)\])"
-                            );
-
-                            std::sregex_iterator it(sectionStr.begin(), sectionStr.end(), textureRegex);
-                            std::sregex_iterator end;
-                            ImportTexture importTexture;
-
-                            while (it != end)
-                            {
-                                std::string texType = (*it)[1];
-                                int32_t width = std::stoi((*it)[2]);
-                                int32_t height = std::stoi((*it)[3]);
-                                int32_t channels = std::stoi((*it)[4]);
-                                size_t texSize = static_cast<size_t>(std::stoul((*it)[5]));
-
-                                std::size_t dataOffset = it->position() + it->length();
-                                const uint8_t* textureStart = reinterpret_cast<const uint8_t*>(sectionStr.data()) + dataOffset;
-
-                                EmbeddedTexture texture;
-                                texture.Width = width;
-                                texture.Height = height;
-                                texture.Channels = channels;
-                                texture.Size = texSize;
-                                texture.Type = texType;
-
-                                if (texSize > 0) {
-                                    texture.Data = new std::uint8_t[texSize];
-                                    std::memcpy(texture.Data, textureStart, texSize);
-                                }
-                                else {
-                                    texture.Data = nullptr;
-                                }
-
-                                importTexture.Textures[texType] = texture;
-                                ++it;
-                            }
-
-                            std::regex vec3Attr(R"(\[MAT_ATTRIBUTES:\[(\w+)\]:\[(.+?),(.+?),(.+?)\]\])");
-                            for (std::sregex_iterator i(sectionStr.begin(), sectionStr.end(), vec3Attr); i != end; ++i) {
-                                std::string key = (*i)[1];
-                                glm::vec3 value{
-                                    std::stof((*i)[2]),
-                                    std::stof((*i)[3]),
-                                    std::stof((*i)[4])
-                                };
-
-                                if (key == MOTION_MAT_ATTRIBUTE_BASE_COLOR)
-                                    importTexture.Attributes.BaseColor = value;
-                            }
-
-                            std::regex floatAttr(R"(\[MAT_ATTRIBUTES:\[(\w+)\]:(.+?)\])");
-                            for (std::sregex_iterator i(sectionStr.begin(), sectionStr.end(), floatAttr); i != end; ++i) {
-                                std::string key = (*i)[1];
-                                float value = std::stof((*i)[2]);
-
-                                if (key == MOTION_MAT_ATTRIBUTE_METALLIC)
-                                    importTexture.Attributes.Metallic = value;
-                                else if (key == MOTION_MAT_ATTRIBUTE_ROUGHNESS)
-                                    importTexture.Attributes.Roughness = value;
-                                else if (key == MOTION_MAT_ATTRIBUTE_AMBIENT_OCCLUSION)
-                                    importTexture.Attributes.AmbientOcclusion = value;
-                                else if (key == MOTION_MAT_ATTRIBUTE_OPACITY)
-                                    importTexture.Attributes.Opacity = value;
-                                else
-                                    importTexture.Attributes.DisplacementScale = value;
-                            }
-
-                            //----------------------------------------------------------------------------------------------
-
-                            StaticMesh::MeshSegment meshSegment{};
-
-                            meshSegment.MeshIndex = i;
-                            meshSegment.MeshSelf = Mesh::Create(
-                                vertices.data(),
-                                static_cast<std::uint32_t>(vertices.size()),
-                                indices.data(),
-                                static_cast<std::uint32_t>(indices.size()),
-                                BufferLayout{
-                                    { UniformCache::Position, BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Position) },
-                                    { UniformCache::TexCoords, BufferComponents::UV, BufferStride::F2, false, offsetof(Vertex, TexCoord) },
-                                    { UniformCache::Normals, BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Normal) },
-                                    { UniformCache::Tangents, BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Tangent) },
-                                    { UniformCache::Bitangents, BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Bitangent) }
-                                },
-                                staticMesh
-                            );
-
-                            std::shared_ptr<Material> baseMaterial = assetManager.Get<Material>("BaseMaterial");
-                            if (!baseMaterial)
-                            {
-                                MOTION_ASSERT(baseMaterial, "Base Material not found in AssetManager!");
-                                return;
-                            }
-
-                            meshSegment.Materials = std::make_shared<MaterialInstance>(baseMaterial);
-                            meshSegment.Materials->Attributes = importTexture.Attributes;
-
-                            auto createTexture =
-                                [&](const std::string_view& textureName, TextureType type, const EmbeddedTexture& embeddedTexture)
-                                {
-                                    if (embeddedTexture.Data && embeddedTexture.Size > 0) {
-                                        std::shared_ptr<ITexture> texture = ITexture::Create(embeddedTexture.Data, type, embeddedTexture.Width, embeddedTexture.Height, embeddedTexture.Channels);
-                                        meshSegment.Materials->Texture[textureName] = texture;
-                                    }
-                                    else
-                                    {
-                                        MOTION_CORE_WARN("Texture data for '{}' is empty or invalid.", textureName);
-                                        meshSegment.Materials->Texture[textureName] = nullptr;
-                                    }
-                                };
-
-                            createTexture(UniformCache::BaseColorTextures, TextureType::BaseColorTexture, importTexture.Textures[MOTION_TOSTR(TextureType::BaseColorTexture)]);
-                            createTexture(UniformCache::MetallicTextures, TextureType::MetallicTexture, importTexture.Textures[MOTION_TOSTR(TextureType::MetallicTexture)]);
-                            createTexture(UniformCache::RoughnessTextures, TextureType::RoughnessTexture, importTexture.Textures[MOTION_TOSTR(TextureType::RoughnessTexture)]);
-                            createTexture(UniformCache::AmbientOcclusionTextures, TextureType::AmbientOcclusionTexture, importTexture.Textures[MOTION_TOSTR(TextureType::AmbientOcclusionTexture)]);
-                            createTexture(UniformCache::DisplacementTextures, TextureType::DisplacementTexture, importTexture.Textures[MOTION_TOSTR(TextureType::DisplacementTexture)]);
-                            createTexture(UniformCache::NormalTextures, TextureType::NormalTexture, importTexture.Textures[MOTION_TOSTR(TextureType::NormalTexture)]);
-
-                            staticMesh->m_Meshes.push_back(meshSegment);
-                        });
-
-                    //----------------------------------------------------------------------------------------------
-
-                    vertices.clear();
-                    indices.clear();
-
-                    for (auto& [_, texture] : importTexture.Textures)
+                    if (!importedModel.Meshes.empty())
                     {
-                        if (texture.Data)
-                            delete[] texture.Data; // Clean up dynamically allocated memory
+                        auto& assetManager = AssetManager::GetInstance();
+                        auto staticMesh = assetManager.Create<StaticMesh>(modelName, finalOutputPath);
+                        staticMesh->m_Meshes.reserve(importedModel.Meshes.size());
+
+                        for (auto& mesh : importedModel.Meshes)
+                        {
+                            StaticMesh::MeshSegment segment;
+
+                            const BufferLayout layout
+                            {
+                                {UniformCache::Position, BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Position)},
+                                {UniformCache::TexCoords, BufferComponents::UV, BufferStride::F2, false, offsetof(Vertex, TexCoord)},
+                                {UniformCache::Normals, BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Normal)},
+                                {UniformCache::Tangents, BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Tangent)},
+                                {UniformCache::Bitangents, BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Bitangent)}
+                            };
+
+                            segment.MeshSelf = Mesh::Create(mesh.Vertices.data(), static_cast<std::uint32_t>(mesh.Vertices.size()), mesh.Indices.data(), static_cast<std::uint32_t>(mesh.Indices.size()), layout, staticMesh);
+                            if (importedModel.Materials.contains(mesh.MaterialID))
+                            {
+                                const auto& baseMaterial = assetManager.Get<Material>("BaseMaterial");
+                                const auto& matData = importedModel.Materials.at(mesh.MaterialID);
+
+                                segment.Materials = std::make_shared<MaterialInstance>(baseMaterial);
+                                segment.Materials->Attributes.BaseColor = matData.Attributes.BaseColor;
+                                segment.Materials->Attributes.Metallic = matData.Attributes.Metallic;
+                                segment.Materials->Attributes.Roughness = matData.Attributes.Roughness;
+                                segment.Materials->Attributes.AmbientOcclusion = matData.Attributes.AmbientOcclusion;
+                                segment.Materials->Attributes.Opacity = matData.Attributes.Opacity;
+                                segment.Materials->Attributes.DisplacementScale = matData.Attributes.DisplacementScale;
+
+                                auto loadTextures =
+                                    [&](const std::string_view& uniformName, const std::string& slotName, TextureType type)
+                                    {
+                                        std::string textureID = matData.TextureRefs.at(slotName);
+                                        if (importedModel.Textures.contains(textureID))
+                                        {
+                                            auto& texData = importedModel.Textures.at(textureID);
+                                            auto texture = ITexture::Create(texData.Data.data(), type, texData.Width, texData.Height, texData.Channels);
+                                            segment.Materials->Texture[uniformName] = texture;
+                                        }
+                                        else
+                                        {
+                                            MOTION_CORE_WARN("Texture ID '{}' not found in imported model data.", textureID);
+                                            segment.Materials->Texture[uniformName] = nullptr;
+                                        }
+                                    };
+
+                                loadTextures(UniformCache::BaseColorTextures, "BaseColor", TextureType::BaseColorTexture);
+                                loadTextures(UniformCache::MetallicTextures, "Metallic", TextureType::MetallicTexture);
+                                loadTextures(UniformCache::RoughnessTextures, "Roughness", TextureType::RoughnessTexture);
+                                loadTextures(UniformCache::AmbientOcclusionTextures, "AmbientOcclusion", TextureType::AmbientOcclusionTexture);
+                                loadTextures(UniformCache::DisplacementTextures, "Displacement", TextureType::DisplacementTexture);
+                                loadTextures(UniformCache::NormalTextures, "Normal", TextureType::NormalTexture);
+                            }
+
+                            staticMesh->m_Meshes.push_back(segment);
+                        }
+
+                        return staticMesh;
                     }
-
-                    importTexture.Textures.clear();
-                    importTexture.Attributes = MaterialAttributes{}; // Reset attributes for the next mesh
-                    MOTION_CORE_INFO("Mesh {0} imported successfully with {1} vertices and {2} indices.", i, vertices.size(), indices.size());
+                    else
+                    {
+                        MOTION_CORE_ERROR("No meshes found in the imported model: {}", finalOutputPath.string());
+                        return nullptr;
+                    }
                 }
-
-                return staticMesh;
             }
             catch (const std::exception& e)
             {

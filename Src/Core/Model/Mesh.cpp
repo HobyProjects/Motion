@@ -137,7 +137,7 @@ namespace Motion
      */
     std::shared_ptr<Mesh> Mesh::Create(Vertex* vertices, std::uint32_t verticesSize, std::uint32_t* indices, std::uint32_t indicesCount, const BufferLayout& layout, const std::shared_ptr<StaticMesh>& parentModel)
     {
-        return std::shared_ptr<Mesh>(new Mesh(vertices, verticesSize, indices, indicesCount, layout, parentModel));
+        return std::make_shared<Mesh>(vertices, verticesSize, indices, indicesCount, layout, parentModel);
     }
 
     /**
@@ -156,7 +156,7 @@ namespace Motion
      */
     std::shared_ptr<Mesh> Mesh::Create(float* vertices, std::uint32_t verticesSize, std::uint32_t* indices, std::uint32_t indicesCount, const BufferLayout& layout, const std::shared_ptr<StaticMesh>& parentModel)
     {
-        return std::shared_ptr<Mesh>(new Mesh(vertices, verticesSize, indices, indicesCount, layout, parentModel));
+        return std::make_shared<Mesh>(vertices, verticesSize, indices, indicesCount, layout, parentModel);
     }
 }
 

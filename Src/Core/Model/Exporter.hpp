@@ -29,10 +29,12 @@
 
 #define TEXTURES_BEGIN "[TEXTURES_BEGIN]"
 #define TEXTURES_END "[TEXTURES_END]"
+#define TEXTURE_DATA_END "[TEX_DATA_END]"
+#define TEXTURE_DATA_BEGIN "[TEX_DATA_BEGIN]"
 #define TEXTURE(ID) std::format("[TEX:{}]", ID)
 #define TEXTURE_END "[TEX_END]"
 #define TEX_META(TYPE, W, H, CH, S) std::format("[TEX_META:{},{},{},{},{}]", TYPE, W, H, CH, S)
-#define TEX_REF(ID) std::format("[TEX_REF:{}]", ID)
+#define TEX_REF(SLOT, ID) std::format("[TEX_REF:{}={}]", SLOT, ID)
 
 #define MESH_BLOCK(ID) std::format("[M{}_BEGIN]", ID)
 #define MESH_BLOCK_END(ID) std::format("[M{}_END]", ID)

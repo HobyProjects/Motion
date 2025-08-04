@@ -26,3 +26,6 @@
 [submodule "libs/fastgltf"]
 	path = libs/fastgltf
 	url = https://github.com/spnda/fastgltf.git
+[submodule "libs/MikkTSpace/MikkTSpace"]
+	path = libs/MikkTSpace/MikkTSpace
+	url = https://github.com/mmikk/MikkTSpace.git

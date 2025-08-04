@@ -50,6 +50,7 @@ namespace Motion
         glm::vec3 Normal{ 0.0f, 0.0f, 0.0f };
         glm::vec3 Tangent{ 0.0f, 0.0f, 0.0f };
         glm::vec3 Bitangent{ 0.0f, 0.0f, 0.0f };
+        float TangentSign{ 1.0f }; // Used to reconstruct bitangent in shader
     };
 #pragma pack(pop)
 
@@ -71,15 +72,25 @@ namespace Motion
     {
     public:
         BufferLayout() = default;
-        BufferLayout(const std::initializer_list<BufferElements>& elements) : m_Elements(elements) {}
+        BufferLayout(const std::initializer_list<BufferElements>& elements) : m_Elements(elements) { CalculateStride(); }
         ~BufferLayout() = default;
 
+        std::int32_t GetStride() const { return m_Stride; }
         const std::vector<BufferElements>& GetElements() const { return m_Elements; }
         std::vector<BufferElements>::iterator begin() { return m_Elements.begin(); }
         std::vector<BufferElements>::iterator end() { return m_Elements.end(); }
 
     private:
+        void CalculateStride()
+        {
+            m_Stride = 0;
+            for (auto& element : m_Elements)
+                m_Stride += static_cast<std::int32_t>(element.Stride);
+        }
+
+    private:
         std::vector<BufferElements> m_Elements{};
+        std::int32_t m_Stride{ 0 };
     };
 
     using BufferID = std::uint32_t;

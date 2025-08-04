@@ -40,6 +40,7 @@ namespace Motion
         inline static constexpr std::string_view Normals = "a_Normals";
         inline static constexpr std::string_view Tangents = "a_Tangents";
         inline static constexpr std::string_view Bitangents = "a_Bitangents";
+        inline static constexpr std::string_view TangentSign = "a_TangentSign";
 
         inline static constexpr std::string_view ViewProjMatrix = "u_ViewProjMatrix";
         inline static constexpr std::string_view ViewMatrix = "u_ViewMatrix";

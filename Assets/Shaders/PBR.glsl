@@ -6,12 +6,13 @@ layout(location = 1) in vec2 a_TexCoords;
 layout(location = 2) in vec3 a_Normals;
 layout(location = 3) in vec3 a_Tangents;
 layout(location = 4) in vec3 a_Bitangents;
+layout(location = 5) in float a_TangentSign;
 
 out vec3 v_WorldPosition;
 out vec2 v_UV;
 out vec3 v_Normal;
 out vec3 v_Tangent;
-out vec3 v_Bitangent;
+out float v_TangentSign;
 
 uniform mat4 u_ModelMatrix;
 uniform mat4 u_ViewMatrix;
@@ -25,7 +26,7 @@ void main()
     
     v_Normal = u_NormalMatrix * a_Normals;
     v_Tangent = u_NormalMatrix * a_Tangents;
-    v_Bitangent = u_NormalMatrix * a_Bitangents;
+    v_TangentSign = a_TangentSign;
 
     gl_Position = u_ProjectionMatrix * u_ViewMatrix * vec4(v_WorldPosition, 1.0);
 }
@@ -39,7 +40,7 @@ in vec3 v_WorldPosition;
 in vec2 v_UV;
 in vec3 v_Normal;
 in vec3 v_Tangent;
-in vec3 v_Bitangent;
+in float v_TangentSign;
 
 // Texture Samplers
 uniform sampler2D u_BaseColorTextures;
@@ -77,11 +78,11 @@ layout(std430, binding = 0) buffer MaterialData {
 
 const float PI = 3.14159265359;
 
-mat3 GetTBN(vec3 normal, vec3 tangent, vec3 bitangent)
+mat3 GetTBN(vec3 normal, vec3 tangent, float tangentSign)
 {
     vec3 N = normalize(normal);
-    vec3 T = normalize(tangent - dot(tangent, N) * N); // Gram-Schmidt
-    vec3 B = cross(N, T);
+    vec3 T = normalize(tangent);
+    vec3 B = cross(N, T) * tangentSign;
     return mat3(T, B, N);
 }
 
@@ -93,7 +94,7 @@ vec3 GetNormalFromMap()
 
     tangentNormal = clamp(tangentNormal, vec3(-1.0), vec3(1.0));
 
-    mat3 TBN = GetTBN(v_Normal, v_Tangent, v_Bitangent);
+    mat3 TBN = GetTBN(v_Normal, v_Tangent, v_TangentSign);
     return normalize(TBN * tangentNormal);
 }
 
@@ -132,6 +133,7 @@ void main()
     vec3 albedo    = pow(texture(u_BaseColorTextures, v_UV).rgb, vec3(2.2)) * attributes.BaseColor;
     float metallic = texture(u_MetallicTextures, v_UV).r * attributes.Metallic;
     float roughness = texture(u_RoughnessTextures, v_UV).r * attributes.Roughness;
+    
     roughness = clamp(roughness, 0.04, 1.0);
     float ao       = texture(u_AmbientOcclusionTextures, v_UV).r * attributes.AmbientOcclusion;
 

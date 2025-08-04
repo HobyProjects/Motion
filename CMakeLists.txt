@@ -33,6 +33,7 @@ find_package(Assimp CONFIG REQUIRED)
 find_package(yaml-cpp CONFIG REQUIRED)
 find_package(stb CONFIG REQUIRED)
 find_package(fastgltf CONFIG REQUIRED)
+find_package(MikkTSpace CONFIG REQUIRED)
 
 # ##############################################################################
 # Platform Specific Configuration
@@ -97,7 +98,6 @@ set(
     ${MOTION_CORE_DIR}/Model/Model.hpp
     ${MOTION_CORE_DIR}/Model/Mesh.hpp
     ${MOTION_CORE_DIR}/Model/Importer.hpp
-    ${MOTION_CORE_DIR}/Model/Exporter.hpp
 
     ${MOTION_CORE_DIR}/Material/Material.hpp
 
@@ -138,7 +138,6 @@ set(
 
     ${MOTION_CORE_DIR}/Model/Mesh.cpp
     ${MOTION_CORE_DIR}/Model/Importer.cpp
-    ${MOTION_CORE_DIR}/Model/Exporter.cpp
     ${MOTION_CORE_DIR}/Model/Model.cpp
 
     ${MOTION_CORE_DIR}/Material/Material.cpp
@@ -179,6 +178,7 @@ target_link_libraries(
     EnTT::EnTT
     stb::stb
     fastgltf::fastgltf
+    MikkTSpace::MikkTSpace
 )
 
 # ##############################################################################

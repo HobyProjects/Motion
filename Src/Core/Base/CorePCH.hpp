@@ -41,6 +41,8 @@
 #include <fastgltf/tools.hpp>
 #include <fastgltf/util.hpp>
 
+#include <MikkTSpace/mikktspace.h>
+
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/glm.hpp>
 #include <glm/ext/matrix_transform.hpp>
@@ -92,7 +94,6 @@
 #include "Model.hpp"
 #include "Mesh.hpp"
 #include "Importer.hpp"
-#include "Exporter.hpp"
 #include "Thumbnail.hpp"
 #include "PostProcessor.hpp"
 #include "Environment.hpp"

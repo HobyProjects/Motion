@@ -98,7 +98,7 @@ namespace Motion
                 static_cast<GLint>(element.Components),
                 GL_FLOAT,
                 element.Normalized ? GL_TRUE : GL_FALSE,
-                static_cast<GLsizei>(element.Stride),
+                static_cast<GLsizei>(layout.GetStride()),
                 reinterpret_cast<const void*>(static_cast<uintptr_t>(element.Offset))
             );
         }

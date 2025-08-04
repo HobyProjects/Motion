@@ -28,6 +28,9 @@ namespace Motion
         m_VertexArray = IVertexArray::Create();
         m_VertexArray->EmplaceVertexBuffer(m_VertexBuffer);
         m_VertexArray->EmplaceIndexBuffer(m_ElementBuffer);
+
+        m_ParentModel = parentModel;
+        m_IndicesCount = indicesCount;
     }
 
 
@@ -55,6 +58,9 @@ namespace Motion
         m_VertexArray = IVertexArray::Create();
         m_VertexArray->EmplaceVertexBuffer(m_VertexBuffer);
         m_VertexArray->EmplaceIndexBuffer(m_ElementBuffer);
+
+        m_ParentModel = parentModel;
+        m_IndicesCount = indicesCount;
     }
 
     /**

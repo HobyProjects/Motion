@@ -9,7 +9,9 @@ namespace Motion
 
     void ImGuiLayer::OnAttach()
     {
-        //[TODO] : Manage imgui assets here, importing fonts, textures, etc
+        ImGuiIO& io = ImGui::GetIO(); (void)io;
+        std::filesystem::path fontsPath = std::filesystem::absolute(std::filesystem::path(".") / "Assets" / "Fonts" / "JetBrainsMono" / "JetBrainsMono-Regular.ttf");
+        io.Fonts->AddFontFromFileTTF(fontsPath.string().c_str(), 18.0f);
         (m_ColorScheme == ImGuiColorScheme::Dark) ? UserInterfaceInitializer::UseColorDark() : UserInterfaceInitializer::UseColorLight();
     }
 

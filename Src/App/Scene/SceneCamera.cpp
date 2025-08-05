@@ -37,6 +37,10 @@ namespace Motion
             Camera.Position -= right * Camera.TranslationSpeed * deltaTime.GetDeltaTimeMilliseconds();
         if (InputsHandler::GetKeyState(handle, KEY_D))
             Camera.Position += right * Camera.TranslationSpeed * deltaTime.GetDeltaTimeMilliseconds();
+        if (InputsHandler::GetKeyState(handle, KEY_LEFT_CONTROL))
+            Camera.Position.y -= Camera.TranslationSpeed * deltaTime.GetDeltaTimeMilliseconds();
+        if (InputsHandler::GetKeyState(handle, KEY_SPACE))
+            Camera.Position.y += Camera.TranslationSpeed * deltaTime.GetDeltaTimeMilliseconds();
 
         Camera.RefreshCameraMatrix();
     }
@@ -97,10 +101,13 @@ namespace Motion
 
     bool SceneCamera::OnMouseWheelScrollEvent(WindowHandle handle, EventMouseWheelScroll& e)
     {
-        Camera.PerspectiveFov -= (float)e.OffsetY();
-        if (Camera.PerspectiveFov < 1.0f) Camera.PerspectiveFov = 1.0f;
-        if (Camera.PerspectiveFov > 45.0f) Camera.PerspectiveFov = 45.0f;
-        Camera.RefreshCameraMatrix();
+        if (InputsHandler::GetMouseButtonState(handle, MOUSE_BUTTON_RIGHT) & MOUSE_BUTTON_PRESSED)
+        {
+            Camera.PerspectiveFov -= (float)e.OffsetY();
+            if (Camera.PerspectiveFov < 1.0f) Camera.PerspectiveFov = 1.0f;
+            if (Camera.PerspectiveFov > 45.0f) Camera.PerspectiveFov = 45.0f;
+            Camera.RefreshCameraMatrix();
+        }
 
         return false;
     }

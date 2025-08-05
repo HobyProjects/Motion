@@ -264,11 +264,11 @@ namespace Motion
     {
         bool changed = false;
         changed |= CustomUIControl::DrawColor3("MI-Base Color", attr.BaseColor);
-        changed |= CustomUIControl::DrawFloat("MI-Metallic", attr.Metallic, 0.0f, 1.0f, 0.005f);
-        changed |= CustomUIControl::DrawFloat("MI-Roughness", attr.Roughness, 0.0f, 1.0f, 0.005f);
-        changed |= CustomUIControl::DrawFloat("MI-AO", attr.AmbientOcclusion, 0.0f, 1.0f, 0.005f);
-        changed |= CustomUIControl::DrawFloat("MI-Opacity", attr.Opacity, 0.0f, 1.0f, 0.005f);
-        changed |= CustomUIControl::DrawFloat("MI-Displacement", attr.DisplacementScale, 0.0f, 1.0f, 0.005f);
+        changed |= CustomUIControl::DrawFloat("MI-Metallic", attr.Metallic, 0.0f, 1.0f, 0.0005f);
+        changed |= CustomUIControl::DrawFloat("MI-Roughness", attr.Roughness, 0.0f, 1.0f, 0.0005f);
+        changed |= CustomUIControl::DrawFloat("MI-AO", attr.AmbientOcclusion, 0.0f, 1.0f, 0.0005f);
+        changed |= CustomUIControl::DrawFloat("MI-Opacity", attr.Opacity, 0.0f, 1.0f, 0.0005f);
+        changed |= CustomUIControl::DrawFloat("MI-Displacement", attr.DisplacementScale, 0.0f, 1.0f, 0.0005f);
         return changed;
     }
 
@@ -385,10 +385,15 @@ namespace Motion
                                                 type = TextureType::UnknownTexture;
 
 
-                                            slotTex = ITexture::Create(file, type, true);
-                                            if (!slotTex)
+                                            auto newTex = ITexture::Create(file, type, true);
+                                            if (newTex)
+                                            {
+                                                slotTex = newTex;
+                                            }
+                                            else
                                             {
                                                 MOTION_ERROR("Failed to load texture from file: {0}", file.string());
+                                                // slotTex remains unchanged!
                                             }
                                         }
                                     });

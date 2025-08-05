@@ -85,6 +85,51 @@ namespace Motion
         m_ActiveScene->OnEvent(handle, e);
     }
 
+    static void DrawViewportAxisWidget(const glm::mat4& view, float size = 60.0f)
+    {
+        ImDrawList* drawList = ImGui::GetWindowDrawList();
+
+        // Find bottom-left of viewport
+        ImVec2 windowPos = ImGui::GetWindowPos();
+        ImVec2 contentMin = ImGui::GetWindowContentRegionMin();
+        ImVec2 viewportMin = ImVec2(windowPos.x + contentMin.x, windowPos.y + contentMin.y);
+        ImVec2 axisOrigin = ImVec2(viewportMin.x + size + 10.0f, viewportMin.y + ImGui::GetWindowSize().y - size - 10.0f);
+
+        // Camera basis (extract from view matrix)
+        glm::mat3 camBasis = glm::mat3(glm::transpose(view)); // Row-major, use transpose for camera orientation
+
+        struct Axis {
+            glm::vec3 dir;
+            ImU32 color;
+            const char* label;
+        };
+
+        Axis axes[3] = {
+            { glm::vec3(1,0,0), IM_COL32(200,60,60,255), "X" },
+            { glm::vec3(0,1,0), IM_COL32(60,200,60,255), "Y" },
+            { glm::vec3(0,0,1), IM_COL32(80,150,255,255), "Z" }
+        };
+
+        for (int i = 0; i < 3; ++i)
+        {
+            glm::vec3 localDir = camBasis * axes[i].dir; // Camera space to world
+            localDir = glm::normalize(localDir);
+
+            float len = size;
+            ImVec2 p0 = axisOrigin;
+            ImVec2 p1 = ImVec2((axisOrigin.x + localDir.x * len), (axisOrigin.y - localDir.y * len)); // ImGui Y is downward
+
+            drawList->AddLine(p0, p1, axes[i].color, 3.0f);
+
+            // Draw label at the end
+            ImVec2 labelPos = ImVec2(p1.x + 5.0f, p1.y - 5.0f); // Offset for better visibility
+            drawList->AddText(labelPos, axes[i].color, axes[i].label);
+        }
+
+        // Optional: Draw circle at axis origin
+        drawList->AddCircleFilled(axisOrigin, 5.0f, IM_COL32(120, 120, 120, 255));
+    }
+
     void SceneEditorLayer::OnUIRender(WindowHandle handle)
     {
         // ------------------------------------------------------------
@@ -119,10 +164,13 @@ namespace Motion
         ImVec2 viewportMax = ImVec2(windowPos.x + contentMax.x, windowPos.y + contentMax.y);
         ImVec2 mousePos = ImGui::GetMousePos();
 
-        bool isHovered = ImGui::IsItemHovered();
-        bool isClicked = ImGui::IsItemClicked() && ImGui::IsMouseClicked(ImGuiMouseButton_Left);
+        bool isWindowHovered = ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem);
+        bool isWindowFocused = ImGui::IsWindowFocused();
 
-        if (isHovered && isClicked && !ImGuizmo::IsUsing())
+        bool isClick = ImGui::IsMouseClicked(ImGuiMouseButton_Left);
+        bool isUsingGizmo = ImGuizmo::IsUsing();
+
+        if (isWindowHovered && isWindowFocused && isClick && !isUsingGizmo)
         {
             // Convert mouse to viewport-local
             glm::vec2 mouseViewport = { mousePos.x - viewportMin.x, mousePos.y - viewportMin.y };
@@ -181,6 +229,41 @@ namespace Motion
                 tc.Scale = scale;
             }
         }
+
+
+        //-----------------------------------------------
+        // DRAWING THE VIEW MANIPULATION GIZMO
+        //-----------------------------------------------
+        glm::vec3 selectedPosition;
+        if (selected && selected->HasComponent<TransformComponent>())
+            selectedPosition = selected->GetComponent<TransformComponent>().Translation;
+        else
+            selectedPosition = glm::vec3(0.0f);
+
+        auto& camera = m_ActiveScene->GetSceneCamera();
+        glm::vec3 target = selectedPosition;
+        float cameraDistance = glm::length(camera.Position - target);
+        glm::mat4 oldView = camera.View;
+
+        ImVec2 viewGizmoSize(200, 200);
+        ImVec2 gizmoPos = ImVec2(viewportMax.x - viewGizmoSize.x, viewportMin.y);
+        ImGuizmo::ViewManipulate(glm::value_ptr(view), 16.0f, gizmoPos, viewGizmoSize, IM_COL32(0x22, 0x22, 0x22, 0x88));
+
+        bool viewChanged = false;
+        for (int i = 0; i < 16; ++i)
+            if (fabs(glm::value_ptr(view)[i] - glm::value_ptr(oldView)[i]) > 1e-5f)
+                viewChanged = true;
+
+        if (viewChanged)
+        {
+            glm::vec3 newForward = -glm::vec3(view[2]); // Negative Z (OpenGL)
+            glm::vec3 newPos = target - newForward * cameraDistance;
+            camera.Position = newPos;
+            camera.LookAt(target);
+        }
+
+        // Draw the viewport axis widget
+        DrawViewportAxisWidget(view);
 
         ImGui::End();
         ImGui::PopStyleVar();

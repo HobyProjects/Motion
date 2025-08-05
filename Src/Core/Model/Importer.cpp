@@ -681,7 +681,7 @@ namespace Motion
                             const auto& baseMaterial = assetManager.Get<Material>("BaseMaterial");
                             const auto& matData = importedModel.Materials.at(mesh.MaterialID);
 
-                            segment.Materials = std::make_shared<MaterialInstance>(baseMaterial);
+                            segment.Materials = std::make_shared<MaterialInstance>(mesh.MaterialID, baseMaterial);
                             segment.Materials->Attributes.BaseColor = matData.Attributes.BaseColor;
                             segment.Materials->Attributes.Metallic = matData.Attributes.Metallic;
                             segment.Materials->Attributes.Roughness = matData.Attributes.Roughness;

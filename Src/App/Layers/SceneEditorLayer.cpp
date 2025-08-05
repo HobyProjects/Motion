@@ -3,8 +3,8 @@
 
 namespace Motion
 {
-    static std::weak_ptr<IWindow> s_Window;
-    static std::weak_ptr<ImGuiLayer> s_ImGuiLayer;
+    static std::shared_ptr<IWindow> s_Window{ nullptr };
+    static std::shared_ptr<ImGuiLayer> s_ImGuiLayer{ nullptr };
 
     SceneEditorLayer::SceneEditorLayer(WindowHandle handle, const std::shared_ptr<ImGuiLayer>& imguiLayer) : Layer("EditorLayer")
     {
@@ -49,6 +49,9 @@ namespace Motion
 
     void SceneEditorLayer::OnUpdate(WindowHandle handle, Timer deltaTime)
     {
+        //--------------------------------------------------------------
+        // UPDATING THE VIEWPORT
+        //--------------------------------------------------------------
         if (m_Viewport.SizeHasChanged(m_ViewportWidth, m_ViewportHeight))
         {
             m_Viewport.Update(glm::vec2(m_ViewportWidth, m_ViewportHeight));
@@ -56,21 +59,22 @@ namespace Motion
             m_ActiveScene->OnViewportSizeChanges(m_ViewportWidth, m_ViewportHeight);
         }
 
+        //--------------------------------------------------------------
+        // UPDATING THE ACTIVE SCENE
+        //--------------------------------------------------------------
         m_ActiveScene->OnUpdate(handle, deltaTime);
 
 
+        //--------------------------------------------------------------
+        // RENDERING THE SCENE
+        //--------------------------------------------------------------
         m_Framebuffer->Bind();
-
         Renderer::ClearColor({ 0.243, 0.243, 0.243, 1.0f });
         Renderer::Clear();
-
         m_Environment->Render(m_ActiveScene->GetViewMatrix(), m_ActiveScene->GetProjectionMatrix());
         SceneRenderer::BeginScene();
-
         SceneRenderer::Submit(m_ActiveScene, m_Environment);
-
         SceneRenderer::EndScene();
-
         m_Framebuffer->Unbind();
         m_SceneTextures[m_ActiveScene] = m_Framebuffer->GetAttachment(FrameBufferColorAttachmentStandards::Standard).ID;
     }
@@ -82,27 +86,45 @@ namespace Motion
 
     void SceneEditorLayer::OnUIRender(WindowHandle handle)
     {
+        // ------------------------------------------------------------
+        // DRAWING THE DOCKSPACE AND SCENE UIs
+        // ------------------------------------------------------------
         DrawDockspace();
-        ImGui::ShowDemoWindow();
         m_ActiveScene->OnUIRenders(handle);
 
+
+        // ------------------------------------------------------------
+        // DRAWING THE SCENE VIEWPORT
+        // ------------------------------------------------------------
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
         ImGui::Begin(m_ActiveScene->GetSceneName().c_str());
-        if (!s_ImGuiLayer.expired())
+        s_ImGuiLayer->AcceptEvents(ImGui::IsWindowFocused() || ImGui::IsWindowHovered());
+        ImVec2 viewportPanelSize = ImGui::GetContentRegionAvail();
+        if (viewportPanelSize.x != m_ViewportWidth || viewportPanelSize.y != m_ViewportHeight)
         {
-            auto imguiLayer = s_ImGuiLayer.lock();
-            imguiLayer->AcceptEvents(ImGui::IsWindowFocused() || ImGui::IsWindowHovered());
-            ImVec2 viewportPanelSize = ImGui::GetContentRegionAvail();
-            if (viewportPanelSize.x != m_ViewportWidth || viewportPanelSize.y != m_ViewportHeight)
-            {
-                m_ViewportWidth = viewportPanelSize.x;
-                m_ViewportHeight = viewportPanelSize.y;
-            }
-
-            ImGui::Image((ImTextureID)m_SceneTextures[m_ActiveScene], viewportPanelSize, { 0, 1 }, { 1, 0 });
+            m_ViewportWidth = viewportPanelSize.x;
+            m_ViewportHeight = viewportPanelSize.y;
         }
+        ImGui::Image((ImTextureID)m_SceneTextures[m_ActiveScene], viewportPanelSize, { 0, 1 }, { 1, 0 });
         ImGui::End();
         ImGui::PopStyleVar();
+
+        // ------------------------------------------------------------
+        // DRAWING SCENE ENVIRONMENT SETTINGS
+        // ------------------------------------------------------------
+        ImGui::Begin(std::format("{} Environment Settings", m_ActiveScene->GetSceneName()).c_str());
+        auto& env = m_ActiveScene->GetEnvironment();
+        static const ImGuiTreeNodeFlags treeNodeFlags =
+            ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_AllowItemOverlap | ImGuiTreeNodeFlags_FramePadding;
+        bool open = ImGui::TreeNodeEx((void*)env.DirectionalLight.LightID, treeNodeFlags, "Environment Lighting");
+        if (open)
+        {
+            CustomUIControl::DrawFloat3("Direction", env.DirectionalLight.Direction, 0.0f);
+            CustomUIControl::DrawColor3("Color", env.DirectionalLight.Color);
+            CustomUIControl::DrawFloat("Intensity", env.DirectionalLight.AmbientIntensity, 0.0f, 1.0f, 0.005f);
+            ImGui::TreePop();
+        }
+        ImGui::End();
     }
 
     void SceneEditorLayer::DrawDockspace()

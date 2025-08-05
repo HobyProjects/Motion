@@ -26,7 +26,6 @@ namespace Motion
         UUID ID{ 0 };
         std::string Name{ "unamed" };
         std::shared_ptr<StaticMesh> Model{ nullptr };
-        Entity* EntityPointer{ nullptr };
 
         StaticMeshComponent() : ID(UniqueIdentity::GetUniqueID()) {};
         StaticMeshComponent(const std::string& name, const std::shared_ptr<StaticMesh>& model) : Name(name), Model(model), ID(UniqueIdentity::GetUniqueID()) {}
@@ -39,8 +38,6 @@ namespace Motion
         glm::vec3 Translation{ 0.0f };
         glm::quat Rotation{ 1.0f, 0.0f, 0.0f, 0.0f }; // Identity quaternion
         glm::vec3 Scale{ 1.0f };
-
-        Entity* EntityPointer{ nullptr };
 
         TransformComponent()
             : ID(UniqueIdentity::GetUniqueID()) {

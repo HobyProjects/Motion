@@ -10,6 +10,7 @@ namespace Motion
     class SceneCamera
     {
     public:
+        SceneCamera() = default;
         SceneCamera(float viewportWidth, float viewportHeight, bool rotationEnabled = false);
         ~SceneCamera() = default;
 
@@ -22,7 +23,7 @@ namespace Motion
         bool OnMouseWheelScrollEvent(WindowHandle handle, EventMouseWheelScroll& e);
 
     public:
-        Camera3D SceneViewCamera;
+        Camera3D Camera;
 
     private:
         float m_MouseX = 0.0f, m_MouseY = 0.0f;

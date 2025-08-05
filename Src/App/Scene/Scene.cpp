@@ -7,7 +7,7 @@ namespace Motion
     {
         m_SceneID = handle;
         m_Name = name;
-        m_SceneCamera = std::make_unique<SceneCamera>(viewportSize.x, viewportSize.y, false);
+        m_SceneCamera = SceneCamera(viewportSize.x, viewportSize.y, false);
     }
 
     Scene::~Scene()
@@ -17,17 +17,12 @@ namespace Motion
 
     void Scene::OnUpdate(WindowHandle handle, Timer deltaTime)
     {
-        m_SceneCamera->OnUpdate(handle, deltaTime);
-
-        if (m_SimulationStarted)
-        {
-            UpdatePhysicsComponents(deltaTime);
-        }
+        m_SceneCamera.OnUpdate(handle, deltaTime);
     }
 
     void Scene::OnEvent(WindowHandle handle, IEvent& e)
     {
-        m_SceneCamera->OnEvents(handle, e);
+        m_SceneCamera.OnEvents(handle, e);
     }
 
     void Scene::OnUIRenders(WindowHandle handle)
@@ -37,44 +32,14 @@ namespace Motion
 
     void Scene::OnViewportSizeChanges(float width, float height)
     {
-        m_SceneCamera->SetAspectRatio(width, height);
-    }
-
-    void Scene::StartSimulation()
-    {
-        auto& physicsAttri = m_Environment.Physics.GetSettings();
-        physicsAttri.IsEnabled = true;
-        m_Environment.StepModeEnabled = false;
-        m_SimulationStarted = true;
-
-    }
-
-    void Scene::StopSimulation()
-    {
-        auto& physicsAttri = m_Environment.Physics.GetSettings();
-        physicsAttri.IsEnabled = false;
-        m_Environment.StepModeEnabled = false;
-        m_SimulationStarted = false;
-    }
-
-    void Scene::ManualSimulation()
-    {
-        if (m_Environment.SimMode == SimulationMode::ManualStep)
-        {
-            auto& physicsAttri = m_Environment.Physics.GetSettings();
-            physicsAttri.IsEnabled = true;
-            m_Environment.StepModeEnabled = true;
-            m_SimulationStarted = true;
-        }
+        m_SceneCamera.SetAspectRatio(width, height);
     }
 
     void Scene::RenderEntities(WindowHandle handle)
     {
         ImGui::Begin("Scene Entities");
-
         if (ImGui::BeginPopupContextWindow(0, ImGuiPopupFlags_MouseButtonRight | ImGuiPopupFlags_NoOpenOverItems))
         {
-            if (m_SimulationStarted) ImGui::BeginDisabled();
             if (ImGui::MenuItem("Import StaticMesh"))
             {
                 //[TODO]: This should happen on different thread
@@ -86,9 +51,10 @@ namespace Motion
                     {
                         auto& entityFactory = EntityFactory::GetInstance();
                         std::shared_ptr<Entity> entity = entityFactory.CreateEntity(staticMesh->GetName());
-                        entity->AddComponent<StaticMeshComponent>(staticMesh->GetName(), staticMesh).EntityPointer = entity.get();
-                        entity->AddComponent<TransformComponent>(glm::vec3(0.0f), glm::quat(), glm::vec3(1.0f)).EntityPointer = entity.get();
-                        m_Entities.push_back(entity);
+
+                        entity->AddComponent<StaticMeshComponent>(staticMesh->GetName(), staticMesh);
+                        entity->AddComponent<TransformComponent>();
+                        m_Entities.emplace_back(entity);
                     }
                     else
                     {
@@ -96,9 +62,7 @@ namespace Motion
                     }
                 }
             }
-
             ImGui::EndPopup();
-            if (m_SimulationStarted) ImGui::EndDisabled();
         }
 
         if (ImGui::IsMouseDown(ImGuiMouseButton_Left) && ImGui::IsWindowHovered())
@@ -108,7 +72,6 @@ namespace Motion
 
         for (uint32_t i = 0; i < m_Entities.size(); i++)
         {
-            if (m_SimulationStarted) ImGui::BeginDisabled();
             std::shared_ptr<Entity> entity = m_Entities[i];
             auto& tag = entity->GetComponent<TagComponent>();
             ImGuiTreeNodeFlags flags = ((m_SelectedEntity == entity) ? ImGuiTreeNodeFlags_Selected : 0) | ImGuiTreeNodeFlags_OpenOnArrow;
@@ -124,8 +87,8 @@ namespace Motion
             {
                 ImGui::TreePop();
             }
-            if (m_SimulationStarted) ImGui::EndDisabled();
         }
+        ImGui::End();
 
         ImGui::Begin("Properties");
         if (m_SelectedEntity && m_SelectedEntity != EntityFactory::EMPTYENTITY)
@@ -133,14 +96,13 @@ namespace Motion
             RenderComponents(handle, m_SelectedEntity);
         }
         ImGui::End();
-
-        ImGui::End();
     }
 
     template<typename T, typename UIFunc>
     static void DrawComponentControls(const std::string& name, const std::shared_ptr<Entity>& entity, UIFunc uiFunc, bool enabled = true)
     {
-        static const ImGuiTreeNodeFlags treeNodeFlags = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_AllowItemOverlap | ImGuiTreeNodeFlags_FramePadding;
+        static const ImGuiTreeNodeFlags treeNodeFlags =
+            ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_AllowItemOverlap | ImGuiTreeNodeFlags_FramePadding;
 
         if (entity->HasComponent<T>())
         {
@@ -156,6 +118,152 @@ namespace Motion
             }
         }
     }
+
+    //-------------------------------------------------------------------
+    // HELPER FUNCTIONS TO DISPLAY MATERIAL DETAILS
+    //-------------------------------------------------------------------
+    static void DrawInstanceTextureSlot(const std::string_view& texName, std::shared_ptr<ITexture>& texture, std::function<void(std::shared_ptr<ITexture>&)> onLoad)
+    {
+        ImGui::BeginGroup();
+
+        // Card background (simulate a rounded box)
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 6.0f);
+        ImGui::PushID(texName.data());
+
+        // Texture thumbnail or placeholder
+        ImVec2 imgSize(56, 56);
+        if (texture)
+        {
+            ImGui::Image(texture->GetID(), imgSize);
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("Texture: %s", texName.data());
+        }
+        else
+        {
+            ImGui::Dummy(imgSize);
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("Texture: %s (Not Loaded)", texName.data());
+        }
+
+        // Load button (below the name)
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (imgSize.x - 46.0f) * 0.5f); // center button
+        if (ImGui::Button("Load", ImVec2(46, 0)))
+        {
+            if (onLoad)
+                onLoad(texture);
+        }
+        ImGui::PopID();
+        ImGui::PopStyleVar();
+
+        ImGui::EndGroup();
+    }
+
+    static void DrawInstanceTexturesRow(std::unordered_map<std::string_view, std::shared_ptr<ITexture>>& textures, std::function<void(const std::string_view&, std::shared_ptr<ITexture>&)> onLoad)
+    {
+        // Show each texture as a card in a horizontal row
+        int count = 0;
+        for (auto& [name, tex] : textures)
+        {
+            if (count++ > 0)
+                ImGui::SameLine(0.0f, 18.0f); // space between cards
+
+            DrawInstanceTextureSlot(name, tex,
+                [&](std::shared_ptr<ITexture>& t) { onLoad(name, t); });
+        }
+    }
+
+    static void ShowBaseTexturesRow(const std::unordered_map<std::string_view, std::shared_ptr<ITexture>>& textures)
+    {
+        if (textures.empty())
+            return;
+
+        ImGui::BeginDisabled();
+        int count = 0;
+        for (const auto& [name, tex] : textures)
+        {
+            if (count++ > 0)
+                ImGui::SameLine(0.0f, 18.0f);
+
+            ImGui::BeginGroup();
+            ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 6.0f);
+
+            ImVec2 imgSize(56, 56);
+            if (tex)
+            {
+                ImGui::Image(tex->GetID(), imgSize);
+                if (ImGui::IsItemHovered())
+                    ImGui::SetTooltip("Texture: %s", name.data());
+            }
+            else
+            {
+                ImGui::Dummy(imgSize);
+                if (ImGui::IsItemHovered())
+                    ImGui::SetTooltip("Texture: %s (Not Loaded)", name.data());
+            }
+
+            ImGui::PopStyleVar();
+            ImGui::EndGroup();
+        }
+        ImGui::EndDisabled();
+    }
+
+    static bool DrawMaterialAttributes(Motion::MaterialAttributes& attr)
+    {
+        bool changed = false;
+        changed |= CustomUIControl::DrawColor3("MI-Base Color", attr.BaseColor);
+        changed |= CustomUIControl::DrawFloat("MI-Metallic", attr.Metallic, 0.0f, 1.0f, 0.005f);
+        changed |= CustomUIControl::DrawFloat("MI-Roughness", attr.Roughness, 0.0f, 1.0f, 0.005f);
+        changed |= CustomUIControl::DrawFloat("MI-AO", attr.AmbientOcclusion, 0.0f, 1.0f, 0.005f);
+        changed |= CustomUIControl::DrawFloat("MI-Opacity", attr.Opacity, 0.0f, 1.0f, 0.005f);
+        changed |= CustomUIControl::DrawFloat("MI-Displacement", attr.DisplacementScale, 0.0f, 1.0f, 0.005f);
+        return changed;
+    }
+
+    static void ShowMaterialAttributes(const Motion::MaterialAttributes& attr)
+    {
+        ImGui::BeginDisabled();
+        glm::vec3 color = attr.BaseColor;
+        CustomUIControl::DrawColor3("BM-Base Color", color); // const version just passes by value
+        float metallic = attr.Metallic;
+        CustomUIControl::DrawFloat("BM-Metallic", metallic, 0.0f, 1.0f);
+        float roughness = attr.Roughness;
+        CustomUIControl::DrawFloat("BM-Roughness", roughness, 0.0f, 1.0f);
+        float ao = attr.AmbientOcclusion;
+        CustomUIControl::DrawFloat("BM-AO", ao, 0.0f, 1.0f);
+        float opacity = attr.Opacity;
+        CustomUIControl::DrawFloat("BM-Opacity", opacity, 0.0f, 1.0f);
+        float disp = attr.DisplacementScale;
+        CustomUIControl::DrawFloat("BM-Displacement", disp, 0.0f, 1.0f);
+        ImGui::EndDisabled();
+    }
+
+    static void DrawMaterialInstancePanel(std::shared_ptr<Motion::MaterialInstance>& matInstance, std::function<void(const std::string_view&, std::shared_ptr<ITexture>&)> onLoadTexture)
+    {
+        if (!matInstance) return;
+
+        // ---- Editable: Instance attributes ----
+        if (ImGui::CollapsingHeader("Material Instance Attributes", ImGuiTreeNodeFlags_DefaultOpen))
+            DrawMaterialAttributes(matInstance->Attributes);
+
+        // ---- Editable: Instance Textures ----
+        if (!matInstance->Texture.empty() && ImGui::CollapsingHeader("Material Instance Textures", ImGuiTreeNodeFlags_DefaultOpen))
+        {
+            DrawInstanceTexturesRow(matInstance->Texture, onLoadTexture);
+        }
+
+        // ---- Read-only: Base Material ----
+        if (matInstance->BaseMaterial)
+        {
+            if (ImGui::CollapsingHeader("Base Material Attributes", ImGuiTreeNodeFlags_DefaultOpen))
+                ShowMaterialAttributes(matInstance->BaseMaterial->Attributes);
+
+            if (!matInstance->BaseMaterial->Texture.empty() && ImGui::CollapsingHeader("Base Material Textures", ImGuiTreeNodeFlags_DefaultOpen))
+                ShowBaseTexturesRow(matInstance->BaseMaterial->Texture);
+        }
+    }
+
+    //-------------------------------------------------------------------
+
 
     void Scene::RenderComponents(WindowHandle handle, const std::shared_ptr<Entity>& entity)
     {
@@ -178,45 +286,67 @@ namespace Motion
             {
                 ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, { 10.0f, 0.0f });
 
-                CustomUIControl::DragControllerVec3("Translation", component.Translation, 0.0f);
-                CustomUIControl::DragControllerVec3("Rotation", component.Rotation, 0.0f);
-                CustomUIControl::DragControllerVec3("Scale", component.Scale, 1.0f);
+                CustomUIControl::DrawFloat3("Translation", component.Translation, 0.0f);
+                CustomUIControl::DrawFloat3("Rotation", component.Rotation, 0.0f);
+                CustomUIControl::DrawFloat3("Scale", component.Scale, 1.0f);
 
                 ImGui::PopStyleVar();
-
-            }, !m_SimulationStarted
+            }
         );
 
-
-        //[TODO]: Other components can be added here
-    }
-
-    void Scene::UpdatePhysicsComponents(Timer deltaTime)
-    {
-        if (m_SimulationStarted)
-        {
-            auto& physicsAttri = m_Environment.Physics.GetSettings();
-            if (!physicsAttri.IsEnabled)
-                return;
-
-            switch (m_Environment.SimMode)
+        DrawComponentControls<StaticMeshComponent>("Materials", entity,
+            [](auto& component)
             {
-            case SimulationMode::Realtime:
-            {
-                for (auto& entity : m_Entities)
-                    m_Environment.Physics.Update(entity, deltaTime);
+                auto& model = component.Model;
+                if (model)
+                {
+                    std::uint32_t meshIndex{ 0 };
+                    for (auto meshSegment = model->begin(); meshSegment != model->end(); ++meshSegment, ++meshIndex)
+                    {
+                        if (meshSegment->Materials)
+                        {
+                            ImGuiTreeNodeFlags nodeFlags = ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_AllowItemOverlap | ImGuiTreeNodeFlags_FramePadding;
+                            std::string nodeHeader = fmt::format("Mesh [{}] - Material: {}", meshIndex, meshSegment->Materials->GetName());
+                            if (ImGui::TreeNodeEx(nodeHeader.c_str(), nodeFlags))
+                            {
+                                DrawMaterialInstancePanel(meshSegment->Materials,
+                                    [&](const std::string_view& name, std::shared_ptr<ITexture>& slotTex)
+                                    {
+                                        std::filesystem::path file = DialogBoxes::OpenFileDialog();
+                                        if (!file.empty())
+                                        {
+                                            TextureType type;
+                                            if (name == UniformCache::BaseColorTextures)
+                                                type = TextureType::BaseColorTexture;
+                                            else if (name == UniformCache::MetallicTextures)
+                                                type = TextureType::MetallicTexture;
+                                            else if (name == UniformCache::RoughnessTextures)
+                                                type = TextureType::RoughnessTexture;
+                                            else if (name == UniformCache::AmbientOcclusionTextures)
+                                                type = TextureType::AmbientOcclusionTexture;
+                                            else if (name == UniformCache::DisplacementTextures)
+                                                type = TextureType::DisplacementTexture;
+                                            else if (name == UniformCache::NormalTextures)
+                                                type = TextureType::NormalTexture;
+                                            else
+                                                type = TextureType::UnknownTexture;
 
-                break;
-            }
-            case SimulationMode::ManualStep:
-            {
-                for (auto& entity : m_Entities)
-                    m_Environment.Physics.Update(entity, physicsAttri.FixedTimeStep);
 
-                break;
+                                            slotTex = ITexture::Create(file, type, true);
+                                            if (!slotTex)
+                                            {
+                                                MOTION_ERROR("Failed to load texture from file: {0}", file.string());
+                                            }
+                                        }
+                                    });
+
+                                ImGui::TreePop();
+                            }
+                        }
+                    }
+                }
             }
-            }
-        }
+        );
     }
 
     void SceneViewport::Update(const FrameBufferSpecification& spec)

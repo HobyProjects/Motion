@@ -39,7 +39,11 @@ namespace Motion
 
     public:
         static void DragControllerVec3(const char* label, glm::vec3& values, float resetValue);
-        static void DragControllerVec3(const char* label, glm::quat& values, float resetValue);
+
+        static void DrawFloat3(const char* label, glm::quat& values, float resetValue = 0.0f, float columnWidth = 110.0f);
+        static bool DrawFloat3(const char* label, glm::vec3& values, float resetValue = 0.0f, float columnWidth = 110.0f);
+        static bool DrawFloat(const char* label, float& value, float minValue, float maxValue, float speed = 0.05f, float columnWidth = 110.0f);
+        static bool DrawColor3(const char* label, glm::vec3& color, float columnWidth = 110.0f);
     };
 
     /**

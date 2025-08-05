@@ -154,13 +154,6 @@ namespace Motion
             return;
         }
 
-        if (!scene->m_SceneCamera)
-        {
-            MOTION_CORE_ERROR("Scene camera is not set in the scene >> SKIPPING SUBMISSION");
-            return;
-        }
-
-
         SceneDrawCommand command{};
 
         for (const auto& entity : scene->m_Entities)
@@ -188,18 +181,21 @@ namespace Motion
                     command.MeshPtr = meshSegment.MeshSelf.get();
 
                     command.ModelMatrix = entity->HasComponent<TransformComponent>() ? entity->GetComponent<TransformComponent>().GetTransform() : glm::mat4(1.0f);
-                    command.ViewMatrix = scene->m_SceneCamera->SceneViewCamera.View;
-                    command.ProjectionMatrix = scene->m_SceneCamera->SceneViewCamera.Projection;
+
+                    auto& camera = scene->GetSceneCamera();
+                    auto& env = scene->GetEnvironment();
+
+                    command.ViewMatrix = camera.View;
+                    command.ProjectionMatrix = camera.Projection;
                     command.NormalMatrix = glm::mat3(glm::transpose(glm::inverse(glm::mat3(command.ModelMatrix))));
+                    command.CameraPosition = camera.Position;
+                    command.LightPosition = env.DirectionalLight.Direction;
+                    command.LightColor = env.DirectionalLight.Color;
+                    command.LightIntensity = env.DirectionalLight.AmbientIntensity;
 
                     command.IrradianceTexture = environment->GetIrradianceTexture();
                     command.PrefilteredTexture = environment->GetPrefilteredTexture();
                     command.BRDFLUTTexture = environment->GetBRDFLUTTexture();
-
-                    command.CameraPosition = scene->m_SceneCamera->SceneViewCamera.Position;
-                    command.LightPosition = scene->m_Environment.DirectionalLight.Direction;
-                    command.LightColor = scene->m_Environment.DirectionalLight.Color;
-                    command.LightIntensity = scene->m_Environment.DirectionalLight.AmbientIntensity;
 
                     s_CommandQueue.push_back(command);
                 }

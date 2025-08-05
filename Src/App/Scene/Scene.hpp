@@ -42,44 +42,32 @@ namespace Motion
         void SetName(const std::string& name) { m_Name = name; }
         void SetActive(bool active) { m_IsActive = active; }
 
-        glm::mat4 GetViewProjectionMatrix() const { return m_SceneCamera->SceneViewCamera.MVP; }
-        glm::mat4 GetViewMatrix() const { return m_SceneCamera->SceneViewCamera.View; }
-        glm::mat4 GetProjectionMatrix() const { return m_SceneCamera->SceneViewCamera.Projection; }
+        glm::mat4 GetViewProjectionMatrix() const { return m_SceneCamera.Camera.MVP; }
+        glm::mat4 GetViewMatrix() const { return m_SceneCamera.Camera.View; }
+        glm::mat4 GetProjectionMatrix() const { return m_SceneCamera.Camera.Projection; }
+        glm::vec3 GetCameraPosition() const { return m_SceneCamera.Camera.Position; }
+        Camera3D& GetSceneCamera() { return m_SceneCamera.Camera; }
+        SceneEnvironment& GetEnvironment() { return m_Environment; }
+
 
         SceneHandle GetSceneID() const { return m_SceneID; }
         std::string GetSceneName() const { return m_Name; }
         bool IsActive() const { return m_IsActive; }
 
-
-
-        /* SIMULATION */
-        void StartSimulation();
-        void StopSimulation();
-        void ManualSimulation();
-        void SetSimulationMode(SimulationMode mode) { m_Environment.SimMode = mode; }
-
-        SimulationMode GetSimulationMode() { return m_Environment.SimMode; }
-
     private:
-        /* IMGUI RENDERINGS */
         void RenderEntities(WindowHandle handle);
         void RenderComponents(WindowHandle handle, const std::shared_ptr<Entity>& entity);
-
-        /* SIMULATION */
-        void UpdatePhysicsComponents(Timer deltaTime);
 
     private:
         SceneHandle m_SceneID{ 0 };
         std::string m_Name{ "Untitled Scene" };
         bool m_IsActive{ false };
 
-        std::unique_ptr<SceneCamera> m_SceneCamera{ nullptr };
         std::vector<std::shared_ptr<Entity>> m_Entities{};
         std::shared_ptr<Entity> m_SelectedEntity{ EntityFactory::EMPTYENTITY };
 
-        /* SCENE ENVIRONMENT */
+        SceneCamera m_SceneCamera;
         SceneEnvironment m_Environment{};
-        bool m_SimulationStarted{ false };
 
         friend class SceneRenderer;
     };

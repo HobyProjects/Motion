@@ -91,8 +91,8 @@ namespace Motion
         UniformBuffer->Unbind();
     }
 
-    MaterialInstance::MaterialInstance(const std::shared_ptr<Material>& baseMaterial)
-        : BaseMaterial(baseMaterial)
+    MaterialInstance::MaterialInstance(const std::string& name, const std::shared_ptr<Material>& baseMaterial)
+        : BaseMaterial(baseMaterial), Name(name)
     {
         auto& assetManager = AssetManager::GetInstance();
         Shader = assetManager.Get<IShader>("PBR");

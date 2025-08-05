@@ -9,6 +9,7 @@ namespace Motion
 {
     struct DirectionalLight
     {
+        UUID LightID{ UniqueIdentity::GetUniqueID() };
         glm::vec3 Direction{ 0.0f, -1.0f, 0.0f };
         glm::vec3 Color{ 1.0f, 1.0f, 1.0f };
         float AmbientIntensity{ 1.0f };
@@ -17,41 +18,9 @@ namespace Motion
         ~DirectionalLight() = default;
     };
 
-    struct PhysicsAttributes
-    {
-        bool IsEnabled{ true };
-        glm::vec3 Gravity{ 0.0f, -9.81f, 0.0f };
-        float FixedTimeStep{ 0.016f };
-    };
-
-    class PhysicsWorld
-    {
-    public:
-        PhysicsWorld() = default;
-
-        void SetSettings(const PhysicsAttributes& settings) { m_Settings = settings; }
-        PhysicsAttributes& GetSettings() { return m_Settings; }
-        void Update(std::shared_ptr<Entity> entity, float deltaTime);
-
-    private:
-        void EnvironmentIntegration(TransformComponent& transform, PhysicsBodyComponent& body, float deltaTime);
-
-    private:
-        PhysicsAttributes m_Settings{};
-    };
-
-    enum class SimulationMode
-    {
-        Realtime,
-        ManualStep
-    };
-
     struct SceneEnvironment
     {
         DirectionalLight DirectionalLight{};
-        PhysicsWorld Physics{};
-        SimulationMode SimMode{ SimulationMode::Realtime };
-        bool StepModeEnabled{ false };
     };
 
 }

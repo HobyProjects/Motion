@@ -202,8 +202,7 @@ namespace Motion
         std::shared_ptr<T> Create(const std::string& name, Args&&... args)
         {
             if (Exists(name)) {
-                MOTION_CORE_WARN("Asset '{}' already exists!", name);
-                return Get<T>(name);
+                MOTION_CORE_WARN("Asset with name '{}' already exists!", name);
             }
 
             UUID uuid = UniqueIdentity::GetUniqueID();

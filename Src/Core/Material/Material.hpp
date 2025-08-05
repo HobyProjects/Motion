@@ -59,12 +59,13 @@ namespace Motion
     {
     public:
         MaterialInstance() = default;
-        MaterialInstance(const std::shared_ptr<Material>& baseMaterial);
+        MaterialInstance(const std::string& name, const std::shared_ptr<Material>& baseMaterial);
         virtual ~MaterialInstance() = default;
 
         void Bind();
         void Unbind();
 
+        std::string GetName() const noexcept { return Name; }
         [[nodiscard]] std::int32_t GetTexturesCount() const noexcept { return Texture.size() + (BaseMaterial ? BaseMaterial->Texture.size() : 0); }
 
     public:
@@ -73,6 +74,7 @@ namespace Motion
         MaterialAttributes Attributes{};
 
     private:
+        std::string Name{ "Unnamed Material Instance" };
         std::shared_ptr<IShader> Shader{ nullptr };
         std::shared_ptr<IShaderBuffer> UniformBuffer{ nullptr };
     };

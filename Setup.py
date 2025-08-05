@@ -343,7 +343,8 @@ def main():
         Package("stb_image", "libs/stb_image", "libs/build/config/stb_image", "build/packages/stb_image", ""),
         Package("yaml-cpp", "libs/yaml-cpp", "libs/build/config/yaml-cpp", "build/packages/yaml-cpp", "-DYAML_BUILD_SHARED_LIBS=OFF"),
         Package("fastgltf", "libs/fastgltf", "libs/build/config/fastgltf", "build/packages/fastgltf", "-DFASTGLTF_COMPILE_AS_CPP20=ON -DFASTGLTF_ENABLE_KHR_PHYSICS_RIGID_BODIES=ON -DFASTGLTF_ENABLE_KHR_IMPLICIT_SHAPES=ON"),
-        Package("MikkTSpace", "libs/MikkTSpace", "libs/build/config/MikkTSpace", "build/packages/MikkTSpace", "")
+        Package("MikkTSpace", "libs/MikkTSpace", "libs/build/config/MikkTSpace", "build/packages/MikkTSpace", ""),
+        Package("imguizmo", "libs/imguizmo", "libs/build/config/imguizmo", "build/packages/imguizmo", "")
     ]
 
     parser = argparse.ArgumentParser(description="Motion Engine Build Script")

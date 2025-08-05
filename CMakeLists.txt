@@ -34,6 +34,7 @@ find_package(yaml-cpp CONFIG REQUIRED)
 find_package(stb CONFIG REQUIRED)
 find_package(fastgltf CONFIG REQUIRED)
 find_package(MikkTSpace CONFIG REQUIRED)
+find_package(imguizmo CONFIG REQUIRED)
 
 # ##############################################################################
 # Platform Specific Configuration
@@ -181,6 +182,7 @@ target_link_libraries(
     stb::stb
     fastgltf::fastgltf
     MikkTSpace::MikkTSpace
+    imguizmo::imguizmo
 )
 
 # ##############################################################################

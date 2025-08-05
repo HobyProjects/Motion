@@ -5,6 +5,7 @@ namespace Motion
 {
     static std::shared_ptr<IWindow> s_Window{ nullptr };
     static std::shared_ptr<ImGuiLayer> s_ImGuiLayer{ nullptr };
+    static ImGuizmo::OPERATION s_CurrentOperation = ImGuizmo::TRANSLATE;
 
     SceneEditorLayer::SceneEditorLayer(WindowHandle handle, const std::shared_ptr<ImGuiLayer>& imguiLayer) : Layer("EditorLayer")
     {
@@ -107,6 +108,9 @@ namespace Motion
         }
         ImGui::Image((ImTextureID)m_SceneTextures[m_ActiveScene], viewportPanelSize, { 0, 1 }, { 1, 0 });
 
+        //----------------------------------------------
+        // HANDLING MOUSE PICKING
+        //----------------------------------------------
         ImVec2 windowPos = ImGui::GetWindowPos();
         ImVec2 contentMin = ImGui::GetWindowContentRegionMin();
         ImVec2 contentMax = ImGui::GetWindowContentRegionMax();
@@ -116,9 +120,9 @@ namespace Motion
         ImVec2 mousePos = ImGui::GetMousePos();
 
         bool isHovered = ImGui::IsItemHovered();
-        bool isClicked = ImGui::IsItemClicked();
+        bool isClicked = ImGui::IsItemClicked() && ImGui::IsMouseClicked(ImGuiMouseButton_Left);
 
-        if (isHovered && isClicked)
+        if (isHovered && isClicked && !ImGuizmo::IsUsing())
         {
             // Convert mouse to viewport-local
             glm::vec2 mouseViewport = { mousePos.x - viewportMin.x, mousePos.y - viewportMin.y };
@@ -131,8 +135,56 @@ namespace Motion
                 m_ActiveScene->SetSelectedEntity(picked);
         }
 
+        // ------------------------------------------------------------
+        // HANDLING IMGUIZMO MANIPULATION
+        // ------------------------------------------------------------
+        ImGuizmo::SetOrthographic(false);
+        ImGuizmo::SetDrawlist();
+        ImVec2 viewportPos = ImGui::GetWindowPos();
+        ImGuizmo::SetRect(viewportPos.x, viewportPos.y, viewportPanelSize.x, viewportPanelSize.y);
+
+        glm::mat4 view = m_ActiveScene->GetViewMatrix();
+        glm::mat4 proj = m_ActiveScene->GetProjectionMatrix();
+
+        // Handle CTRL+E to cycle operation
+        if (ImGui::IsKeyDown(ImGuiKey_LeftCtrl) && ImGui::IsKeyPressed(ImGuiKey_E))
+        {
+            if (s_CurrentOperation == ImGuizmo::TRANSLATE)
+                s_CurrentOperation = ImGuizmo::ROTATE;
+            else if (s_CurrentOperation == ImGuizmo::ROTATE)
+                s_CurrentOperation = ImGuizmo::SCALE;
+            else
+                s_CurrentOperation = ImGuizmo::TRANSLATE;
+        }
+
+        // Manipulate selected entity
+        auto selected = m_ActiveScene->GetSelectedEntity();
+        if (selected && selected != EntityFactory::EMPTYENTITY && selected->HasComponent<TransformComponent>())
+        {
+            auto& tc = selected->GetComponent<TransformComponent>();
+            glm::mat4 model = tc.GetTransform();
+
+            float matrix[16];
+            memcpy(matrix, glm::value_ptr(model), sizeof(float) * 16);
+
+            if (ImGuizmo::Manipulate(glm::value_ptr(view), glm::value_ptr(proj), s_CurrentOperation, ImGuizmo::LOCAL, matrix))
+            {
+                glm::vec3 translation, scale;
+                glm::quat rotation;
+
+                glm::vec3 eulerRotation = glm::degrees(glm::eulerAngles(rotation)); // Convert to degrees for user editing
+                ImGuizmo::DecomposeMatrixToComponents(matrix, &translation.x, &eulerRotation.x, &scale.x);
+                rotation = glm::quat(glm::radians(eulerRotation)); // Convert back to quaternion
+
+                tc.Translation = translation;
+                tc.Rotation = rotation;
+                tc.Scale = scale;
+            }
+        }
+
         ImGui::End();
         ImGui::PopStyleVar();
+
 
         // ------------------------------------------------------------
         // DRAWING SCENE ENVIRONMENT SETTINGS

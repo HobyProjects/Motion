@@ -43,6 +43,7 @@ namespace Motion
         void SetActive(bool active) { m_IsActive = active; }
         void SetSelectedEntity(const std::shared_ptr<Entity>& entity) { m_SelectedEntity = entity; }
 
+        std::shared_ptr<Entity> GetSelectedEntity() const { return m_SelectedEntity; }
         std::shared_ptr<Entity> PickEntity(const glm::vec2& mousePos, const glm::vec2& viewportSize);
         glm::mat4 GetViewProjectionMatrix() const { return m_SceneCamera.Camera.MVP; }
         glm::mat4 GetViewMatrix() const { return m_SceneCamera.Camera.View; }

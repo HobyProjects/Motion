@@ -106,6 +106,31 @@ namespace Motion
             m_ViewportHeight = viewportPanelSize.y;
         }
         ImGui::Image((ImTextureID)m_SceneTextures[m_ActiveScene], viewportPanelSize, { 0, 1 }, { 1, 0 });
+
+        ImVec2 windowPos = ImGui::GetWindowPos();
+        ImVec2 contentMin = ImGui::GetWindowContentRegionMin();
+        ImVec2 contentMax = ImGui::GetWindowContentRegionMax();
+
+        ImVec2 viewportMin = ImVec2(windowPos.x + contentMin.x, windowPos.y + contentMin.y);
+        ImVec2 viewportMax = ImVec2(windowPos.x + contentMax.x, windowPos.y + contentMax.y);
+        ImVec2 mousePos = ImGui::GetMousePos();
+
+        bool isHovered = ImGui::IsItemHovered();
+        bool isClicked = ImGui::IsItemClicked();
+
+        if (isHovered && isClicked)
+        {
+            // Convert mouse to viewport-local
+            glm::vec2 mouseViewport = { mousePos.x - viewportMin.x, mousePos.y - viewportMin.y };
+            // Flip Y if needed based on how your framebuffer is displayed
+            mouseViewport.y = m_ViewportHeight - mouseViewport.y;
+
+            // Call the scene picking
+            auto picked = m_ActiveScene->PickEntity(mouseViewport, glm::vec2(m_ViewportWidth, m_ViewportHeight));
+            if (picked)
+                m_ActiveScene->SetSelectedEntity(picked);
+        }
+
         ImGui::End();
         ImGui::PopStyleVar();
 

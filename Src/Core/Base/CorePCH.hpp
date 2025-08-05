@@ -50,6 +50,7 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtx/vector_angle.hpp>
 #include <glm/gtx/string_cast.hpp>
+#include <glm/gtx/intersect.hpp>
 
 #include <imgui/imgui.h>
 #include <imgui/imgui_impl_opengl3.h>
@@ -74,6 +75,9 @@
 
 //Material
 #include "Material.hpp"
+
+//Maths
+#include "Intersect.hpp"
 
 //Events
 #include "Event.hpp"

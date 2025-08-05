@@ -115,6 +115,7 @@ namespace Motion
                 bindTexture(UniformCache::RoughnessTextures, currentMaterial);
                 bindTexture(UniformCache::AmbientOcclusionTextures, currentMaterial);
                 bindTexture(UniformCache::NormalTextures, currentMaterial);
+                bindTexture(UniformCache::DisplacementTextures, currentMaterial);
 
                 currentMaterial->Bind();
             }

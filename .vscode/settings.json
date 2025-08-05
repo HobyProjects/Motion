@@ -169,6 +169,7 @@
     "editor.detectIndentation": false,
     "terminal.integrated.defaultProfile.windows": "PowerShell",
     "cSpell.words": [
+        "AABB",
         "Aniso",
         "Assimp",
         "attrf",

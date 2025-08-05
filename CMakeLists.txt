@@ -55,6 +55,7 @@ set(
     ${MOTION_CORE_DIR}/ECS
     ${MOTION_CORE_DIR}/Material
     ${MOTION_CORE_DIR}/Model
+    ${MOTION_CORE_DIR}/Maths
     ${MOTION_CORE_DIR}/Assets
     ${MOTION_CORE_DIR}/Layer
     ${MOTION_CORE_DIR}/Platform
@@ -100,6 +101,7 @@ set(
     ${MOTION_CORE_DIR}/Model/Importer.hpp
 
     ${MOTION_CORE_DIR}/Material/Material.hpp
+    ${MOTION_CORE_DIR}/Maths/Intersect.hpp
 
     ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL/GL_Buffers.hpp
     ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL/GL_Debug.hpp

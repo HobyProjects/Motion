@@ -19,11 +19,33 @@ uniform mat4 u_ViewMatrix;
 uniform mat4 u_ProjectionMatrix;
 uniform mat3 u_NormalMatrix;
 
+// Displacement Mapping
+uniform sampler2D u_DisplacementTextures;
+
+struct MaterialAttributes {
+    vec3 BaseColor;
+    float Metallic;
+    float Roughness;
+    float AmbientOcclusion;
+    float Opacity;
+    float DisplacementScale;
+    float PADDING1;
+    float PADDING2;
+};
+
+layout(std430, binding = 0) buffer MaterialData {
+    MaterialAttributes attributes;
+};
+
 void main()
 {
     v_UV = a_TexCoords;
-    v_WorldPosition = vec3(u_ModelMatrix * vec4(a_Position, 1.0));
-    
+
+    // Displacement mapping: Sample the displacement texture and offset the vertex position
+    float displacement = texture(u_DisplacementTextures, a_TexCoords).r * attributes.DisplacementScale;
+    vec3 displacedPosition = a_Position + a_Normals * displacement;
+
+    v_WorldPosition = vec3(u_ModelMatrix * vec4(displacedPosition, 1.0));
     v_Normal = u_NormalMatrix * a_Normals;
     v_Tangent = u_NormalMatrix * a_Tangents;
     v_TangentSign = a_TangentSign;
@@ -48,6 +70,8 @@ uniform sampler2D u_MetallicTextures;
 uniform sampler2D u_RoughnessTextures;
 uniform sampler2D u_AmbientOcclusionTextures;
 uniform sampler2D u_NormalTextures;
+// Added for completeness, but not used in fragment shader directly
+uniform sampler2D u_DisplacementTextures;
 
 // IBL
 uniform samplerCube u_IrradianceTextures;
@@ -102,7 +126,7 @@ float DistributionGGX(vec3 N, vec3 H, float roughness)
 {
     float a = roughness * roughness;
     float a2 = a * a;
-    float NdotH = max(max(dot(N, H), 0.0), 0.0);
+    float NdotH = max(dot(N, H), 0.0);
     float NdotH2 = NdotH * NdotH;
 
     float denom = (NdotH2 * (a2 - 1.0) + 1.0);
@@ -133,7 +157,6 @@ void main()
     vec3 albedo    = pow(texture(u_BaseColorTextures, v_UV).rgb, vec3(2.2)) * attributes.BaseColor;
     float metallic = texture(u_MetallicTextures, v_UV).r * attributes.Metallic;
     float roughness = texture(u_RoughnessTextures, v_UV).r * attributes.Roughness;
-    
     roughness = clamp(roughness, 0.04, 1.0);
     float ao       = texture(u_AmbientOcclusionTextures, v_UV).r * attributes.AmbientOcclusion;
 
@@ -153,14 +176,15 @@ void main()
     float NDF = DistributionGGX(N, H, roughness);
     float G = GeometrySmith(N, V, L, roughness);
     F0 = mix(vec3(0.04), albedo, metallic);
-    vec3 F = FresnelSchlick(max(max(dot(H, V), 0.0), 0.0), F0);
+    vec3 F = FresnelSchlick(max(dot(H, V), 0.0), F0);
 
-    vec3 specularDirect = (NDF * G * F) / (4.0 * max(max(dot(N, V), 0.0), 0.0) * max(max(dot(N, L), 0.0), 0.0) + 0.001);
+    vec3 specularDirect = (NDF * G * F) /
+        (4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 0.001);
 
     vec3 kS = F;
     vec3 kD = (1.0 - kS) * (1.0 - metallic);
 
-    float NdotL = max(max(dot(N, L), 0.0), 0.0);
+    float NdotL = max(dot(N, L), 0.0);
     vec3 directLighting = (kD * albedo / PI + specularDirect) * radiance * NdotL;
 
     // IBL Ambient
@@ -169,7 +193,7 @@ void main()
 
     const float MAX_REFLECTION_LOD = 4.0;
     vec3 prefiltered = textureLod(u_PrefilteredTextures, R, roughness * MAX_REFLECTION_LOD).rgb;
-    vec2 brdf = texture(u_BRDFLUT, vec2(max(max(dot(N, V), 0.0), 0.0), roughness)).rg;
+    vec2 brdf = texture(u_BRDFLUT, vec2(max(dot(N, V), 0.0), roughness)).rg;
     vec3 specularIBL = prefiltered * (F * brdf.x + brdf.y);
 
     vec3 ambient = (kD * diffuse + specularIBL) * ao;

@@ -660,6 +660,8 @@ namespace Motion
                 {
                     auto& assetManager = AssetManager::GetInstance();
                     auto staticMesh = assetManager.Create<StaticMesh>(modelName, finalOutputPath);
+                    staticMesh->m_MaxBounds = importedModel.BoundsMax;
+                    staticMesh->m_MinBounds = importedModel.BoundsMin;
 
                     for (auto& [meshID, mesh] : importedModel.Meshes)
                     {

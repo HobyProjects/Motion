@@ -32,6 +32,8 @@ namespace Motion
         virtual ~StaticMesh() = default;
 
         [[nodiscard]] std::size_t GetMeshesCount() const noexcept { return m_Meshes.size(); }
+        [[nodiscard]] const glm::vec3& GetMinBounds() const noexcept { return m_MinBounds; }
+        [[nodiscard]] const glm::vec3& GetMaxBounds() const noexcept { return m_MaxBounds; }
 
         std::vector<MeshSegment>::iterator begin() { return m_Meshes.begin(); }
         std::vector<MeshSegment>::iterator end() { return m_Meshes.end(); }
@@ -44,6 +46,8 @@ namespace Motion
 
     private:
         std::vector<MeshSegment> m_Meshes;
+        glm::vec3 m_MinBounds{ FLT_MAX, FLT_MAX, FLT_MAX };
+        glm::vec3 m_MaxBounds{ -FLT_MAX, -FLT_MAX, -FLT_MAX };
         friend class Importer;
     };
 

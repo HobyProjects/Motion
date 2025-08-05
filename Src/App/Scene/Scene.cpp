@@ -35,6 +35,59 @@ namespace Motion
         m_SceneCamera.SetAspectRatio(width, height);
     }
 
+    std::shared_ptr<Entity> Scene::PickEntity(const glm::vec2& mousePos, const glm::vec2& viewportSize)
+    {
+        const glm::mat4& projection = GetProjectionMatrix();
+        const glm::mat4& view = GetViewMatrix();
+
+        float x = (2.0f * mousePos.x) / viewportSize.x - 1.0f;
+        float y = 1.0f - (2.0f * mousePos.y) / viewportSize.y; // GL Y is inverted
+
+        glm::vec4 rayStartNDC(x, y, -1.0f, 1.0f);
+        glm::vec4 rayEndNDC(x, y, 1.0f, 1.0f);
+
+        glm::mat4 invVP = glm::inverse(projection * view);
+        glm::vec4 rayStartWorld = invVP * rayStartNDC; rayStartWorld /= rayStartWorld.w;
+        glm::vec4 rayEndWorld = invVP * rayEndNDC;   rayEndWorld /= rayEndWorld.w;
+
+        glm::vec3 rayOrigin = glm::vec3(rayStartWorld);
+        glm::vec3 rayDir = glm::normalize(glm::vec3(rayEndWorld - rayStartWorld));
+
+        // 2. Find closest entity hit by ray
+        float closestT = FLT_MAX;
+        std::shared_ptr<Entity> pickedEntity = nullptr;
+
+        for (const auto& entity : m_Entities)
+        {
+            if (!entity->HasComponent<StaticMeshComponent>() || !entity->HasComponent<TransformComponent>())
+                continue;
+
+            auto& meshComp = entity->GetComponent<StaticMeshComponent>();
+            auto& transComp = entity->GetComponent<TransformComponent>();
+
+            glm::vec3 meshMin = meshComp.Model->GetMinBounds(); // local-space min
+            glm::vec3 meshMax = meshComp.Model->GetMaxBounds(); // local-space max
+
+            // Translation only (no scale/rotation):
+            glm::vec3 boxMin = meshMin + transComp.Translation;
+            glm::vec3 boxMax = meshMax + transComp.Translation;
+
+            float tmin, tmax;
+            if (RayIntersectsAABB(rayOrigin, rayDir, boxMin, boxMax, tmin, tmax))
+            {
+                float hitDist = (tmin > 0.0f) ? tmin : tmax; // If tmin behind, try tmax
+                if (hitDist < closestT && hitDist > 0.0f)
+                {
+                    closestT = hitDist;
+                    pickedEntity = entity;
+                }
+            }
+
+        }
+
+        return pickedEntity;
+    }
+
     void Scene::RenderEntities(WindowHandle handle)
     {
         ImGui::Begin("Scene Entities");

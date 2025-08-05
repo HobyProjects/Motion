@@ -29,3 +29,10 @@
 [submodule "libs/MikkTSpace/MikkTSpace"]
 	path = libs/MikkTSpace/MikkTSpace
 	url = https://github.com/mmikk/MikkTSpace.git
+[submodule "libs/imguizmo/ImGuizmo"]
+	path = libs/imguizmo/ImGuizmo
+	url = https://github.com/CedricGuillemet/ImGuizmo.git
+[submodule "libs/imguizmo/imgui"]
+	path = libs/imguizmo/imgui
+	url = https://github.com/ocornut/imgui.git
+	branch = docking

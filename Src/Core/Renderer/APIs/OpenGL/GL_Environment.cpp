@@ -3,6 +3,11 @@
 
 namespace Motion
 {
+    constexpr std::int32_t ENVIRONMENT_CUBE_SIZE = 2048;
+    constexpr std::int32_t ENVIRONMENT_IRRADIANCE_SIZE = 32;
+    constexpr std::int32_t ENVIRONMENT_PREFILTERED_SIZE = 128;
+    constexpr std::int32_t ENVIRONMENT_BRDF_LUT_SIZE = 512;
+
     // RenderQuad() renders a 1x1 XY quad in NDC
     // -----------------------------------------
     static std::uint32_t s_QuadVAO = 0;
@@ -36,6 +41,7 @@ namespace Motion
         glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
         glBindVertexArray(0);
     }
+
 
     // RenderCube() renders a 1x1 3D cube in NDC.
     // -------------------------------------------------
@@ -119,6 +125,7 @@ namespace Motion
         glBindVertexArray(0);
     }
 
+
     GL_Environment::GL_Environment(const std::filesystem::path& hdrFile)
     {
         auto& assetManager = AssetManager::GetInstance();
@@ -141,7 +148,7 @@ namespace Motion
 
         glBindFramebuffer(GL_FRAMEBUFFER, m_FrameBufferID);
         glBindRenderbuffer(GL_RENDERBUFFER, m_RenderBufferID);
-        glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, 512, 512);
+        glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, ENVIRONMENT_CUBE_SIZE, ENVIRONMENT_CUBE_SIZE);
         glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, m_RenderBufferID);
 
         // PBR: load the HDR environment map
@@ -155,14 +162,14 @@ namespace Motion
 
         stbi_set_flip_vertically_on_load(true);
         std::int32_t width, height, nrComponents;
-        float* data = stbi_loadf(hdrFile.string().c_str(), &width, &height, &nrComponents, 0);
+        float* data = stbi_loadf(hdrFile.string().c_str(), &width, &height, &nrComponents, 4);
         std::uint32_t hdrTexture;
 
         if (data)
         {
             glGenTextures(1, &hdrTexture);
             glBindTexture(GL_TEXTURE_2D, hdrTexture);
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, width, height, 0, GL_RGB, GL_FLOAT, data);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_FLOAT, data);
 
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
@@ -188,7 +195,7 @@ namespace Motion
         glBindTexture(GL_TEXTURE_CUBE_MAP, m_EnvironmentCubeTextureID);
         for (std::uint32_t i = 0; i < 6; ++i)
         {
-            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB16F, 512, 512, 0, GL_RGB, GL_FLOAT, nullptr);
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGBA16F, ENVIRONMENT_CUBE_SIZE, ENVIRONMENT_CUBE_SIZE, 0, GL_RGBA, GL_FLOAT, nullptr);
         }
         glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
@@ -219,7 +226,7 @@ namespace Motion
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, hdrTexture);
 
-        glViewport(0, 0, 512, 512); // don't forget to configure the viewport to the capture dimensions.
+        glViewport(0, 0, ENVIRONMENT_CUBE_SIZE, ENVIRONMENT_CUBE_SIZE); // don't forget to configure the viewport to the capture dimensions.
         glBindFramebuffer(GL_FRAMEBUFFER, m_FrameBufferID);
         for (std::uint32_t i = 0; i < 6; ++i)
         {
@@ -242,7 +249,7 @@ namespace Motion
         glBindTexture(GL_TEXTURE_CUBE_MAP, m_IrradianceTextureID);
         for (std::uint32_t i = 0; i < 6; ++i)
         {
-            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB16F, 32, 32, 0, GL_RGB, GL_FLOAT, nullptr);
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGBA16F, ENVIRONMENT_IRRADIANCE_SIZE, ENVIRONMENT_IRRADIANCE_SIZE, 0, GL_RGBA, GL_FLOAT, nullptr);
         }
         glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
@@ -252,7 +259,7 @@ namespace Motion
 
         glBindFramebuffer(GL_FRAMEBUFFER, m_FrameBufferID);
         glBindRenderbuffer(GL_RENDERBUFFER, m_RenderBufferID);
-        glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, 32, 32);
+        glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, ENVIRONMENT_IRRADIANCE_SIZE, ENVIRONMENT_IRRADIANCE_SIZE);
 
 
 
@@ -263,7 +270,7 @@ namespace Motion
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_CUBE_MAP, m_EnvironmentCubeTextureID);
 
-        glViewport(0, 0, 32, 32); // don't forget to configure the viewport to the capture dimensions.
+        glViewport(0, 0, ENVIRONMENT_IRRADIANCE_SIZE, ENVIRONMENT_IRRADIANCE_SIZE); // don't forget to configure the viewport to the capture dimensions.
         glBindFramebuffer(GL_FRAMEBUFFER, m_FrameBufferID);
         for (std::uint32_t i = 0; i < 6; ++i)
         {
@@ -283,7 +290,7 @@ namespace Motion
         glBindTexture(GL_TEXTURE_CUBE_MAP, m_PrefilteredTextureID);
         for (std::uint32_t i = 0; i < 6; ++i)
         {
-            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB16F, 128, 128, 0, GL_RGB, GL_FLOAT, nullptr);
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGBA16F, ENVIRONMENT_PREFILTERED_SIZE, ENVIRONMENT_PREFILTERED_SIZE, 0, GL_RGBA, GL_FLOAT, nullptr);
         }
         glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
@@ -319,8 +326,8 @@ namespace Motion
             {
                 m_PrefilteredShader->SetUniform(UniformCache::ViewMatrix, captureViews[i]);
                 glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, m_PrefilteredTextureID, mip);
-
                 glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
                 RenderCube();
             }
         }
@@ -333,7 +340,7 @@ namespace Motion
 
         // pre-allocate enough memory for the LUT texture.
         glBindTexture(GL_TEXTURE_2D, m_BRDFLUTTextureID);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RG16F, 512, 512, 0, GL_RG, GL_FLOAT, 0);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RG16F, ENVIRONMENT_BRDF_LUT_SIZE, ENVIRONMENT_BRDF_LUT_SIZE, 0, GL_RG, GL_FLOAT, 0);
         // be sure to set wrapping mode to GL_CLAMP_TO_EDGE
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
@@ -343,10 +350,10 @@ namespace Motion
         // then re-configure capture framebuffer object and render screen-space quad with BRDF shader.
         glBindFramebuffer(GL_FRAMEBUFFER, m_FrameBufferID);
         glBindRenderbuffer(GL_RENDERBUFFER, m_RenderBufferID);
-        glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, 512, 512);
+        glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, ENVIRONMENT_BRDF_LUT_SIZE, ENVIRONMENT_BRDF_LUT_SIZE);
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_BRDFLUTTextureID, 0);
 
-        glViewport(0, 0, 512, 512);
+        glViewport(0, 0, ENVIRONMENT_BRDF_LUT_SIZE, ENVIRONMENT_BRDF_LUT_SIZE);
         m_BRDFShader->Bind();
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         RenderQuad();
@@ -374,6 +381,16 @@ namespace Motion
 
         if (m_BRDFLUTTextureID)
             glDeleteTextures(1, &m_BRDFLUTTextureID);
+
+
+        if (s_QuadVAO)
+            glDeleteVertexArrays(1, &s_QuadVAO);
+        if (s_QuadVBO)
+            glDeleteBuffers(1, &s_QuadVBO);
+        if (s_CubeVAO)
+            glDeleteVertexArrays(1, &s_CubeVAO);
+        if (s_CubeVBO)
+            glDeleteBuffers(1, &s_CubeVBO);
     }
 
     void GL_Environment::Render(glm::mat4 viewMatrix, glm::mat4 projectionMatrix) noexcept

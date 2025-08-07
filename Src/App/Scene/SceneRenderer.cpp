@@ -43,9 +43,42 @@ namespace Motion
         StandardMaterialInstance* currentSTDMaterial = nullptr;
         Mesh* currentMesh = nullptr;
 
-
         std::int32_t TextureBindingPoint = 0;
         const std::int32_t MAX_TEXTURE_SLOTS = Renderer::GetMaxTextureSlots();
+
+
+        auto bindTexture =
+            [&](const SceneDrawCommand& command, const std::string_view& uniformName, TextureType textureType)
+            {
+                if (command.ShadingMethod == ShadingMethod::PhysicalBased)
+                {
+                    if (currentPBRMaterial->Texture[textureType])
+                    {
+                        currentPBRMaterial->Texture[textureType]->Bind(TextureBindingPoint);
+                        currentShader->SetUniform(uniformName, TextureBindingPoint++);
+                    }
+                    else
+                    {
+                        currentPBRMaterial->BaseMaterial->Texture[textureType]->Bind(TextureBindingPoint);
+                        currentShader->SetUniform(uniformName, TextureBindingPoint++);
+                    }
+                }
+                else
+                {
+                    if (currentSTDMaterial->Texture[textureType])
+                    {
+                        currentSTDMaterial->Texture[textureType]->Bind(TextureBindingPoint);
+                        currentShader->SetUniform(uniformName, TextureBindingPoint++);
+                    }
+                    else
+                    {
+                        currentSTDMaterial->BaseMaterial->Texture[textureType]->Bind(TextureBindingPoint);
+                        currentShader->SetUniform(uniformName, TextureBindingPoint++);
+                    }
+                }
+            };
+
+
 
         for (const auto& command : s_CommandQueue)
         {
@@ -133,50 +166,17 @@ namespace Motion
                 else
                     currentSTDMaterial = STD_MATERIAL;
 
-                auto bindTexture =
-                    [&](const std::string_view& uniformName, TextureType textureType)
-                    {
-                        if (command.ShadingMethod == ShadingMethod::PhysicalBased)
-                        {
-                            if (currentPBRMaterial->Texture[textureType])
-                            {
-                                currentPBRMaterial->Texture[textureType]->Bind(TextureBindingPoint);
-                                currentShader->SetUniform(uniformName, TextureBindingPoint++);
-                            }
-                            else
-                            {
-                                currentPBRMaterial->BaseMaterial->Texture[textureType]->Bind(TextureBindingPoint);
-                                currentShader->SetUniform(uniformName, TextureBindingPoint++);
-                            }
-                        }
-                        else
-                        {
-                            if (currentSTDMaterial->Texture[textureType])
-                            {
-                                currentSTDMaterial->Texture[textureType]->Bind(TextureBindingPoint);
-                                currentShader->SetUniform(uniformName, TextureBindingPoint++);
-                            }
-                            else
-                            {
-                                currentSTDMaterial->BaseMaterial->Texture[textureType]->Bind(TextureBindingPoint);
-                                currentShader->SetUniform(uniformName, TextureBindingPoint++);
-                            }
-                        }
-                    };
-
-
-
                 if (command.ShadingMethod == ShadingMethod::PhysicalBased)
                 {
                     if (currentPBRMaterial)
                     {
                         currentPBRMaterial->UploadAttributes();
-                        bindTexture(UniformCache::PBR_BaseColorTextures, TextureType::BaseColorTexture);
-                        bindTexture(UniformCache::PBR_MetallicTextures, TextureType::MetallicTexture);
-                        bindTexture(UniformCache::PBR_RoughnessTextures, TextureType::RoughnessTexture);
-                        bindTexture(UniformCache::PBR_AmbientOcclusionTextures, TextureType::AmbientOcclusionTexture);
-                        bindTexture(UniformCache::PBR_NormalTextures, TextureType::NormalTexture);
-                        bindTexture(UniformCache::PBR_DisplacementTextures, TextureType::DisplacementTexture);
+                        bindTexture(command, UniformCache::PBR_BaseColorTextures, TextureType::BaseColorTexture);
+                        bindTexture(command, UniformCache::PBR_MetallicTextures, TextureType::MetallicTexture);
+                        bindTexture(command, UniformCache::PBR_RoughnessTextures, TextureType::RoughnessTexture);
+                        bindTexture(command, UniformCache::PBR_AmbientOcclusionTextures, TextureType::AmbientOcclusionTexture);
+                        bindTexture(command, UniformCache::PBR_NormalTextures, TextureType::NormalTexture);
+                        bindTexture(command, UniformCache::PBR_DisplacementTextures, TextureType::DisplacementTexture);
                     }
                 }
                 else
@@ -184,10 +184,10 @@ namespace Motion
                     if (currentSTDMaterial)
                     {
                         currentSTDMaterial->UploadAttributes();
-                        bindTexture(UniformCache::STD_DiffuseTexture, TextureType::DiffuseTexture);
-                        bindTexture(UniformCache::STD_SpecularTexture, TextureType::SpecularTexture);
-                        bindTexture(UniformCache::STD_EmissiveTexture, TextureType::EmissiveTexture);
-                        bindTexture(UniformCache::STD_OpacityTexture, TextureType::OpacityTexture);
+                        bindTexture(command, UniformCache::STD_DiffuseTexture, TextureType::DiffuseTexture);
+                        bindTexture(command, UniformCache::STD_SpecularTexture, TextureType::SpecularTexture);
+                        bindTexture(command, UniformCache::STD_EmissiveTexture, TextureType::EmissiveTexture);
+                        bindTexture(command, UniformCache::STD_OpacityTexture, TextureType::OpacityTexture);
                     }
                 }
             }

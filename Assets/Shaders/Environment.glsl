@@ -24,6 +24,6 @@ uniform samplerCube u_EnvironmentTexture;
 
 void main()
 {
-    vec3 envColor = texture(u_EnvironmentTexture, normalize(v_WorldPosition)).rgb;
+    vec3 envColor = textureLod(u_EnvironmentTexture, normalize(v_WorldPosition), 0.0).rgb;
     FragColor = vec4(envColor, 1.0);
 }

@@ -31,10 +31,6 @@ namespace Motion
 
 
 
-
-
-
-
         m_Viewport.FrameSpec.Name = "SceneEditorFrame";
         m_Viewport.FrameSpec.Width = static_cast<uint32_t>(m_ViewportWidth);
         m_Viewport.FrameSpec.Height = static_cast<uint32_t>(m_ViewportHeight);

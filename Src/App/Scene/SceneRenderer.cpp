@@ -150,10 +150,13 @@ namespace Motion
                 currentShader->SetUniform(UniformCache::NormalMatrix, command.NormalMatrix);
 
                 currentShader->SetUniform(UniformCache::CameraPosition, command.CameraPosition);
-                currentShader->SetUniform(UniformCache::LightPosition, command.LightPosition);
-                currentShader->SetUniform(UniformCache::LightColor, command.LightColor);
-                currentShader->SetUniform(UniformCache::LightIntensity, command.LightIntensity);
 
+                for (std::int32_t i = 0; i < DirectionalLight::LIGHT_COUNT; ++i)
+                {
+                    currentShader->SetUniform(std::format("u_LightPosition[{}]", i), command.LightPosition[i]);
+                    currentShader->SetUniform(std::format("u_LightColor[{}]", i), command.LightColor[i]);
+                    currentShader->SetUniform(std::format("u_LightIntensity[{}]", i), command.LightIntensity[i]);
+                }
             }
 
             if (currentPBRMaterial != PBR_MATERIAL || currentSTDMaterial != STD_MATERIAL)
@@ -263,9 +266,9 @@ namespace Motion
                     command.ProjectionMatrix = camera.Projection;
                     command.NormalMatrix = glm::mat3(glm::transpose(glm::inverse(glm::mat3(command.ModelMatrix))));
                     command.CameraPosition = camera.Position;
-                    command.LightPosition = env.DirectionalLight.Direction;
-                    command.LightColor = env.DirectionalLight.Color;
-                    command.LightIntensity = env.DirectionalLight.AmbientIntensity;
+                    command.LightPosition = env.DirectionalLight.LightPosition;
+                    command.LightColor = env.DirectionalLight.LightColor;
+                    command.LightIntensity = env.DirectionalLight.LightIntensity;
 
                     command.IrradianceTexture = environment->GetIrradianceTexture();
                     command.PrefilteredTexture = environment->GetPrefilteredTexture();

@@ -286,125 +286,6 @@ namespace Motion
         return static_cast<std::int32_t>(std::hash<std::string>{}(label));
     }
 
-    /**
-     * @brief Custom control for dragging and reseting a glm::vec3.
-     *
-     * @details This function creates a custom control for dragging and reseting a glm::vec3. It is a table with 4 columns.
-     * The first column is the label of the control, the second column is the reset button, the third column is the X axis, the fourth column is the Y axis, and the fifth column is the Z axis.
-     * The reset button is colored according to the axis it is associated with and will reset the respective axis to the specified reset value when clicked.
-     * The axis drag controls are also colored according to the axis they are associated with. They will update the respective axis of the glm::vec3 when dragged.
-     * The drag controls are also width-limited and will not expand beyond the specified width.
-     *
-     * @param label The label of the custom control.
-     * @param values The glm::vec3 to be edited.
-     * @param resetValue The value to which the glm::vec3 should be reset when the reset button is clicked.
-     */
-    void CustomUIControl::DragControllerVec3(const char* label, glm::vec3& values, float resetValue)
-    {
-        ImGui::PushID(GetPID(label));
-        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, { 0.0f, 0.0f });
-        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, { 0.0f, 0.0f });
-        ImGuiTabBarFlags flags = ImGuiTableFlags_NoHostExtendX | ImGuiTableFlags_NoPadInnerX | ImGuiTableFlags_SizingFixedFit;
-        ImGui::BeginTable("vec3Dragfloats", 4, flags);
-
-        // Set up columns
-        ImGui::TableSetupColumn("0", ImGuiTableColumnFlags_WidthFixed, 100.0f); // Fixed width column
-        ImGui::TableSetupColumn("1", ImGuiTableColumnFlags_NoHeaderWidth);
-        ImGui::TableSetupColumn("2", ImGuiTableColumnFlags_NoHeaderWidth);
-        ImGui::TableSetupColumn("3", ImGuiTableColumnFlags_NoHeaderWidth);
-
-        float buffer[3] = { values.x, values.y, values.z };
-        const char* component[] = { "X", "Y", "Z" };
-
-        ImGui::PushStyleVar(ImGuiTableColumnFlags_WidthFixed, 100.0f);
-        ImGui::TableNextColumn();
-        ImGui::TableSetColumnIndex(0);
-        ImGui::Text(label);
-        ImGui::PopStyleVar();
-
-        for (uint32_t i = 0; i < 3; i++)
-        {
-            switch (i)
-            {
-            case 0:
-            {
-                ImGui::TableNextColumn();
-                ImGui::TableSetColumnIndex(1);
-                ImGui::PushStyleColor(ImGuiCol_Button, { 0.8f, 0.1f, 0.15f, 1.0f });
-                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, { 0.9f, 0.2f, 0.2f,  1.0f });
-                ImGui::PushStyleColor(ImGuiCol_ButtonActive, { 0.8f, 0.1f, 0.15f, 1.0f });
-                if (ImGui::Button(component[0], { 25.0f, 28.0f }))
-                {
-                    values[0] = resetValue;
-                }
-                ImGui::PopStyleColor(3);
-                ImGui::SameLine();
-                ImGui::SetNextItemWidth(80.0f);
-                ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, { 0.0f, 5.0f });
-                if (ImGui::DragFloat("##X", &buffer[0], 0.1f))
-                {
-                    values[0] = buffer[0];
-                }
-                ImGui::PopStyleVar();
-                break;
-            }
-            case 1:
-            {
-                ImGui::TableNextColumn();
-                ImGui::TableSetColumnIndex(2);
-                ImGui::PushStyleColor(ImGuiCol_Button, { 0.2f, 0.7f, 0.3f, 1.0f });
-                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, { 0.3f, 0.8f, 0.4f, 1.0f });
-                ImGui::PushStyleColor(ImGuiCol_ButtonActive, { 0.2f, 0.7f, 0.3f, 1.0f });
-                if (ImGui::Button(component[1], { 25.0f, 28.0f }))
-                {
-                    values[1] = resetValue;
-                }
-                ImGui::PopStyleColor(3);
-                ImGui::SameLine();
-                ImGui::SetNextItemWidth(80.0f);
-                ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, { 0.0f, 5.0f });
-                if (ImGui::DragFloat("##Y", &buffer[1], 0.1f))
-                {
-                    values[1] = buffer[1];
-                }
-                ImGui::PopStyleVar();
-                break;
-            }
-            case 2:
-            {
-                ImGui::TableNextColumn();
-                ImGui::TableSetColumnIndex(3);
-                ImGui::PushStyleColor(ImGuiCol_Button, { 0.1f,  0.25f, 0.8f, 1.0f });
-                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, { 0.2f,  0.35f, 0.2f, 1.0f });
-                ImGui::PushStyleColor(ImGuiCol_ButtonActive, { 0.15f, 0.25f, 0.8f, 1.0f });
-                if (ImGui::Button(component[2], { 25.0f, 28.0f }))
-                {
-                    values[2] = resetValue;
-                }
-
-                ImGui::PopStyleColor(3);
-                ImGui::SameLine();
-                ImGui::SetNextItemWidth(80.0f);
-                ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, { 0.0f, 5.0f });
-                if (ImGui::DragFloat("##Z", &buffer[2], 0.1f))
-                {
-                    values[2] = buffer[2];
-                }
-                ImGui::PopStyleVar();
-                break;
-            }
-            default:
-            {
-                break;
-            }
-            };
-        }
-
-        ImGui::EndTable();
-        ImGui::PopStyleVar(2);
-        ImGui::PopID();
-    }
-
     bool CustomUIControl::DrawFloat3(const char* label, glm::vec3& values, float resetValue, float columnWidth)
     {
         bool changed = false;
@@ -535,14 +416,14 @@ namespace Motion
         return changed;
     }
 
-    bool CustomUIControl::TextBox(const char* label, std::string& textValue, bool isReadOnly, size_t maxLen)
+    bool CustomUIControl::TextBox(const char* label, std::string& textValue, bool isReadOnly, size_t maxLen, float columnWidth)
     {
         bool changed = false;
         ImGui::PushID(std::format("{}##{}", label, textValue.size() + GetPID(label)).c_str());
 
         ImGui::Columns(2, nullptr, false);
-        ImGui::SetColumnWidth(0, 110.0f);
-        ImGui::TextUnformatted(label);
+        ImGui::SetColumnWidth(0, columnWidth);
+        ImGui::Text(label);
         ImGui::NextColumn();
 
         ImGui::BeginGroup();
@@ -683,7 +564,6 @@ namespace Motion
         ImGui::PopID();
     }
 
-    // A modern styled combo box with label on the left and custom width
     bool CustomUIControl::ComboBox(const char* label, int& currentItem, const std::vector<std::string>& items, float labelWidth, float comboWidth)
     {
         bool changed = false;
@@ -712,25 +592,12 @@ namespace Motion
         return changed;
     }
 
-
-
-
-    /**
-     * @brief Displays a draggable UI control for editing a quaternion as Euler angles.
-     *
-     * This function presents a UI control that allows the user to manipulate a quaternion (`glm::quat`)
-     * by editing its Euler angles in degrees. The quaternion is converted to Euler angles for display and editing,
-     * and then converted back to a quaternion after user interaction.
-     *
-     * @param label The label to display for the UI control.
-     * @param values Reference to the quaternion to be edited.
-     * @param resetValue The value to reset the Euler angles to when requested.
-     */
-    void Motion::CustomUIControl::DrawFloat3(const char* label, glm::quat& values, float resetValue, float columnWidth)
+    bool Motion::CustomUIControl::DrawFloat3(const char* label, glm::quat& values, float resetValue, float columnWidth)
     {
         glm::vec3 euler = glm::degrees(glm::eulerAngles(values)); // Convert to degrees for user editing
-        DrawFloat3(label, euler, resetValue, columnWidth);
+        bool changed = DrawFloat3(label, euler, resetValue, columnWidth);
         values = glm::quat(glm::radians(euler)); // Convert back to quaternion
+        return changed;
     }
 }
 

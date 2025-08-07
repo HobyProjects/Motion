@@ -9,7 +9,7 @@ namespace Motion
         Camera.ViewportWidth = viewportWidth;
         Camera.ViewportHeight = viewportHeight;
         Camera.RotationEnabled = rotationEnabled;
-        Camera.Position = glm::vec3(0.0f, 0.0f, 0.0f);
+        Camera.Position = glm::vec3(0.0f, 0.0f, 50.0f);
         Camera.RefreshCameraMatrix();
     }
 

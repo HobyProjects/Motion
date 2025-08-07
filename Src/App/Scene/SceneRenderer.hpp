@@ -28,9 +28,9 @@ namespace Motion
         glm::mat3 NormalMatrix{ 1.0f };
 
         glm::vec3 CameraPosition{ 0.0f, 0.0f, 0.0f };
-        glm::vec3 LightPosition{ 0.0f, 0.0f, 0.0f };
-        glm::vec3 LightColor{ 1.0f, 1.0f, 1.0f };
-        float LightIntensity{ 1.0f };
+        glm::vec3* LightPosition{ nullptr };
+        glm::vec3* LightColor{ nullptr };
+        float* LightIntensity{ nullptr };
 
         ShadingMethod ShadingMethod{ ShadingMethod::Standard };
 

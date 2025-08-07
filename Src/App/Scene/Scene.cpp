@@ -28,6 +28,28 @@ namespace Motion
         return nullptr; // Return null if no file was selected
     }
 
+    template<typename T, typename UIFunc>
+    static void DrawComponentControls(const std::string& name, const std::shared_ptr<Entity>& entity, UIFunc uiFunc, bool enabled = true)
+    {
+        static const ImGuiTreeNodeFlags treeNodeFlags =
+            ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_AllowItemOverlap | ImGuiTreeNodeFlags_FramePadding;
+
+        if (entity->HasComponent<T>())
+        {
+            auto& component = entity->GetComponent<T>();
+            if (ImGui::TreeNodeEx((void*)component.ID, treeNodeFlags, name.c_str()))
+            {
+                if (!enabled) ImGui::BeginDisabled();
+
+                uiFunc(component);
+
+                if (!enabled) ImGui::EndDisabled();
+                ImGui::TreePop();
+            }
+        }
+    }
+
+
     //-------------------------------------------------------------------
 
 
@@ -157,13 +179,12 @@ namespace Motion
                 | ImGuiTreeNodeFlags_Framed
                 | ImGuiTreeNodeFlags_FramePadding;
 
-            bool open = ImGui::TreeNodeEx((void*)tag.ID, flags, tag.Tag.c_str());
-            if (ImGui::IsItemClicked())
-                m_SelectedEntity = entity;
-
-            if (open)
+            if (ImGui::TreeNodeEx((void*)tag.ID, flags, tag.Tag.c_str()))
             {
-                if (entity->HasComponent<StaticMeshComponent>() && open)
+                if (ImGui::IsItemClicked())
+                    m_SelectedEntity = entity;
+
+                if (entity->HasComponent<StaticMeshComponent>())
                 {
                     auto& model = entity->GetComponent<StaticMeshComponent>().Model;
                     if (model)
@@ -171,18 +192,15 @@ namespace Motion
                         ImGuiTreeNodeFlags nodeFlags = ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_FramePadding;
                         if (ImGui::CollapsingHeader("Mesh Details", nodeFlags))
                         {
-                            if (ImGui::IsItemClicked())
-                                m_SelectedEntity = entity;
-
                             std::string meshCount = std::to_string(model->GetMeshesCount());
                             std::string minBounds = glm::to_string(model->GetMinBounds());
                             std::string maxBounds = glm::to_string(model->GetMaxBounds());
                             std::string filePath = model->GetSource();
 
-                            CustomUIControl::TextBox("Mesh Count", meshCount, true);
-                            CustomUIControl::TextBox("Min Bounds", minBounds, true);
-                            CustomUIControl::TextBox("Max Bounds", maxBounds, true);
-                            CustomUIControl::TextBox("File Path", filePath, true);
+                            CustomUIControl::TextBox("Mesh Count", meshCount, true, 256, 150.0f);
+                            CustomUIControl::TextBox("Min Bounds", minBounds, true, 256, 150.0f);
+                            CustomUIControl::TextBox("Max Bounds", maxBounds, true, 256, 150.0f);
+                            CustomUIControl::TextBox("File Path", filePath, true, 256, 150.0f);
 
                             static std::int32_t selected = 0;
                             CustomUIControl::ComboBox("Shading Method", selected, { "Standard", "Physical Based" });
@@ -204,14 +222,16 @@ namespace Motion
 
                                 bool attributesChanged = false;
                                 attributesChanged |= CustomUIControl::DrawColor3("Base Color", batchAttri.BaseColor);
-                                attributesChanged |= CustomUIControl::DrawFloat("Metallic", batchAttri.Metallic, 0.0f, 1.0f, 0.0005f);
-                                attributesChanged |= CustomUIControl::DrawFloat("Roughness", batchAttri.Roughness, 0.0f, 1.0f, 0.0005f);
-                                attributesChanged |= CustomUIControl::DrawFloat("Opacity", batchAttri.Opacity, 0.0f, 1.0f, 0.0005f);
+                                attributesChanged |= CustomUIControl::DrawFloat("Metallic", batchAttri.Metallic, 0.0f, 1.0f, 0.005f);
+                                attributesChanged |= CustomUIControl::DrawFloat("Roughness", batchAttri.Roughness, 0.0f, 1.0f, 0.005f);
+                                attributesChanged |= CustomUIControl::DrawFloat("Opacity", batchAttri.Opacity, 0.0f, 1.0f, 0.005f);
 
+                                int texCount = 0;
                                 for (auto texType : { TextureType::BaseColorTexture, TextureType::MetallicTexture, TextureType::RoughnessTexture, TextureType::AmbientOcclusionTexture, TextureType::DisplacementTexture, TextureType::NormalTexture })
                                 {
-                                    ImGui::SameLine(0.0f, 14.0f);
-                                    ImGui::PushID(static_cast<std::int32_t>(texType));
+                                    if (texCount++ > 0)
+                                        ImGui::SameLine(0.0f, 14.0f);
+
                                     CustomUIControl::TextureSlotCard(GetTextureTypeString(texType), batchTextures[texType],
                                         [&]()
                                         {
@@ -219,7 +239,6 @@ namespace Motion
                                             if (newTex) batchTextures[texType] = newTex;
                                         });
 
-                                    ImGui::PopID();
                                 }
 
                                 if (ImGui::Button("Apply"))
@@ -247,8 +266,8 @@ namespace Motion
                                 attributesChanged |= CustomUIControl::DrawColor3("Specular Color", batchAttri.SpecularColor);
                                 attributesChanged |= CustomUIControl::DrawColor3("Ambient Color", batchAttri.AmbientColor);
                                 attributesChanged |= CustomUIControl::DrawColor3("Emissive Color", batchAttri.EmissiveColor);
-                                attributesChanged |= CustomUIControl::DrawFloat("Shininess", batchAttri.Shininess, 0.0f, 32.0f, 0.0005f);
-                                attributesChanged |= CustomUIControl::DrawFloat("Opacity", batchAttri.Opacity, 0.0f, 1.0f, 0.0005f);
+                                attributesChanged |= CustomUIControl::DrawFloat("Shininess", batchAttri.Shininess, 0.0f, 32.0f, 0.05f);
+                                attributesChanged |= CustomUIControl::DrawFloat("Opacity", batchAttri.Opacity, 0.0f, 1.0f, 0.005f);
 
                                 int texCount = 0;
                                 for (auto texType : { TextureType::DiffuseTexture, TextureType::SpecularTexture, TextureType::EmissiveTexture, TextureType::OpacityTexture })
@@ -256,16 +275,12 @@ namespace Motion
                                     if (texCount++ > 0)
                                         ImGui::SameLine(0.0f, 14.0f);
 
-                                    ImGui::PushID(static_cast<std::int32_t>(texType));
                                     CustomUIControl::TextureSlotCard(GetTextureTypeString(texType), batchTextures[texType],
                                         [&]()
                                         {
                                             auto newTex = LoadTexture(texType);
                                             if (newTex) batchTextures[texType] = newTex;
                                         });
-
-                                    ImGui::PopID();
-
                                 }
 
                                 if (ImGui::Button("Apply"))
@@ -290,7 +305,6 @@ namespace Motion
 
                 ImGui::TreePop();
             }
-
         }
         ImGui::End();
 
@@ -302,53 +316,20 @@ namespace Motion
         ImGui::End();
     }
 
-    template<typename T, typename UIFunc>
-    static void DrawComponentControls(const std::string& name, const std::shared_ptr<Entity>& entity, UIFunc uiFunc, bool enabled = true)
-    {
-        static const ImGuiTreeNodeFlags treeNodeFlags =
-            ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_AllowItemOverlap | ImGuiTreeNodeFlags_FramePadding;
-
-        if (entity->HasComponent<T>())
-        {
-            auto& component = entity->GetComponent<T>();
-            if (ImGui::TreeNodeEx((void*)component.ID, treeNodeFlags, name.c_str()))
-            {
-                if (!enabled) ImGui::BeginDisabled();
-
-                uiFunc(component);
-
-                if (!enabled) ImGui::EndDisabled();
-                ImGui::TreePop();
-            }
-        }
-    }
-
     void Scene::RenderComponents(WindowHandle handle, const std::shared_ptr<Entity>& entity)
     {
         if (entity->HasComponent<TagComponent>())
         {
             auto& tag = entity->GetComponent<TagComponent>();
-
-            char buffer[256];
-            memset(buffer, 0, sizeof(buffer));
-            strcpy_s(buffer, sizeof(buffer), tag.Tag.c_str());
-
-            if (ImGui::InputText("Tag", buffer, sizeof(buffer)))
-            {
-                tag.Tag = std::string(buffer);
-            }
+            CustomUIControl::TextBox("Tag", tag.Tag, false, 256, 150.0f);
         }
 
         DrawComponentControls<TransformComponent>("Transform", entity,
             [](TransformComponent& component)
             {
-                ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, { 10.0f, 0.0f });
-
                 CustomUIControl::DrawFloat3("Translation", component.Translation, 0.0f);
                 CustomUIControl::DrawFloat3("Rotation", component.Rotation, 0.0f);
-                CustomUIControl::DrawFloat3("Scale", component.Scale, 1.0f);
-
-                ImGui::PopStyleVar();
+                CustomUIControl::DrawFloat3("Scale", component.Scale, 10.0f);
             }
         );
 
@@ -370,9 +351,9 @@ namespace Motion
                                 if (ImGui::CollapsingHeader("Material Attributes", nodeFlags))
                                 {
                                     CustomUIControl::DrawColor3("Base Color", material->Attributes.BaseColor);
-                                    CustomUIControl::DrawFloat("Metallic", material->Attributes.Metallic, 0.0f, 1.0f, 0.0005f);
-                                    CustomUIControl::DrawFloat("Roughness", material->Attributes.Roughness, 0.0f, 1.0f, 0.0005f);
-                                    CustomUIControl::DrawFloat("Opacity", material->Attributes.Opacity, 0.0f, 1.0f, 0.0005f);
+                                    CustomUIControl::DrawFloat("Metallic", material->Attributes.Metallic, 0.0f, 1.0f, 0.005f);
+                                    CustomUIControl::DrawFloat("Roughness", material->Attributes.Roughness, 0.0f, 1.0f, 0.005f);
+                                    CustomUIControl::DrawFloat("Opacity", material->Attributes.Opacity, 0.0f, 1.0f, 0.005f);
                                 }
                                 if (ImGui::CollapsingHeader("Material Textures", nodeFlags))
                                 {
@@ -397,9 +378,9 @@ namespace Motion
                                 {
                                     ImGui::BeginDisabled();
                                     CustomUIControl::DrawColor3("Base Color", material->BaseMaterial->Attributes.BaseColor);
-                                    CustomUIControl::DrawFloat("Metallic", material->BaseMaterial->Attributes.Metallic, 0.0f, 1.0f, 0.0005f);
-                                    CustomUIControl::DrawFloat("Roughness", material->BaseMaterial->Attributes.Roughness, 0.0f, 1.0f, 0.0005f);
-                                    CustomUIControl::DrawFloat("Opacity", material->BaseMaterial->Attributes.Opacity, 0.0f, 1.0f, 0.0005f);
+                                    CustomUIControl::DrawFloat("Metallic", material->BaseMaterial->Attributes.Metallic, 0.0f, 1.0f, 0.005f);
+                                    CustomUIControl::DrawFloat("Roughness", material->BaseMaterial->Attributes.Roughness, 0.0f, 1.0f, 0.005f);
+                                    CustomUIControl::DrawFloat("Opacity", material->BaseMaterial->Attributes.Opacity, 0.0f, 1.0f, 0.005f);
                                     ImGui::EndDisabled();
                                 }
                                 if (ImGui::CollapsingHeader("Base Material Textures", nodeFlags))
@@ -429,8 +410,8 @@ namespace Motion
                                     CustomUIControl::DrawColor3("Specular Color", material->Attributes.SpecularColor);
                                     CustomUIControl::DrawColor3("Ambient Color", material->Attributes.AmbientColor);
                                     CustomUIControl::DrawColor3("Emissive Color", material->Attributes.EmissiveColor);
-                                    CustomUIControl::DrawFloat("Shininess", material->Attributes.Shininess, 1.0f, 32.0f, 0.0005f);
-                                    CustomUIControl::DrawFloat("Opacity", material->Attributes.Opacity, 0.0f, 1.0f, 0.0005f);
+                                    CustomUIControl::DrawFloat("Shininess", material->Attributes.Shininess, 1.0f, 32.0f, 0.05f);
+                                    CustomUIControl::DrawFloat("Opacity", material->Attributes.Opacity, 0.0f, 1.0f, 0.005f);
                                 }
                                 if (ImGui::CollapsingHeader("Material Textures", nodeFlags))
                                 {
@@ -459,8 +440,8 @@ namespace Motion
                                     CustomUIControl::DrawColor3("Specular Color", material->BaseMaterial->Attributes.SpecularColor);
                                     CustomUIControl::DrawColor3("Ambient Color", material->BaseMaterial->Attributes.AmbientColor);
                                     CustomUIControl::DrawColor3("Emissive Color", material->BaseMaterial->Attributes.EmissiveColor);
-                                    CustomUIControl::DrawFloat("Shininess", material->BaseMaterial->Attributes.Shininess, 1.0f, 32.0f, 0.0005f);
-                                    CustomUIControl::DrawFloat("Opacity", material->BaseMaterial->Attributes.Opacity, 0.0f, 1.0f, 0.0005f);
+                                    CustomUIControl::DrawFloat("Shininess", material->BaseMaterial->Attributes.Shininess, 1.0f, 32.0f);
+                                    CustomUIControl::DrawFloat("Opacity", material->BaseMaterial->Attributes.Opacity, 0.0f, 1.0f);
                                     ImGui::EndDisabled();
                                 }
                                 if (ImGui::CollapsingHeader("Base Material Textures", nodeFlags))

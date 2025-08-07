@@ -281,12 +281,18 @@ namespace Motion
         auto& env = m_ActiveScene->GetEnvironment();
         static const ImGuiTreeNodeFlags treeNodeFlags =
             ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_AllowItemOverlap | ImGuiTreeNodeFlags_FramePadding;
-        bool open = ImGui::TreeNodeEx((void*)env.DirectionalLight.LightID, treeNodeFlags, "Environment Lighting");
-        if (open)
+        if (ImGui::TreeNodeEx((void*)env.DirectionalLight.LightID, treeNodeFlags, "Environment Lighting"))
         {
-            CustomUIControl::DrawFloat3("Direction", env.DirectionalLight.Direction, 0.0f);
-            CustomUIControl::DrawColor3("Color", env.DirectionalLight.Color);
-            CustomUIControl::DrawFloat("Intensity", env.DirectionalLight.AmbientIntensity, 0.0f, 1.0f, 0.005f);
+            for (int i = 0; i < DirectionalLight::LIGHT_COUNT; ++i)
+            {
+                if (ImGui::CollapsingHeader(std::format("Light {}", i).c_str(), ImGuiTreeNodeFlags_FramePadding | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_Framed))
+                {
+                    CustomUIControl::DrawFloat3("Position", env.DirectionalLight.LightPosition[i], 0.0f);
+                    CustomUIControl::DrawColor3("Color", env.DirectionalLight.LightColor[i]);
+                    CustomUIControl::DrawFloat("Intensity", env.DirectionalLight.LightIntensity[i], 0.0f, 1.0f, 0.005f);
+                }
+            }
+
             ImGui::TreePop();
         }
         ImGui::End();

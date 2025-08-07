@@ -30,7 +30,7 @@ namespace Motion
         std::vector<std::shared_ptr<Mesh>>::const_iterator end() const { return m_Meshes.end(); }
 
     public:
-        ShadingMethod ModelShadingMethod{ ShadingMethod::Standard };
+        ShadingMethod ModelShadingMethod{ ShadingMethod::PhysicalBased };
 
     private:
         std::vector<std::shared_ptr<Mesh>> m_Meshes;

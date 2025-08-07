@@ -37,7 +37,7 @@ namespace Motion
         UUID ID{ 0 };
         glm::vec3 Translation{ 0.0f };
         glm::quat Rotation{ 1.0f, 0.0f, 0.0f, 0.0f }; // Identity quaternion
-        glm::vec3 Scale{ 1.0f };
+        glm::vec3 Scale{ 10.0f };
 
         TransformComponent()
             : ID(UniqueIdentity::GetUniqueID()) {

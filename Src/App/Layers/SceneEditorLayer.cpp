@@ -22,9 +22,18 @@ namespace Motion
         assetManager.Create<IShader>("ENV_CUB", "Assets/Shaders/EnvironmentCubeConverter.glsl");
         assetManager.Create<IShader>("ENV_BRD", "Assets/Shaders/EnvironmentBRDF.glsl");
         assetManager.Create<IShader>("PBR", "Assets/Shaders/PBR.glsl");
+        assetManager.Create<IShader>("PHONG", "Assets/Shaders/Phong.glsl");
 
-        Material::ImportMaterial("Assets/Materials/Base/Base.yaml");
+        PhysicalBasedMaterial::Import("Assets/Materials/Base/PBR/Base.yaml");
+        StandardMaterial::Import("Assets/Materials/Base/STD/Base.yaml");
+
         m_Environment = IEnvironment::Create("Assets/HDRI/Scene.hdr");
+
+
+
+
+
+
 
         m_Viewport.FrameSpec.Name = "SceneEditorFrame";
         m_Viewport.FrameSpec.Width = static_cast<uint32_t>(m_ViewportWidth);

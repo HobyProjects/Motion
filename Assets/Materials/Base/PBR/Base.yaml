@@ -1,9 +1,9 @@
 Material:
-  Name: BaseMaterial
+  Name: PBR_BaseMaterial
   Parameters:
-    BaseColor: [1.0, 0.9, 0.8]
-    Metallic: 0.9
-    Roughness: 0.3
+    BaseColor: [1.0, 1.0, 1.0]
+    Metallic: 0.0
+    Roughness: 0.0
     AmbientOcclusion: 1.0
     Opacity: 1.0
     DisplacementScale: 0.05

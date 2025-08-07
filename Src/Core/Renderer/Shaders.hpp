@@ -53,12 +53,18 @@ namespace Motion
         inline static constexpr std::string_view LightColor = "u_LightColor";
         inline static constexpr std::string_view LightIntensity = "u_LightIntensity";
 
-        inline static constexpr std::string_view BaseColorTextures = "u_BaseColorTextures";
-        inline static constexpr std::string_view MetallicTextures = "u_MetallicTextures";
-        inline static constexpr std::string_view RoughnessTextures = "u_RoughnessTextures";
-        inline static constexpr std::string_view AmbientOcclusionTextures = "u_AmbientOcclusionTextures";
-        inline static constexpr std::string_view DisplacementTextures = "u_DisplacementTextures";
-        inline static constexpr std::string_view NormalTextures = "u_NormalTextures";
+        inline static constexpr std::string_view PBR_BaseColorTextures = "u_BaseColorTextures";
+        inline static constexpr std::string_view PBR_MetallicTextures = "u_MetallicTextures";
+        inline static constexpr std::string_view PBR_RoughnessTextures = "u_RoughnessTextures";
+        inline static constexpr std::string_view PBR_AmbientOcclusionTextures = "u_AmbientOcclusionTextures";
+        inline static constexpr std::string_view PBR_DisplacementTextures = "u_DisplacementTextures";
+        inline static constexpr std::string_view PBR_NormalTextures = "u_NormalTextures";
+
+        inline static constexpr std::string_view STD_DiffuseTexture = "u_DiffuseTexture";
+        inline static constexpr std::string_view STD_SpecularTexture = "u_SpecularTexture";
+        inline static constexpr std::string_view STD_NormalTexture = "u_NormalTexture";
+        inline static constexpr std::string_view STD_EmissiveTexture = "u_EmissiveTexture";
+        inline static constexpr std::string_view STD_OpacityTexture = "u_OpacityTexture";
 
         inline static constexpr std::string_view EnvironmentTexture = "u_EnvironmentTexture";
         inline static constexpr std::string_view PrefilteredRoughness = "u_PrefilteredRoughness";
@@ -67,7 +73,6 @@ namespace Motion
         inline static constexpr std::string_view PrefilteredResolution = "u_PrefilteredResolution";
         inline static constexpr std::string_view EquiRectangular = "u_EquiRectangular";
         inline static constexpr std::string_view BRDFLUT = "u_BRDFLUT";
-
     };
 
     class IShader : public IAsset

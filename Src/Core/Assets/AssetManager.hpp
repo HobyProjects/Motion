@@ -140,22 +140,42 @@ namespace Motion
     };
 
     template<>
-    struct AssetBackendsBuilder<Material>
+    struct AssetBackendsBuilder<PhysicalBasedMaterial>
     {
         /**
-         * @brief Creates a new Material instance with a specified UUID and returns a shared pointer to it.
+         * @brief Creates a new PhysicalBasedMaterial instance with a specified UUID and returns a shared pointer to it.
          *
-         * This function constructs a Material object with the given UUID, name, and path to the material file.
-         * The Material is managed by a std::shared_ptr for automatic memory management.
+         * This function constructs a PhysicalBasedMaterial object with the given UUID, name, and path to the material file.
+         * The PhysicalBasedMaterial is managed by a std::shared_ptr for automatic memory management.
          *
          * @param uuid The unique identifier for the material.
          * @param name The name of the material.
          * @param materialFile The filesystem path to the material file.
-         * @return std::shared_ptr<Material> A shared pointer to the newly created Material instance.
+         * @return std::shared_ptr<PhysicalBasedMaterial> A shared pointer to the newly created PhysicalBasedMaterial instance.
          */
-        static std::shared_ptr<Material> Create(UUID uuid, const std::string& name, const std::filesystem::path& materialFile)
+        static std::shared_ptr<PhysicalBasedMaterial> Create(UUID uuid, const std::string& name, const std::filesystem::path& materialFile)
         {
-            return std::make_shared<Material>(uuid, name, materialFile);
+            return std::make_shared<PhysicalBasedMaterial>(uuid, name, materialFile);
+        }
+    };
+
+    template<>
+    struct AssetBackendsBuilder<StandardMaterial>
+    {
+        /**
+         * @brief Creates a new StandardMaterial instance with a specified UUID and returns a shared pointer to it.
+         *
+         * This function constructs a StandardMaterial object with the given UUID, name, and path to the material file.
+         * The StandardMaterial is managed by a std::shared_ptr for automatic memory management.
+         *
+         * @param uuid The unique identifier for the material.
+         * @param name The name of the material.
+         * @param materialFile The filesystem path to the material file.
+         * @return std::shared_ptr<StandardMaterial> A shared pointer to the newly created StandardMaterial instance.
+         */
+        static std::shared_ptr<StandardMaterial> Create(UUID uuid, const std::string& name, const std::filesystem::path& materialFile)
+        {
+            return std::make_shared<StandardMaterial>(uuid, name, materialFile);
         }
     };
 

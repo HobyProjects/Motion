@@ -4,6 +4,8 @@
 
 #include "Window.hpp"
 #include "KeyCodes.hpp"
+#include "Texture.hpp"
+
 
 namespace Motion
 {
@@ -44,6 +46,10 @@ namespace Motion
         static bool DrawFloat3(const char* label, glm::vec3& values, float resetValue = 0.0f, float columnWidth = 110.0f);
         static bool DrawFloat(const char* label, float& value, float minValue, float maxValue, float speed = 0.05f, float columnWidth = 110.0f);
         static bool DrawColor3(const char* label, glm::vec3& color, float columnWidth = 110.0f);
+        static bool TextBox(const char* label, std::string& textValue, bool isReadOnly, size_t maxLen = 256);
+        static void TextureSlotCard(const std::string& slotLabel, std::shared_ptr<ITexture>& texture, std::function<void()> onLoad);
+        static void TextureSlotCard(const std::string& slotLabel, const std::shared_ptr<ITexture>& texture);
+        static bool ComboBox(const char* label, int& currentItem, const std::vector<std::string>& items, float labelWidth = 110.0f, float comboWidth = 180.0f);
     };
 
     /**

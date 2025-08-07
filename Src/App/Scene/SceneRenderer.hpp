@@ -14,7 +14,8 @@ namespace Motion
     struct SceneDrawCommand
     {
         UUID SortKey{ 0 };
-        MaterialInstance* MaterialInstancePtr{ 0 };
+        PhysicalBasedMaterialInstance* PBR_MatPtr{ 0 };
+        StandardMaterialInstance* STD_MatPtr{ 0 };
         Mesh* MeshPtr{ 0 };
 
         TextureID IrradianceTexture{ 0 };
@@ -31,12 +32,14 @@ namespace Motion
         glm::vec3 LightColor{ 1.0f, 1.0f, 1.0f };
         float LightIntensity{ 1.0f };
 
+        ShadingMethod ShadingMethod{ ShadingMethod::Standard };
+
         SceneDrawCommand() = default;
         ~SceneDrawCommand() = default;
 
         bool operator<(const SceneDrawCommand& other) const
         {
-            return std::tie(SortKey, MaterialInstancePtr, MeshPtr) < std::tie(other.SortKey, other.MaterialInstancePtr, other.MeshPtr);
+            return std::tie(SortKey, PBR_MatPtr, STD_MatPtr, MeshPtr) < std::tie(other.SortKey, other.PBR_MatPtr, other.STD_MatPtr, other.MeshPtr);
         }
     };
 

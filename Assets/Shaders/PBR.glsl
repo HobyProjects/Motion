@@ -26,11 +26,7 @@ struct MaterialAttributes {
     vec3 BaseColor;
     float Metallic;
     float Roughness;
-    float AmbientOcclusion;
     float Opacity;
-    float DisplacementScale;
-    float PADDING1;
-    float PADDING2;
 };
 
 layout(std430, binding = 0) buffer MaterialData {
@@ -40,9 +36,7 @@ layout(std430, binding = 0) buffer MaterialData {
 void main()
 {
     v_UV = a_TexCoords;
-
-    // Displacement mapping: Sample the displacement texture and offset the vertex position
-    float displacement = texture(u_DisplacementTextures, a_TexCoords).r * attributes.DisplacementScale;
+    float displacement = texture(u_DisplacementTextures, a_TexCoords).r;
     vec3 displacedPosition = a_Position + a_Normals * displacement;
 
     v_WorldPosition = vec3(u_ModelMatrix * vec4(displacedPosition, 1.0));
@@ -89,11 +83,7 @@ struct MaterialAttributes {
     vec3 BaseColor;
     float Metallic;
     float Roughness;
-    float AmbientOcclusion;
     float Opacity;
-    float DisplacementScale;
-    float PADDING1;
-    float PADDING2;
 };
 
 layout(std430, binding = 0) buffer MaterialData {
@@ -158,7 +148,7 @@ void main()
     float metallic = texture(u_MetallicTextures, v_UV).r * attributes.Metallic;
     float roughness = texture(u_RoughnessTextures, v_UV).r * attributes.Roughness;
     roughness = clamp(roughness, 0.04, 1.0);
-    float ao       = texture(u_AmbientOcclusionTextures, v_UV).r * attributes.AmbientOcclusion;
+    float ao       = texture(u_AmbientOcclusionTextures, v_UV).r;
 
     vec3 N = GetNormalFromMap();
     vec3 F0 = vec3(0.04);

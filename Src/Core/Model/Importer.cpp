@@ -358,14 +358,49 @@ namespace Motion
     using TextureAssetID = std::string;
     using MeshAssetID = std::uint32_t;
 
+    enum class MaterialType : std::int32_t
+    {
+        StandardMaterial,
+        PhysicalBasedMaterial,
+        UnknownMaterial
+    };
+
     struct MaterialAsset
     {
         MaterialAssetID ID{};
-        MaterialAttributes Attributes{};
-        std::unordered_map<std::string, TextureAssetID> TextureRefs{};
+        std::string Name{ "" };
 
         MaterialAsset() = default;
-        ~MaterialAsset() = default;
+        virtual ~MaterialAsset() = default;
+    };
+
+    struct StandardMaterialAsset : public MaterialAsset
+    {
+        StandardMaterialAttribute Attributes{};
+        std::unordered_set<TextureAssetID> TextureRefs{};
+
+        StandardMaterialAsset() = default;
+        virtual ~StandardMaterialAsset() = default;
+    };
+
+    struct PhysicalBasedMaterialAsset : public MaterialAsset
+    {
+        PhysicalBasedMaterialAttribute Attributes{};
+        std::unordered_set<TextureAssetID> TextureRefs{};
+
+        PhysicalBasedMaterialAsset() = default;
+        virtual ~PhysicalBasedMaterialAsset() = default;
+    };
+
+    struct MaterialRef
+    {
+        MaterialType Type{ MaterialType::UnknownMaterial };
+        MaterialAssetID ID{ "" };
+        std::string Name{ "" };
+        std::shared_ptr<MaterialAsset> Asset{ nullptr };
+
+        MaterialRef() = default;
+        ~MaterialRef() = default;
     };
 
     struct TextureAsset
@@ -390,9 +425,11 @@ namespace Motion
 
     struct MeshAsset
     {
-        MaterialAssetID MaterialID{ "" };
+        MeshAssetID ID{ 0 };
+        std::string Name{ "" };
         std::vector<Vertex> Vertices{};
         std::vector<std::uint32_t> Indices{};
+        std::vector<MaterialRef> MaterialRefs{};
 
         MeshAsset() = default;
         ~MeshAsset() = default;
@@ -405,7 +442,6 @@ namespace Motion
         glm::vec3 BoundsMax = {};
 
         std::unordered_map<MeshAssetID, MeshAsset> Meshes{};
-        std::unordered_map<MaterialAssetID, MaterialAsset> Materials{};
         std::unordered_map<TextureAssetID, TextureAsset> Textures{};
 
         ImportedResults() = default;
@@ -482,27 +518,13 @@ namespace Motion
             outResults.BoundsMax = maxBounds;
             outResults.MeshCount = scene->mNumMeshes;
 
-            // Helper lambdas
-            auto textureTypeToString =
-                [](TextureType type)
-                {
-                    switch (type)
-                    {
-                    case TextureType::BaseColorTexture: return "BaseColor";
-                    case TextureType::MetallicTexture: return "Metallic";
-                    case TextureType::RoughnessTexture: return "Roughness";
-                    case TextureType::AmbientOcclusionTexture: return "AmbientOcclusion";
-                    case TextureType::NormalTexture: return "Normal";
-                    default: return "Unknown";
-                    }
-                };
-
-            // Load one mesh
             auto loadMesh = [&](std::uint32_t meshIndex, const aiMesh* mesh)
                 {
                     if (!mesh) return;
 
-                    auto& meshVertexData = outResults.Meshes[meshIndex];
+                    outResults.Meshes[meshIndex] = MeshAsset{};
+                    outResults.Meshes[meshIndex].ID = meshIndex;
+                    outResults.Meshes[meshIndex].Name = mesh->mName.C_Str();
 
                     bool hasUVs = mesh->HasTextureCoords(0);
                     bool hasNormals = mesh->HasNormals();
@@ -520,21 +542,21 @@ namespace Motion
                             .TangentSign = hasTangents ? ((glm::dot(glm::cross(hasNormals ? glm::vec3(mesh->mNormals[i].x, mesh->mNormals[i].y, mesh->mNormals[i].z) : glm::vec3{ 0.f, 0.f, 1.f }, glm::vec3(mesh->mTangents[i].x, mesh->mTangents[i].y, mesh->mTangents[i].z)), glm::vec3(mesh->mBitangents[i].x, mesh->mBitangents[i].y, mesh->mBitangents[i].z)) < 0.f) ? -1.f : 1.f) : 1.f
                         };
 
-                        meshVertexData.Vertices.push_back(std::move(vertex));
+                        outResults.Meshes[meshIndex].Vertices.push_back(std::move(vertex));
                     }
 
                     for (std::uint32_t i = 0; i < mesh->mNumFaces; ++i)
                         for (std::uint32_t idx = 0; idx < mesh->mFaces[i].mNumIndices; ++idx)
-                            meshVertexData.Indices.push_back(mesh->mFaces[i].mIndices[idx]);
+                            outResults.Meshes[meshIndex].Indices.push_back(mesh->mFaces[i].mIndices[idx]);
 
-                    if (!hasNormals) GenerateNormals(meshVertexData.Vertices, meshVertexData.Indices);
-                    if (!hasUVs) GenerateBoxProjectionUVs(meshVertexData.Vertices);
-                    if (!hasTangents) MikkTSpace::GenerateTangents(meshVertexData.Vertices, meshVertexData.Indices);
+                    if (!hasNormals) GenerateNormals(outResults.Meshes[meshIndex].Vertices, outResults.Meshes[meshIndex].Indices);
+                    if (!hasUVs) GenerateBoxProjectionUVs(outResults.Meshes[meshIndex].Vertices);
+                    if (!hasTangents) MikkTSpace::GenerateTangents(outResults.Meshes[meshIndex].Vertices, outResults.Meshes[meshIndex].Indices);
                 };
 
             // Load all textures for a material
-            auto loadTexture =
-                [&](aiMaterial* mat, const std::string& matID, aiTextureType aiType, TextureType type)
+            auto load_PBR_Textures =
+                [&](aiMaterial* mat, std::unordered_set<TextureAssetID>& pbrTextureRefs, aiTextureType aiType, TextureType type)
                 {
                     aiString texPath;
                     if (mat->GetTexture(aiType, 0, &texPath) != aiReturn_SUCCESS)
@@ -544,28 +566,59 @@ namespace Motion
                     if (!std::filesystem::exists(textureFile))
                         return;
 
-                    TextureAssetID textureID = std::format("TEX_{}", HashString(textureFile.string()));
-                    if (outResults.Textures.find(textureID) != outResults.Textures.end())
+                    TextureAssetID textureID = std::format("TEX_PBR_{}", HashString(textureFile.string()));
+                    pbrTextureRefs.insert(textureID);
+
+                    if (!pbrTextureRefs.contains(textureID))
                     {
-                        outResults.Materials[matID].TextureRefs[textureTypeToString(type)] = textureID;
-                        return;
+                        int w = 0, h = 0, ch = 0;
+                        stbi_set_flip_vertically_on_load(1);
+                        std::uint8_t* data = stbi_load(textureFile.string().c_str(), &w, &h, &ch, 4);
+                        if (!data) return;
+
+                        TextureAsset loaded{};
+                        loaded.Type = type;
+                        loaded.Data = data;
+                        loaded.Width = static_cast<std::uint32_t>(w);
+                        loaded.Height = static_cast<std::uint32_t>(h);
+                        loaded.Channels = static_cast<std::uint32_t>(ch);
+                        loaded.ID = textureID;
+
+                        outResults.Textures[textureID] = std::move(loaded);
                     }
+                };
 
-                    int w = 0, h = 0, ch = 0;
-                    stbi_set_flip_vertically_on_load(1);
-                    std::uint8_t* data = stbi_load(textureFile.string().c_str(), &w, &h, &ch, 4);
-                    if (!data) return;
+            auto load_STD_Textures =
+                [&](aiMaterial* mat, std::unordered_set<TextureAssetID>& stdTextureRefs, aiTextureType aiType, TextureType type)
+                {
+                    aiString texPath;
+                    if (mat->GetTexture(aiType, 0, &texPath) != aiReturn_SUCCESS)
+                        return;
 
-                    TextureAsset loaded{};
-                    loaded.Type = type;
-                    loaded.Data = data;
-                    loaded.Width = static_cast<std::uint32_t>(w);
-                    loaded.Height = static_cast<std::uint32_t>(h);
-                    loaded.Channels = static_cast<std::uint32_t>(ch);
-                    loaded.ID = textureID;
+                    std::filesystem::path textureFile(texPath.C_Str());
+                    if (!std::filesystem::exists(textureFile))
+                        return;
 
-                    outResults.Textures[textureID] = std::move(loaded);
-                    outResults.Materials[matID].TextureRefs[textureTypeToString(type)] = textureID;
+                    TextureAssetID textureID = std::format("TEX_STD_{}", HashString(textureFile.string()));
+                    stdTextureRefs.insert(textureID);
+
+                    if (!stdTextureRefs.contains(textureID))
+                    {
+                        int w = 0, h = 0, ch = 0;
+                        stbi_set_flip_vertically_on_load(1);
+                        std::uint8_t* data = stbi_load(textureFile.string().c_str(), &w, &h, &ch, 4);
+                        if (!data) return;
+
+                        TextureAsset loaded{};
+                        loaded.Type = type;
+                        loaded.Data = data;
+                        loaded.Width = static_cast<std::uint32_t>(w);
+                        loaded.Height = static_cast<std::uint32_t>(h);
+                        loaded.Channels = static_cast<std::uint32_t>(ch);
+                        loaded.ID = textureID;
+
+                        outResults.Textures[textureID] = std::move(loaded);
+                    }
                 };
 
             // Load one material
@@ -574,29 +627,49 @@ namespace Motion
                 {
                     if (!material) return;
 
-                    MaterialAssetID materialID = std::format("MAT_{}{}", meshIndex, HashString(material->GetName().C_Str()));
-                    outResults.Meshes[meshIndex] = MeshAsset{};
-                    outResults.Materials[materialID] = MaterialAsset{};
+                    MaterialRef pbrMaterialRef{};
+                    pbrMaterialRef.ID = std::format("MAT_PBR_{}", HashString(material->GetName().C_Str()));
+                    pbrMaterialRef.Type = MaterialType::PhysicalBasedMaterial;
+                    pbrMaterialRef.Name = material->GetName().C_Str();
+                    pbrMaterialRef.Asset = std::make_shared<PhysicalBasedMaterialAsset>();
+                    auto pbrMaterialAsset = std::dynamic_pointer_cast<PhysicalBasedMaterialAsset>(pbrMaterialRef.Asset);
 
-                    outResults.Meshes[meshIndex].MaterialID = materialID;
-                    auto& materialAsset = outResults.Materials[materialID];
-                    materialAsset.ID = materialID;
-
-                    MaterialAttributes attr{};
                     aiColor3D baseColor = GetMaterialAttribute<aiColor3D>(material, AI_MATKEY_BASE_COLOR, aiColor3D(1.0f));
-                    attr.BaseColor = { baseColor.r, baseColor.g, baseColor.b };
-                    attr.Metallic = GetMaterialAttribute<float>(material, AI_MATKEY_METALLIC_FACTOR, 0.f);
-                    attr.Roughness = GetMaterialAttribute<float>(material, AI_MATKEY_ROUGHNESS_FACTOR, 1.f);
-                    attr.AmbientOcclusion = 1.0f; // Default
-                    attr.Opacity = GetMaterialAttribute<float>(material, AI_MATKEY_OPACITY, 1.f);
-                    attr.DisplacementScale = 0.05f; // Default
-                    materialAsset.Attributes = attr;
+                    pbrMaterialAsset->Attributes.BaseColor = { baseColor.r, baseColor.g, baseColor.b };
+                    pbrMaterialAsset->Attributes.Metallic = GetMaterialAttribute<float>(material, AI_MATKEY_METALLIC_FACTOR, 1.0f);
+                    pbrMaterialAsset->Attributes.Roughness = GetMaterialAttribute<float>(material, AI_MATKEY_ROUGHNESS_FACTOR, 1.0f);
+                    pbrMaterialAsset->Attributes.Opacity = GetMaterialAttribute<float>(material, AI_MATKEY_OPACITY, 1.0f);
 
-                    loadTexture(material, materialID, aiTextureType_BASE_COLOR, TextureType::BaseColorTexture);
-                    loadTexture(material, materialID, aiTextureType_METALNESS, TextureType::MetallicTexture);
-                    loadTexture(material, materialID, aiTextureType_DIFFUSE_ROUGHNESS, TextureType::RoughnessTexture);
-                    loadTexture(material, materialID, aiTextureType_AMBIENT_OCCLUSION, TextureType::AmbientOcclusionTexture);
-                    loadTexture(material, materialID, aiTextureType_NORMALS, TextureType::NormalTexture);
+                    load_PBR_Textures(material, pbrMaterialAsset->TextureRefs, aiTextureType_BASE_COLOR, TextureType::BaseColorTexture);
+                    load_PBR_Textures(material, pbrMaterialAsset->TextureRefs, aiTextureType_METALNESS, TextureType::MetallicTexture);
+                    load_PBR_Textures(material, pbrMaterialAsset->TextureRefs, aiTextureType_DIFFUSE_ROUGHNESS, TextureType::RoughnessTexture);
+                    load_PBR_Textures(material, pbrMaterialAsset->TextureRefs, aiTextureType_AMBIENT_OCCLUSION, TextureType::AmbientOcclusionTexture);
+                    load_PBR_Textures(material, pbrMaterialAsset->TextureRefs, aiTextureType_NORMAL_CAMERA, TextureType::NormalTexture);
+
+                    outResults.Meshes[meshIndex].MaterialRefs.push_back(pbrMaterialRef);
+
+                    MaterialRef stdMaterialRef{};
+                    stdMaterialRef.ID = std::format("MAT_STD_{}", HashString(material->GetName().C_Str()));
+                    stdMaterialRef.Type = MaterialType::StandardMaterial;
+                    stdMaterialRef.Name = material->GetName().C_Str();
+                    stdMaterialRef.Asset = std::make_shared<StandardMaterialAsset>();
+                    auto stdMaterialAsset = std::dynamic_pointer_cast<StandardMaterialAsset>(stdMaterialRef.Asset);
+
+                    aiColor3D diffuseColor = GetMaterialAttribute<aiColor3D>(material, AI_MATKEY_COLOR_DIFFUSE, aiColor3D(1.0f));
+                    aiColor3D specularColor = GetMaterialAttribute<aiColor3D>(material, AI_MATKEY_COLOR_SPECULAR, aiColor3D(1.0f));
+                    aiColor3D emissiveColor = GetMaterialAttribute<aiColor3D>(material, AI_MATKEY_COLOR_EMISSIVE, aiColor3D(0.0f));
+                    stdMaterialAsset->Attributes.DiffuseColor = { diffuseColor.r, diffuseColor.g, diffuseColor.b };
+                    stdMaterialAsset->Attributes.SpecularColor = { specularColor.r, specularColor.g, specularColor.b };
+                    stdMaterialAsset->Attributes.EmissiveColor = { emissiveColor.r, emissiveColor.g, emissiveColor.b };
+                    stdMaterialAsset->Attributes.Shininess = GetMaterialAttribute<float>(material, AI_MATKEY_SHININESS, 32.0f);
+                    stdMaterialAsset->Attributes.Opacity = GetMaterialAttribute<float>(material, AI_MATKEY_OPACITY, 1.0f);
+
+                    load_STD_Textures(material, stdMaterialAsset->TextureRefs, aiTextureType_DIFFUSE, TextureType::DiffuseTexture);
+                    load_STD_Textures(material, stdMaterialAsset->TextureRefs, aiTextureType_SPECULAR, TextureType::SpecularTexture);
+                    load_STD_Textures(material, stdMaterialAsset->TextureRefs, aiTextureType_EMISSIVE, TextureType::EmissiveTexture);
+                    load_STD_Textures(material, stdMaterialAsset->TextureRefs, aiTextureType_OPACITY, TextureType::OpacityTexture);
+
+                    outResults.Meshes[meshIndex].MaterialRefs.push_back(stdMaterialRef);
                 };
 
             // Recursive node traversal (mesh & material import)
@@ -609,8 +682,8 @@ namespace Motion
                         aiMesh* mesh = scene->mMeshes[meshIdx];
                         aiMaterial* mat = scene->mMaterials[mesh->mMaterialIndex];
 
-                        if (mat) loadMaterial(meshIdx, mat);
                         if (mesh) loadMesh(meshIdx, mesh);
+                        if (mat) loadMaterial(meshIdx, mat);
                     }
 
                     for (std::uint32_t i = 0; i < node->mNumChildren; ++i)
@@ -663,10 +736,34 @@ namespace Motion
                     staticMesh->m_MaxBounds = importedModel.BoundsMax;
                     staticMesh->m_MinBounds = importedModel.BoundsMin;
 
+                    auto load_PBR_Textures =
+                        [&](std::shared_ptr<PhysicalBasedMaterialInstance> pbrMaterialInstance, std::unordered_set<TextureAssetID>& textureRefs)
+                        {
+                            for (const auto& [textureID, textureAsset] : importedModel.Textures)
+                            {
+                                if (textureRefs.contains(textureID))
+                                {
+                                    pbrMaterialInstance->Texture[textureAsset.Type] = std::move(ITexture::Create(
+                                        textureAsset.Data, textureAsset.Type, textureAsset.Width, textureAsset.Height, textureAsset.Channels));
+                                }
+                            }
+                        };
+
+                    auto load_STD_Textures =
+                        [&](std::shared_ptr<StandardMaterialInstance> stdMaterialInstance, std::unordered_set<TextureAssetID>& textureRefs)
+                        {
+                            for (const auto& [textureID, textureAsset] : importedModel.Textures)
+                            {
+                                if (textureRefs.contains(textureID))
+                                {
+                                    stdMaterialInstance->Texture[textureAsset.Type] = std::move(ITexture::Create(
+                                        textureAsset.Data, textureAsset.Type, textureAsset.Width, textureAsset.Height, textureAsset.Channels));
+                                }
+                            }
+                        };
+
                     for (auto& [meshID, mesh] : importedModel.Meshes)
                     {
-                        StaticMesh::MeshSegment segment;
-
                         const BufferLayout layout
                         {
                             {UniformCache::Position, BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Position)},
@@ -677,52 +774,53 @@ namespace Motion
                             {UniformCache::TangentSign, BufferComponents::X, BufferStride::F1, false, offsetof(Vertex, TangentSign)}
                         };
 
-                        segment.MeshSelf = Mesh::Create(mesh.Vertices.data(), static_cast<std::uint32_t>(mesh.Vertices.size()), mesh.Indices.data(), static_cast<std::uint32_t>(mesh.Indices.size()), layout, staticMesh);
-                        if (importedModel.Materials.contains(mesh.MaterialID))
+                        auto meshPtr = Mesh::Create(
+                            mesh.Vertices.data(), static_cast<std::uint32_t>(mesh.Vertices.size()),
+                            mesh.Indices.data(), static_cast<std::uint32_t>(mesh.Indices.size()),
+                            layout,
+                            staticMesh);
+
+                        if (!mesh.MaterialRefs.empty())
                         {
-                            const auto& baseMaterial = assetManager.Get<Material>("BaseMaterial");
-                            const auto& matData = importedModel.Materials.at(mesh.MaterialID);
+                            const auto& pbrBaseMaterial = assetManager.Get<PhysicalBasedMaterial>("PBR_BaseMaterial");
+                            const auto& stdBaseMaterial = assetManager.Get<StandardMaterial>("STD_BaseMaterial");
 
-                            segment.Materials = std::make_shared<MaterialInstance>(mesh.MaterialID, baseMaterial);
-                            segment.Materials->Attributes.BaseColor = matData.Attributes.BaseColor;
-                            segment.Materials->Attributes.Metallic = matData.Attributes.Metallic;
-                            segment.Materials->Attributes.Roughness = matData.Attributes.Roughness;
-                            segment.Materials->Attributes.AmbientOcclusion = matData.Attributes.AmbientOcclusion;
-                            segment.Materials->Attributes.Opacity = matData.Attributes.Opacity;
-                            segment.Materials->Attributes.DisplacementScale = matData.Attributes.DisplacementScale;
-
-                            auto loadTextures =
-                                [&](const std::string_view& uniformName, const std::string& slotName, TextureType type)
+                            for (const auto& matRef : mesh.MaterialRefs)
+                            {
+                                if (matRef.Type == MaterialType::PhysicalBasedMaterial)
                                 {
-                                    if (!matData.TextureRefs.contains(slotName))
-                                    {
-                                        segment.Materials->Texture[uniformName] = nullptr;
-                                    }
-                                    else
-                                    {
-                                        std::string textureID = matData.TextureRefs.at(slotName);
-                                        if (importedModel.Textures.contains(textureID))
-                                        {
-                                            auto& texData = importedModel.Textures.at(textureID);
-                                            auto texture = ITexture::Create(texData.Data, type, texData.Width, texData.Height, texData.Channels);
-                                            segment.Materials->Texture[uniformName] = texture;
-                                        }
-                                        else
-                                        {
-                                            segment.Materials->Texture[uniformName] = nullptr;
-                                        }
-                                    }
-                                };
+                                    auto pbrMaterialInstance = std::make_shared<PhysicalBasedMaterialInstance>(matRef.ID, pbrBaseMaterial);
+                                    const auto materialAsset = std::dynamic_pointer_cast<PhysicalBasedMaterialAsset>(matRef.Asset);
 
-                            loadTextures(UniformCache::BaseColorTextures, "BaseColor", TextureType::BaseColorTexture);
-                            loadTextures(UniformCache::MetallicTextures, "Metallic", TextureType::MetallicTexture);
-                            loadTextures(UniformCache::RoughnessTextures, "Roughness", TextureType::RoughnessTexture);
-                            loadTextures(UniformCache::AmbientOcclusionTextures, "AmbientOcclusion", TextureType::AmbientOcclusionTexture);
-                            loadTextures(UniformCache::DisplacementTextures, "Displacement", TextureType::DisplacementTexture);
-                            loadTextures(UniformCache::NormalTextures, "Normal", TextureType::NormalTexture);
+                                    pbrMaterialInstance->Attributes.BaseColor = materialAsset->Attributes.BaseColor;
+                                    pbrMaterialInstance->Attributes.Metallic = materialAsset->Attributes.Metallic;
+                                    pbrMaterialInstance->Attributes.Roughness = materialAsset->Attributes.Roughness;
+                                    pbrMaterialInstance->Attributes.Opacity = materialAsset->Attributes.Opacity;
+                                    load_PBR_Textures(pbrMaterialInstance, materialAsset->TextureRefs);
+                                    meshPtr->SetMaterial(pbrMaterialInstance);
+                                }
+                                else if (matRef.Type == MaterialType::StandardMaterial)
+                                {
+                                    auto stdMaterialInstance = std::make_shared<StandardMaterialInstance>(matRef.ID, stdBaseMaterial);
+                                    const auto materialAsset = std::dynamic_pointer_cast<StandardMaterialAsset>(matRef.Asset);
+
+                                    stdMaterialInstance->Attributes.DiffuseColor = materialAsset->Attributes.DiffuseColor;
+                                    stdMaterialInstance->Attributes.SpecularColor = materialAsset->Attributes.SpecularColor;
+                                    stdMaterialInstance->Attributes.EmissiveColor = materialAsset->Attributes.EmissiveColor;
+                                    stdMaterialInstance->Attributes.Shininess = materialAsset->Attributes.Shininess;
+                                    stdMaterialInstance->Attributes.Opacity = materialAsset->Attributes.Opacity;
+                                    load_STD_Textures(stdMaterialInstance, materialAsset->TextureRefs);
+                                    meshPtr->SetMaterial(stdMaterialInstance);
+                                }
+                                else
+                                {
+                                    MOTION_CORE_ERROR("Unknown material type for mesh: {}", mesh.Name);
+                                    continue;
+                                }
+                            }
                         }
 
-                        staticMesh->m_Meshes.push_back(segment);
+                        staticMesh->m_Meshes.emplace_back(std::move(meshPtr));
                     }
 
                     return staticMesh;

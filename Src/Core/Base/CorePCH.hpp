@@ -7,6 +7,8 @@
 #include <vector>
 #include <map>
 #include <unordered_map>
+#include <unordered_set>
+#include <array>
 #include <functional>
 #include <type_traits>
 #include <algorithm>

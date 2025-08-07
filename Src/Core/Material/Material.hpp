@@ -12,70 +12,100 @@
 #include "Buffers.hpp"
 #include "Asset.hpp"
 
-#define MAX_MATERIAL_LAYERS 4
-
 namespace Motion
 {
-    struct MaterialAttributes
+    struct PhysicalBasedMaterialAttribute
     {
         glm::vec3 BaseColor{ 1.0f, 1.0f, 1.0f };
-        float Metallic{ 0.0f };
+        float Metallic{ 1.0f };
         float Roughness{ 1.0f };
-        float AmbientOcclusion{ 1.0f };
         float Opacity{ 1.0f };
-        float DisplacementScale{ 0.05f };
-        float PADDING1{ 0.0f }; // Padding to ensure proper alignment
-        float PADDING2{ 0.0f }; // Padding to ensure proper alignment
     };
 
-    constexpr std::size_t MATERIAL_ATTRIBUTES_SIZE = sizeof(MaterialAttributes);
-
-    class Material : public AssetBase<IAsset>
+    struct StandardMaterialAttribute
     {
-    public:
-        Material() = default;
-        Material(UUID uniqueID, const std::string& materialName, const std::filesystem::path& materialFile);
-        virtual ~Material() = default;
-
-        void Bind();
-        void Unbind();
-
-        [[nodiscard]] std::shared_ptr<IShader> GetShader() const noexcept { return Shader; }
-        [[nodiscard]] std::shared_ptr<IShaderBuffer> GetUniformBuffer() const noexcept { return UniformBuffer; }
-        [[nodiscard]] std::int32_t GetTexturesCount() const noexcept { return Texture.size(); }
-
-        static void ImportMaterial(const std::filesystem::path& materialYAML) noexcept;
-
-    public:
-        std::unordered_map<std::string_view, std::shared_ptr<ITexture>> Texture{};
-        MaterialAttributes Attributes{ };
-
-    private:
-        std::shared_ptr<IShader> Shader{ nullptr };
-        std::shared_ptr<IShaderBuffer> UniformBuffer{ nullptr };
+        glm::vec3 DiffuseColor{ 1.0f, 1.0f, 1.0f };
+        glm::vec3 SpecularColor{ 1.0f, 1.0f, 1.0f };
+        glm::vec3 AmbientColor{ 1.0f, 1.0f, 1.0f };
+        glm::vec3 EmissiveColor{ 0.0f, 0.0f, 0.0f };
+        float Shininess{ 32.0f };
+        float Opacity{ 1.0f };
     };
 
-    class MaterialInstance
+    constexpr std::size_t MATERIAL_PBR_ATTRIBUTES_SIZE = sizeof(PhysicalBasedMaterialAttribute);
+    constexpr std::size_t MATERIAL_STANDARD_ATTRIBUTES_SIZE = sizeof(StandardMaterialAttribute);
+
+    enum class ShadingMethod
+    {
+        Standard,
+        PhysicalBased,
+    };
+
+    struct PhysicalBasedMaterial : public AssetBase<IAsset>
+    {
+        std::unordered_map<TextureType, std::shared_ptr<ITexture>> Texture{};
+        PhysicalBasedMaterialAttribute Attributes{ };
+
+        PhysicalBasedMaterial() = default;
+        PhysicalBasedMaterial(UUID uniqueID, const std::string& materialName, const std::filesystem::path& materialFile);
+        virtual ~PhysicalBasedMaterial() = default;
+
+        static void Import(const std::filesystem::path& materialYAML);
+    };
+
+    class PhysicalBasedMaterialInstance
     {
     public:
-        MaterialInstance() = default;
-        MaterialInstance(const std::string& name, const std::shared_ptr<Material>& baseMaterial);
-        virtual ~MaterialInstance() = default;
+        PhysicalBasedMaterialInstance() = default;
+        PhysicalBasedMaterialInstance(const std::string& materialID, const std::shared_ptr<PhysicalBasedMaterial>& baseMaterial);
+        virtual ~PhysicalBasedMaterialInstance() = default;
 
-        void Bind();
-        void Unbind();
+        void UploadAttributes();
 
-        std::string GetName() const noexcept { return Name; }
+        std::string GetMaterialID() const noexcept { return m_MaterialID; }
         [[nodiscard]] std::int32_t GetTexturesCount() const noexcept { return Texture.size() + (BaseMaterial ? BaseMaterial->Texture.size() : 0); }
 
     public:
-        std::shared_ptr<Material> BaseMaterial{ nullptr };
-        std::unordered_map<std::string_view, std::shared_ptr<ITexture>> Texture{};
-        MaterialAttributes Attributes{};
+        std::shared_ptr<PhysicalBasedMaterial> BaseMaterial{ nullptr };
+        std::unordered_map<TextureType, std::shared_ptr<ITexture>> Texture{};
+        PhysicalBasedMaterialAttribute Attributes{};
 
     private:
-        std::string Name{ "Unnamed Material Instance" };
-        std::shared_ptr<IShader> Shader{ nullptr };
-        std::shared_ptr<IShaderBuffer> UniformBuffer{ nullptr };
+        std::string m_MaterialID{};
+        std::shared_ptr<IShaderBuffer> m_UniformBuffer{ nullptr };
+    };
+
+    struct StandardMaterial : public AssetBase<IAsset>
+    {
+        std::unordered_map<TextureType, std::shared_ptr<ITexture>> Texture{};
+        StandardMaterialAttribute Attributes{};
+
+        StandardMaterial() = default;
+        StandardMaterial(UUID uniqueID, const std::string& materialName, const std::filesystem::path& materialFile);
+        virtual ~StandardMaterial() = default;
+
+        static void Import(const std::filesystem::path& materialYAML);
+    };
+
+    class StandardMaterialInstance
+    {
+    public:
+        StandardMaterialInstance() = default;
+        StandardMaterialInstance(const std::string& materialID, const std::shared_ptr<StandardMaterial>& baseMaterial);
+        virtual ~StandardMaterialInstance() = default;
+
+        void UploadAttributes();
+
+        std::string GetMaterialID() const noexcept { return m_MaterialID; }
+        [[nodiscard]] std::int32_t GetTexturesCount() const noexcept { return Texture.size() + (BaseMaterial ? BaseMaterial->Texture.size() : 0); }
+
+    public:
+        std::shared_ptr<StandardMaterial> BaseMaterial{ nullptr };
+        std::unordered_map<TextureType, std::shared_ptr<ITexture>> Texture{};
+        StandardMaterialAttribute Attributes{};
+
+    private:
+        std::string m_MaterialID{};
+        std::shared_ptr<IShaderBuffer> m_UniformBuffer{ nullptr };
     };
 }

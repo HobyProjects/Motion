@@ -33,7 +33,7 @@ namespace Motion
     {
     public:
         Scene(SceneHandle handle, const std::string& name, const glm::vec2& viewportSize);
-        ~Scene();
+        ~Scene() = default;
 
         void OnUpdate(WindowHandle handle, Timer deltaTime);
         void OnEvent(WindowHandle handle, IEvent& e);

@@ -14,18 +14,24 @@ namespace Motion
 
     enum class TextureType : std::int32_t
     {
+        //Standard Textures
+        DiffuseTexture,
+        SpecularTexture,
+        NormalTexture,
+        EmissiveTexture,
+        OpacityTexture,
+
+        // Physical Based Textures
         BaseColorTexture,
         MetallicTexture,
         RoughnessTexture,
         AmbientOcclusionTexture,
         DisplacementTexture,
-        EmissiveTexture,
         ClearCoatTexture,
         SheenTexture,
         TransmissionTexture,
-        NormalTexture,
-        OpacityTexture,
 
+        // Special Textures
         CubeTexture,
         IrradianceTexture,
         PrefilteredTexture,
@@ -45,6 +51,32 @@ namespace Motion
     inline TextureType operator&(TextureType a, TextureType b) { return static_cast<TextureType>(static_cast<std::int32_t>(a) & static_cast<std::int32_t>(b)); }
     inline TextureType operator|=(TextureType& a, TextureType b) { return a = a | b; }
     inline TextureType operator&=(TextureType& a, TextureType b) { return a = a & b; }
+
+    inline std::string GetTextureTypeString(TextureType type)
+    {
+        switch (type)
+        {
+        case TextureType::DiffuseTexture: return "Diffuse";
+        case TextureType::SpecularTexture: return "Specular";
+        case TextureType::NormalTexture: return "Normal";
+        case TextureType::EmissiveTexture: return "Emissive";
+        case TextureType::OpacityTexture: return "Opacity";
+        case TextureType::BaseColorTexture: return "Base Color";
+        case TextureType::MetallicTexture: return "Metallic";
+        case TextureType::RoughnessTexture: return "Roughness";
+        case TextureType::AmbientOcclusionTexture: return "Ambient Occlusion";
+        case TextureType::DisplacementTexture: return "Displacement";
+        case TextureType::ClearCoatTexture: return "Clear Coat";
+        case TextureType::SheenTexture: return "Sheen";
+        case TextureType::TransmissionTexture: return "Transmission";
+        case TextureType::CubeTexture: return "Cube";
+        case TextureType::IrradianceTexture: return "Irradiance";
+        case TextureType::PrefilteredTexture: return "Prefiltered";
+        case TextureType::BRDFTexture: return "BRDF";
+        default: return "Unknown";
+        }
+    }
+
 
     struct TextureSpecification
     {

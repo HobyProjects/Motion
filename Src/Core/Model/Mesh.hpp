@@ -5,6 +5,7 @@
 #include "Buffers.hpp"
 #include "Arrays.hpp"
 #include "Shaders.hpp"
+#include "Material.hpp"
 
 namespace Motion
 {
@@ -22,13 +23,22 @@ namespace Motion
         void Unbind() const noexcept;
         void Render();
 
+        void SetMaterial(const std::shared_ptr<PhysicalBasedMaterialInstance>& material) noexcept;
+        void SetMaterial(const std::shared_ptr<StandardMaterialInstance>& material) noexcept;
+
         [[nodiscard]] std::int32_t GetIndicesCount() const noexcept;
         [[nodiscard]] std::shared_ptr<StaticMesh> GetParentModel() const noexcept;
         [[nodiscard]] RendererID GetID() const noexcept { return m_VertexArray->GetID(); }
 
+    public:
         [[nodiscard]] static std::shared_ptr<Mesh> Create(Vertex* vertices, std::uint32_t verticesSize, std::uint32_t* indices, std::uint32_t indicesCount, const BufferLayout& layout, const std::shared_ptr<StaticMesh>& parentModel);
         [[nodiscard]] static std::shared_ptr<Mesh> Create(float* vertices, std::uint32_t verticesSize, std::uint32_t* indices, std::uint32_t indicesCount, const BufferLayout& layout, const std::shared_ptr<StaticMesh>& parentModel);
 
+    public:
+        std::uint32_t Index{ 0 };
+        std::string Name{ "Unnamed Mesh" };
+        std::shared_ptr<PhysicalBasedMaterialInstance> PhysicalBasedMaterials{ nullptr };
+        std::shared_ptr<StandardMaterialInstance> StandardMaterials{ nullptr };
 
     private:
         std::shared_ptr<IVertexBuffer> m_VertexBuffer{ nullptr };

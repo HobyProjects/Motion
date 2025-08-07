@@ -3,16 +3,40 @@
 
 namespace Motion
 {
+    //-------------------------------------------------------------------
+    // HELPER FUNCTIONS 
+    //-------------------------------------------------------------------
+
+    static std::shared_ptr<ITexture> LoadTexture(TextureType type)
+    {
+        std::filesystem::path file = DialogBoxes::OpenFileDialog();
+        if (!file.empty())
+        {
+            auto newTex = ITexture::Create(file, type, true);
+            if (newTex)
+            {
+                return newTex; // Return the loaded texture
+            }
+            else
+            {
+                MOTION_ERROR("Failed to load texture from file: {0}", file.string());
+                return nullptr;
+            }
+        }
+
+        MOTION_ERROR("No file selected for texture loading");
+        return nullptr; // Return null if no file was selected
+    }
+
+    //-------------------------------------------------------------------
+
+
+
     Scene::Scene(SceneHandle handle, const std::string& name, const glm::vec2& viewportSize)
     {
         m_SceneID = handle;
         m_Name = name;
         m_SceneCamera = SceneCamera(viewportSize.x, viewportSize.y, false);
-    }
-
-    Scene::~Scene()
-    {
-
     }
 
     void Scene::OnUpdate(WindowHandle handle, Timer deltaTime)
@@ -127,19 +151,146 @@ namespace Motion
         {
             std::shared_ptr<Entity> entity = m_Entities[i];
             auto& tag = entity->GetComponent<TagComponent>();
-            ImGuiTreeNodeFlags flags = ((m_SelectedEntity == entity) ? ImGuiTreeNodeFlags_Selected : 0) | ImGuiTreeNodeFlags_OpenOnArrow;
-            flags |= ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_FramePadding;
+            ImGuiTreeNodeFlags flags = ((m_SelectedEntity == entity) ? ImGuiTreeNodeFlags_Selected : 0)
+                | ImGuiTreeNodeFlags_OpenOnArrow
+                | ImGuiTreeNodeFlags_SpanAvailWidth
+                | ImGuiTreeNodeFlags_Framed
+                | ImGuiTreeNodeFlags_FramePadding;
 
-            bool Opend = ImGui::TreeNodeEx((void*)tag.ID, flags, tag.Tag.c_str());
+            bool open = ImGui::TreeNodeEx((void*)tag.ID, flags, tag.Tag.c_str());
             if (ImGui::IsItemClicked())
-            {
                 m_SelectedEntity = entity;
-            }
 
-            if (Opend)
+            if (open)
             {
+                if (entity->HasComponent<StaticMeshComponent>() && open)
+                {
+                    auto& model = entity->GetComponent<StaticMeshComponent>().Model;
+                    if (model)
+                    {
+                        ImGuiTreeNodeFlags nodeFlags = ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_FramePadding;
+                        if (ImGui::CollapsingHeader("Mesh Details", nodeFlags))
+                        {
+                            if (ImGui::IsItemClicked())
+                                m_SelectedEntity = entity;
+
+                            std::string meshCount = std::to_string(model->GetMeshesCount());
+                            std::string minBounds = glm::to_string(model->GetMinBounds());
+                            std::string maxBounds = glm::to_string(model->GetMaxBounds());
+                            std::string filePath = model->GetSource();
+
+                            CustomUIControl::TextBox("Mesh Count", meshCount, true);
+                            CustomUIControl::TextBox("Min Bounds", minBounds, true);
+                            CustomUIControl::TextBox("Max Bounds", maxBounds, true);
+                            CustomUIControl::TextBox("File Path", filePath, true);
+
+                            static std::int32_t selected = 0;
+                            CustomUIControl::ComboBox("Shading Method", selected, { "Standard", "Physical Based" });
+
+                            if (selected == 0)
+                                model->ModelShadingMethod = ShadingMethod::Standard;
+                            if (selected == 1)
+                                model->ModelShadingMethod = ShadingMethod::PhysicalBased;
+                        }
+                        if (ImGui::CollapsingHeader("Material Batch Assignment", nodeFlags))
+                        {
+                            if (ImGui::IsItemClicked())
+                                m_SelectedEntity = entity;
+
+                            if (model->ModelShadingMethod == ShadingMethod::PhysicalBased)
+                            {
+                                static PhysicalBasedMaterialAttribute batchAttri{};
+                                static std::unordered_map<TextureType, std::shared_ptr<ITexture>> batchTextures;
+
+                                bool attributesChanged = false;
+                                attributesChanged |= CustomUIControl::DrawColor3("Base Color", batchAttri.BaseColor);
+                                attributesChanged |= CustomUIControl::DrawFloat("Metallic", batchAttri.Metallic, 0.0f, 1.0f, 0.0005f);
+                                attributesChanged |= CustomUIControl::DrawFloat("Roughness", batchAttri.Roughness, 0.0f, 1.0f, 0.0005f);
+                                attributesChanged |= CustomUIControl::DrawFloat("Opacity", batchAttri.Opacity, 0.0f, 1.0f, 0.0005f);
+
+                                for (auto texType : { TextureType::BaseColorTexture, TextureType::MetallicTexture, TextureType::RoughnessTexture, TextureType::AmbientOcclusionTexture, TextureType::DisplacementTexture, TextureType::NormalTexture })
+                                {
+                                    ImGui::SameLine(0.0f, 14.0f);
+                                    ImGui::PushID(static_cast<std::int32_t>(texType));
+                                    CustomUIControl::TextureSlotCard(GetTextureTypeString(texType), batchTextures[texType],
+                                        [&]()
+                                        {
+                                            auto newTex = LoadTexture(texType);
+                                            if (newTex) batchTextures[texType] = newTex;
+                                        });
+
+                                    ImGui::PopID();
+                                }
+
+                                if (ImGui::Button("Apply"))
+                                {
+                                    for (auto& mesh : *model)
+                                    {
+                                        if (mesh->PhysicalBasedMaterials)
+                                            mesh->PhysicalBasedMaterials->Attributes = batchAttri;
+
+                                        for (auto& [type, tex] : batchTextures)
+                                        {
+                                            if (mesh->PhysicalBasedMaterials)
+                                                mesh->PhysicalBasedMaterials->Texture[type] = tex;
+                                        }
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                static StandardMaterialAttribute batchAttri{};
+                                static std::unordered_map<TextureType, std::shared_ptr<ITexture>> batchTextures;
+
+                                bool attributesChanged = false;
+                                attributesChanged |= CustomUIControl::DrawColor3("Diffuse Color", batchAttri.DiffuseColor);
+                                attributesChanged |= CustomUIControl::DrawColor3("Specular Color", batchAttri.SpecularColor);
+                                attributesChanged |= CustomUIControl::DrawColor3("Ambient Color", batchAttri.AmbientColor);
+                                attributesChanged |= CustomUIControl::DrawColor3("Emissive Color", batchAttri.EmissiveColor);
+                                attributesChanged |= CustomUIControl::DrawFloat("Shininess", batchAttri.Shininess, 0.0f, 32.0f, 0.0005f);
+                                attributesChanged |= CustomUIControl::DrawFloat("Opacity", batchAttri.Opacity, 0.0f, 1.0f, 0.0005f);
+
+                                int texCount = 0;
+                                for (auto texType : { TextureType::DiffuseTexture, TextureType::SpecularTexture, TextureType::EmissiveTexture, TextureType::OpacityTexture })
+                                {
+                                    if (texCount++ > 0)
+                                        ImGui::SameLine(0.0f, 14.0f);
+
+                                    ImGui::PushID(static_cast<std::int32_t>(texType));
+                                    CustomUIControl::TextureSlotCard(GetTextureTypeString(texType), batchTextures[texType],
+                                        [&]()
+                                        {
+                                            auto newTex = LoadTexture(texType);
+                                            if (newTex) batchTextures[texType] = newTex;
+                                        });
+
+                                    ImGui::PopID();
+
+                                }
+
+                                if (ImGui::Button("Apply"))
+                                {
+                                    for (auto& mesh : *model)
+                                    {
+                                        if (mesh->StandardMaterials)
+                                            mesh->StandardMaterials->Attributes = batchAttri;
+
+                                        for (auto& [type, tex] : batchTextures)
+                                        {
+                                            if (mesh->StandardMaterials)
+                                                mesh->StandardMaterials->Texture[type] = tex;
+                                        }
+                                    }
+                                }
+
+                            }
+                        }
+                    }
+                }
+
                 ImGui::TreePop();
             }
+
         }
         ImGui::End();
 
@@ -160,163 +311,17 @@ namespace Motion
         if (entity->HasComponent<T>())
         {
             auto& component = entity->GetComponent<T>();
-            bool open = ImGui::TreeNodeEx((void*)component.ID, treeNodeFlags, name.c_str());
-
-            if (open)
+            if (ImGui::TreeNodeEx((void*)component.ID, treeNodeFlags, name.c_str()))
             {
                 if (!enabled) ImGui::BeginDisabled();
+
                 uiFunc(component);
-                ImGui::TreePop();
+
                 if (!enabled) ImGui::EndDisabled();
+                ImGui::TreePop();
             }
         }
     }
-
-    //-------------------------------------------------------------------
-    // HELPER FUNCTIONS TO DISPLAY MATERIAL DETAILS
-    //-------------------------------------------------------------------
-    static void DrawInstanceTextureSlot(const std::string_view& texName, std::shared_ptr<ITexture>& texture, std::function<void(std::shared_ptr<ITexture>&)> onLoad)
-    {
-        ImGui::BeginGroup();
-
-        // Card background (simulate a rounded box)
-        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 6.0f);
-        ImGui::PushID(texName.data());
-
-        // Texture thumbnail or placeholder
-        ImVec2 imgSize(56, 56);
-        if (texture)
-        {
-            ImGui::Image(texture->GetID(), imgSize);
-            if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("Texture: %s", texName.data());
-        }
-        else
-        {
-            ImGui::Dummy(imgSize);
-            if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("Texture: %s (Not Loaded)", texName.data());
-        }
-
-        // Load button (below the name)
-        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (imgSize.x - 46.0f) * 0.5f); // center button
-        if (ImGui::Button("Load", ImVec2(46, 0)))
-        {
-            if (onLoad)
-                onLoad(texture);
-        }
-        ImGui::PopID();
-        ImGui::PopStyleVar();
-
-        ImGui::EndGroup();
-    }
-
-    static void DrawInstanceTexturesRow(std::unordered_map<std::string_view, std::shared_ptr<ITexture>>& textures, std::function<void(const std::string_view&, std::shared_ptr<ITexture>&)> onLoad)
-    {
-        // Show each texture as a card in a horizontal row
-        int count = 0;
-        for (auto& [name, tex] : textures)
-        {
-            if (count++ > 0)
-                ImGui::SameLine(0.0f, 18.0f); // space between cards
-
-            DrawInstanceTextureSlot(name, tex,
-                [&](std::shared_ptr<ITexture>& t) { onLoad(name, t); });
-        }
-    }
-
-    static void ShowBaseTexturesRow(const std::unordered_map<std::string_view, std::shared_ptr<ITexture>>& textures)
-    {
-        if (textures.empty())
-            return;
-
-        ImGui::BeginDisabled();
-        int count = 0;
-        for (const auto& [name, tex] : textures)
-        {
-            if (count++ > 0)
-                ImGui::SameLine(0.0f, 18.0f);
-
-            ImGui::BeginGroup();
-            ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 6.0f);
-
-            ImVec2 imgSize(56, 56);
-            if (tex)
-            {
-                ImGui::Image(tex->GetID(), imgSize);
-                if (ImGui::IsItemHovered())
-                    ImGui::SetTooltip("Texture: %s", name.data());
-            }
-            else
-            {
-                ImGui::Dummy(imgSize);
-                if (ImGui::IsItemHovered())
-                    ImGui::SetTooltip("Texture: %s (Not Loaded)", name.data());
-            }
-
-            ImGui::PopStyleVar();
-            ImGui::EndGroup();
-        }
-        ImGui::EndDisabled();
-    }
-
-    static bool DrawMaterialAttributes(Motion::MaterialAttributes& attr)
-    {
-        bool changed = false;
-        changed |= CustomUIControl::DrawColor3("MI-Base Color", attr.BaseColor);
-        changed |= CustomUIControl::DrawFloat("MI-Metallic", attr.Metallic, 0.0f, 1.0f, 0.0005f);
-        changed |= CustomUIControl::DrawFloat("MI-Roughness", attr.Roughness, 0.0f, 1.0f, 0.0005f);
-        changed |= CustomUIControl::DrawFloat("MI-AO", attr.AmbientOcclusion, 0.0f, 1.0f, 0.0005f);
-        changed |= CustomUIControl::DrawFloat("MI-Opacity", attr.Opacity, 0.0f, 1.0f, 0.0005f);
-        changed |= CustomUIControl::DrawFloat("MI-Displacement", attr.DisplacementScale, 0.0f, 1.0f, 0.0005f);
-        return changed;
-    }
-
-    static void ShowMaterialAttributes(const Motion::MaterialAttributes& attr)
-    {
-        ImGui::BeginDisabled();
-        glm::vec3 color = attr.BaseColor;
-        CustomUIControl::DrawColor3("BM-Base Color", color); // const version just passes by value
-        float metallic = attr.Metallic;
-        CustomUIControl::DrawFloat("BM-Metallic", metallic, 0.0f, 1.0f);
-        float roughness = attr.Roughness;
-        CustomUIControl::DrawFloat("BM-Roughness", roughness, 0.0f, 1.0f);
-        float ao = attr.AmbientOcclusion;
-        CustomUIControl::DrawFloat("BM-AO", ao, 0.0f, 1.0f);
-        float opacity = attr.Opacity;
-        CustomUIControl::DrawFloat("BM-Opacity", opacity, 0.0f, 1.0f);
-        float disp = attr.DisplacementScale;
-        CustomUIControl::DrawFloat("BM-Displacement", disp, 0.0f, 1.0f);
-        ImGui::EndDisabled();
-    }
-
-    static void DrawMaterialInstancePanel(std::shared_ptr<Motion::MaterialInstance>& matInstance, std::function<void(const std::string_view&, std::shared_ptr<ITexture>&)> onLoadTexture)
-    {
-        if (!matInstance) return;
-
-        // ---- Editable: Instance attributes ----
-        if (ImGui::CollapsingHeader("Material Instance Attributes", ImGuiTreeNodeFlags_DefaultOpen))
-            DrawMaterialAttributes(matInstance->Attributes);
-
-        // ---- Editable: Instance Textures ----
-        if (!matInstance->Texture.empty() && ImGui::CollapsingHeader("Material Instance Textures", ImGuiTreeNodeFlags_DefaultOpen))
-        {
-            DrawInstanceTexturesRow(matInstance->Texture, onLoadTexture);
-        }
-
-        // ---- Read-only: Base Material ----
-        if (matInstance->BaseMaterial)
-        {
-            if (ImGui::CollapsingHeader("Base Material Attributes", ImGuiTreeNodeFlags_DefaultOpen))
-                ShowMaterialAttributes(matInstance->BaseMaterial->Attributes);
-
-            if (!matInstance->BaseMaterial->Texture.empty() && ImGui::CollapsingHeader("Base Material Textures", ImGuiTreeNodeFlags_DefaultOpen))
-                ShowBaseTexturesRow(matInstance->BaseMaterial->Texture);
-        }
-    }
-
-    //-------------------------------------------------------------------
-
 
     void Scene::RenderComponents(WindowHandle handle, const std::shared_ptr<Entity>& entity)
     {
@@ -335,7 +340,7 @@ namespace Motion
         }
 
         DrawComponentControls<TransformComponent>("Transform", entity,
-            [](auto& component)
+            [](TransformComponent& component)
             {
                 ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, { 10.0f, 0.0f });
 
@@ -348,58 +353,136 @@ namespace Motion
         );
 
         DrawComponentControls<StaticMeshComponent>("Materials", entity,
-            [](auto& component)
+            [](StaticMeshComponent& component)
             {
-                auto& model = component.Model;
+                std::shared_ptr<StaticMesh>& model = component.Model;
                 if (model)
                 {
-                    std::uint32_t meshIndex{ 0 };
-                    for (auto meshSegment = model->begin(); meshSegment != model->end(); ++meshSegment, ++meshIndex)
+                    for (std::shared_ptr<Mesh>& mesh : *model)
                     {
-                        if (meshSegment->Materials)
+                        std::string nodeHeader = fmt::format("Mesh: {} [{}]", mesh->Name, mesh->Index);
+                        ImGuiTreeNodeFlags nodeFlags = ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_AllowItemOverlap | ImGuiTreeNodeFlags_FramePadding;
+                        if (ImGui::TreeNodeEx(nodeHeader.c_str(), nodeFlags))
                         {
-                            ImGuiTreeNodeFlags nodeFlags = ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_AllowItemOverlap | ImGuiTreeNodeFlags_FramePadding;
-                            std::string nodeHeader = fmt::format("Mesh [{}] - Material: {}", meshIndex, meshSegment->Materials->GetName());
-                            if (ImGui::TreeNodeEx(nodeHeader.c_str(), nodeFlags))
+                            if (model->ModelShadingMethod == ShadingMethod::PhysicalBased)
                             {
-                                DrawMaterialInstancePanel(meshSegment->Materials,
-                                    [&](const std::string_view& name, std::shared_ptr<ITexture>& slotTex)
+                                auto& material = mesh->PhysicalBasedMaterials;
+                                if (ImGui::CollapsingHeader("Material Attributes", nodeFlags))
+                                {
+                                    CustomUIControl::DrawColor3("Base Color", material->Attributes.BaseColor);
+                                    CustomUIControl::DrawFloat("Metallic", material->Attributes.Metallic, 0.0f, 1.0f, 0.0005f);
+                                    CustomUIControl::DrawFloat("Roughness", material->Attributes.Roughness, 0.0f, 1.0f, 0.0005f);
+                                    CustomUIControl::DrawFloat("Opacity", material->Attributes.Opacity, 0.0f, 1.0f, 0.0005f);
+                                }
+                                if (ImGui::CollapsingHeader("Material Textures", nodeFlags))
+                                {
+                                    std::int32_t count = 0;
+                                    for (auto& [type, tex] : material->Texture)
                                     {
-                                        std::filesystem::path file = DialogBoxes::OpenFileDialog();
-                                        if (!file.empty())
-                                        {
-                                            TextureType type;
-                                            if (name == UniformCache::BaseColorTextures)
-                                                type = TextureType::BaseColorTexture;
-                                            else if (name == UniformCache::MetallicTextures)
-                                                type = TextureType::MetallicTexture;
-                                            else if (name == UniformCache::RoughnessTextures)
-                                                type = TextureType::RoughnessTexture;
-                                            else if (name == UniformCache::AmbientOcclusionTextures)
-                                                type = TextureType::AmbientOcclusionTexture;
-                                            else if (name == UniformCache::DisplacementTextures)
-                                                type = TextureType::DisplacementTexture;
-                                            else if (name == UniformCache::NormalTextures)
-                                                type = TextureType::NormalTexture;
-                                            else
-                                                type = TextureType::UnknownTexture;
-
-
-                                            auto newTex = ITexture::Create(file, type, true);
-                                            if (newTex)
+                                        if (count++ > 0)
+                                            ImGui::SameLine(0.0f, 14.0f);
+                                        ImGui::PushID(static_cast<std::int32_t>(type));
+                                        CustomUIControl::TextureSlotCard(GetTextureTypeString(type), tex,
+                                            [&]()
                                             {
-                                                slotTex = newTex;
-                                            }
-                                            else
-                                            {
-                                                MOTION_ERROR("Failed to load texture from file: {0}", file.string());
-                                                // slotTex remains unchanged!
-                                            }
-                                        }
-                                    });
+                                                auto newTex = LoadTexture(type);
+                                                if (newTex)
+                                                    material->Texture[type] = std::move(newTex);
+                                            });
 
-                                ImGui::TreePop();
+                                        ImGui::PopID();
+                                    }
+                                }
+                                if (ImGui::CollapsingHeader("Base Material Attributes", nodeFlags))
+                                {
+                                    ImGui::BeginDisabled();
+                                    CustomUIControl::DrawColor3("Base Color", material->BaseMaterial->Attributes.BaseColor);
+                                    CustomUIControl::DrawFloat("Metallic", material->BaseMaterial->Attributes.Metallic, 0.0f, 1.0f, 0.0005f);
+                                    CustomUIControl::DrawFloat("Roughness", material->BaseMaterial->Attributes.Roughness, 0.0f, 1.0f, 0.0005f);
+                                    CustomUIControl::DrawFloat("Opacity", material->BaseMaterial->Attributes.Opacity, 0.0f, 1.0f, 0.0005f);
+                                    ImGui::EndDisabled();
+                                }
+                                if (ImGui::CollapsingHeader("Base Material Textures", nodeFlags))
+                                {
+                                    std::int32_t count = 0;
+                                    ImGui::BeginDisabled();
+                                    for (const auto& [type, tex] : material->BaseMaterial->Texture)
+                                    {
+                                        if (count++ > 0)
+                                            ImGui::SameLine(0.0f, 14.0f);
+
+                                        ImGui::PushID(static_cast<std::int32_t>(type));
+                                        ImGui::BeginDisabled();
+                                        CustomUIControl::TextureSlotCard(GetTextureTypeString(type), tex);
+                                        ImGui::EndDisabled();
+                                        ImGui::PopID();
+                                    }
+                                    ImGui::EndDisabled();
+                                }
                             }
+                            else
+                            {
+                                auto& material = mesh->StandardMaterials;
+                                if (ImGui::CollapsingHeader("Material Attributes", nodeFlags))
+                                {
+                                    CustomUIControl::DrawColor3("Diffuse Color", material->Attributes.DiffuseColor);
+                                    CustomUIControl::DrawColor3("Specular Color", material->Attributes.SpecularColor);
+                                    CustomUIControl::DrawColor3("Ambient Color", material->Attributes.AmbientColor);
+                                    CustomUIControl::DrawColor3("Emissive Color", material->Attributes.EmissiveColor);
+                                    CustomUIControl::DrawFloat("Shininess", material->Attributes.Shininess, 1.0f, 32.0f, 0.0005f);
+                                    CustomUIControl::DrawFloat("Opacity", material->Attributes.Opacity, 0.0f, 1.0f, 0.0005f);
+                                }
+                                if (ImGui::CollapsingHeader("Material Textures", nodeFlags))
+                                {
+                                    std::int32_t count = 0;
+                                    for (auto& [type, tex] : material->Texture)
+                                    {
+                                        if (count++ > 0)
+                                            ImGui::SameLine(0.0f, 14.0f);
+
+                                        ImGui::PushID(static_cast<std::int32_t>(type));
+                                        CustomUIControl::TextureSlotCard(GetTextureTypeString(type), tex,
+                                            [&]()
+                                            {
+                                                auto newTex = LoadTexture(type);
+                                                if (newTex)
+                                                    material->Texture[type] = std::move(newTex);
+                                            });
+
+                                        ImGui::PopID();
+                                    }
+                                }
+                                if (ImGui::CollapsingHeader("Base Material Attributes", nodeFlags))
+                                {
+                                    ImGui::BeginDisabled();
+                                    CustomUIControl::DrawColor3("Diffuse Color", material->BaseMaterial->Attributes.DiffuseColor);
+                                    CustomUIControl::DrawColor3("Specular Color", material->BaseMaterial->Attributes.SpecularColor);
+                                    CustomUIControl::DrawColor3("Ambient Color", material->BaseMaterial->Attributes.AmbientColor);
+                                    CustomUIControl::DrawColor3("Emissive Color", material->BaseMaterial->Attributes.EmissiveColor);
+                                    CustomUIControl::DrawFloat("Shininess", material->BaseMaterial->Attributes.Shininess, 1.0f, 32.0f, 0.0005f);
+                                    CustomUIControl::DrawFloat("Opacity", material->BaseMaterial->Attributes.Opacity, 0.0f, 1.0f, 0.0005f);
+                                    ImGui::EndDisabled();
+                                }
+                                if (ImGui::CollapsingHeader("Base Material Textures", nodeFlags))
+                                {
+                                    std::int32_t count = 0;
+                                    ImGui::BeginDisabled();
+                                    for (const auto& [type, tex] : material->BaseMaterial->Texture)
+                                    {
+                                        if (count++ > 0)
+                                            ImGui::SameLine(0.0f, 14.0f);
+
+                                        ImGui::PushID(static_cast<std::int32_t>(type));
+                                        ImGui::BeginDisabled();
+                                        CustomUIControl::TextureSlotCard(GetTextureTypeString(type), tex);
+                                        ImGui::EndDisabled();
+                                        ImGui::PopID();
+                                    }
+                                    ImGui::EndDisabled();
+                                }
+                            }
+
+                            ImGui::TreePop();
                         }
                     }
                 }

@@ -281,6 +281,11 @@ namespace Motion
         colors[ImGuiCol_ModalWindowDimBg] = ImVec4(0.96f, 0.97f, 0.99f, 0.70f);
     }
 
+    static std::int32_t GetPID(const char* label) noexcept
+    {
+        return static_cast<std::int32_t>(std::hash<std::string>{}(label));
+    }
+
     /**
      * @brief Custom control for dragging and reseting a glm::vec3.
      *
@@ -296,7 +301,7 @@ namespace Motion
      */
     void CustomUIControl::DragControllerVec3(const char* label, glm::vec3& values, float resetValue)
     {
-        ImGui::PushID(label);
+        ImGui::PushID(GetPID(label));
         ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, { 0.0f, 0.0f });
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, { 0.0f, 0.0f });
         ImGuiTabBarFlags flags = ImGuiTableFlags_NoHostExtendX | ImGuiTableFlags_NoPadInnerX | ImGuiTableFlags_SizingFixedFit;
@@ -406,7 +411,7 @@ namespace Motion
         ImGuiIO& io = ImGui::GetIO();
         ImGuiStyle& style = ImGui::GetStyle();
 
-        ImGui::PushID(label);
+        ImGui::PushID(std::format("{}##{}", label, GetPID(label) + static_cast<std::int32_t>(values.x + values.y + values.z)).c_str());
 
         ImGui::Columns(2);
         ImGui::SetColumnWidth(0, columnWidth);
@@ -464,7 +469,7 @@ namespace Motion
     bool CustomUIControl::DrawFloat(const char* label, float& value, float minValue, float maxValue, float speed, float columnWidth)
     {
         bool changed = false;
-        ImGui::PushID(label);
+        ImGui::PushID(std::format("{}##{}", label, GetPID(label) + static_cast<std::int32_t>(value + minValue + maxValue)).c_str());
 
         ImGui::Columns(2);
         ImGui::SetColumnWidth(0, columnWidth);
@@ -483,7 +488,8 @@ namespace Motion
     bool CustomUIControl::DrawColor3(const char* label, glm::vec3& color, float columnWidth)
     {
         bool changed = false;
-        ImGui::PushID(label);
+
+        ImGui::PushID(std::format("{}##{}", label, GetPID(label) + static_cast<std::int32_t>(color.x + color.y + color.z)).c_str());
 
         ImGui::Columns(2);
         ImGui::SetColumnWidth(0, columnWidth);
@@ -494,8 +500,7 @@ namespace Motion
 
         // Draw the color box
         ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 6.0f);
-        ImGui::ColorEdit3("##color", glm::value_ptr(color),
-            ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel);
+        ImGui::ColorEdit3("##color", glm::value_ptr(color), ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel);
         ImGui::PopStyleVar();
 
         ImGui::SameLine(0.0f, 10.0f);
@@ -529,6 +534,185 @@ namespace Motion
         ImGui::PopID();
         return changed;
     }
+
+    bool CustomUIControl::TextBox(const char* label, std::string& textValue, bool isReadOnly, size_t maxLen)
+    {
+        bool changed = false;
+        ImGui::PushID(std::format("{}##{}", label, textValue.size() + GetPID(label)).c_str());
+
+        ImGui::Columns(2, nullptr, false);
+        ImGui::SetColumnWidth(0, 110.0f);
+        ImGui::TextUnformatted(label);
+        ImGui::NextColumn();
+
+        ImGui::BeginGroup();
+        ImGui::SameLine(0.0f, 18.0f);
+
+        // Text box
+        char buffer[512] = {};
+        strncpy(buffer, textValue.c_str(), std::min(maxLen, sizeof(buffer) - 1));
+        if (ImGui::InputText("##TextBox", buffer, maxLen, isReadOnly ? ImGuiInputTextFlags_ReadOnly : 0))
+        {
+            textValue = buffer;
+            changed = true;
+        }
+
+        ImGui::EndGroup();
+        ImGui::Columns(1);
+        ImGui::PopID();
+
+        return changed;
+    }
+
+    void CustomUIControl::TextureSlotCard(const std::string& slotLabel, std::shared_ptr<ITexture>& texture, std::function<void()> onLoad)
+    {
+        ImGui::PushID(std::format("{}##{}{}", slotLabel, texture ? texture->GetID() + slotLabel.size() : slotLabel.size(), GetPID(slotLabel.c_str())).c_str());
+        ImGui::BeginGroup();
+        const float cardWidth = 92.0f;
+        const float cardHeight = 116.0f;
+        const float imgSize = 56.0f;
+        const float btnWidth = 54.0f;
+        const float btnHeight = 22.0f;
+
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 9.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
+
+        // Card background
+        ImGui::Dummy(ImVec2(cardWidth, cardHeight));
+        ImVec2 p_min = ImGui::GetItemRectMin();
+        ImVec2 p_max = ImGui::GetItemRectMax();
+        ImDrawList* draw = ImGui::GetWindowDrawList();
+        ImU32 bgCol = ImGui::ColorConvertFloat4ToU32(ImVec4(0.18f, 0.19f, 0.22f, 1.0f));
+        ImU32 borderCol = ImGui::GetColorU32(ImGuiCol_Border);
+        draw->AddRectFilled(p_min, p_max, bgCol, 9.0f);
+        draw->AddRect(p_min, p_max, borderCol, 9.0f, 0, 1.0f);
+
+        // Thumbnail centered in card
+        float imgX = p_min.x + (cardWidth - imgSize) * 0.5f;
+        float imgY = p_min.y + 8.0f;
+        ImGui::SetCursorScreenPos(ImVec2(imgX, imgY));
+        if (texture)
+            ImGui::Image(texture->GetID(), ImVec2(imgSize, imgSize));
+        else
+            ImGui::Dummy(ImVec2(imgSize, imgSize));
+
+        // Label, centered under thumbnail, with ellipsis for long names
+        float textY = imgY + imgSize + 4.0f;
+        ImVec2 textSz = ImGui::CalcTextSize(slotLabel.c_str());
+        float textX = p_min.x + (cardWidth - textSz.x) * 0.5f;
+        ImGui::SetCursorScreenPos(ImVec2(textX, textY));
+        float labelMaxWidth = cardWidth - 10.0f;
+        if (textSz.x > labelMaxWidth) {
+            // Shrink and ellipsis
+            std::string clipped = slotLabel.substr(0, 10) + "...";
+            ImGui::Text("%s", clipped.c_str());
+        }
+        else {
+            ImGui::Text("%s", slotLabel.c_str());
+        }
+
+        // "Load" button centered at bottom
+        float btnX = p_min.x + (cardWidth - btnWidth) * 0.5f;
+        float btnY = p_max.y - btnHeight - 8.0f;
+        ImGui::SetCursorScreenPos(ImVec2(btnX, btnY));
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.22f, 0.50f, 0.95f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.29f, 0.65f, 1.00f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.17f, 0.36f, 0.65f, 1.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 5.0f);
+
+        if (ImGui::Button(("Load##" + slotLabel).c_str(), ImVec2(btnWidth, btnHeight)))
+            if (onLoad) onLoad();
+
+        ImGui::PopStyleVar();
+        ImGui::PopStyleColor(3);
+
+        ImGui::PopStyleVar(2);
+        ImGui::EndGroup();
+        ImGui::PopID();
+    }
+
+    void CustomUIControl::TextureSlotCard(const std::string& slotLabel, const std::shared_ptr<ITexture>& texture)
+    {
+        ImGui::PushID(std::format("{}##{}{}", slotLabel, texture ? texture->GetID() + slotLabel.size() : slotLabel.size(), GetPID(slotLabel.c_str())).c_str());
+        ImGui::BeginGroup();
+        const float cardWidth = 92.0f;
+        const float cardHeight = 116.0f;
+        const float imgSize = 56.0f;
+        const float btnWidth = 54.0f;
+        const float btnHeight = 22.0f;
+
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 9.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
+
+        // Card background
+        ImGui::Dummy(ImVec2(cardWidth, cardHeight));
+        ImVec2 p_min = ImGui::GetItemRectMin();
+        ImVec2 p_max = ImGui::GetItemRectMax();
+        ImDrawList* draw = ImGui::GetWindowDrawList();
+        ImU32 bgCol = ImGui::ColorConvertFloat4ToU32(ImVec4(0.18f, 0.19f, 0.22f, 1.0f));
+        ImU32 borderCol = ImGui::GetColorU32(ImGuiCol_Border);
+        draw->AddRectFilled(p_min, p_max, bgCol, 9.0f);
+        draw->AddRect(p_min, p_max, borderCol, 9.0f, 0, 1.0f);
+
+        // Thumbnail centered in card
+        float imgX = p_min.x + (cardWidth - imgSize) * 0.5f;
+        float imgY = p_min.y + 8.0f;
+        ImGui::SetCursorScreenPos(ImVec2(imgX, imgY));
+        if (texture)
+            ImGui::Image(texture->GetID(), ImVec2(imgSize, imgSize));
+        else
+            ImGui::Dummy(ImVec2(imgSize, imgSize));
+
+        // Label, centered under thumbnail, with ellipsis for long names
+        float textY = imgY + imgSize + 4.0f;
+        ImVec2 textSz = ImGui::CalcTextSize(slotLabel.c_str());
+        float textX = p_min.x + (cardWidth - textSz.x) * 0.5f;
+        ImGui::SetCursorScreenPos(ImVec2(textX, textY));
+        float labelMaxWidth = cardWidth - 10.0f;
+        if (textSz.x > labelMaxWidth) {
+            // Shrink and ellipsis
+            std::string clipped = slotLabel.substr(0, 10) + "...";
+            ImGui::Text("%s", clipped.c_str());
+        }
+        else {
+            ImGui::Text("%s", slotLabel.c_str());
+        }
+
+        ImGui::PopStyleVar(2);
+        ImGui::EndGroup();
+        ImGui::PopID();
+    }
+
+    // A modern styled combo box with label on the left and custom width
+    bool CustomUIControl::ComboBox(const char* label, int& currentItem, const std::vector<std::string>& items, float labelWidth, float comboWidth)
+    {
+        bool changed = false;
+        ImGui::PushID(std::format("{}##{}{}", label, currentItem + items.size(), GetPID(label)).c_str());
+
+        ImGui::Columns(2, nullptr, false);
+        ImGui::SetColumnWidth(0, labelWidth);
+        ImGui::TextUnformatted(label);
+        ImGui::NextColumn();
+
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 8.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(10, 6)); // pill-shaped
+        ImGui::PushItemWidth(comboWidth);
+
+        std::vector<const char*> cstrItems;
+        cstrItems.reserve(items.size());
+        for (const auto& s : items) cstrItems.push_back(s.c_str());
+
+        if (ImGui::Combo("##ModernCombo", &currentItem, cstrItems.data(), static_cast<int>(cstrItems.size())))
+            changed = true;
+
+        ImGui::PopItemWidth();
+        ImGui::PopStyleVar(2);
+        ImGui::Columns(1);
+        ImGui::PopID();
+        return changed;
+    }
+
+
 
 
     /**

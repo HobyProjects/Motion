@@ -22,6 +22,8 @@
 #include <regex>
 #include <mutex>
 #include <format>
+#include <variant>
+#include <optional>
 
 //external
 #define GLFW_INCLUDE_NONE

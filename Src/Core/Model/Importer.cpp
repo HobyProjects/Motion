@@ -2,23 +2,13 @@
 
 namespace Motion
 {
-    /**
-     * @brief Generates a unique file path by appending "-copy" and a counter to the original file name if the file already exists.
-     *
-     * This function checks if the given file path exists. If it does not exist, the original path is returned.
-     * If the file exists, it generates a new file name by appending "-copy" (and a counter if necessary) to the stem of the original file name,
-     * ensuring that the returned path does not already exist in the file system.
-     *
-     * @param originalPath The original file path to check and generate a unique copy name for.
-     * @return std::filesystem::path A unique file path that does not exist in the file system.
-     */
     static std::filesystem::path GetAvailableCopyName(const std::filesystem::path& originalPath) {
         if (!std::filesystem::exists(originalPath)) {
             return originalPath;
         }
 
         std::filesystem::path directory = originalPath.parent_path();
-        std::string stem = originalPath.stem().string();  // file name without extension
+        std::string stem = originalPath.stem().string();
         std::string extension = originalPath.extension().string();
 
         int counter = 1;
@@ -32,43 +22,6 @@ namespace Motion
         return newPath;
     }
 
-    /**
-     * @brief Imports a 3D model file into the engine using Assimp and exports it to the specified path.
-     *
-     * This function reads a model file from the given path using Assimp with a set of processing flags
-     * (triangulation, smooth normals generation, tangent space calculation, cache locality improvement,
-     * redundant material removal, data structure validation, and UV flipping). If the import is successful,
-     * it exports the model to the specified export path using the Exporter::ExportModel function.
-     *
-     * @param path The filesystem path to the source model file to import.
-     * @param exportPath The filesystem path where the imported model should be exported.
-     * @return true if the model was successfully imported and exported; false otherwise.
-     */
-    static bool ImportToEngine(const std::filesystem::path& path, const std::filesystem::path& exportPath)
-    {
-        Assimp::Importer importer;
-        const std::uint32_t importFlags = aiProcess_Triangulate | aiProcess_GenSmoothNormals | aiProcess_CalcTangentSpace | aiProcess_ImproveCacheLocality | aiProcess_RemoveRedundantMaterials | aiProcess_ValidateDataStructure | aiProcess_FlipUVs;
-        const aiScene* scene = importer.ReadFile(path.string(), importFlags);
-        if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)
-        {
-            MOTION_CORE_ERROR("Assimp Importer Error: {0}", importer.GetErrorString());
-            return false;
-        }
-
-        return false;
-    }
-
-    /**
-     * @brief Generates box projection UV coordinates for a set of vertices.
-     *
-     * This function computes UV texture coordinates for each vertex in the input vector
-     * using box projection mapping. The dominant axis of the vertex normal determines
-     * the projection plane (XY, XZ, or YZ). The resulting UVs are normalized to fit
-     * within the [0, 1] range based on the minimum and maximum projected coordinates.
-     *
-     * @param vertices Reference to a vector of Vertex objects. Each Vertex must have
-     *                 Position (glm::vec3), Normal (glm::vec3), and TexCoord (glm::vec2) members.
-     */
     void GenerateBoxProjectionUVs(std::vector<Vertex>& vertices)
     {
         if (vertices.empty()) return;
@@ -80,7 +33,6 @@ namespace Motion
             const glm::vec3& pos = vertices[i].Position;
             glm::vec3 n = glm::abs(glm::normalize(vertices[i].Normal));
             glm::vec2 uv;
-            // Choose projection plane based on dominant normal axis
             if (n.x >= n.y && n.x >= n.z)
                 uv = { pos.y, pos.z }; // YZ
             else if (n.y >= n.x && n.y >= n.z)
@@ -98,24 +50,11 @@ namespace Motion
             vertices[i].TexCoord = (projected[i] - minUV) / range;
     }
 
-
-    /**
-     * @brief Generates per-vertex normals for a mesh given its vertices and triangle indices.
-     *
-     * This function computes smooth normals for each vertex by accumulating the normalized face normals
-     * of all triangles sharing the vertex, then normalizes the result. It assumes that the mesh is
-     * defined by a list of vertices and a list of triangle indices (each group of three indices forms a triangle).
-     *
-     * @param vertices Reference to a vector of Vertex objects. The Normal field of each vertex will be updated.
-     * @param indices  Reference to a vector of triangle indices (uint32_t). Each consecutive group of three indices defines a triangle.
-     */
     static void GenerateNormals(std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices)
     {
-        // Clear existing normals
         for (auto& v : vertices)
             v.Normal = glm::vec3(0.0f);
 
-        // Accumulate face normals
         for (size_t i = 0; i < indices.size(); i += 3)
         {
             uint32_t I0 = indices[i];
@@ -136,26 +75,10 @@ namespace Motion
             vertices[I2].Normal += faceNormal;
         }
 
-        // Normalize the result
         for (auto& v : vertices)
             v.Normal = glm::normalize(v.Normal);
     }
 
-    /**
-     * @brief Retrieves a material attribute from an Assimp material.
-     *
-     * This templated function attempts to extract a material attribute of type T from the given aiMaterial.
-     * If the material pointer is null or the attribute cannot be retrieved, the provided default value is returned.
-     * Error and warning messages are logged accordingly.
-     *
-     * @tparam T Type of the attribute to retrieve.
-     * @param material Pointer to the aiMaterial from which to retrieve the attribute.
-     * @param key The key identifying the attribute.
-     * @param type The type of the attribute (Assimp-specific).
-     * @param index The index of the attribute (for attributes that may have multiple values).
-     * @param defaultValue The value to return if the attribute cannot be retrieved.
-     * @return The retrieved attribute value, or defaultValue if retrieval fails.
-     */
     template<typename T>
     static T GetMaterialAttribute(const aiMaterial* material, const char* key, std::uint32_t type, std::uint32_t index, T defaultValue)
     {
@@ -194,15 +117,6 @@ namespace Motion
         return { min, max };
     }
 
-    /**
-     * @brief Generates a hexadecimal hash string from the given input string.
-     *
-     * This function computes the hash of the input string using std::hash,
-     * and formats the resulting hash value as an uppercase hexadecimal string.
-     *
-     * @param input The string to be hashed.
-     * @return A std::string containing the hexadecimal representation of the hash.
-     */
     static std::string HashString(const std::string& input)
     {
         return std::format("{:X}", std::hash<std::string>{}(input));
@@ -216,47 +130,17 @@ namespace Motion
             const std::vector<uint32_t>& Indices;
         };
 
-        /**
-         * @brief Returns the number of faces in the mesh.
-         *
-         * This function calculates the number of faces by dividing the total number of indices
-         * by 3, assuming that each face is represented by a triangle (3 indices per face).
-         *
-         * @param context Pointer to the SMikkTSpaceContext containing mesh data.
-         * @return Number of faces in the mesh as a 32-bit integer.
-         */
         static std::int32_t GetNumFaces(const SMikkTSpaceContext* context)
         {
             auto* adapter = static_cast<MeshMikkTSpaceAdapter*>(context->m_pUserData);
             return static_cast<std::int32_t>(adapter->Indices.size() / 3);
         }
 
-        /**
-         * @brief Returns the number of vertices for a face.
-         *
-         * This function always returns 3, indicating that each face is assumed to be a triangle.
-         *
-         * @param context Pointer to the SMikkTSpaceContext (unused).
-         * @param faceIndex Index of the face (unused).
-         * @return Number of vertices in the face (always 3).
-         */
         static std::int32_t GetNumVerticesOfFace(const SMikkTSpaceContext*, std::int32_t)
         {
             return 3;
         }
 
-        /**
-         * @brief Retrieves the position of a vertex for a given face and vertex index from the mesh adapter.
-         *
-         * This function is used by the SMikkTSpace library to access the position of a vertex in the mesh.
-         * It extracts the vertex index from the adapter's index buffer and copies the position coordinates
-         * into the provided array.
-         *
-         * @param context Pointer to the SMikkTSpaceContext containing user data (MeshMikkTSpaceAdapter).
-         * @param pos Output array to store the position (x, y, z) of the vertex.
-         * @param face The index of the face in the mesh.
-         * @param vert The index of the vertex within the face (0, 1, or 2).
-         */
         static void GetPosition(const SMikkTSpaceContext* context, float pos[3], std::int32_t face, std::int32_t vert)
         {
             auto* adapter = static_cast<MeshMikkTSpaceAdapter*>(context->m_pUserData);
@@ -265,17 +149,6 @@ namespace Motion
             pos[0] = p.x; pos[1] = p.y; pos[2] = p.z;
         }
 
-        /**
-         * @brief Retrieves the normal vector for a specified vertex of a face in a mesh.
-         *
-         * This function extracts the normal vector from the mesh adapter for the given face and vertex indices,
-         * and stores it in the provided array.
-         *
-         * @param context Pointer to the SMikkTSpaceContext containing user data for mesh access.
-         * @param norm Output array to store the normal vector components (size 3).
-         * @param face Index of the face in the mesh.
-         * @param vert Index of the vertex within the face.
-         */
         static void GetNormal(const SMikkTSpaceContext* context, float norm[3], std::int32_t face, std::int32_t vert)
         {
             auto* adapter = static_cast<MeshMikkTSpaceAdapter*>(context->m_pUserData);
@@ -284,17 +157,6 @@ namespace Motion
             norm[0] = n.x; norm[1] = n.y; norm[2] = n.z;
         }
 
-        /**
-         * @brief Retrieves the texture coordinates (UV) for a specific vertex of a face in a mesh.
-         *
-         * This function extracts the UV coordinates from the mesh adapter using the provided face and vertex indices.
-         * It is intended for use with the SMikkTSpace library for tangent space generation.
-         *
-         * @param context Pointer to the SMikkTSpaceContext containing user data (MeshMikkTSpaceAdapter).
-         * @param uv Output array to store the retrieved UV coordinates (size 2).
-         * @param face Index of the face in the mesh.
-         * @param vert Index of the vertex within the face (0, 1, or 2).
-         */
         static void GetTexCoord(const SMikkTSpaceContext* context, float uv[2], std::int32_t face, std::int32_t vert)
         {
             auto* adapter = static_cast<MeshMikkTSpaceAdapter*>(context->m_pUserData);
@@ -303,37 +165,14 @@ namespace Motion
             uv[0] = t.x; uv[1] = t.y;
         }
 
-        /**
-         * @brief Sets the tangent and tangent sign for a specific vertex in a mesh using MikkTSpace.
-         *
-         * This function assigns the provided tangent vector and sign to the vertex specified by the face and vertex indices.
-         * The tangent sign is used to reconstruct the bitangent in the shader as: cross(normal, tangent) * sign.
-         *
-         * @param context Pointer to the SMikkTSpaceContext containing user data for mesh adaptation.
-         * @param tangent Array of 3 floats representing the tangent vector.
-         * @param sign Float value representing the tangent sign (used for bitangent reconstruction).
-         * @param face Index of the face in the mesh.
-         * @param vert Index of the vertex within the face.
-         */
         static void SetTSpaceBasic(const SMikkTSpaceContext* context, const float tangent[3], float sign, std::int32_t face, std::int32_t vert)
         {
             auto* adapter = static_cast<MeshMikkTSpaceAdapter*>(context->m_pUserData);
             std::int32_t idx = adapter->Indices[face * 3 + vert];
             adapter->Vertices[idx].Tangent = glm::vec3(tangent[0], tangent[1], tangent[2]);
-            adapter->Vertices[idx].TangentSign = sign; // Bitangent can be reconstructed in shader: cross(normal, tangent) * sign
+            adapter->Vertices[idx].TangentSign = sign;
         }
 
-        /**
-         * @brief Generates tangent vectors for a mesh using the MikkTSpace algorithm.
-         *
-         * This function computes tangent vectors for each vertex in the provided mesh,
-         * which are necessary for advanced shading techniques such as normal mapping.
-         * It uses the MikkTSpace library to ensure consistent and high-quality tangent
-         * space generation. The tangents are stored directly in the input vertex array.
-         *
-         * @param vertices Reference to a vector of Vertex objects representing the mesh.
-         * @param indices Reference to a vector of indices defining the mesh's triangles.
-         */
         inline void GenerateTangents(std::vector<Vertex>& vertices, const std::vector<std::uint32_t>& indices)
         {
             MeshMikkTSpaceAdapter adapter{ vertices, indices };
@@ -344,7 +183,7 @@ namespace Motion
             iface.m_getNormal = GetNormal;
             iface.m_getTexCoord = GetTexCoord;
             iface.m_setTSpaceBasic = SetTSpaceBasic;
-            iface.m_setTSpace = nullptr; // Or &SetTSpace if you want full bitangent vectors
+            iface.m_setTSpace = nullptr;
 
             SMikkTSpaceContext context{};
             context.m_pInterface = &iface;
@@ -374,22 +213,13 @@ namespace Motion
         virtual ~MaterialAsset() = default;
     };
 
-    struct StandardMaterialAsset : public MaterialAsset
-    {
-        StandardMaterialAttribute Attributes{};
-        std::unordered_set<TextureAssetID> TextureRefs{};
-
-        StandardMaterialAsset() = default;
-        virtual ~StandardMaterialAsset() = default;
-    };
-
     struct PhysicalBasedMaterialAsset : public MaterialAsset
     {
         PhysicalBasedMaterialAttribute Attributes{};
         std::unordered_set<TextureAssetID> TextureRefs{};
 
         PhysicalBasedMaterialAsset() = default;
-        virtual ~PhysicalBasedMaterialAsset() = default;
+        ~PhysicalBasedMaterialAsset() override = default;
     };
 
     struct MaterialRef
@@ -448,29 +278,9 @@ namespace Motion
         ~ImportedResults() = default;
     };
 
-
-    /**
-     * @brief Imports a 3D model from the specified input path, processes it, and exports relevant data to the output path.
-     *
-     * This function uses Assimp to read and process a 3D model file, extracting mesh, material, and texture information.
-     * It computes global bounds, handles file copying if necessary, and populates the provided ImportedResults structure
-     * with all relevant data. Meshes are processed for vertices, indices, normals, tangents, bitangents, and texture coordinates.
-     * Materials and textures are loaded and associated with meshes. If certain attributes are missing, default values or
-     * procedural generation (e.g., normals, UVs, tangents) are applied.
-     *
-     * @param input The path to the input model file to import.
-     * @param output The path where the processed model data should be exported/copied.
-     * @param outResults Reference to an ImportedResults structure to be populated with the imported data.
-     * @return true if the import and export were successful; false otherwise.
-     *
-     * @note
-     * - Uses Assimp for model importing and processing.
-     * - Handles copying of input files to the output location if necessary.
-     * - Generates missing mesh attributes (normals, UVs, tangents) when not present.
-     * - Loads textures using stb_image and associates them with materials.
-     * - Logs errors and info messages using MOTION_CORE_ERROR and MOTION_CORE_INFO macros.
-     * - Throws no exceptions; all errors are handled internally and reported via return value and logging.
-     */
+    // -------------------------------------------------------------
+    // Import (full) with robust textures, duplicate-mesh guard, etc.
+    // -------------------------------------------------------------
     static bool Import(const std::filesystem::path& input, const std::filesystem::path& output, ImportedResults& outResults)
     {
         try
@@ -484,7 +294,8 @@ namespace Motion
                 try
                 {
                     std::filesystem::create_directories(uniqueOutput.parent_path());
-                    std::filesystem::copy(input.parent_path(), uniqueOutput.parent_path(), std::filesystem::copy_options::recursive | std::filesystem::copy_options::overwrite_existing);
+                    std::filesystem::copy(input.parent_path(), uniqueOutput.parent_path(),
+                        std::filesystem::copy_options::recursive | std::filesystem::copy_options::overwrite_existing);
                     MOTION_CORE_INFO("Copied all content from {} to {}", input.string(), uniqueOutput.string());
                 }
                 catch (const std::exception& e)
@@ -511,16 +322,122 @@ namespace Motion
                 return false;
             }
 
-
             // Global bounds
             auto [minBounds, maxBounds] = ComputeGlobalBounds(scene);
             outResults.BoundsMin = minBounds;
             outResults.BoundsMax = maxBounds;
             outResults.MeshCount = scene->mNumMeshes;
 
+            // ---- NEW: Directory for texture resolution + caches
+            const std::filesystem::path modelDir = uniqueOutput.parent_path();
+
+            auto resolveTexture = [&](const aiScene* scenePtr, const aiString& aiPath)
+                -> std::variant<std::filesystem::path, const aiTexture*>
+                {
+                    if (!aiPath.C_Str() || !aiPath.C_Str()[0])
+                        return std::filesystem::path{};
+
+                    // Embedded (“*0”, “*1”, …)
+                    if (aiPath.C_Str()[0] == '*') {
+                        int idx = std::atoi(aiPath.C_Str() + 1);
+                        if (idx >= 0 && idx < static_cast<int>(scenePtr->mNumTextures))
+                            return scenePtr->mTextures[idx];
+                        return std::filesystem::path{};
+                    }
+
+                    std::filesystem::path p(aiPath.C_Str());
+
+                    if (p.is_absolute() && std::filesystem::exists(p))
+                        return p;
+
+                    std::filesystem::path rel = modelDir / p;
+                    if (std::filesystem::exists(rel))
+                        return rel;
+
+                    std::filesystem::path fallback = input.parent_path() / p;
+                    if (std::filesystem::exists(fallback))
+                        return fallback;
+
+                    return std::filesystem::path{};
+                };
+
+            std::unordered_map<std::string, TextureAssetID> texturePathToID;
+
+            auto loadTextureAsset =
+                [&](const std::variant<std::filesystem::path, const aiTexture*>& source,
+                    TextureType type) -> std::optional<TextureAssetID>
+                {
+                    stbi_set_flip_vertically_on_load(1);
+
+                    TextureAsset tex{};
+                    tex.Type = type;
+
+                    if (std::holds_alternative<const aiTexture*>(source))
+                    {
+                        const aiTexture* emb = std::get<const aiTexture*>(source);
+                        if (!emb) return std::nullopt;
+
+                        int w = 0, h = 0, ch = 0;
+                        unsigned char* data = nullptr;
+
+                        if (emb->mHeight == 0)
+                        {
+                            data = stbi_load_from_memory(
+                                reinterpret_cast<const stbi_uc*>(emb->pcData),
+                                emb->mWidth, &w, &h, &ch, 4);
+                        }
+                        else
+                        {
+                            const int bytes = emb->mWidth * emb->mHeight * 4;
+                            data = stbi_load_from_memory(
+                                reinterpret_cast<const stbi_uc*>(emb->pcData),
+                                bytes, &w, &h, &ch, 4);
+                        }
+
+                        if (!data) return std::nullopt;
+
+                        tex.Data = data;
+                        tex.Width = static_cast<std::uint32_t>(w);
+                        tex.Height = static_cast<std::uint32_t>(h);
+                        tex.Channels = 4; // requested RGBA
+                        std::string key = std::format("EMBED_{:016X}_{}x{}", reinterpret_cast<uintptr_t>(emb), w, h);
+                        tex.ID = std::format("TEX_PBR_{}", HashString(key));
+
+                        outResults.Textures.emplace(tex.ID, std::move(tex));
+                        return tex.ID;
+                    }
+                    else
+                    {
+                        const auto& path = std::get<std::filesystem::path>(source);
+                        if (path.empty() || !std::filesystem::exists(path)) return std::nullopt;
+
+                        const std::string norm = std::filesystem::weakly_canonical(path).string();
+                        if (auto it = texturePathToID.find(norm); it != texturePathToID.end())
+                            return it->second;
+
+                        int w = 0, h = 0, ch = 0;
+                        unsigned char* data = stbi_load(norm.c_str(), &w, &h, &ch, 4);
+                        if (!data) return std::nullopt;
+
+                        tex.Data = data;
+                        tex.Width = static_cast<std::uint32_t>(w);
+                        tex.Height = static_cast<std::uint32_t>(h);
+                        tex.Channels = 4; // requested RGBA
+                        tex.ID = std::format("TEX_PBR_{}", HashString(norm));
+
+                        outResults.Textures.emplace(tex.ID, std::move(tex));
+                        texturePathToID[norm] = tex.ID;
+                        return tex.ID;
+                    }
+                };
+
+            // ---- Prevent duplicate mesh loads (meshes can appear under multiple nodes)
+            std::vector<bool> meshLoaded(scene->mNumMeshes, false);
+
             auto loadMesh = [&](std::uint32_t meshIndex, const aiMesh* mesh)
                 {
-                    if (!mesh) return;
+                    if (!mesh || meshLoaded[meshIndex]) return;
+                    meshLoaded[meshIndex] = true;
 
                     outResults.Meshes[meshIndex] = MeshAsset{};
                     outResults.Meshes[meshIndex].ID = meshIndex;
@@ -530,98 +447,57 @@ namespace Motion
                     bool hasNormals = mesh->HasNormals();
                     bool hasTangents = mesh->HasTangentsAndBitangents();
 
+                    auto& verts = outResults.Meshes[meshIndex].Vertices;
+                    verts.reserve(mesh->mNumVertices);
+
                     for (std::uint32_t i = 0; i < mesh->mNumVertices; ++i)
                     {
                         Vertex vertex
                         {
                             .Position = { mesh->mVertices[i].x, mesh->mVertices[i].y, mesh->mVertices[i].z },
                             .TexCoord = hasUVs ? glm::vec2(mesh->mTextureCoords[0][i].x, mesh->mTextureCoords[0][i].y) : glm::vec2{ 0.f, 0.f },
-                            .Normal = hasNormals ? glm::vec3(mesh->mNormals[i].x, mesh->mNormals[i].y, mesh->mNormals[i].z) : glm::vec3{ 0.f, 0.f, 1.f },
-                            .Tangent = hasTangents ? glm::vec3(mesh->mTangents[i].x, mesh->mTangents[i].y, mesh->mTangents[i].z) : glm::vec3{ 1.f, 0.f, 0.f },
+                            .Normal = hasNormals ? glm::vec3(mesh->mNormals[i].x,  mesh->mNormals[i].y,  mesh->mNormals[i].z) : glm::vec3{ 0.f, 0.f, 1.f },
+                            .Tangent = hasTangents ? glm::vec3(mesh->mTangents[i].x,  mesh->mTangents[i].y,  mesh->mTangents[i].z) : glm::vec3{ 1.f, 0.f, 0.f },
                             .Bitangent = hasTangents ? glm::vec3(mesh->mBitangents[i].x, mesh->mBitangents[i].y, mesh->mBitangents[i].z) : glm::vec3{ 0.f, 1.f, 0.f },
                             .TangentSign = hasTangents ? ((glm::dot(glm::cross(hasNormals ? glm::vec3(mesh->mNormals[i].x, mesh->mNormals[i].y, mesh->mNormals[i].z) : glm::vec3{ 0.f, 0.f, 1.f }, glm::vec3(mesh->mTangents[i].x, mesh->mTangents[i].y, mesh->mTangents[i].z)), glm::vec3(mesh->mBitangents[i].x, mesh->mBitangents[i].y, mesh->mBitangents[i].z)) < 0.f) ? -1.f : 1.f) : 1.f
                         };
 
-                        outResults.Meshes[meshIndex].Vertices.push_back(std::move(vertex));
+                        verts.push_back(std::move(vertex));
                     }
 
+                    auto& idxs = outResults.Meshes[meshIndex].Indices;
+                    idxs.reserve(mesh->mNumFaces * 3);
                     for (std::uint32_t i = 0; i < mesh->mNumFaces; ++i)
                         for (std::uint32_t idx = 0; idx < mesh->mFaces[i].mNumIndices; ++idx)
-                            outResults.Meshes[meshIndex].Indices.push_back(mesh->mFaces[i].mIndices[idx]);
+                            idxs.push_back(mesh->mFaces[i].mIndices[idx]);
 
-                    if (!hasNormals) GenerateNormals(outResults.Meshes[meshIndex].Vertices, outResults.Meshes[meshIndex].Indices);
-                    if (!hasUVs) GenerateBoxProjectionUVs(outResults.Meshes[meshIndex].Vertices);
+                    if (!hasNormals)  GenerateNormals(outResults.Meshes[meshIndex].Vertices, outResults.Meshes[meshIndex].Indices);
+                    if (!hasUVs)      GenerateBoxProjectionUVs(outResults.Meshes[meshIndex].Vertices);
                     if (!hasTangents) MikkTSpace::GenerateTangents(outResults.Meshes[meshIndex].Vertices, outResults.Meshes[meshIndex].Indices);
                 };
 
-            // Load all textures for a material
+            // ---- Load all PBR textures for a material (supports multi-slot + embedded)
             auto load_PBR_Textures =
                 [&](aiMaterial* mat, std::unordered_set<TextureAssetID>& pbrTextureRefs, aiTextureType aiType, TextureType type)
                 {
-                    aiString texPath;
-                    if (mat->GetTexture(aiType, 0, &texPath) != aiReturn_SUCCESS)
-                        return;
+                    if (!mat) return;
 
-                    std::filesystem::path textureFile(texPath.C_Str());
-                    if (!std::filesystem::exists(textureFile))
-                        return;
-
-                    TextureAssetID textureID = std::format("TEX_PBR_{}", HashString(textureFile.string()));
-                    pbrTextureRefs.insert(textureID);
-
-                    if (!pbrTextureRefs.contains(textureID))
+                    const unsigned int texCount = mat->GetTextureCount(aiType);
+                    for (unsigned int i = 0; i < texCount; ++i)
                     {
-                        int w = 0, h = 0, ch = 0;
-                        stbi_set_flip_vertically_on_load(1);
-                        std::uint8_t* data = stbi_load(textureFile.string().c_str(), &w, &h, &ch, 4);
-                        if (!data) return;
+                        aiString texPath;
+                        if (mat->GetTexture(aiType, i, &texPath) != aiReturn_SUCCESS)
+                            continue;
 
-                        TextureAsset loaded{};
-                        loaded.Type = type;
-                        loaded.Data = data;
-                        loaded.Width = static_cast<std::uint32_t>(w);
-                        loaded.Height = static_cast<std::uint32_t>(h);
-                        loaded.Channels = static_cast<std::uint32_t>(ch);
-                        loaded.ID = textureID;
-
-                        outResults.Textures[textureID] = std::move(loaded);
+                        auto resolved = resolveTexture(scene, texPath);
+                        if (auto id = loadTextureAsset(resolved, type))
+                        {
+                            pbrTextureRefs.insert(*id);
+                        }
                     }
                 };
 
-            auto load_STD_Textures =
-                [&](aiMaterial* mat, std::unordered_set<TextureAssetID>& stdTextureRefs, aiTextureType aiType, TextureType type)
-                {
-                    aiString texPath;
-                    if (mat->GetTexture(aiType, 0, &texPath) != aiReturn_SUCCESS)
-                        return;
-
-                    std::filesystem::path textureFile(texPath.C_Str());
-                    if (!std::filesystem::exists(textureFile))
-                        return;
-
-                    TextureAssetID textureID = std::format("TEX_STD_{}", HashString(textureFile.string()));
-                    stdTextureRefs.insert(textureID);
-
-                    if (!stdTextureRefs.contains(textureID))
-                    {
-                        int w = 0, h = 0, ch = 0;
-                        stbi_set_flip_vertically_on_load(1);
-                        std::uint8_t* data = stbi_load(textureFile.string().c_str(), &w, &h, &ch, 4);
-                        if (!data) return;
-
-                        TextureAsset loaded{};
-                        loaded.Type = type;
-                        loaded.Data = data;
-                        loaded.Width = static_cast<std::uint32_t>(w);
-                        loaded.Height = static_cast<std::uint32_t>(h);
-                        loaded.Channels = static_cast<std::uint32_t>(ch);
-                        loaded.ID = textureID;
-
-                        outResults.Textures[textureID] = std::move(loaded);
-                    }
-                };
-
-            // Load one material
+            // ---- Build one material (PBR)
             auto loadMaterial =
                 [&](std::uint32_t meshIndex, aiMaterial* material)
                 {
@@ -645,34 +521,12 @@ namespace Motion
                     load_PBR_Textures(material, pbrMaterialAsset->TextureRefs, aiTextureType_DIFFUSE_ROUGHNESS, TextureType::RoughnessTexture);
                     load_PBR_Textures(material, pbrMaterialAsset->TextureRefs, aiTextureType_AMBIENT_OCCLUSION, TextureType::AmbientOcclusionTexture);
                     load_PBR_Textures(material, pbrMaterialAsset->TextureRefs, aiTextureType_NORMAL_CAMERA, TextureType::NormalTexture);
+                    // Optional: emissive, opacity, AO/rough/metal packed maps, etc.
 
                     outResults.Meshes[meshIndex].MaterialRefs.push_back(pbrMaterialRef);
-
-                    MaterialRef stdMaterialRef{};
-                    stdMaterialRef.ID = std::format("MAT_STD_{}", HashString(material->GetName().C_Str()));
-                    stdMaterialRef.Type = MaterialType::StandardMaterial;
-                    stdMaterialRef.Name = material->GetName().C_Str();
-                    stdMaterialRef.Asset = std::make_shared<StandardMaterialAsset>();
-                    auto stdMaterialAsset = std::dynamic_pointer_cast<StandardMaterialAsset>(stdMaterialRef.Asset);
-
-                    aiColor3D diffuseColor = GetMaterialAttribute<aiColor3D>(material, AI_MATKEY_COLOR_DIFFUSE, aiColor3D(1.0f));
-                    aiColor3D specularColor = GetMaterialAttribute<aiColor3D>(material, AI_MATKEY_COLOR_SPECULAR, aiColor3D(1.0f));
-                    aiColor3D emissiveColor = GetMaterialAttribute<aiColor3D>(material, AI_MATKEY_COLOR_EMISSIVE, aiColor3D(0.0f));
-                    stdMaterialAsset->Attributes.DiffuseColor = { diffuseColor.r, diffuseColor.g, diffuseColor.b };
-                    stdMaterialAsset->Attributes.SpecularColor = { specularColor.r, specularColor.g, specularColor.b };
-                    stdMaterialAsset->Attributes.EmissiveColor = { emissiveColor.r, emissiveColor.g, emissiveColor.b };
-                    stdMaterialAsset->Attributes.Shininess = GetMaterialAttribute<float>(material, AI_MATKEY_SHININESS, 32.0f);
-                    stdMaterialAsset->Attributes.Opacity = GetMaterialAttribute<float>(material, AI_MATKEY_OPACITY, 1.0f);
-
-                    load_STD_Textures(material, stdMaterialAsset->TextureRefs, aiTextureType_DIFFUSE, TextureType::DiffuseTexture);
-                    load_STD_Textures(material, stdMaterialAsset->TextureRefs, aiTextureType_SPECULAR, TextureType::SpecularTexture);
-                    load_STD_Textures(material, stdMaterialAsset->TextureRefs, aiTextureType_EMISSIVE, TextureType::EmissiveTexture);
-                    load_STD_Textures(material, stdMaterialAsset->TextureRefs, aiTextureType_OPACITY, TextureType::OpacityTexture);
-
-                    outResults.Meshes[meshIndex].MaterialRefs.push_back(stdMaterialRef);
                 };
 
-            // Recursive node traversal (mesh & material import)
+            // ---- Traverse nodes
             std::function<void(const aiNode*)> traverse =
                 [&](const aiNode* node)
                 {
@@ -683,13 +537,12 @@ namespace Motion
                         aiMaterial* mat = scene->mMaterials[mesh->mMaterialIndex];
 
                         if (mesh) loadMesh(meshIdx, mesh);
-                        if (mat) loadMaterial(meshIdx, mat);
+                        if (mat)  loadMaterial(meshIdx, mat);
                     }
 
                     for (std::uint32_t i = 0; i < node->mNumChildren; ++i)
                         traverse(node->mChildren[i]);
                 };
-
 
             traverse(scene->mRootNode);
             MOTION_CORE_INFO("Model exported successfully to: {}", output.string());
@@ -700,22 +553,8 @@ namespace Motion
             MOTION_CORE_ERROR("Failed to export model: {}", e.what());
             return false;
         }
-        return false;
     }
 
-
-    /**
-     * @brief Imports a 3D model from the specified file path and creates a StaticMesh asset.
-     *
-     * This function handles the process of importing a model file into the engine. It determines the output path,
-     * checks for existing files, and manages file naming to avoid conflicts. The model is then imported into the engine,
-     * and its meshes and materials are processed. Textures referenced by the materials are loaded and assigned accordingly.
-     * If the import is successful and meshes are found, a StaticMesh asset is created and returned.
-     *
-     * @param path The filesystem path to the model file to import.
-     * @param exportPath The export directory path for the imported model. If set to "default", uses the engine's default model directory.
-     * @return std::shared_ptr<StaticMesh> A shared pointer to the imported StaticMesh asset, or nullptr if import fails.
-     */
     std::shared_ptr<StaticMesh> Importer::ImportModel(const std::filesystem::path& path, const std::string& exportPath)
     {
         std::string modelName = path.filename().stem().string();
@@ -743,21 +582,9 @@ namespace Motion
                             {
                                 if (textureRefs.contains(textureID))
                                 {
-                                    pbrMaterialInstance->Texture[textureAsset.Type] = std::move(ITexture::Create(
-                                        textureAsset.Data, textureAsset.Type, textureAsset.Width, textureAsset.Height, textureAsset.Channels));
-                                }
-                            }
-                        };
-
-                    auto load_STD_Textures =
-                        [&](std::shared_ptr<StandardMaterialInstance> stdMaterialInstance, std::unordered_set<TextureAssetID>& textureRefs)
-                        {
-                            for (const auto& [textureID, textureAsset] : importedModel.Textures)
-                            {
-                                if (textureRefs.contains(textureID))
-                                {
-                                    stdMaterialInstance->Texture[textureAsset.Type] = std::move(ITexture::Create(
-                                        textureAsset.Data, textureAsset.Type, textureAsset.Width, textureAsset.Height, textureAsset.Channels));
+                                    pbrMaterialInstance->Texture[textureAsset.Type] =
+                                        std::move(ITexture::Create(textureAsset.Data, textureAsset.Type,
+                                            textureAsset.Width, textureAsset.Height, textureAsset.Channels));
                                 }
                             }
                         };
@@ -766,24 +593,25 @@ namespace Motion
                     {
                         const BufferLayout layout
                         {
-                            {UniformCache::Position, BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Position)},
-                            {UniformCache::TexCoords, BufferComponents::UV, BufferStride::F2, false, offsetof(Vertex, TexCoord)},
-                            {UniformCache::Normals, BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Normal)},
-                            {UniformCache::Tangents, BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Tangent)},
-                            {UniformCache::Bitangents, BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Bitangent)},
-                            {UniformCache::TangentSign, BufferComponents::X, BufferStride::F1, false, offsetof(Vertex, TangentSign)}
+                            {UniformCache::Position,    BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Position)},
+                            {UniformCache::TexCoords,   BufferComponents::UV,  BufferStride::F2, false, offsetof(Vertex, TexCoord)},
+                            {UniformCache::Normals,     BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Normal)},
+                            {UniformCache::Tangents,    BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Tangent)},
+                            {UniformCache::Bitangents,  BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Bitangent)},
+                            {UniformCache::TangentSign, BufferComponents::X,   BufferStride::F1, false, offsetof(Vertex, TangentSign)}
                         };
 
-                        auto meshPtr = Mesh::Create(
-                            mesh.Vertices.data(), static_cast<std::uint32_t>(mesh.Vertices.size()),
-                            mesh.Indices.data(), static_cast<std::uint32_t>(mesh.Indices.size()),
-                            layout,
-                            staticMesh);
+                        auto meshPtr = Mesh::Create(mesh.Vertices.data(),
+                            static_cast<std::uint32_t>(mesh.Vertices.size()),
+                            mesh.Indices.data(),
+                            static_cast<std::uint32_t>(mesh.Indices.size()),
+                            layout, staticMesh);
+                        meshPtr->Index = meshID;
+                        meshPtr->Name = mesh.Name;
 
                         if (!mesh.MaterialRefs.empty())
                         {
                             const auto& pbrBaseMaterial = assetManager.Get<PhysicalBasedMaterial>("PBR_BaseMaterial");
-                            const auto& stdBaseMaterial = assetManager.Get<StandardMaterial>("STD_BaseMaterial");
 
                             for (const auto& matRef : mesh.MaterialRefs)
                             {
@@ -796,21 +624,9 @@ namespace Motion
                                     pbrMaterialInstance->Attributes.Metallic = materialAsset->Attributes.Metallic;
                                     pbrMaterialInstance->Attributes.Roughness = materialAsset->Attributes.Roughness;
                                     pbrMaterialInstance->Attributes.Opacity = materialAsset->Attributes.Opacity;
+
                                     load_PBR_Textures(pbrMaterialInstance, materialAsset->TextureRefs);
                                     meshPtr->SetMaterial(pbrMaterialInstance);
-                                }
-                                else if (matRef.Type == MaterialType::StandardMaterial)
-                                {
-                                    auto stdMaterialInstance = std::make_shared<StandardMaterialInstance>(matRef.ID, stdBaseMaterial);
-                                    const auto materialAsset = std::dynamic_pointer_cast<StandardMaterialAsset>(matRef.Asset);
-
-                                    stdMaterialInstance->Attributes.DiffuseColor = materialAsset->Attributes.DiffuseColor;
-                                    stdMaterialInstance->Attributes.SpecularColor = materialAsset->Attributes.SpecularColor;
-                                    stdMaterialInstance->Attributes.EmissiveColor = materialAsset->Attributes.EmissiveColor;
-                                    stdMaterialInstance->Attributes.Shininess = materialAsset->Attributes.Shininess;
-                                    stdMaterialInstance->Attributes.Opacity = materialAsset->Attributes.Opacity;
-                                    load_STD_Textures(stdMaterialInstance, materialAsset->TextureRefs);
-                                    meshPtr->SetMaterial(stdMaterialInstance);
                                 }
                                 else
                                 {

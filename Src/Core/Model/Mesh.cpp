@@ -119,24 +119,6 @@ namespace Motion
     }
 
     /**
-     * @brief Sets the material instance for this mesh.
-     *
-     * Assigns the provided StandardMaterialInstance to the mesh, updating the material ID (MID)
-     * accordingly. If the given material is valid (non-null), it is moved into the mesh's
-     * StandardMaterials member.
-     *
-     * @param material A shared pointer to the StandardMaterialInstance to be assigned.
-     *                 If nullptr, the mesh's material remains unchanged.
-     */
-    void Mesh::SetMaterial(const std::shared_ptr<StandardMaterialInstance>& material) noexcept
-    {
-        if (material)
-        {
-            StandardMaterials = std::move(material);
-        }
-    }
-
-    /**
      * @brief Returns the number of indices in the mesh.
      *
      * This function retrieves the count of indices used for rendering the mesh,

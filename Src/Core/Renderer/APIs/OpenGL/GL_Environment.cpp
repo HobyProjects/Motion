@@ -393,6 +393,26 @@ namespace Motion
             glDeleteBuffers(1, &s_CubeVBO);
     }
 
+    void GL_Environment::BindCubeTexture(std::uint32_t slot) const noexcept
+    {
+        glBindTextureUnit(slot, m_EnvironmentCubeTextureID);
+    }
+
+    void GL_Environment::BindBRDFLUTTexture(std::uint32_t slot) const noexcept
+    {
+        glBindTextureUnit(slot, m_BRDFLUTTextureID);
+    }
+
+    void GL_Environment::BindPrefilteredTexture(std::uint32_t slot) const noexcept
+    {
+        glBindTextureUnit(slot, m_PrefilteredTextureID);
+    }
+
+    void GL_Environment::BindIrradianceTexture(std::uint32_t slot) const noexcept
+    {
+        glBindTextureUnit(slot, m_IrradianceTextureID);
+    }
+
     void GL_Environment::Render(glm::mat4 viewMatrix, glm::mat4 projectionMatrix) noexcept
     {
         if (!m_EnvironmentShader)

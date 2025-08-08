@@ -1,229 +1,154 @@
 #include "CorePCH.hpp"
-
 #include "SceneRenderer.hpp"
 #include "Scene.hpp"
 
 namespace Motion
 {
     static std::vector<SceneDrawCommand> s_CommandQueue{};
-    static std::uint32_t s_DrawCallsCount{ 0 };
 
-    /**
-     * @brief Begins a new scene by clearing the draw commands and resetting the draw count.
-     *
-     * This method is called at the start of rendering a new scene to ensure that previous draw commands
-     * do not interfere with the current rendering process. It prepares the renderer for a fresh set of draw commands.
-     */
     void SceneRenderer::BeginScene() noexcept
     {
         s_CommandQueue.clear();
-        s_DrawCallsCount = 0;
     }
 
-    /**
-     * @brief Flushes the accumulated draw commands by sorting and executing them.
-     *
-     * This method sorts the draw commands based on their sort key, material ID, and mesh ID,
-     * then iterates through the sorted commands to render each mesh with its associated material.
-     * It uses the AssetManager to retrieve the necessary shader, material, and mesh resources for rendering.
-     */
+    namespace TEX_SLOTS {
+        static constexpr std::int32_t Irradiance = 0;
+        static constexpr std::int32_t Prefilter = 1;
+        static constexpr std::int32_t BRDFLUT = 2;
+
+        static constexpr std::int32_t BaseColor = 3;
+        static constexpr std::int32_t Metallic = 4;
+        static constexpr std::int32_t Roughness = 5;
+        static constexpr std::int32_t AO = 6;
+        static constexpr std::int32_t Normal = 7;
+        static constexpr std::int32_t Displace = 8;
+    }
+
+    static inline void BindIBL(IShader* shader, IEnvironment* env)
+    {
+        env->BindIrradianceTexture(TEX_SLOTS::Irradiance);
+        shader->SetUniform(UniformCache::IrradianceTextures, TEX_SLOTS::Irradiance);
+
+        env->BindPrefilteredTexture(TEX_SLOTS::Prefilter);
+        shader->SetUniform(UniformCache::PrefilteredTextures, TEX_SLOTS::Prefilter);
+
+        env->BindBRDFLUTTexture(TEX_SLOTS::BRDFLUT);
+        shader->SetUniform(UniformCache::BRDFLUT, TEX_SLOTS::BRDFLUT);
+    }
+
     static void FlushQueue() noexcept
     {
-        if (s_CommandQueue.empty())
-            return;
+        if (s_CommandQueue.empty()) return;
 
-        std::sort(s_CommandQueue.begin(), s_CommandQueue.end(), [](const SceneDrawCommand& a, const SceneDrawCommand& b) { return a < b; });
+        std::sort(s_CommandQueue.begin(), s_CommandQueue.end(),
+            [](const SceneDrawCommand& a, const SceneDrawCommand& b) { return a < b; });
 
         AssetManager& assetManager = AssetManager::GetInstance();
-        IShader* PBR_SHADER = assetManager.Get<IShader>("PBR").get();
-        IShader* STD_SHADER = assetManager.Get<IShader>("PHONG").get();
+        IShader* const PBR_SHADER = assetManager.Get<IShader>("PBR").get();
 
         IShader* currentShader = nullptr;
-        PhysicalBasedMaterialInstance* currentPBRMaterial = nullptr;
-        StandardMaterialInstance* currentSTDMaterial = nullptr;
+        PhysicalBasedMaterialInstance* currentMaterial = nullptr;
         Mesh* currentMesh = nullptr;
+        IEnvironment* currentEnv = nullptr;
 
-        std::int32_t TextureBindingPoint = 0;
-        const std::int32_t MAX_TEXTURE_SLOTS = Renderer::GetMaxTextureSlots();
+        UUID currentViewKey{ 0 };
+        bool haveView = false;
 
-
-        auto bindTexture =
-            [&](const SceneDrawCommand& command, const std::string_view& uniformName, TextureType textureType)
+        auto bindPBRTexture = [&](const std::string_view& uniformName, std::int32_t slot, TextureType type)
             {
-                if (command.ShadingMethod == ShadingMethod::PhysicalBased)
+                if (currentMaterial->Texture[type])
                 {
-                    if (currentPBRMaterial->Texture[textureType])
-                    {
-                        currentPBRMaterial->Texture[textureType]->Bind(TextureBindingPoint);
-                        currentShader->SetUniform(uniformName, TextureBindingPoint++);
-                    }
-                    else
-                    {
-                        currentPBRMaterial->BaseMaterial->Texture[textureType]->Bind(TextureBindingPoint);
-                        currentShader->SetUniform(uniformName, TextureBindingPoint++);
-                    }
+                    currentMaterial->Texture[type]->Bind(slot);
+                }
+                else if (currentMaterial->BaseMaterial->Texture[type])
+                {
+                    currentMaterial->BaseMaterial->Texture[type]->Bind(slot);
                 }
                 else
                 {
-                    if (currentSTDMaterial->Texture[textureType])
-                    {
-                        currentSTDMaterial->Texture[textureType]->Bind(TextureBindingPoint);
-                        currentShader->SetUniform(uniformName, TextureBindingPoint++);
-                    }
-                    else
-                    {
-                        currentSTDMaterial->BaseMaterial->Texture[textureType]->Bind(TextureBindingPoint);
-                        currentShader->SetUniform(uniformName, TextureBindingPoint++);
-                    }
+                    // Optionally: bind a 1x1 dummy texture to keep happy samplers.
                 }
+                currentShader->SetUniform(uniformName, slot);
             };
 
-
-
-        for (const auto& command : s_CommandQueue)
+        for (const auto& cmd : s_CommandQueue)
         {
-            IShader* SHADER_PTR = (command.ShadingMethod == ShadingMethod::PhysicalBased) ? PBR_SHADER : STD_SHADER;
-            PhysicalBasedMaterialInstance* PBR_MATERIAL = command.PBR_MatPtr;
-            StandardMaterialInstance* STD_MATERIAL = command.STD_MatPtr;
-            Mesh* MESH_PTR = command.MeshPtr;
+            IShader* const nextShader = PBR_SHADER;
+            Mesh* const nextMesh = cmd.MeshPtr;
+            auto* const nextMat = cmd.PBR_MatPtr;
+            auto* const nextEnv = cmd.EnvironmentPtr;
 
-            if (!SHADER_PTR || !PBR_MATERIAL || !STD_MATERIAL || !MESH_PTR) continue;
+            if (!nextShader || !nextMesh || !nextMat || !nextEnv)
+                continue;
 
-            std::int32_t requiredTextureSlots;
-            if (command.ShadingMethod == ShadingMethod::PhysicalBased)
-            {
-                currentPBRMaterial = PBR_MATERIAL;
-                requiredTextureSlots = PBR_MATERIAL->GetTexturesCount() + 3; // +3 for Irradiance, Prefiltered, and BRDF LUT textures
-            }
-            else
-            {
-                currentSTDMaterial = STD_MATERIAL;
-                requiredTextureSlots = STD_MATERIAL->GetTexturesCount() + 3; // +3 for Irradiance, Prefiltered, and BRDF LUT textures
-            }
-
-
-            if (TextureBindingPoint + requiredTextureSlots > MAX_TEXTURE_SLOTS)
+            if (currentShader != nextShader)
             {
                 if (currentShader) currentShader->Unbind();
-                if (currentMesh) currentMesh->Unbind();
-
-                currentPBRMaterial = nullptr;
-                currentSTDMaterial = nullptr;
-                currentMesh = nullptr;
-                currentShader = nullptr;
-                TextureBindingPoint = 0;
-            }
-
-            if (currentMesh != MESH_PTR)
-            {
-                if (currentMesh) currentMesh->Unbind();
-                currentMesh = MESH_PTR;
-                currentMesh->Bind();
-            }
-
-            if (currentShader != SHADER_PTR)
-            {
-                if (currentShader) currentShader->Unbind();
-                currentShader = SHADER_PTR;
+                currentShader = nextShader;
                 currentShader->Bind();
+            }
 
-                if (command.ShadingMethod == ShadingMethod::PhysicalBased)
-                {
-                    Renderer::BindTextureUnit(TextureBindingPoint, command.IrradianceTexture);
-                    currentShader->SetUniform(UniformCache::IrradianceTextures, TextureBindingPoint++);
-                    Renderer::BindTextureUnit(TextureBindingPoint, command.PrefilteredTexture);
-                    currentShader->SetUniform(UniformCache::PrefilteredTextures, TextureBindingPoint++);
-                    Renderer::BindTextureUnit(TextureBindingPoint, command.BRDFLUTTexture);
-                    currentShader->SetUniform(UniformCache::BRDFLUT, TextureBindingPoint++);
-                }
-                else
-                {
-                    Renderer::BindTextureUnit(TextureBindingPoint, command.IrradianceTexture);
-                    currentShader->SetUniform(UniformCache::IrradianceTextures, TextureBindingPoint++);
-                    Renderer::BindTextureUnit(TextureBindingPoint, command.PrefilteredTexture);
-                    currentShader->SetUniform(UniformCache::PrefilteredTextures, TextureBindingPoint++);
-                }
+            const bool envChanged = (currentEnv != nextEnv);
+            const bool viewChanged = (!haveView) || (currentViewKey != cmd.SortKey);
 
-                currentShader->SetUniform(UniformCache::ViewMatrix, command.ViewMatrix);
-                currentShader->SetUniform(UniformCache::ProjectionMatrix, command.ProjectionMatrix);
-                currentShader->SetUniform(UniformCache::ModelMatrix, command.ModelMatrix);
-                currentShader->SetUniform(UniformCache::NormalMatrix, command.NormalMatrix);
+            if (envChanged)
+            {
+                currentEnv = nextEnv;
+                BindIBL(currentShader, currentEnv);
+            }
 
-                currentShader->SetUniform(UniformCache::CameraPosition, command.CameraPosition);
+            if (viewChanged)
+            {
+                haveView = true;
+                currentViewKey = cmd.SortKey;
+
+                currentShader->SetUniform(UniformCache::ViewMatrix, cmd.ViewMatrix);
+                currentShader->SetUniform(UniformCache::ProjectionMatrix, cmd.ProjectionMatrix);
+                currentShader->SetUniform(UniformCache::CameraPosition, cmd.CameraPosition);
 
                 for (std::int32_t i = 0; i < DirectionalLight::LIGHT_COUNT; ++i)
                 {
-                    currentShader->SetUniform(std::format("u_LightPosition[{}]", i), command.LightPosition[i]);
-                    currentShader->SetUniform(std::format("u_LightColor[{}]", i), command.LightColor[i]);
-                    currentShader->SetUniform(std::format("u_LightIntensity[{}]", i), command.LightIntensity[i]);
+                    currentShader->SetUniform(std::format("u_LightPosition[{}]", i), cmd.LightPosition[i]);
+                    currentShader->SetUniform(std::format("u_LightColor[{}]", i), cmd.LightColor[i]);
+                    currentShader->SetUniform(std::format("u_LightIntensity[{}]", i), cmd.LightIntensity[i]);
                 }
             }
 
-            if (currentPBRMaterial != PBR_MATERIAL || currentSTDMaterial != STD_MATERIAL)
+            if (currentMesh != nextMesh)
             {
-                if (currentPBRMaterial) currentPBRMaterial = nullptr;
-                if (currentSTDMaterial) currentSTDMaterial = nullptr;
-
-                if (command.ShadingMethod == ShadingMethod::PhysicalBased)
-                    currentPBRMaterial = PBR_MATERIAL;
-                else
-                    currentSTDMaterial = STD_MATERIAL;
-
-                if (command.ShadingMethod == ShadingMethod::PhysicalBased)
-                {
-                    if (currentPBRMaterial)
-                    {
-                        currentPBRMaterial->UploadAttributes();
-                        bindTexture(command, UniformCache::PBR_BaseColorTextures, TextureType::BaseColorTexture);
-                        bindTexture(command, UniformCache::PBR_MetallicTextures, TextureType::MetallicTexture);
-                        bindTexture(command, UniformCache::PBR_RoughnessTextures, TextureType::RoughnessTexture);
-                        bindTexture(command, UniformCache::PBR_AmbientOcclusionTextures, TextureType::AmbientOcclusionTexture);
-                        bindTexture(command, UniformCache::PBR_NormalTextures, TextureType::NormalTexture);
-                        bindTexture(command, UniformCache::PBR_DisplacementTextures, TextureType::DisplacementTexture);
-                    }
-                }
-                else
-                {
-                    if (currentSTDMaterial)
-                    {
-                        currentSTDMaterial->UploadAttributes();
-                        bindTexture(command, UniformCache::STD_DiffuseTexture, TextureType::DiffuseTexture);
-                        bindTexture(command, UniformCache::STD_SpecularTexture, TextureType::SpecularTexture);
-                        bindTexture(command, UniformCache::STD_EmissiveTexture, TextureType::EmissiveTexture);
-                        bindTexture(command, UniformCache::STD_OpacityTexture, TextureType::OpacityTexture);
-                    }
-                }
+                if (currentMesh) currentMesh->Unbind();
+                currentMesh = nextMesh;
+                currentMesh->Bind();
             }
+
+            const bool materialChanged = (currentMaterial != nextMat);
+            if (materialChanged)
+            {
+                currentMaterial = nextMat;
+                currentMaterial->UploadAttributes();
+
+                bindPBRTexture(UniformCache::PBR_BaseColorTextures, TEX_SLOTS::BaseColor, TextureType::BaseColorTexture);
+                bindPBRTexture(UniformCache::PBR_MetallicTextures, TEX_SLOTS::Metallic, TextureType::MetallicTexture);
+                bindPBRTexture(UniformCache::PBR_RoughnessTextures, TEX_SLOTS::Roughness, TextureType::RoughnessTexture);
+                bindPBRTexture(UniformCache::PBR_AmbientOcclusionTextures, TEX_SLOTS::AO, TextureType::AmbientOcclusionTexture);
+                bindPBRTexture(UniformCache::PBR_NormalTextures, TEX_SLOTS::Normal, TextureType::NormalTexture);
+                bindPBRTexture(UniformCache::PBR_DisplacementTextures, TEX_SLOTS::Displace, TextureType::DisplacementTexture);
+            }
+
+            currentShader->SetUniform(UniformCache::ModelMatrix, cmd.ModelMatrix);
+            currentShader->SetUniform(UniformCache::NormalMatrix, cmd.NormalMatrix);
 
             currentMesh->Render();
-            s_DrawCallsCount++;
         }
 
-        if (currentMesh) currentMesh->Unbind();
+        if (currentMesh)   currentMesh->Unbind();
         if (currentShader) currentShader->Unbind();
-        if (currentPBRMaterial) currentPBRMaterial = nullptr;
-        if (currentSTDMaterial) currentSTDMaterial = nullptr;
 
         s_CommandQueue.clear();
-        s_DrawCallsCount = 0;
     }
 
 
-    /**
-     * @brief Submits draw commands for all valid mesh entities in the given scene.
-     *
-     * Iterates through all entities in the provided scene, checking for the presence of a StaticMeshComponent
-     * and a valid mesh. For each valid mesh segment, constructs a SceneDrawCommand with the appropriate
-     * transformation and material information, and appends it to the renderer's draw command list.
-     *
-     * @param scene The scene containing entities to be rendered.
-     * @param environment The environment settings to be used during rendering.
-     *
-     * @note If the scene or its main camera is null, the function logs an error and returns early.
-     *       Entities without a StaticMeshComponent or with invalid mesh data are skipped with a warning.
-     *       If an entity lacks a TransformComponent, an identity matrix is used as its transform.
-     */
-    void SceneRenderer::Submit(const std::shared_ptr<Scene>& scene, const std::shared_ptr<IEnvironment>& environment) noexcept
+    void SceneRenderer::Submit(Scene* scene, IEnvironment* environment) noexcept
     {
         if (!scene)
         {
@@ -231,67 +156,49 @@ namespace Motion
             return;
         }
 
-        SceneDrawCommand command{};
+        SceneDrawCommand cmd{};
 
         for (const auto& entity : scene->m_Entities)
         {
             if (!entity || !entity->HasComponent<StaticMeshComponent>())
-            {
-                MOTION_WARN("Entity is null or does not have a MeshComponent >> SKIPPING SUBMISSION");
                 continue;
-            }
 
-            const auto& staticMeshComponent = entity->GetComponent<StaticMeshComponent>();
-            if (!staticMeshComponent.Model || staticMeshComponent.Model->GetMeshesCount() <= 0)
-            {
-                MOTION_WARN("StaticMeshComponent has no mesh assigned. {} >> SKIPPING SUBMISSION", staticMeshComponent.Name);
+            const auto& sm = entity->GetComponent<StaticMeshComponent>();
+            if (!sm.Model || sm.Model->GetMeshesCount() <= 0)
                 continue;
-            }
-            else
+
+            auto& model = sm.Model;
+            for (auto& mesh : *model)
             {
-                auto& model = staticMeshComponent.Model;
-                for (auto& mesh : *model)
-                {
-                    command.SortKey = scene->GetSceneID();
-                    command.PBR_MatPtr = mesh->PhysicalBasedMaterials.get();
-                    command.STD_MatPtr = mesh->StandardMaterials.get();
-                    command.MeshPtr = mesh.get();
-                    command.ShadingMethod = model->ModelShadingMethod;
-                    command.ModelMatrix = entity->HasComponent<TransformComponent>() ? entity->GetComponent<TransformComponent>().GetTransform() : glm::mat4(1.0f);
+                cmd.SortKey = scene->GetID();
+                cmd.PBR_MatPtr = mesh->PhysicalBasedMaterials.get();
+                cmd.MeshPtr = mesh.get();
+                cmd.EnvironmentPtr = environment;
+                cmd.ShadingMethod = model->ModelShadingMethod;
 
-                    auto& camera = scene->GetSceneCamera();
-                    auto& env = scene->GetEnvironment();
+                cmd.ModelMatrix = entity->HasComponent<TransformComponent>()
+                    ? entity->GetComponent<TransformComponent>().GetTransform()
+                    : glm::mat4(1.0f);
 
-                    command.ViewMatrix = camera.View;
-                    command.ProjectionMatrix = camera.Projection;
-                    command.NormalMatrix = glm::mat3(glm::transpose(glm::inverse(glm::mat3(command.ModelMatrix))));
-                    command.CameraPosition = camera.Position;
-                    command.LightPosition = env.DirectionalLight.LightPosition;
-                    command.LightColor = env.DirectionalLight.LightColor;
-                    command.LightIntensity = env.DirectionalLight.LightIntensity;
+                auto& camera = scene->GetCamera();
+                auto& env = scene->GetEnvironment();
 
-                    command.IrradianceTexture = environment->GetIrradianceTexture();
-                    command.PrefilteredTexture = environment->GetPrefilteredTexture();
-                    command.BRDFLUTTexture = environment->GetBRDFLUTTexture();
+                cmd.ViewMatrix = camera.Camera.View;
+                cmd.ProjectionMatrix = camera.Camera.Projection;
+                cmd.NormalMatrix = glm::mat3(glm::transpose(glm::inverse(glm::mat3(cmd.ModelMatrix))));
+                cmd.CameraPosition = camera.Camera.Position;
+                cmd.LightPosition = env.DirectionalLight.LightPosition;
+                cmd.LightColor = env.DirectionalLight.LightColor;
+                cmd.LightIntensity = env.DirectionalLight.LightIntensity;
 
-                    s_CommandQueue.push_back(command);
-                }
+                s_CommandQueue.push_back(cmd);
             }
         }
     }
 
-    /**
-     * @brief Ends the current scene rendering by sorting and executing the draw commands.
-     *
-     * This method sorts the accumulated draw commands based on their sort key, material ID, and mesh ID,
-     * then iterates through the sorted commands to render each mesh with its associated material.
-     * It uses the AssetManager to retrieve the necessary shader, material, and mesh resources for rendering.
-     */
     void SceneRenderer::EndScene() noexcept
     {
-        if (s_CommandQueue.empty())
-            return;
-
+        if (s_CommandQueue.empty()) return;
         FlushQueue();
     }
 }

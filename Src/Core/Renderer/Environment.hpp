@@ -10,6 +10,10 @@ namespace Motion
         IEnvironment() = default;
         virtual ~IEnvironment() = default;
 
+        virtual void BindCubeTexture(std::uint32_t slot) const noexcept = 0;
+        virtual void BindBRDFLUTTexture(std::uint32_t slot) const noexcept = 0;
+        virtual void BindPrefilteredTexture(std::uint32_t slot) const noexcept = 0;
+        virtual void BindIrradianceTexture(std::uint32_t slot) const noexcept = 0;
         virtual void Render(glm::mat4 viewMatrix, glm::mat4 projectionMatrix) noexcept = 0;
 
         [[nodiscard]] virtual TextureID GetEnvironmentCubeTexture() const noexcept = 0;

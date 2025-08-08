@@ -3,13 +3,12 @@
 
 namespace Motion
 {
-    static std::shared_ptr<IWindow> s_Window{ nullptr };
     static std::shared_ptr<ImGuiLayer> s_ImGuiLayer{ nullptr };
-    static ImGuizmo::OPERATION s_CurrentOperation = ImGuizmo::TRANSLATE;
 
     SceneEditorLayer::SceneEditorLayer(WindowHandle handle, const std::shared_ptr<ImGuiLayer>& imguiLayer) : Layer("EditorLayer")
     {
         s_ImGuiLayer = imguiLayer;
+        m_Panels = std::make_shared<ScenePanelManager>();
     }
 
     void SceneEditorLayer::OnAttach()
@@ -25,26 +24,33 @@ namespace Motion
         assetManager.Create<IShader>("PHONG", "Assets/Shaders/Phong.glsl");
 
         PhysicalBasedMaterial::Import("Assets/Materials/Base/PBR/Base.yaml");
-        StandardMaterial::Import("Assets/Materials/Base/STD/Base.yaml");
-
         m_Environment = IEnvironment::Create("Assets/HDRI/Scene4.hdr");
 
-
-
         m_Viewport.FrameSpec.Name = "SceneEditorFrame";
-        m_Viewport.FrameSpec.Width = static_cast<uint32_t>(m_ViewportWidth);
-        m_Viewport.FrameSpec.Height = static_cast<uint32_t>(m_ViewportHeight);
-        m_Viewport.Size = { m_ViewportWidth, m_ViewportHeight };
+        m_Viewport.FrameSpec.Width = static_cast<uint32_t>(m_CurrentViewportSize.x);
+        m_Viewport.FrameSpec.Height = static_cast<uint32_t>(m_CurrentViewportSize.y);
+        m_Viewport.Size = { m_CurrentViewportSize.x, m_CurrentViewportSize.y };
         m_Framebuffer = IFrameBuffer::Create(m_Viewport.FrameSpec);
+
+        SceneSpecification spec;
+        spec.Name = "Default Scene";
+        spec.IsActive = true;
+        spec.Viewport = m_Viewport;
+        spec.Environment = SceneEnvironment();
 
         if (m_Scenes.empty())
         {
             //[TODO] : When scene serialization is implemented, load the default scene from a file or create a new one.
-            m_Scenes.push_back(std::make_shared<Scene>(UniqueIdentity::GetUniqueID(), "Default Scene", glm::vec2(m_ViewportWidth, m_ViewportHeight)));
+            m_Scenes.push_back(std::make_shared<Scene>(spec));
         }
 
         m_ActiveScene = m_Scenes[0];
-        m_ActiveScene->SetActive(true);
+        m_ActiveScene->Activate(true);
+
+        m_Panels->Emplace<SceneViewportPanel>();
+        m_Panels->Emplace<SceneEntityInspectPanel>();
+        m_Panels->Emplace<SceneEntityPropertiesPanel>();
+        m_Panels->Emplace<SceneSettingsPanel>();
     }
 
     void SceneEditorLayer::OnDetach()
@@ -58,11 +64,11 @@ namespace Motion
         //--------------------------------------------------------------
         // UPDATING THE VIEWPORT
         //--------------------------------------------------------------
-        if (m_Viewport.SizeHasChanged(m_ViewportWidth, m_ViewportHeight))
+        if (m_ActiveScene->GetSpecification().Viewport.Size != m_CurrentViewportSize)
         {
-            m_Viewport.Update(glm::vec2(m_ViewportWidth, m_ViewportHeight));
-            m_Framebuffer->ResizeFrame((uint32_t)m_ViewportWidth, (uint32_t)m_ViewportHeight);
-            m_ActiveScene->OnViewportSizeChanges(m_ViewportWidth, m_ViewportHeight);
+            m_CurrentViewportSize = m_ActiveScene->GetSpecification().Viewport.Size;
+            m_Framebuffer->ResizeFrame((uint32_t)m_CurrentViewportSize.x, (uint32_t)m_CurrentViewportSize.y);
+            m_ActiveScene->OnViewportSizeChanges(m_CurrentViewportSize);
         }
 
         //--------------------------------------------------------------
@@ -77,9 +83,9 @@ namespace Motion
         m_Framebuffer->Bind();
         Renderer::ClearColor({ 0.243, 0.243, 0.243, 1.0f });
         Renderer::Clear();
-        m_Environment->Render(m_ActiveScene->GetViewMatrix(), m_ActiveScene->GetProjectionMatrix());
+        m_Environment->Render(m_ActiveScene->GetCameraView(), m_ActiveScene->GetCameraProjection());
         SceneRenderer::BeginScene();
-        SceneRenderer::Submit(m_ActiveScene, m_Environment);
+        SceneRenderer::Submit(m_ActiveScene.get(), m_Environment.get());
         SceneRenderer::EndScene();
         m_Framebuffer->Unbind();
         m_SceneTextures[m_ActiveScene] = m_Framebuffer->GetAttachment(FrameBufferColorAttachmentStandards::Standard).ID;
@@ -137,186 +143,33 @@ namespace Motion
 
     void SceneEditorLayer::OnUIRender(WindowHandle handle)
     {
-        // ------------------------------------------------------------
-        // DRAWING THE DOCKSPACE AND SCENE UIs
-        // ------------------------------------------------------------
-        DrawDockspace();
-        m_ActiveScene->OnUIRenders(handle);
+        BuildDockspace();
 
+        ScenePanelContext panelContext;
+        panelContext.ActiveScene = m_ActiveScene;
+        panelContext.ActiveCamera = m_ActiveScene->GetCamera();
+        panelContext.ActiveSceneSpecification = m_ActiveScene->GetSpecification();
+        panelContext.ActiveViewportTexture = m_SceneTextures[m_ActiveScene];
+        panelContext.UILayerInstance = s_ImGuiLayer.get();
 
-        // ------------------------------------------------------------
-        // DRAWING THE SCENE VIEWPORT
-        // ------------------------------------------------------------
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
-        ImGui::Begin(m_ActiveScene->GetSceneName().c_str());
-        s_ImGuiLayer->AcceptEvents(ImGui::IsWindowFocused() || ImGui::IsWindowHovered());
-        ImVec2 viewportPanelSize = ImGui::GetContentRegionAvail();
-        if (viewportPanelSize.x != m_ViewportWidth || viewportPanelSize.y != m_ViewportHeight)
-        {
-            m_ViewportWidth = viewportPanelSize.x;
-            m_ViewportHeight = viewportPanelSize.y;
-        }
-        ImGui::Image((ImTextureID)m_SceneTextures[m_ActiveScene], viewportPanelSize, { 0, 1 }, { 1, 0 });
-
-        //----------------------------------------------
-        // HANDLING MOUSE PICKING
-        //----------------------------------------------
-        ImVec2 windowPos = ImGui::GetWindowPos();
-        ImVec2 contentMin = ImGui::GetWindowContentRegionMin();
-        ImVec2 contentMax = ImGui::GetWindowContentRegionMax();
-
-        ImVec2 viewportMin = ImVec2(windowPos.x + contentMin.x, windowPos.y + contentMin.y);
-        ImVec2 viewportMax = ImVec2(windowPos.x + contentMax.x, windowPos.y + contentMax.y);
-        ImVec2 mousePos = ImGui::GetMousePos();
-
-        bool isWindowHovered = ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem);
-        bool isWindowFocused = ImGui::IsWindowFocused();
-
-        bool isClick = ImGui::IsMouseClicked(ImGuiMouseButton_Left);
-        bool isUsingGizmo = ImGuizmo::IsUsing();
-
-        if (isWindowHovered && isWindowFocused && isClick && !isUsingGizmo)
-        {
-            // Convert mouse to viewport-local
-            glm::vec2 mouseViewport = { mousePos.x - viewportMin.x, mousePos.y - viewportMin.y };
-            // Flip Y if needed based on how your framebuffer is displayed
-            mouseViewport.y = m_ViewportHeight - mouseViewport.y;
-
-            // Call the scene picking
-            auto picked = m_ActiveScene->PickEntity(mouseViewport, glm::vec2(m_ViewportWidth, m_ViewportHeight));
-            if (picked)
-                m_ActiveScene->SetSelectedEntity(picked);
-        }
-
-        // ------------------------------------------------------------
-        // HANDLING IMGUIZMO MANIPULATION
-        // ------------------------------------------------------------
-        ImGuizmo::SetOrthographic(false);
-        ImGuizmo::SetDrawlist();
-        ImVec2 viewportPos = ImGui::GetWindowPos();
-        ImGuizmo::SetRect(viewportPos.x, viewportPos.y, viewportPanelSize.x, viewportPanelSize.y);
-
-        glm::mat4 view = m_ActiveScene->GetViewMatrix();
-        glm::mat4 proj = m_ActiveScene->GetProjectionMatrix();
-
-        // Handle CTRL+E to cycle operation
-        if (ImGui::IsKeyDown(ImGuiKey_LeftCtrl) && ImGui::IsKeyPressed(ImGuiKey_E))
-        {
-            if (s_CurrentOperation == ImGuizmo::TRANSLATE)
-                s_CurrentOperation = ImGuizmo::ROTATE;
-            else if (s_CurrentOperation == ImGuizmo::ROTATE)
-                s_CurrentOperation = ImGuizmo::SCALE;
-            else
-                s_CurrentOperation = ImGuizmo::TRANSLATE;
-        }
-
-        // Manipulate selected entity
-        auto selected = m_ActiveScene->GetSelectedEntity();
-        if (selected && selected != EntityFactory::EMPTYENTITY && selected->HasComponent<TransformComponent>())
-        {
-            auto& tc = selected->GetComponent<TransformComponent>();
-            glm::mat4 model = tc.GetTransform();
-
-            float matrix[16];
-            memcpy(matrix, glm::value_ptr(model), sizeof(float) * 16);
-
-            if (ImGuizmo::Manipulate(glm::value_ptr(view), glm::value_ptr(proj), s_CurrentOperation, ImGuizmo::LOCAL, matrix))
-            {
-                glm::vec3 translation, scale;
-                glm::quat rotation;
-
-                glm::vec3 eulerRotation = glm::degrees(glm::eulerAngles(rotation)); // Convert to degrees for user editing
-                ImGuizmo::DecomposeMatrixToComponents(matrix, &translation.x, &eulerRotation.x, &scale.x);
-                rotation = glm::quat(glm::radians(eulerRotation)); // Convert back to quaternion
-
-                tc.Translation = translation;
-                tc.Rotation = rotation;
-                tc.Scale = scale;
-            }
-        }
-
-
-        //-----------------------------------------------
-        // DRAWING THE VIEW MANIPULATION GIZMO
-        //-----------------------------------------------
-        glm::vec3 selectedPosition;
-        if (selected && selected->HasComponent<TransformComponent>())
-            selectedPosition = selected->GetComponent<TransformComponent>().Translation;
-        else
-            selectedPosition = glm::vec3(0.0f);
-
-        auto& camera = m_ActiveScene->GetSceneCamera();
-        glm::vec3 target = selectedPosition;
-        float cameraDistance = glm::length(camera.Position - target);
-        glm::mat4 oldView = camera.View;
-
-        ImVec2 viewGizmoSize(200, 200);
-        ImVec2 gizmoPos = ImVec2(viewportMax.x - viewGizmoSize.x, viewportMin.y);
-        ImGuizmo::ViewManipulate(glm::value_ptr(view), 16.0f, gizmoPos, viewGizmoSize, IM_COL32(0x22, 0x22, 0x22, 0x88));
-
-        bool viewChanged = false;
-        for (int i = 0; i < 16; ++i)
-            if (fabs(glm::value_ptr(view)[i] - glm::value_ptr(oldView)[i]) > 1e-5f)
-                viewChanged = true;
-
-        if (viewChanged)
-        {
-            glm::vec3 newForward = -glm::vec3(view[2]); // Negative Z (OpenGL)
-            glm::vec3 newPos = target - newForward * cameraDistance;
-            camera.Position = newPos;
-            camera.LookAt(target);
-        }
-
-        // Draw the viewport axis widget
-        DrawViewportAxisWidget(view);
-
-        ImGui::End();
-        ImGui::PopStyleVar();
-
-
-        // ------------------------------------------------------------
-        // DRAWING SCENE ENVIRONMENT SETTINGS
-        // ------------------------------------------------------------
-        ImGui::Begin(std::format("{} Environment Settings", m_ActiveScene->GetSceneName()).c_str());
-        auto& env = m_ActiveScene->GetEnvironment();
-        static const ImGuiTreeNodeFlags treeNodeFlags =
-            ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_AllowItemOverlap | ImGuiTreeNodeFlags_FramePadding;
-        if (ImGui::TreeNodeEx((void*)env.DirectionalLight.LightID, treeNodeFlags, "Environment Lighting"))
-        {
-            for (int i = 0; i < DirectionalLight::LIGHT_COUNT; ++i)
-            {
-                if (ImGui::CollapsingHeader(std::format("Light {}", i).c_str(), ImGuiTreeNodeFlags_FramePadding | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_Framed))
-                {
-                    CustomUIControl::DrawFloat3("Position", env.DirectionalLight.LightPosition[i], 0.0f);
-                    CustomUIControl::ColorEdit3("Color", env.DirectionalLight.LightColor[i]);
-                    CustomUIControl::DrawFloat("Intensity", env.DirectionalLight.LightIntensity[i], 0.0f, 1.0f, 0.005f);
-                }
-            }
-
-            ImGui::TreePop();
-        }
-        ImGui::End();
+        for (const auto& panel : *m_Panels)
+            panel->RenderUI(panelContext);
     }
 
-    void SceneEditorLayer::DrawDockspace()
+    void SceneEditorLayer::BuildDockspace()
     {
-        // ---- Host window flags
+        // Host window
         ImGuiWindowFlags host_flags =
-            ImGuiWindowFlags_NoDocking |
-            ImGuiWindowFlags_NoTitleBar |
-            ImGuiWindowFlags_NoCollapse |
-            ImGuiWindowFlags_NoResize |
-            ImGuiWindowFlags_NoMove |
-            ImGuiWindowFlags_NoBringToFrontOnFocus |
-            ImGuiWindowFlags_NoNavFocus |
-            ImGuiWindowFlags_NoScrollbar |
+            ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoTitleBar |
+            ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize |
+            ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBringToFrontOnFocus |
+            ImGuiWindowFlags_NoNavFocus | ImGuiWindowFlags_NoScrollbar |
             ImGuiWindowFlags_NoScrollWithMouse;
 
         ImGuiDockNodeFlags dock_flags =
-            ImGuiDockNodeFlags_PassthruCentralNode |   // central node is transparent
-            ImGuiDockNodeFlags_AutoHideTabBar;         // cleaner tabs when single window
+            ImGuiDockNodeFlags_PassthruCentralNode |
+            ImGuiDockNodeFlags_AutoHideTabBar;
 
-        // ---- Fullscreen host window over main viewport
         const ImGuiViewport* vp = ImGui::GetMainViewport();
         ImGui::SetNextWindowPos(vp->WorkPos);
         ImGui::SetNextWindowSize(vp->WorkSize);
@@ -325,66 +178,43 @@ namespace Motion
         ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
-
-        // If you want a menu bar in the host, add ImGuiWindowFlags_MenuBar to host_flags
         ImGui::Begin("##DockHost", nullptr, host_flags);
+        ImGui::PopStyleVar(3);
 
-        ImGui::PopStyleVar(3); // padding, border, rounding
-
-        // ---- Create dockspace
         ImGuiID dockspace_id = ImGui::GetID("MainDockspace");
         ImGuiIO& io = ImGui::GetIO();
-        if (io.ConfigFlags & ImGuiConfigFlags_DockingEnable)
-        {
-            // Background for passthrough central node:
-            // Make the host window bg clear so your viewport can draw under it.
+        if (io.ConfigFlags & ImGuiConfigFlags_DockingEnable) {
             ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0, 0, 0, 0));
             ImGui::DockSpace(dockspace_id, ImVec2(0, 0), dock_flags);
             ImGui::PopStyleColor();
         }
 
-        // ---- Optional top toolbar (thin strip)
-        if (ImGui::BeginChild("TopToolbar", ImVec2(0, 36), false,
-            ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse))
-        {
-            ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 6.0f);
-            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(10, 6));
-
-            // Place your icon buttons / toggles here
-            // Example:
-            // if (ImGui::Button(ICON_MD_PLAY_ARROW)) { ... }
-            // ImGui::SameLine();
-            // if (ImGui::Button(ICON_MD_STOP)) { ... }
-
-            ImGui::PopStyleVar(2);
-        }
-        ImGui::EndChild();
-
-        // ---- Build a sensible default layout once
         static bool built = false;
         if (!built && (io.ConfigFlags & ImGuiConfigFlags_DockingEnable))
         {
             built = true;
-
-            ImGui::DockBuilderRemoveNode(dockspace_id);                   // clear any previous
+            ImGui::DockBuilderRemoveNode(dockspace_id);
             ImGui::DockBuilderAddNode(dockspace_id, ImGuiDockNodeFlags_DockSpace);
             ImGui::DockBuilderSetNodeSize(dockspace_id, vp->WorkSize);
 
-            // Split: main -> left/right, keep dockspace_id as center
-            ImGuiID dock_main_id = dockspace_id;
-            ImGuiID dock_right = ImGui::DockBuilderSplitNode(dock_main_id, ImGuiDir_Right, 0.28f, nullptr, &dock_main_id);
-            ImGuiID dock_bottom = ImGui::DockBuilderSplitNode(dock_main_id, ImGuiDir_Down, 0.28f, nullptr, &dock_main_id);
-            ImGuiID dock_left = ImGui::DockBuilderSplitNode(dock_main_id, ImGuiDir_Left, 0.22f, nullptr, &dock_main_id);
+            ImGuiID CENTER_NODE = dockspace_id;
+            ImGuiID RIGHT = ImGui::DockBuilderSplitNode(CENTER_NODE, ImGuiDir_Right, 0.28f, nullptr, &CENTER_NODE);
+            ImGuiID BOTTOM = ImGui::DockBuilderSplitNode(CENTER_NODE, ImGuiDir_Down, 0.28f, nullptr, &CENTER_NODE);
+            ImGuiID LEFT = ImGui::DockBuilderSplitNode(CENTER_NODE, ImGuiDir_Left, 0.22f, nullptr, &CENTER_NODE);
 
-            // Optionally mark center node as passthrough/content
-            // ImGui::DockBuilderGetNode(dock_main_id)->LocalFlags |= ImGuiDockNodeFlags_NoWindowMenuButton;
+            for (const auto& p : *m_Panels)
+            {
+                std::string title = p->GetTitle();
 
-            // Dock your windows by name (must match ImGui::Begin() titles)
-            ImGui::DockBuilderDockWindow("Scene", dock_main_id); // viewport
-            ImGui::DockBuilderDockWindow("Outliner", dock_left);
-            ImGui::DockBuilderDockWindow("Properties", dock_right);
-            ImGui::DockBuilderDockWindow("Console", dock_bottom);
-            ImGui::DockBuilderDockWindow("Assets", dock_bottom);
+                switch (p->GetCategory())
+                {
+                case PanelCategory::ScenePanel:      ImGui::DockBuilderDockWindow(title.c_str(), CENTER_NODE); break;
+                case PanelCategory::PropertiesPanel:  ImGui::DockBuilderDockWindow(title.c_str(), LEFT); break;
+                case PanelCategory::InspectorPanel:  ImGui::DockBuilderDockWindow(title.c_str(), RIGHT); break;
+                case PanelCategory::AssetsPanel:     ImGui::DockBuilderDockWindow(title.c_str(), BOTTOM); break;
+                case PanelCategory::ConsolePanel:     ImGui::DockBuilderDockWindow(title.c_str(), BOTTOM); break;
+                }
+            }
 
             ImGui::DockBuilderFinish(dockspace_id);
         }

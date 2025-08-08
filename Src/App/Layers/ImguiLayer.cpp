@@ -17,7 +17,7 @@ namespace Motion
         ImFont* defaultFont = io.Fonts->AddFontFromFileTTF(defaultFontFile.string().c_str(), 16.0f);
         io.FontDefault = defaultFont;
 
-        float iconFontSize = defaultFontSize * 0.67f; // adjust icon scaling
+        float iconFontSize = defaultFontSize * 0.9f; // adjust icon scaling
         static const ImWchar icons_ranges[] = { (ImWchar)ICON_MIN_MD, (ImWchar)ICON_MAX_MD, 0 };
         ImFontConfig config;
         config.MergeMode = true;

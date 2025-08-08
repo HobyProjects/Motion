@@ -13,6 +13,10 @@ namespace Motion
         GL_Environment(const std::filesystem::path& hdrFile);
         virtual ~GL_Environment();
 
+        virtual void BindCubeTexture(std::uint32_t slot) const noexcept override;
+        virtual void BindBRDFLUTTexture(std::uint32_t slot) const noexcept override;
+        virtual void BindPrefilteredTexture(std::uint32_t slot) const noexcept override;
+        virtual void BindIrradianceTexture(std::uint32_t slot) const noexcept override;
         virtual void Render(glm::mat4 viewMatrix, glm::mat4 projectionMatrix) noexcept override;
 
         [[nodiscard]] virtual TextureID GetEnvironmentCubeTexture() const noexcept override { return m_EnvironmentCubeTextureID; }

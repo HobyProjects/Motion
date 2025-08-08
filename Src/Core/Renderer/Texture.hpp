@@ -85,6 +85,8 @@ namespace Motion
         std::int32_t InternalDataFormat{ 0 }, TextureDataFormat{ 0 };
         TextureType Type{ TextureType::BaseColorTexture };
         TextureSource Source{ TextureSource::Undefined };
+        std::string TextureFile{};
+        std::string Name{};
     };
 
     class ITexture

@@ -27,7 +27,7 @@ namespace Motion
         PhysicalBasedMaterial::Import("Assets/Materials/Base/PBR/Base.yaml");
         StandardMaterial::Import("Assets/Materials/Base/STD/Base.yaml");
 
-        m_Environment = IEnvironment::Create("Assets/HDRI/Scene.hdr");
+        m_Environment = IEnvironment::Create("Assets/HDRI/Scene4.hdr");
 
 
 
@@ -288,7 +288,7 @@ namespace Motion
                 if (ImGui::CollapsingHeader(std::format("Light {}", i).c_str(), ImGuiTreeNodeFlags_FramePadding | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_Framed))
                 {
                     CustomUIControl::DrawFloat3("Position", env.DirectionalLight.LightPosition[i], 0.0f);
-                    CustomUIControl::DrawColor3("Color", env.DirectionalLight.LightColor[i]);
+                    CustomUIControl::ColorEdit3("Color", env.DirectionalLight.LightColor[i]);
                     CustomUIControl::DrawFloat("Intensity", env.DirectionalLight.LightIntensity[i], 0.0f, 1.0f, 0.005f);
                 }
             }
@@ -300,54 +300,95 @@ namespace Motion
 
     void SceneEditorLayer::DrawDockspace()
     {
-        static bool opt_fullscreen = true;
-        static bool opt_padding = false;
-        static ImGuiDockNodeFlags dockspace_flags = ImGuiDockNodeFlags_None;
-        ImGuiWindowFlags window_flags = ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoDocking;
+        // ---- Host window flags
+        ImGuiWindowFlags host_flags =
+            ImGuiWindowFlags_NoDocking |
+            ImGuiWindowFlags_NoTitleBar |
+            ImGuiWindowFlags_NoCollapse |
+            ImGuiWindowFlags_NoResize |
+            ImGuiWindowFlags_NoMove |
+            ImGuiWindowFlags_NoBringToFrontOnFocus |
+            ImGuiWindowFlags_NoNavFocus |
+            ImGuiWindowFlags_NoScrollbar |
+            ImGuiWindowFlags_NoScrollWithMouse;
 
-        if (opt_fullscreen)
-        {
-            const ImGuiViewport* viewport = ImGui::GetMainViewport();
-            ImGui::SetNextWindowPos(viewport->WorkPos);
-            ImGui::SetNextWindowSize(viewport->WorkSize);
-            ImGui::SetNextWindowViewport(viewport->ID);
-            ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
-            ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+        ImGuiDockNodeFlags dock_flags =
+            ImGuiDockNodeFlags_PassthruCentralNode |   // central node is transparent
+            ImGuiDockNodeFlags_AutoHideTabBar;         // cleaner tabs when single window
 
-            window_flags |= ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove;
-            window_flags |= ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
-        }
-        else
-        {
-            dockspace_flags &= -ImGuiDockNodeFlags_PassthruCentralNode;
-        }
+        // ---- Fullscreen host window over main viewport
+        const ImGuiViewport* vp = ImGui::GetMainViewport();
+        ImGui::SetNextWindowPos(vp->WorkPos);
+        ImGui::SetNextWindowSize(vp->WorkSize);
+        ImGui::SetNextWindowViewport(vp->ID);
 
-        if (dockspace_flags & ImGuiDockNodeFlags_PassthruCentralNode)
-            window_flags |= ImGuiWindowFlags_NoBackground;
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
 
-        if (!opt_padding)
-            ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+        // If you want a menu bar in the host, add ImGuiWindowFlags_MenuBar to host_flags
+        ImGui::Begin("##DockHost", nullptr, host_flags);
 
-        static bool show_dockspace = true;
-        ImGui::Begin("Dockspace", &show_dockspace, window_flags);
+        ImGui::PopStyleVar(3); // padding, border, rounding
 
-        if (!opt_padding)
-            ImGui::PopStyleVar();
-
-        if (opt_fullscreen)
-            ImGui::PopStyleVar(2);
-
+        // ---- Create dockspace
+        ImGuiID dockspace_id = ImGui::GetID("MainDockspace");
         ImGuiIO& io = ImGui::GetIO();
-        ImGuiStyle& style = ImGui::GetStyle();
-        float minWinSizeX = style.WindowMinSize.x;
-        style.WindowMinSize.x = 370.0f;
         if (io.ConfigFlags & ImGuiConfigFlags_DockingEnable)
         {
-            ImGuiID dockspace_id = ImGui::GetID("MyDockSpace");
-            ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), dockspace_flags);
+            // Background for passthrough central node:
+            // Make the host window bg clear so your viewport can draw under it.
+            ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0, 0, 0, 0));
+            ImGui::DockSpace(dockspace_id, ImVec2(0, 0), dock_flags);
+            ImGui::PopStyleColor();
         }
-        style.WindowMinSize.x = minWinSizeX;
 
-        ImGui::End();
+        // ---- Optional top toolbar (thin strip)
+        if (ImGui::BeginChild("TopToolbar", ImVec2(0, 36), false,
+            ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse))
+        {
+            ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 6.0f);
+            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(10, 6));
+
+            // Place your icon buttons / toggles here
+            // Example:
+            // if (ImGui::Button(ICON_MD_PLAY_ARROW)) { ... }
+            // ImGui::SameLine();
+            // if (ImGui::Button(ICON_MD_STOP)) { ... }
+
+            ImGui::PopStyleVar(2);
+        }
+        ImGui::EndChild();
+
+        // ---- Build a sensible default layout once
+        static bool built = false;
+        if (!built && (io.ConfigFlags & ImGuiConfigFlags_DockingEnable))
+        {
+            built = true;
+
+            ImGui::DockBuilderRemoveNode(dockspace_id);                   // clear any previous
+            ImGui::DockBuilderAddNode(dockspace_id, ImGuiDockNodeFlags_DockSpace);
+            ImGui::DockBuilderSetNodeSize(dockspace_id, vp->WorkSize);
+
+            // Split: main -> left/right, keep dockspace_id as center
+            ImGuiID dock_main_id = dockspace_id;
+            ImGuiID dock_right = ImGui::DockBuilderSplitNode(dock_main_id, ImGuiDir_Right, 0.28f, nullptr, &dock_main_id);
+            ImGuiID dock_bottom = ImGui::DockBuilderSplitNode(dock_main_id, ImGuiDir_Down, 0.28f, nullptr, &dock_main_id);
+            ImGuiID dock_left = ImGui::DockBuilderSplitNode(dock_main_id, ImGuiDir_Left, 0.22f, nullptr, &dock_main_id);
+
+            // Optionally mark center node as passthrough/content
+            // ImGui::DockBuilderGetNode(dock_main_id)->LocalFlags |= ImGuiDockNodeFlags_NoWindowMenuButton;
+
+            // Dock your windows by name (must match ImGui::Begin() titles)
+            ImGui::DockBuilderDockWindow("Scene", dock_main_id); // viewport
+            ImGui::DockBuilderDockWindow("Outliner", dock_left);
+            ImGui::DockBuilderDockWindow("Properties", dock_right);
+            ImGui::DockBuilderDockWindow("Console", dock_bottom);
+            ImGui::DockBuilderDockWindow("Assets", dock_bottom);
+
+            ImGui::DockBuilderFinish(dockspace_id);
+        }
+
+        ImGui::End(); // host
     }
 }

@@ -20,6 +20,8 @@ namespace Motion
 
         m_Specification.Type = TextureType::BaseColorTexture;
         m_Specification.Source = TextureSource::GeneratedTexture;
+        m_Specification.TextureFile = "System Generated";
+        m_Specification.Name = std::format("System Generated:{} Texture", GetTextureTypeString(m_Specification.Type));
     }
 
     /**
@@ -40,6 +42,8 @@ namespace Motion
 
         m_Specification.Type = type;
         m_Specification.Source = TextureSource::TextureFile;
+        m_Specification.TextureFile = textureFile.string();
+        m_Specification.Name = std::format("{} Texture", GetTextureTypeString(m_Specification.Type));
     }
 
     /**

@@ -124,77 +124,133 @@ namespace Motion
     {
         ImGuiStyle& style = ImGui::GetStyle();
 
-        // Modern, flat rounding and spacing
+        // ---------- Layout / Shape ----------
         style.WindowRounding = 6.0f;
         style.ChildRounding = 6.0f;
-        style.FrameRounding = 4.0f;
+        style.FrameRounding = 6.0f;
         style.PopupRounding = 6.0f;
         style.ScrollbarRounding = 6.0f;
-        style.GrabRounding = 4.0f;
-        style.TabRounding = 4.0f;
+        style.GrabRounding = 6.0f;
+        style.TabRounding = 6.0f;
 
         style.WindowBorderSize = 1.0f;
-        style.FrameBorderSize = 0.0f;
+        style.FrameBorderSize = 1.0f;
         style.TabBorderSize = 0.0f;
 
-        style.WindowPadding = ImVec2(10, 10);
-        style.FramePadding = ImVec2(8, 4);
-        style.ItemSpacing = ImVec2(8, 6);
+        style.WindowPadding = ImVec2(12, 10);
+        style.FramePadding = ImVec2(10, 6);
+        style.CellPadding = ImVec2(8, 4);
+        style.ItemSpacing = ImVec2(10, 8);
+        style.ItemInnerSpacing = ImVec2(8, 6);
 
-        ImVec4* colors = style.Colors;
-        colors[ImGuiCol_Text] = ImVec4(0.92f, 0.92f, 0.92f, 1.00f);
-        colors[ImGuiCol_TextDisabled] = ImVec4(0.50f, 0.50f, 0.55f, 1.00f);
-        colors[ImGuiCol_WindowBg] = ImVec4(0.12f, 0.13f, 0.15f, 1.00f);
-        colors[ImGuiCol_ChildBg] = ImVec4(0.10f, 0.11f, 0.13f, 1.00f);
-        colors[ImGuiCol_PopupBg] = ImVec4(0.13f, 0.14f, 0.16f, 1.00f);
-        colors[ImGuiCol_Border] = ImVec4(0.24f, 0.24f, 0.28f, 0.60f);
-        colors[ImGuiCol_BorderShadow] = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
-        colors[ImGuiCol_FrameBg] = ImVec4(0.18f, 0.20f, 0.23f, 1.00f);
-        colors[ImGuiCol_FrameBgHovered] = ImVec4(0.26f, 0.29f, 0.35f, 1.00f);
-        colors[ImGuiCol_FrameBgActive] = ImVec4(0.22f, 0.24f, 0.28f, 1.00f);
-        colors[ImGuiCol_TitleBg] = ImVec4(0.13f, 0.14f, 0.17f, 1.00f);
-        colors[ImGuiCol_TitleBgActive] = ImVec4(0.18f, 0.20f, 0.24f, 1.00f);
-        colors[ImGuiCol_TitleBgCollapsed] = ImVec4(0.13f, 0.14f, 0.17f, 1.00f);
-        colors[ImGuiCol_MenuBarBg] = ImVec4(0.14f, 0.15f, 0.18f, 1.00f);
-        colors[ImGuiCol_ScrollbarBg] = ImVec4(0.12f, 0.13f, 0.15f, 1.00f);
-        colors[ImGuiCol_ScrollbarGrab] = ImVec4(0.21f, 0.22f, 0.25f, 1.00f);
-        colors[ImGuiCol_ScrollbarGrabHovered] = ImVec4(0.28f, 0.29f, 0.32f, 1.00f);
-        colors[ImGuiCol_ScrollbarGrabActive] = ImVec4(0.34f, 0.35f, 0.39f, 1.00f);
-        colors[ImGuiCol_CheckMark] = ImVec4(0.28f, 0.59f, 0.98f, 1.00f); // Accent color
-        colors[ImGuiCol_SliderGrab] = ImVec4(0.26f, 0.29f, 0.35f, 1.00f);
-        colors[ImGuiCol_SliderGrabActive] = ImVec4(0.28f, 0.59f, 0.98f, 1.00f); // Accent
-        colors[ImGuiCol_Button] = ImVec4(0.18f, 0.20f, 0.23f, 1.00f);
-        colors[ImGuiCol_ButtonHovered] = ImVec4(0.26f, 0.29f, 0.35f, 1.00f);
-        colors[ImGuiCol_ButtonActive] = ImVec4(0.28f, 0.59f, 0.98f, 1.00f); // Accent
-        colors[ImGuiCol_Header] = ImVec4(0.20f, 0.22f, 0.27f, 1.00f);
-        colors[ImGuiCol_HeaderHovered] = ImVec4(0.28f, 0.59f, 0.98f, 0.80f);
-        colors[ImGuiCol_HeaderActive] = ImVec4(0.28f, 0.59f, 0.98f, 1.00f);
-        colors[ImGuiCol_Separator] = ImVec4(0.21f, 0.23f, 0.29f, 1.00f);
-        colors[ImGuiCol_SeparatorHovered] = ImVec4(0.28f, 0.59f, 0.98f, 0.78f);
-        colors[ImGuiCol_SeparatorActive] = ImVec4(0.28f, 0.59f, 0.98f, 1.00f);
-        colors[ImGuiCol_ResizeGrip] = ImVec4(0.28f, 0.59f, 0.98f, 0.20f);
-        colors[ImGuiCol_ResizeGripHovered] = ImVec4(0.28f, 0.59f, 0.98f, 0.78f);
-        colors[ImGuiCol_ResizeGripActive] = ImVec4(0.28f, 0.59f, 0.98f, 1.00f);
-        colors[ImGuiCol_Tab] = ImVec4(0.16f, 0.18f, 0.22f, 1.00f);
-        colors[ImGuiCol_TabHovered] = ImVec4(0.28f, 0.59f, 0.98f, 0.80f);
-        colors[ImGuiCol_TabActive] = ImVec4(0.20f, 0.22f, 0.27f, 1.00f);
-        colors[ImGuiCol_TabUnfocused] = ImVec4(0.13f, 0.14f, 0.17f, 1.00f);
-        colors[ImGuiCol_TabUnfocusedActive] = ImVec4(0.16f, 0.18f, 0.22f, 1.00f);
-        colors[ImGuiCol_PlotLines] = ImVec4(0.61f, 0.61f, 0.61f, 1.00f);
-        colors[ImGuiCol_PlotLinesHovered] = ImVec4(0.28f, 0.59f, 0.98f, 1.00f);
-        colors[ImGuiCol_PlotHistogram] = ImVec4(0.28f, 0.59f, 0.98f, 1.00f);
-        colors[ImGuiCol_PlotHistogramHovered] = ImVec4(0.28f, 0.59f, 0.98f, 1.00f);
-        colors[ImGuiCol_TableHeaderBg] = ImVec4(0.13f, 0.14f, 0.17f, 1.00f);
-        colors[ImGuiCol_TableBorderStrong] = ImVec4(0.20f, 0.22f, 0.27f, 1.00f);
-        colors[ImGuiCol_TableBorderLight] = ImVec4(0.28f, 0.59f, 0.98f, 0.28f);
-        colors[ImGuiCol_TableRowBg] = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
-        colors[ImGuiCol_TableRowBgAlt] = ImVec4(0.20f, 0.22f, 0.27f, 0.05f);
-        colors[ImGuiCol_TextSelectedBg] = ImVec4(0.28f, 0.59f, 0.98f, 0.28f);
-        colors[ImGuiCol_DragDropTarget] = ImVec4(0.28f, 0.59f, 0.98f, 0.95f);
-        colors[ImGuiCol_NavHighlight] = ImVec4(0.28f, 0.59f, 0.98f, 0.95f);
-        colors[ImGuiCol_NavWindowingHighlight] = ImVec4(0.28f, 0.59f, 0.98f, 0.70f);
-        colors[ImGuiCol_NavWindowingDimBg] = ImVec4(0.12f, 0.13f, 0.15f, 0.50f);
-        colors[ImGuiCol_ModalWindowDimBg] = ImVec4(0.12f, 0.13f, 0.15f, 0.70f);
+        style.IndentSpacing = 16.0f;
+        style.ScrollbarSize = 14.0f;
+        style.GrabMinSize = 10.0f;
+
+        // A tiny bit more contrast in separators
+        style.SeparatorTextBorderSize = 1.0f;
+        style.SeparatorTextPadding = ImVec2(10, 4);
+
+        // ---------- Palette ----------
+        // Core “UE-ish” slate with teal accent
+        const ImVec4 bg0 = ImVec4(0.07f, 0.08f, 0.09f, 1.00f); // darkest
+        const ImVec4 bg1 = ImVec4(0.09f, 0.10f, 0.12f, 1.00f); // window
+        const ImVec4 bg2 = ImVec4(0.12f, 0.13f, 0.16f, 1.00f); // panels/frames
+        const ImVec4 bg3 = ImVec4(0.16f, 0.18f, 0.21f, 1.00f); // hover
+        const ImVec4 bg4 = ImVec4(0.20f, 0.22f, 0.26f, 1.00f); // active/pressed
+        const ImVec4 brd = ImVec4(0.23f, 0.26f, 0.31f, 0.90f); // borders
+
+        // Accent (cool teal/cyan)
+        const ImVec4 acc = ImVec4(0.10f, 0.68f, 0.90f, 1.00f);
+        const ImVec4 accHover = ImVec4(0.16f, 0.78f, 0.98f, 1.00f);
+        const ImVec4 accActive = ImVec4(0.10f, 0.60f, 0.86f, 1.00f);
+
+        // Text
+        const ImVec4 txt = ImVec4(0.92f, 0.94f, 0.96f, 1.00f);
+        const ImVec4 txtDim = ImVec4(0.60f, 0.64f, 0.70f, 1.00f);
+        const ImVec4 txtMuted = ImVec4(0.50f, 0.54f, 0.60f, 1.00f);
+        const ImVec4 txtSelBg = ImVec4(acc.x, acc.y, acc.z, 0.35f);
+
+        ImVec4* c = style.Colors;
+
+        // Text
+        c[ImGuiCol_Text] = txt;
+        c[ImGuiCol_TextDisabled] = txtMuted;
+
+        // Windows / panels
+        c[ImGuiCol_WindowBg] = bg1;
+        c[ImGuiCol_ChildBg] = bg0;
+        c[ImGuiCol_PopupBg] = ImVec4(bg1.x, bg1.y, bg1.z, 0.98f);
+
+        // Borders
+        c[ImGuiCol_Border] = brd;
+        c[ImGuiCol_BorderShadow] = ImVec4(0, 0, 0, 0);
+
+        // Frames (inputs, sliders, combo, color)
+        c[ImGuiCol_FrameBg] = bg2;
+        c[ImGuiCol_FrameBgHovered] = bg3;
+        c[ImGuiCol_FrameBgActive] = bg4;
+
+        // Title bars
+        c[ImGuiCol_TitleBg] = bg0;
+        c[ImGuiCol_TitleBgActive] = bg2;
+        c[ImGuiCol_TitleBgCollapsed] = ImVec4(bg0.x, bg0.y, bg0.z, 0.75f);
+
+        // Menus / header (collapsing header, selectable headers)
+        c[ImGuiCol_MenuBarBg] = bg0;
+        c[ImGuiCol_Header] = ImVec4(bg2.x, bg2.y, bg2.z, 0.90f);
+        c[ImGuiCol_HeaderHovered] = ImVec4(bg3.x, bg3.y, bg3.z, 1.00f);
+        c[ImGuiCol_HeaderActive] = ImVec4(bg4.x, bg4.y, bg4.z, 1.00f);
+
+        // Scrollbars
+        c[ImGuiCol_ScrollbarBg] = ImVec4(bg0.x, bg0.y, bg0.z, 0.60f);
+        c[ImGuiCol_ScrollbarGrab] = ImVec4(0.26f, 0.29f, 0.33f, 1.00f);
+        c[ImGuiCol_ScrollbarGrabHovered] = ImVec4(0.32f, 0.36f, 0.41f, 1.00f);
+        c[ImGuiCol_ScrollbarGrabActive] = ImVec4(0.40f, 0.44f, 0.49f, 1.00f);
+
+        // Check / radio / sliders
+        c[ImGuiCol_CheckMark] = accHover;
+        c[ImGuiCol_SliderGrab] = ImVec4(0.33f, 0.56f, 0.70f, 1.00f);
+        c[ImGuiCol_SliderGrabActive] = acc;
+
+        // Buttons
+        c[ImGuiCol_Button] = ImVec4(bg2.x, bg2.y, bg2.z, 1.00f);
+        c[ImGuiCol_ButtonHovered] = ImVec4(bg3.x, bg3.y, bg3.z, 1.00f);
+        c[ImGuiCol_ButtonActive] = acc;
+
+        // Tabs
+        c[ImGuiCol_Tab] = ImVec4(0.13f, 0.15f, 0.18f, 1.00f);
+        c[ImGuiCol_TabHovered] = ImVec4(0.18f, 0.20f, 0.24f, 1.00f);
+        c[ImGuiCol_TabActive] = ImVec4(0.17f, 0.20f, 0.23f, 1.00f);
+        c[ImGuiCol_TabUnfocused] = ImVec4(0.11f, 0.12f, 0.14f, 1.00f);
+        c[ImGuiCol_TabUnfocusedActive] = ImVec4(0.15f, 0.16f, 0.19f, 1.00f);
+
+        // Separators
+        c[ImGuiCol_Separator] = ImVec4(brd.x, brd.y, brd.z, 0.70f);
+        c[ImGuiCol_SeparatorHovered] = accHover;
+        c[ImGuiCol_SeparatorActive] = accActive;
+
+        // Resize grips
+        c[ImGuiCol_ResizeGrip] = ImVec4(acc.x, acc.y, acc.z, 0.22f);
+        c[ImGuiCol_ResizeGripHovered] = ImVec4(accHover.x, accHover.y, accHover.z, 0.78f);
+        c[ImGuiCol_ResizeGripActive] = accActive;
+
+        // Tables
+        c[ImGuiCol_TableHeaderBg] = ImVec4(0.12f, 0.13f, 0.16f, 1.00f);
+        c[ImGuiCol_TableBorderStrong] = ImVec4(0.20f, 0.22f, 0.26f, 1.00f);
+        c[ImGuiCol_TableBorderLight] = ImVec4(0.14f, 0.16f, 0.19f, 1.00f);
+        c[ImGuiCol_TableRowBg] = ImVec4(0, 0, 0, 0);
+        c[ImGuiCol_TableRowBgAlt] = ImVec4(1, 1, 1, 0.03f);
+
+        // Selection / drag & drop / nav
+        c[ImGuiCol_TextSelectedBg] = txtSelBg;
+        c[ImGuiCol_DragDropTarget] = acc;
+        c[ImGuiCol_NavHighlight] = ImVec4(acc.x, acc.y, acc.z, 0.90f);
+        c[ImGuiCol_NavWindowingHighlight] = ImVec4(acc.x, acc.y, acc.z, 0.35f);
+        c[ImGuiCol_NavWindowingDimBg] = ImVec4(0.05f, 0.06f, 0.07f, 0.60f);
+
+        // Modals
+        c[ImGuiCol_ModalWindowDimBg] = ImVec4(0.04f, 0.05f, 0.06f, 0.85f);
 
     }
 
@@ -281,323 +337,468 @@ namespace Motion
         colors[ImGuiCol_ModalWindowDimBg] = ImVec4(0.96f, 0.97f, 0.99f, 0.70f);
     }
 
-    static std::int32_t GetPID(const char* label) noexcept
-    {
-        return static_cast<std::int32_t>(std::hash<std::string>{}(label));
-    }
-
-    bool CustomUIControl::DrawFloat3(const char* label, glm::vec3& values, float resetValue, float columnWidth)
+    bool CustomUIControl::DrawFloat3(const char* label, glm::vec3& v, float resetValue, float labelWidth, float speed, float minV, float maxV, const char* fmt)
     {
         bool changed = false;
-        ImGuiIO& io = ImGui::GetIO();
-        ImGuiStyle& style = ImGui::GetStyle();
 
-        ImGui::PushID(std::format("{}##{}", label, GetPID(label) + static_cast<std::int32_t>(values.x + values.y + values.z)).c_str());
+        // Stable, unique scope: data address + widget type + label
+        ImGui::PushID(&v);
+        ImGui::PushID("DrawFloat3");
+        ImGui::PushID(label);
 
-        ImGui::Columns(2);
-        ImGui::SetColumnWidth(0, columnWidth);
-        ImGui::Text(label);
-        ImGui::NextColumn();
+        if (ImGui::BeginTable("##row", 2, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_BordersInnerV))
+        {
+            ImGui::TableSetupColumn("label", ImGuiTableColumnFlags_WidthFixed, labelWidth);
+            ImGui::TableSetupColumn("fields", ImGuiTableColumnFlags_WidthStretch);
 
-        ImGui::PushMultiItemsWidths(3, ImGui::CalcItemWidth());
-        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(2, 2));
+            ImGui::TableNextRow();
 
-        float lineHeight = ImGui::GetFrameHeight();
-        ImVec2 buttonSize = { lineHeight + 2.0f, lineHeight };
+            // Label (left)
+            ImGui::TableSetColumnIndex(0);
+            ImGui::AlignTextToFramePadding();
+            ImGui::TextUnformatted(label);
 
-        // --- X ---
-        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.85f, 0.2f, 0.3f, 0.9f));
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.95f, 0.3f, 0.4f, 1.0f));
-        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.85f, 0.2f, 0.3f, 1.0f));
-        if (ImGui::Button("X", buttonSize)) { values.x = resetValue; changed = true; }
-        ImGui::PopStyleColor(3);
+            // Fields (right)
+            ImGui::TableSetColumnIndex(1);
 
-        ImGui::SameLine();
-        changed |= ImGui::DragFloat("##X", &values.x, 0.1f, -FLT_MAX, FLT_MAX, "%.2f");
-        ImGui::PopItemWidth();
-        ImGui::SameLine();
+            ImGuiStyle& style = ImGui::GetStyle();
+            const float full = ImGui::GetContentRegionAvail().x;
+            const float itemSpacing = style.ItemInnerSpacing.x;
+            const float each = (full - itemSpacing * 2.0f) / 3.0f;
 
-        // --- Y ---
-        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.7f, 0.2f, 0.9f));
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.3f, 0.8f, 0.3f, 1.0f));
-        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.2f, 0.7f, 0.2f, 1.0f));
-        if (ImGui::Button("Y", buttonSize)) { values.y = resetValue; changed = true; }
-        ImGui::PopStyleColor(3);
+            ImVec2 btnSize(ImGui::GetFrameHeight() + 2.0f, ImGui::GetFrameHeight());
 
-        ImGui::SameLine();
-        changed |= ImGui::DragFloat("##Y", &values.y, 0.1f, -FLT_MAX, FLT_MAX, "%.2f");
-        ImGui::PopItemWidth();
-        ImGui::SameLine();
+            auto Axis = [&](const char* axisLabel, float& axisValue, ImVec4 col, const char* idTag)
+                {
+                    ImGui::PushID(idTag);
 
-        // --- Z ---
-        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.4f, 0.85f, 0.9f));
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.3f, 0.5f, 0.95f, 1.0f));
-        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.2f, 0.4f, 0.85f, 1.0f));
-        if (ImGui::Button("Z", buttonSize)) { values.z = resetValue; changed = true; }
-        ImGui::PopStyleColor(3);
+                    // Reset button
+                    ImGui::PushStyleColor(ImGuiCol_Button, col);
+                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(col.x + 0.1f, col.y + 0.1f, col.z + 0.1f, 1.0f));
+                    ImGui::PushStyleColor(ImGuiCol_ButtonActive, col);
+                    if (ImGui::Button(axisLabel, btnSize)) { axisValue = resetValue; changed = true; }
+                    ImGui::PopStyleColor(3);
 
-        ImGui::SameLine();
-        changed |= ImGui::DragFloat("##Z", &values.z, 0.1f, -FLT_MAX, FLT_MAX, "%.2f");
-        ImGui::PopItemWidth();
+                    ImGui::SameLine(0, itemSpacing);
 
-        ImGui::PopStyleVar();
-        ImGui::Columns(1);
+                    // Field width per item
+                    ImGui::SetNextItemWidth(each - btnSize.x - itemSpacing);
+                    changed |= ImGui::DragFloat("##val", &axisValue, speed, minV, maxV, fmt);
 
-        ImGui::PopID();
+                    ImGui::PopID();
+                };
+
+            // X / Y / Z inline
+            Axis("X", v.x, ImVec4(0.85f, 0.20f, 0.30f, 0.95f), "X");
+            ImGui::SameLine(0, itemSpacing);
+            Axis("Y", v.y, ImVec4(0.20f, 0.70f, 0.20f, 0.95f), "Y");
+            ImGui::SameLine(0, itemSpacing);
+            Axis("Z", v.z, ImVec4(0.20f, 0.40f, 0.85f, 0.95f), "Z");
+
+            ImGui::EndTable();
+        }
+
+        ImGui::PopID(); // label
+        ImGui::PopID(); // "DrawFloat3"
+        ImGui::PopID(); // &v
         return changed;
     }
 
-    bool CustomUIControl::DrawFloat(const char* label, float& value, float minValue, float maxValue, float speed, float columnWidth)
-    {
-        bool changed = false;
-        ImGui::PushID(std::format("{}##{}", label, GetPID(label) + static_cast<std::int32_t>(value + minValue + maxValue)).c_str());
-
-        ImGui::Columns(2);
-        ImGui::SetColumnWidth(0, columnWidth);
-        ImGui::Text(label);
-        ImGui::NextColumn();
-
-        ImGui::PushItemWidth(-1);
-        changed = ImGui::DragFloat("##value", &value, speed, minValue, maxValue, "%.3f");
-        ImGui::PopItemWidth();
-
-        ImGui::Columns(1);
-        ImGui::PopID();
-        return changed;
-    }
-
-    bool CustomUIControl::DrawColor3(const char* label, glm::vec3& color, float columnWidth)
+    bool CustomUIControl::DrawFloat(const char* label, float& value, float minValue, float maxValue, float speed, float labelWidth, const char* fmt)
     {
         bool changed = false;
 
-        ImGui::PushID(std::format("{}##{}", label, GetPID(label) + static_cast<std::int32_t>(color.x + color.y + color.z)).c_str());
+        // Stable, unique scope
+        ImGui::PushID(&value);
+        ImGui::PushID("DrawFloat");
+        ImGui::PushID(label);
 
-        ImGui::Columns(2);
-        ImGui::SetColumnWidth(0, columnWidth);
-        ImGui::TextUnformatted(label);
-        ImGui::NextColumn();
+        if (ImGui::BeginTable("##row", 2, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_BordersInnerV))
+        {
+            ImGui::TableSetupColumn("label", ImGuiTableColumnFlags_WidthFixed, labelWidth);
+            ImGui::TableSetupColumn("field", ImGuiTableColumnFlags_WidthStretch);
 
-        ImGui::BeginGroup();
+            ImGui::TableNextRow();
 
-        // Draw the color box
-        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 6.0f);
-        ImGui::ColorEdit3("##color", glm::value_ptr(color), ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel);
-        ImGui::PopStyleVar();
+            // --- Label ---
+            ImGui::TableSetColumnIndex(0);
+            ImGui::AlignTextToFramePadding();
+            ImGui::TextUnformatted(label);
 
-        ImGui::SameLine(0.0f, 10.0f);
+            // --- Field ---
+            ImGui::TableSetColumnIndex(1);
+            ImGui::SetNextItemWidth(-FLT_MIN); // Fill full width of column
+            changed = ImGui::DragFloat("##value", &value, speed, minValue, maxValue, fmt);
 
-        // Calculate available width for 3 fields and gaps
-        float totalWidth = ImGui::GetContentRegionAvail().x;
-        float itemSpacing = ImGui::GetStyle().ItemSpacing.x;
-        float rgbWidth = (totalWidth - (itemSpacing * 2.0f)) / 3.0f;
-        if (rgbWidth < 48.0f) rgbWidth = 48.0f; // minimum width for usability
+            ImGui::EndTable();
+        }
 
-        // Draw each channel as a field with proper width
-        ImGui::PushItemWidth(rgbWidth);
-        changed |= ImGui::DragFloat("##R", &color.x, 0.01f, 0.0f, 1.0f, "R:%.2f", ImGuiSliderFlags_AlwaysClamp);
-        ImGui::PopItemWidth();
-
-        ImGui::SameLine(0.0f, itemSpacing);
-
-        ImGui::PushItemWidth(rgbWidth);
-        changed |= ImGui::DragFloat("##G", &color.y, 0.01f, 0.0f, 1.0f, "G:%.2f", ImGuiSliderFlags_AlwaysClamp);
-        ImGui::PopItemWidth();
-
-        ImGui::SameLine(0.0f, itemSpacing);
-
-        ImGui::PushItemWidth(rgbWidth);
-        changed |= ImGui::DragFloat("##B", &color.z, 0.01f, 0.0f, 1.0f, "B:%.2f", ImGuiSliderFlags_AlwaysClamp);
-        ImGui::PopItemWidth();
-
-        ImGui::EndGroup();
-
-        ImGui::Columns(1);
-        ImGui::PopID();
+        ImGui::PopID(); // label
+        ImGui::PopID(); // "DrawFloat"
+        ImGui::PopID(); // &value
         return changed;
     }
 
     bool CustomUIControl::TextBox(const char* label, std::string& textValue, bool isReadOnly, size_t maxLen, float columnWidth)
     {
         bool changed = false;
-        ImGui::PushID(std::format("{}##{}", label, textValue.size() + GetPID(label)).c_str());
 
-        ImGui::Columns(2);
-        ImGui::SetColumnWidth(0, columnWidth);
-        ImGui::Text(label);
-        ImGui::NextColumn();
+        ImGui::PushID(label);
+        ImGui::PushID("TextBox");
+        ImGui::PushID(&textValue);
 
-        ImGui::BeginGroup();
-        ImGui::SameLine(0.0f, 18.0f);
-
-        // Text box
-        char buffer[512] = {};
-        strncpy(buffer, textValue.c_str(), std::min(maxLen, sizeof(buffer) - 1));
-        if (ImGui::InputText("##TextBox", buffer, maxLen, isReadOnly ? ImGuiInputTextFlags_ReadOnly : 0))
+        // One-row, two-column table: fixed label, stretchy input
+        if (ImGui::BeginTable("##row", 2,
+            ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_BordersInnerV))
         {
-            textValue = buffer;
-            changed = true;
+            ImGui::TableSetupColumn("label", ImGuiTableColumnFlags_WidthFixed, columnWidth > 0 ? columnWidth : 120.0f);
+            ImGui::TableSetupColumn("input", ImGuiTableColumnFlags_WidthStretch);
+
+            ImGui::TableNextRow();
+
+            // Label column
+            ImGui::TableSetColumnIndex(0);
+            ImGui::AlignTextToFramePadding();
+            ImGui::TextUnformatted(label);
+
+            // Input column (auto width)
+            ImGui::TableSetColumnIndex(1);
+            ImGui::SetNextItemWidth(-FLT_MIN); // <-- fill remaining width of this column
+
+            char buffer[512];
+            const size_t cap = std::min(maxLen, sizeof(buffer) - 1);
+            std::strncpy(buffer, textValue.c_str(), cap);
+            buffer[cap] = '\0';
+
+            ImGuiInputTextFlags flags = isReadOnly ? ImGuiInputTextFlags_ReadOnly : 0;
+            if (ImGui::InputText("##v", buffer, cap + 1, flags))
+            {
+                textValue.assign(buffer);
+                changed = true;
+            }
+
+            ImGui::EndTable();
         }
 
-        ImGui::EndGroup();
-        ImGui::Columns(1);
-        ImGui::PopID();
-
+        ImGui::PopID(); // label
+        ImGui::PopID(); // "TextBox"
+        ImGui::PopID(); // &textValue
         return changed;
     }
 
-    void CustomUIControl::TextureSlotCard(const std::string& slotLabel, std::shared_ptr<ITexture>& texture, std::function<void()> onLoad)
-    {
-        ImGui::PushID(std::format("{}##{}{}", slotLabel, texture ? texture->GetID() + slotLabel.size() : slotLabel.size(), GetPID(slotLabel.c_str())).c_str());
-        ImGui::BeginGroup();
-        const float cardWidth = 92.0f;
-        const float cardHeight = 116.0f;
-        const float imgSize = 56.0f;
-        const float btnWidth = 54.0f;
-        const float btnHeight = 22.0f;
-
-        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 9.0f);
-        ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
-
-        // Card background
-        ImGui::Dummy(ImVec2(cardWidth, cardHeight));
-        ImVec2 p_min = ImGui::GetItemRectMin();
-        ImVec2 p_max = ImGui::GetItemRectMax();
-        ImDrawList* draw = ImGui::GetWindowDrawList();
-        ImU32 bgCol = ImGui::ColorConvertFloat4ToU32(ImVec4(0.18f, 0.19f, 0.22f, 1.0f));
-        ImU32 borderCol = ImGui::GetColorU32(ImGuiCol_Border);
-        draw->AddRectFilled(p_min, p_max, bgCol, 9.0f);
-        draw->AddRect(p_min, p_max, borderCol, 9.0f, 0, 1.0f);
-
-        // Thumbnail centered in card
-        float imgX = p_min.x + (cardWidth - imgSize) * 0.5f;
-        float imgY = p_min.y + 8.0f;
-        ImGui::SetCursorScreenPos(ImVec2(imgX, imgY));
-        if (texture)
-            ImGui::Image(texture->GetID(), ImVec2(imgSize, imgSize));
-        else
-            ImGui::Dummy(ImVec2(imgSize, imgSize));
-
-        // Label, centered under thumbnail, with ellipsis for long names
-        float textY = imgY + imgSize + 4.0f;
-        ImVec2 textSz = ImGui::CalcTextSize(slotLabel.c_str());
-        float textX = p_min.x + (cardWidth - textSz.x) * 0.5f;
-        ImGui::SetCursorScreenPos(ImVec2(textX, textY));
-        float labelMaxWidth = cardWidth - 10.0f;
-        if (textSz.x > labelMaxWidth) {
-            // Shrink and ellipsis
-            std::string clipped = slotLabel.substr(0, 10) + "...";
-            ImGui::Text("%s", clipped.c_str());
-        }
-        else {
-            ImGui::Text("%s", slotLabel.c_str());
-        }
-
-        // "Load" button centered at bottom
-        float btnX = p_min.x + (cardWidth - btnWidth) * 0.5f;
-        float btnY = p_max.y - btnHeight - 8.0f;
-        ImGui::SetCursorScreenPos(ImVec2(btnX, btnY));
-        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.22f, 0.50f, 0.95f, 1.0f));
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.29f, 0.65f, 1.00f, 1.0f));
-        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.17f, 0.36f, 0.65f, 1.0f));
-        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 5.0f);
-
-        if (ImGui::Button(ICON_MD_FILE_UPLOAD, ImVec2(btnWidth, btnHeight)))
-            if (onLoad) onLoad();
-
-        ImGui::PopStyleVar();
-        ImGui::PopStyleColor(3);
-
-        ImGui::PopStyleVar(2);
-        ImGui::EndGroup();
-        ImGui::PopID();
-    }
-
-    void CustomUIControl::TextureSlotCard(const std::string& slotLabel, const std::shared_ptr<ITexture>& texture)
-    {
-        ImGui::PushID(std::format("{}##{}{}", slotLabel, texture ? texture->GetID() + slotLabel.size() : slotLabel.size(), GetPID(slotLabel.c_str())).c_str());
-        ImGui::BeginGroup();
-        const float cardWidth = 92.0f;
-        const float cardHeight = 116.0f;
-        const float imgSize = 56.0f;
-        const float btnWidth = 54.0f;
-        const float btnHeight = 22.0f;
-
-        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 9.0f);
-        ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
-
-        // Card background
-        ImGui::Dummy(ImVec2(cardWidth, cardHeight));
-        ImVec2 p_min = ImGui::GetItemRectMin();
-        ImVec2 p_max = ImGui::GetItemRectMax();
-        ImDrawList* draw = ImGui::GetWindowDrawList();
-        ImU32 bgCol = ImGui::ColorConvertFloat4ToU32(ImVec4(0.18f, 0.19f, 0.22f, 1.0f));
-        ImU32 borderCol = ImGui::GetColorU32(ImGuiCol_Border);
-        draw->AddRectFilled(p_min, p_max, bgCol, 9.0f);
-        draw->AddRect(p_min, p_max, borderCol, 9.0f, 0, 1.0f);
-
-        // Thumbnail centered in card
-        float imgX = p_min.x + (cardWidth - imgSize) * 0.5f;
-        float imgY = p_min.y + 8.0f;
-        ImGui::SetCursorScreenPos(ImVec2(imgX, imgY));
-        if (texture)
-            ImGui::Image(texture->GetID(), ImVec2(imgSize, imgSize));
-        else
-            ImGui::Dummy(ImVec2(imgSize, imgSize));
-
-        // Label, centered under thumbnail, with ellipsis for long names
-        float textY = imgY + imgSize + 4.0f;
-        ImVec2 textSz = ImGui::CalcTextSize(slotLabel.c_str());
-        float textX = p_min.x + (cardWidth - textSz.x) * 0.5f;
-        ImGui::SetCursorScreenPos(ImVec2(textX, textY));
-        float labelMaxWidth = cardWidth - 10.0f;
-        if (textSz.x > labelMaxWidth) {
-            // Shrink and ellipsis
-            std::string clipped = slotLabel.substr(0, 10) + "...";
-            ImGui::Text("%s", clipped.c_str());
-        }
-        else {
-            ImGui::Text("%s", slotLabel.c_str());
-        }
-
-        ImGui::PopStyleVar(2);
-        ImGui::EndGroup();
-        ImGui::PopID();
-    }
-
-    bool CustomUIControl::ComboBox(const char* label, int& currentItem, const std::vector<std::string>& items, float labelWidth, float comboWidth)
+    bool CustomUIControl::ComboBox(const char* label, int& currentItem, const std::vector<std::string>& items, float labelWidth /*= 120.0f*/, float comboWidth /*= -1.0f*/)
     {
         bool changed = false;
-        ImGui::PushID(std::format("{}##{}{}", label, currentItem + items.size(), GetPID(label)).c_str());
 
-        ImGui::Columns(2);
-        ImGui::SetColumnWidth(0, labelWidth);
-        ImGui::TextUnformatted(label);
-        ImGui::NextColumn();
+        // Stable ID scope
+        ImGui::PushID(&currentItem);
+        ImGui::PushID("ComboBox");
+        ImGui::PushID(label);
 
-        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 8.0f);
-        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(10, 6)); // pill-shaped
-        ImGui::PushItemWidth(comboWidth);
+        // Clamp current index (and allow -1 for "no selection")
+        if (items.empty()) currentItem = -1;
+        if (currentItem >= (int)items.size()) currentItem = (int)items.size() - 1;
 
-        std::vector<const char*> cstrItems;
-        cstrItems.reserve(items.size());
-        for (const auto& s : items) cstrItems.push_back(s.c_str());
+        const char* preview = (currentItem >= 0 && currentItem < (int)items.size())
+            ? items[currentItem].c_str()
+            : "Select…";
 
-        if (ImGui::Combo("##ModernCombo", &currentItem, cstrItems.data(), static_cast<int>(cstrItems.size())))
-            changed = true;
+        if (ImGui::BeginTable("##row", 2, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_BordersInnerV))
+        {
+            ImGui::TableSetupColumn("label", ImGuiTableColumnFlags_WidthFixed, labelWidth);
+            ImGui::TableSetupColumn("field", ImGuiTableColumnFlags_WidthStretch);
+            ImGui::TableNextRow();
 
-        ImGui::PopItemWidth();
-        ImGui::PopStyleVar(2);
-        ImGui::Columns(1);
-        ImGui::PopID();
+            // Label
+            ImGui::TableSetColumnIndex(0);
+            ImGui::AlignTextToFramePadding();
+            ImGui::TextUnformatted(label);
+
+            // Field
+            ImGui::TableSetColumnIndex(1);
+
+            // Width: fill the column unless a specific width is provided
+            if (comboWidth > 0.0f) ImGui::SetNextItemWidth(comboWidth);
+            else                   ImGui::SetNextItemWidth(-FLT_MIN);
+
+            ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 8.0f);
+            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(10, 6)); // pill-y
+
+            if (ImGui::BeginCombo("##v", preview, ImGuiComboFlags_HeightLarge))
+            {
+                for (int i = 0; i < (int)items.size(); ++i)
+                {
+                    bool isSelected = (i == currentItem);
+                    if (ImGui::Selectable(items[i].c_str(), isSelected))
+                    {
+                        currentItem = i;
+                        changed = true;
+                    }
+                    if (isSelected) ImGui::SetItemDefaultFocus();
+                }
+                ImGui::EndCombo();
+            }
+
+            ImGui::PopStyleVar(2);
+            ImGui::EndTable();
+        }
+
+        ImGui::PopID(); // label
+        ImGui::PopID(); // "ComboBox"
+        ImGui::PopID(); // &currentItem
         return changed;
     }
 
-    bool Motion::CustomUIControl::DrawFloat3(const char* label, glm::quat& values, float resetValue, float columnWidth)
+    bool CustomUIControl::DrawQuatEuler(const char* label, glm::quat& q, float resetDeg, float labelWidth, float speed, const char* fmt)
     {
-        glm::vec3 euler = glm::degrees(glm::eulerAngles(values)); // Convert to degrees for user editing
-        bool changed = DrawFloat3(label, euler, resetValue, columnWidth);
-        values = glm::quat(glm::radians(euler)); // Convert back to quaternion
+        auto WrapDeg = [](float a) { while (a > 180.f) a -= 360.f; while (a < -180.f) a += 360.f; return a; };
+
+        bool changed = false;
+        q = glm::normalize(q);
+
+        // Convert to UI degrees (XYZ from glm::eulerAngles)
+        glm::vec3 deg = glm::degrees(glm::eulerAngles(q));
+        deg.x = WrapDeg(deg.x); deg.y = WrapDeg(deg.y); deg.z = WrapDeg(deg.z);
+
+        // Stable unique scope
+        ImGui::PushID(&q);
+        ImGui::PushID("QuatEuler");
+        ImGui::PushID(label);
+
+        if (ImGui::BeginTable("##row", 2, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_BordersInnerV))
+        {
+            ImGui::TableSetupColumn("label", ImGuiTableColumnFlags_WidthFixed, labelWidth);
+            ImGui::TableSetupColumn("fields", ImGuiTableColumnFlags_WidthStretch);
+            ImGui::TableNextRow();
+
+            // Label
+            ImGui::TableSetColumnIndex(0);
+            ImGui::AlignTextToFramePadding();
+            ImGui::TextUnformatted(label);
+
+            // Fields
+            ImGui::TableSetColumnIndex(1);
+            ImGuiStyle& style = ImGui::GetStyle();
+            const float avail = ImGui::GetContentRegionAvail().x;
+            const float spacing = style.ItemInnerSpacing.x;
+            const float each = (avail - spacing * 2.f) / 3.f;
+            const float fh = ImGui::GetFrameHeight();
+            ImVec2 btnSz(fh + 2.f, fh);
+
+            auto Axis = [&](const char* axLbl, float& v, ImVec4 col, const char* idTag)
+                {
+                    ImGui::PushID(idTag);
+                    ImGui::PushStyleColor(ImGuiCol_Button, col);
+                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(col.x + 0.1f, col.y + 0.1f, col.z + 0.1f, 1.f));
+                    ImGui::PushStyleColor(ImGuiCol_ButtonActive, col);
+                    if (ImGui::Button(axLbl, btnSz)) { v = resetDeg; changed = true; }
+                    ImGui::PopStyleColor(3);
+
+                    ImGui::SameLine(0, spacing);
+                    ImGui::SetNextItemWidth(each - btnSz.x - spacing);
+                    changed |= ImGui::DragFloat("##v", &v, speed, -180.f, 180.f, fmt);
+                    ImGui::PopID();
+                };
+
+            Axis("X", deg.x, ImVec4(0.85f, 0.20f, 0.30f, 0.95f), "X");
+            ImGui::SameLine(0, spacing);
+            Axis("Y", deg.y, ImVec4(0.20f, 0.70f, 0.20f, 0.95f), "Y");
+            ImGui::SameLine(0, spacing);
+            Axis("Z", deg.z, ImVec4(0.20f, 0.40f, 0.85f, 0.95f), "Z");
+
+            ImGui::EndTable();
+        }
+
+        ImGui::PopID(); // label
+        ImGui::PopID(); // "QuatEuler"
+        ImGui::PopID(); // &q
+
+        if (changed)
+        {
+            // wrap + write back
+            deg.x = WrapDeg(deg.x); deg.y = WrapDeg(deg.y); deg.z = WrapDeg(deg.z);
+            glm::vec3 rad = glm::radians(deg);
+            if (std::all_of(&rad.x, &rad.x + 3, [](float v) { return std::isfinite(v); }))
+                q = glm::normalize(glm::quat(rad));
+        }
+
         return changed;
+    }
+
+    bool CustomUIControl::ColorEdit3(const char* label, glm::vec3& color, float labelWidth, float pickerWidth)
+    {
+        bool changed = false;
+
+        // Unique and stable IDs
+        ImGui::PushID(&color);
+        ImGui::PushID("ColorEdit3");
+        ImGui::PushID(label);
+
+        if (ImGui::BeginTable("##row", 2, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_BordersInnerV))
+        {
+            ImGui::TableSetupColumn("label", ImGuiTableColumnFlags_WidthFixed, labelWidth);
+            ImGui::TableSetupColumn("field", ImGuiTableColumnFlags_WidthStretch);
+            ImGui::TableNextRow();
+
+            // Label
+            ImGui::TableSetColumnIndex(0);
+            ImGui::AlignTextToFramePadding();
+            ImGui::TextUnformatted(label);
+
+            // Field
+            ImGui::TableSetColumnIndex(1);
+
+            // Auto width unless explicitly set
+            if (pickerWidth > 0.0f) ImGui::SetNextItemWidth(pickerWidth);
+            else                    ImGui::SetNextItemWidth(-FLT_MIN);
+
+            // Apply modern style
+            ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 8.0f);
+            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(6, 4));
+
+            glm::vec3 tempColor = color;
+            if (ImGui::ColorEdit3("##Color", glm::value_ptr(tempColor),
+                ImGuiColorEditFlags_NoInputs |
+                ImGuiColorEditFlags_NoLabel |
+                ImGuiColorEditFlags_DisplayRGB))
+            {
+                color = tempColor;
+                changed = true;
+            }
+
+            ImGui::PopStyleVar(2);
+            ImGui::EndTable();
+        }
+
+        ImGui::PopID(); // label
+        ImGui::PopID(); // "ColorEdit3"
+        ImGui::PopID(); // &color
+
+        return changed;
+    }
+
+    static void AutoFlowNext(float nextWidth, float spacing = -1.0f)
+    {
+        if (spacing < 0.0f) spacing = ImGui::GetStyle().ItemSpacing.x;
+        float avail = ImGui::GetContentRegionAvail().x;
+        if (nextWidth + spacing <= avail) ImGui::SameLine(0.0f, spacing);
+    }
+
+    static void DrawTextureSlot(const char* labelLeft, std::shared_ptr<Motion::ITexture>& tex, bool readOnly, const std::function<void()>& onLoad)
+    {
+        ImGui::PushID(labelLeft);
+        ImGui::PushID(tex.get());
+        ImGui::PushID(&labelLeft);
+
+        // Responsive sizing
+        const float maxCardW = 520.0f;             // nice target width
+        const float minCardW = 360.0f;             // don't shrink below this
+        float avail = ImGui::GetContentRegionAvail().x;
+        float cardW = std::clamp(avail, minCardW, maxCardW);
+
+        // Flow to same row if it fits
+        AutoFlowNext(cardW);
+
+        const float cardH = 108.0f;
+        const float thumbSize = 72.0f;
+        const float btnSize = 28.0f;
+
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 8.0f);
+        ImGui::PushStyleColor(ImGuiCol_ChildBg, ImGui::GetStyleColorVec4(ImGuiCol_FrameBg));
+        ImGui::BeginChild("##card", ImVec2(cardW, cardH), true,
+            ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+
+        // 3 columns: thumb | details | icon
+        if (ImGui::BeginTable("##row", 3, ImGuiTableFlags_SizingFixedFit))
+        {
+            ImGui::TableSetupColumn("thumb", ImGuiTableColumnFlags_WidthFixed, thumbSize + 4.0f);
+            ImGui::TableSetupColumn("details", ImGuiTableColumnFlags_WidthStretch);
+            ImGui::TableSetupColumn("icon", ImGuiTableColumnFlags_WidthFixed, btnSize + 6.0f);
+
+            // --- Column 0: thumbnail ---
+            ImGui::TableNextColumn();
+            {
+                ImVec2 p = ImGui::GetCursorPos();
+                float yPad = (cardH - thumbSize) * 0.5f - ImGui::GetStyle().FramePadding.y;
+                ImGui::SetCursorPosY(std::max(p.y + yPad, p.y));
+                if (tex && tex->GetID() != 0)
+                    ImGui::Image((ImTextureID)(uintptr_t)tex->GetID(), ImVec2(thumbSize, thumbSize));
+                else
+                    ImGui::Dummy(ImVec2(thumbSize, thumbSize));
+            }
+
+            // --- Column 1: details ---
+            ImGui::TableNextColumn();
+            {
+                if (tex)
+                {
+                    auto& spec = tex->GetSpecification();
+                    ImGui::PushTextWrapPos(ImGui::GetCursorPosX() + ImGui::GetColumnWidth());
+                    ImGui::TextUnformatted(spec.Name.c_str());
+                    ImGui::Text("Size: %d x %d", spec.Width, spec.Height);
+                    ImGui::Text("Type: %s", GetTextureTypeString(spec.Type).c_str());
+                    ImGui::Text("Source: %s", spec.TextureFile.c_str());
+                    ImGui::PopTextWrapPos();
+                }
+                else
+                {
+                    ImGui::PushTextWrapPos(ImGui::GetCursorPosX() + ImGui::GetColumnWidth());
+                    ImGui::TextUnformatted(labelLeft);
+                    ImGui::Text("Size: %d x %d", 0, 0);
+                    ImGui::Text("Type: %s", "Not Set");
+                    ImGui::Text("Source: %s", "Unknown");
+                    ImGui::PopTextWrapPos();
+                }
+            }
+
+            ImGui::TableNextColumn();
+            {
+                float curY = ImGui::GetCursorPosY();
+                float tgtY = curY + (cardH - btnSize) * 0.5f - ImGui::GetStyle().FramePadding.y;
+                ImGui::SetCursorPosY(std::max(curY, tgtY));
+
+                if (!readOnly && onLoad)
+                {
+                    ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 6.0f);
+                    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.22f, 0.50f, 0.95f, 1.0f));
+                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.29f, 0.65f, 1.00f, 1.0f));
+                    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.17f, 0.36f, 0.65f, 1.0f));
+
+                    if (ImGui::Button(ICON_MD_UPLOAD, ImVec2(btnSize, btnSize)))
+                        onLoad();
+
+                    if (ImGui::IsItemHovered())
+                        ImGui::SetTooltip("Load / Replace");
+
+                    ImGui::PopStyleColor(3);
+                    ImGui::PopStyleVar();
+                }
+                else
+                {
+                    ImGui::Dummy(ImVec2(btnSize, btnSize));
+                }
+            }
+
+            ImGui::EndTable();
+        }
+
+        ImGui::EndChild();
+        ImGui::PopStyleColor();
+        ImGui::PopStyleVar();
+
+        ImGui::PopID();
+        ImGui::PopID();
+        ImGui::PopID();
+    }
+
+    void CustomUIControl::TextureSlotCard(const char* label, std::shared_ptr<ITexture>& texture, const std::function<void()>& onLoad)
+    {
+        DrawTextureSlot(label, texture, false, onLoad);
+    }
+
+    void CustomUIControl::TextureSlotCard(const char* label, std::shared_ptr<ITexture>& texture)
+    {
+        DrawTextureSlot(label, texture, true, nullptr);
     }
 }
 

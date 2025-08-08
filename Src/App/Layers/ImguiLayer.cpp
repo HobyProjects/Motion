@@ -10,8 +10,21 @@ namespace Motion
     void ImGuiLayer::OnAttach()
     {
         ImGuiIO& io = ImGui::GetIO(); (void)io;
-        std::filesystem::path fontsPath = std::filesystem::absolute(std::filesystem::path(".") / "Assets" / "Fonts" / "JetBrainsMono" / "JetBrainsMono-Regular.ttf");
-        io.Fonts->AddFontFromFileTTF(fontsPath.string().c_str(), 16.0f);
+
+        float defaultFontSize = 16.0f;
+        std::filesystem::path defaultFontFile(std::filesystem::current_path() / "Assets/Fonts/JetBrainsMono/JetBrainsMono-Regular.ttf");
+        io.Fonts->AddFontDefault();
+        ImFont* defaultFont = io.Fonts->AddFontFromFileTTF(defaultFontFile.string().c_str(), 16.0f);
+        io.FontDefault = defaultFont;
+
+        float iconFontSize = defaultFontSize * 0.67f; // adjust icon scaling
+        static const ImWchar icons_ranges[] = { (ImWchar)ICON_MIN_MD, (ImWchar)ICON_MAX_MD, 0 };
+        ImFontConfig config;
+        config.MergeMode = true;
+        std::filesystem::path iconFontFile(std::filesystem::current_path() / "Assets/Fonts/MaterialIconFonts/MaterialIcons-Regular.ttf");
+        io.Fonts->AddFontFromFileTTF(iconFontFile.string().c_str(), iconFontSize, &config, icons_ranges);
+
+
         (m_ColorScheme == ImGuiColorScheme::Dark) ? UserInterfaceInitializer::UseColorDark() : UserInterfaceInitializer::UseColorLight();
     }
 

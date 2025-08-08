@@ -197,18 +197,14 @@ namespace Motion
                             std::string maxBounds = glm::to_string(model->GetMaxBounds());
                             std::string filePath = model->GetSource();
 
-                            CustomUIControl::TextBox("Mesh Count", meshCount, true, 256, 150.0f);
-                            CustomUIControl::TextBox("Min Bounds", minBounds, true, 256, 150.0f);
-                            CustomUIControl::TextBox("Max Bounds", maxBounds, true, 256, 150.0f);
-                            CustomUIControl::TextBox("File Path", filePath, true, 256, 150.0f);
+                            CustomUIControl::TextBox("Mesh Count", meshCount, true);
+                            CustomUIControl::TextBox("Min Bounds", minBounds, true);
+                            CustomUIControl::TextBox("Max Bounds", maxBounds, true);
+                            CustomUIControl::TextBox("File Path", filePath, true);
 
                             static std::int32_t selected = 0;
-                            CustomUIControl::ComboBox("Shading Method", selected, { "Standard", "Physical Based" });
-
-                            if (selected == 0)
-                                model->ModelShadingMethod = ShadingMethod::Standard;
-                            if (selected == 1)
-                                model->ModelShadingMethod = ShadingMethod::PhysicalBased;
+                            if (CustomUIControl::ComboBox("Shading Method", selected, { "Standard", "Physical Based" }))
+                                model->ModelShadingMethod = (selected == 0) ? ShadingMethod::Standard : ShadingMethod::PhysicalBased;
                         }
                         if (ImGui::CollapsingHeader("Material Batch Assignment", nodeFlags))
                         {

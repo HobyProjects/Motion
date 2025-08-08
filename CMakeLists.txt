@@ -117,6 +117,7 @@ set(
     ${MOTION_CORE_DIR}/Window/GLFW_Window.hpp
 
     ${MOTION_CORE_DIR}/UI/UI.hpp
+    ${MOTION_CORE_DIR}/UI/MaterialFonts/IconsMaterialDesign.h
     ${MOTION_CORE_DIR}/Platform/DialogBoxes.hpp
 
     ${MOTION_CORE_DIR}/ECS/Entity.hpp

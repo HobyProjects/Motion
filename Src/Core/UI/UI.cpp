@@ -421,7 +421,7 @@ namespace Motion
         bool changed = false;
         ImGui::PushID(std::format("{}##{}", label, textValue.size() + GetPID(label)).c_str());
 
-        ImGui::Columns(2, nullptr, false);
+        ImGui::Columns(2);
         ImGui::SetColumnWidth(0, columnWidth);
         ImGui::Text(label);
         ImGui::NextColumn();
@@ -501,7 +501,7 @@ namespace Motion
         ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.17f, 0.36f, 0.65f, 1.0f));
         ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 5.0f);
 
-        if (ImGui::Button(("Load##" + slotLabel).c_str(), ImVec2(btnWidth, btnHeight)))
+        if (ImGui::Button(ICON_MD_FILE_UPLOAD, ImVec2(btnWidth, btnHeight)))
             if (onLoad) onLoad();
 
         ImGui::PopStyleVar();
@@ -569,7 +569,7 @@ namespace Motion
         bool changed = false;
         ImGui::PushID(std::format("{}##{}{}", label, currentItem + items.size(), GetPID(label)).c_str());
 
-        ImGui::Columns(2, nullptr, false);
+        ImGui::Columns(2);
         ImGui::SetColumnWidth(0, labelWidth);
         ImGui::TextUnformatted(label);
         ImGui::NextColumn();

@@ -61,6 +61,7 @@
 #include <imguizmo/ImGuizmo.h>
 
 #include <yaml-cpp/yaml.h>
+#include <MaterialFonts/IconsMaterialDesign.h>
 
 //Base
 #include "Base.hpp"

@@ -1,4 +1,5 @@
 #include "CorePCH.hpp"
+#include "Model.hpp"
 
 namespace Motion
 {
@@ -20,6 +21,16 @@ namespace Motion
         AssetInfo.IsInitialized = false;
     }
 
+    void StaticMesh::Render() const
+    {
+        for (const auto& mesh : m_Meshes)
+        {
+            if (mesh)
+            {
+                mesh->Render();
+            }
+        }
+    }
 }
 
 

@@ -24,6 +24,8 @@ namespace Motion
         [[nodiscard]] const glm::vec3& GetMinBounds() const noexcept { return m_MinBounds; }
         [[nodiscard]] const glm::vec3& GetMaxBounds() const noexcept { return m_MaxBounds; }
 
+        void Render() const;
+
         std::vector<std::shared_ptr<Mesh>>::iterator begin() { return m_Meshes.begin(); }
         std::vector<std::shared_ptr<Mesh>>::iterator end() { return m_Meshes.end(); }
         std::vector<std::shared_ptr<Mesh>>::const_iterator begin() const { return m_Meshes.begin(); }

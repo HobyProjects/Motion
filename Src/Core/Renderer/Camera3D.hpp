@@ -10,8 +10,8 @@ namespace Motion
         // Camera Parameters
         float AspectRatio{ 1.0f };        // Square viewport by default
         float PerspectiveFov{ 45.0f };       // 45 degrees is a common field of view for perspective cameras
-        float PerspectiveNear{ 0.01f };       // Very close near plane (prevents clipping artifacts at close range)
-        float PerspectiveFar{ 10000.0f };    // Very far, covers most scene sizes
+        float PerspectiveNear{ 0.1f };       // Very close near plane (prevents clipping artifacts at close range)
+        float PerspectiveFar{ 50000.0f };    // Very far, covers most scene sizes
         float Rotation{ 0.0f };        // No rotation by default
         float TranslationSpeed{ 1.0f };        // Standard move speed (can be tuned for your needs)
         float Sensitivity{ 0.2f };        // Mouse or input sensitivity (tunable)

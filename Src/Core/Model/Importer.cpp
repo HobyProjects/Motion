@@ -282,23 +282,28 @@ namespace Motion
     {
         try
         {
-            std::string modelFileName = input.filename().string();
-            std::string modelFolderName = input.filename().stem().string();
-            std::filesystem::path uniqueOutput{ GetAvailableCopyName(output / modelFolderName) / modelFileName };
+            std::filesystem::path uniqueOutput = input;
 
-            if (!std::filesystem::exists(uniqueOutput))
+            if (!output.empty())
             {
-                try
+                std::string modelFileName = input.filename().string();
+                std::string modelFolderName = input.filename().stem().string();
+                uniqueOutput = GetAvailableCopyName(output / modelFolderName) / modelFileName;
+
+                if (!std::filesystem::exists(uniqueOutput))
                 {
-                    std::filesystem::create_directories(uniqueOutput.parent_path());
-                    std::filesystem::copy(input.parent_path(), uniqueOutput.parent_path(),
-                        std::filesystem::copy_options::recursive | std::filesystem::copy_options::overwrite_existing);
-                    MOTION_CORE_INFO("Copied all content from {} to {}", input.string(), uniqueOutput.string());
-                }
-                catch (const std::exception& e)
-                {
-                    MOTION_CORE_ERROR("Failed to copy directory: {}", e.what());
-                    return false;
+                    try
+                    {
+                        std::filesystem::create_directories(uniqueOutput.parent_path());
+                        std::filesystem::copy(input.parent_path(), uniqueOutput.parent_path(),
+                            std::filesystem::copy_options::recursive | std::filesystem::copy_options::overwrite_existing);
+                        MOTION_CORE_INFO("Copied all content from {} to {}", input.string(), uniqueOutput.string());
+                    }
+                    catch (const std::exception& e)
+                    {
+                        MOTION_CORE_ERROR("Failed to copy directory: {}", e.what());
+                        return false;
+                    }
                 }
             }
 
@@ -622,7 +627,7 @@ namespace Motion
         }
     }
 
-    std::shared_ptr<StaticMesh> Importer::ImportModel(const std::filesystem::path& path, const std::string& exportPath)
+    std::shared_ptr<StaticMesh> Importer::ImportModel(const std::filesystem::path& path, bool shouldExport, const std::string& exportPath)
     {
         std::string modelName = path.filename().stem().string();
 
@@ -633,7 +638,7 @@ namespace Motion
         try
         {
             ImportedResults importedModel{};
-            if (Import(path, finalOutputPath, importedModel))
+            if (Import(path, (shouldExport ? finalOutputPath : std::filesystem::path{}), importedModel))
             {
                 if (!importedModel.Meshes.empty())
                 {

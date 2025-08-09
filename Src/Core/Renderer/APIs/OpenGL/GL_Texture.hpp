@@ -15,23 +15,29 @@ namespace Motion
         GL_Texture(std::uint8_t* data, TextureType type, std::int32_t width, std::int32_t height, std::int32_t channels);
         virtual ~GL_Texture();
 
-        virtual void Bind() const noexcept override;
-        virtual void Bind(std::int32_t bindingPoint) const noexcept override;
-        virtual void Unbind() const noexcept override;
+        void Bind() const noexcept override;
+        void Bind(std::int32_t bindingPoint) const noexcept override;
+        void Unbind() const noexcept override;
 
-        [[nodiscard]] virtual TextureID GetID() const noexcept override;
-        [[nodiscard]] virtual TextureSpecification& GetSpecification() noexcept override;
-        [[nodiscard]] virtual TextureSource Source() const noexcept override;
+        [[nodiscard]] TextureID GetID() const noexcept override;
+        [[nodiscard]] TextureSpecification& GetSpecification() noexcept override;
+        [[nodiscard]] TextureSource Source() const noexcept override;
 
         [[nodiscard]] static std::shared_ptr<GL_Texture> Create(std::int32_t width = 100, std::int32_t height = 100, const glm::vec3& color = { 1.0f, 1.0f, 1.0f }) noexcept;
         [[nodiscard]] static std::shared_ptr<GL_Texture> Create(const std::filesystem::path& textureFile, TextureType type = TextureType::BaseColorTexture, bool flip = true) noexcept;
         [[nodiscard]] static std::shared_ptr<GL_Texture> Create(std::uint8_t* data, TextureType type, std::int32_t width, std::int32_t height, std::int32_t channels) noexcept;
 
+        // NEW: reload into the same GL id
+        bool ReloadFromFile(const std::filesystem::path& textureFile, TextureType type, bool flip = true) override;
+
     protected:
-        [[nodiscard]] virtual bool LoadTextureFromFile(const std::filesystem::path& textureFile, bool flip) override;
-        [[nodiscard]] virtual bool GenerateTexture2D(std::int32_t width, std::int32_t height, const glm::vec3& color) override;
+        bool LoadTextureFromFile(const std::filesystem::path& textureFile, bool flip) override;
+        bool GenerateTexture2D(std::int32_t width, std::int32_t height, const glm::vec3& color) override;
 
     private:
+        // NEW: centralized upload (RGBA8 or SRGB8_A8), keeps same TexID, sets sampler + mips
+        bool UploadRGBA8(int width, int height, const stbi_uc* data, bool useSRGB);
+
         TextureSpecification m_Specification{};
     };
 
@@ -46,12 +52,12 @@ namespace Motion
 
         virtual ~GL_CubeTexture();
 
-        virtual void Bind(std::int32_t bindingPoint = 0) const noexcept override;
-        virtual void Bind() const noexcept override;
-        virtual void Unbind() const noexcept override;
-        virtual void SetFace(std::int32_t face, std::int32_t mipLevel, std::int32_t width, std::int32_t height, std::int32_t format, const void* data) override;
+        void Bind(std::int32_t bindingPoint = 0) const noexcept override;
+        void Bind() const noexcept override;
+        void Unbind() const noexcept override;
+        void SetFace(std::int32_t face, std::int32_t mipLevel, std::int32_t width, std::int32_t height, std::int32_t format, const void* data) override;
 
-        [[nodiscard]] virtual TextureID GetID() const noexcept override;
+        [[nodiscard]] TextureID GetID() const noexcept override;
 
         [[nodiscard]] static std::shared_ptr<GL_CubeTexture> Create(const std::filesystem::path& textureFile) noexcept;
         [[nodiscard]] static std::shared_ptr<GL_CubeTexture> Create(

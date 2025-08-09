@@ -1,4 +1,6 @@
 #include "CorePCH.hpp"
+
+#include "Panels.hpp"
 #include "SceneEditorLayer.hpp"
 
 namespace Motion
@@ -28,10 +30,8 @@ namespace Motion
         AM.Create<IShader>("PHONG", "Assets/Shaders/Phong.glsl");
 
         PhysicalBasedMaterial::Import("Assets/Materials/Base/PBR/Base.yaml");
+        Importer::ImportModel("Assets/Primitives/ENG_SPHERE.obj", false);
 
-        ImGuiIO& io = ImGui::GetIO();
-        static std::string s_IniPath = "Config/EditorLayout.ini";
-        io.IniFilename = s_IniPath.c_str(); // ImGui will auto load/save here
 
         m_Viewport.FrameSpec.Name = "SceneEditorFrame";
         m_Viewport.FrameSpec.Width = (uint32_t)m_CurrentViewportSize.x;
@@ -59,6 +59,7 @@ namespace Motion
         m_Panels->Emplace<SceneEntityPropertiesPanel>();
         m_Panels->Emplace<SceneSettingsPanel>();
         m_Panels->Emplace<SceneViewPanel>();
+        m_Panels->Emplace<MaterialEditorPanel>();
     }
 
     void SceneEditorLayer::OnDetach()
@@ -188,49 +189,33 @@ namespace Motion
         }
 
         // Build default layout only if needed (first run or explicit reset)
-        static bool built_once = false;
+        // static bool built_once = false;
+        // bool need_default_layout = !built_once || s_RequestLayoutReset;
+        // if (need_default_layout && (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_DockingEnable))
+        // {
+        //     built_once = true;
+        //     s_RequestLayoutReset = false;
 
-        auto iniExists =
-            []() -> bool
-            {
-                const ImGuiIO& io = ImGui::GetIO();
-                if (!io.IniFilename || !*io.IniFilename) return false;
-#if __cpp_lib_filesystem
-                return std::filesystem::exists(io.IniFilename);
-#else
-                // Fallback: try to open
-                FILE* f = fopen(io.IniFilename, "rb");
-                if (f) { fclose(f); return true; }
-                return false;
-#endif
-            };
+        //     // Wipe and create the split tree (no docking of windows by title!)
+        //     ImGui::DockBuilderRemoveNode(dockspace_id);
+        //     ImGui::DockBuilderAddNode(dockspace_id, ImGuiDockNodeFlags_DockSpace);
+        //     ImGui::DockBuilderSetNodeSize(dockspace_id, vp->WorkSize);
 
-        bool need_default_layout = (!built_once && !iniExists()) || s_RequestLayoutReset;
-        if (need_default_layout && (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_DockingEnable))
-        {
-            built_once = true;
-            s_RequestLayoutReset = false;
+        //     ImGuiID center = dockspace_id;
+        //     ImGuiID right = ImGui::DockBuilderSplitNode(center, ImGuiDir_Right, 0.28f, nullptr, &center);
+        //     ImGuiID bottom = ImGui::DockBuilderSplitNode(center, ImGuiDir_Down, 0.28f, nullptr, &center);
+        //     ImGuiID left = ImGui::DockBuilderSplitNode(center, ImGuiDir_Left, 0.28f, nullptr, &center);
+        //     (void)ImGui::DockBuilderSplitNode(left, ImGuiDir_Down, 0.35f, nullptr, &left);
+        //     (void)ImGui::DockBuilderSplitNode(right, ImGuiDir_Down, 0.35f, nullptr, &right);
 
-            // Wipe and create the split tree (no docking of windows by title!)
-            ImGui::DockBuilderRemoveNode(dockspace_id);
-            ImGui::DockBuilderAddNode(dockspace_id, ImGuiDockNodeFlags_DockSpace);
-            ImGui::DockBuilderSetNodeSize(dockspace_id, vp->WorkSize);
+        //     // NOTE: No DockBuilderDockWindow() calls here.
+        //     // Panels open themselves and the user places them; ImGui will persist.
 
-            ImGuiID center = dockspace_id;
-            ImGuiID right = ImGui::DockBuilderSplitNode(center, ImGuiDir_Right, 0.28f, nullptr, &center);
-            ImGuiID bottom = ImGui::DockBuilderSplitNode(center, ImGuiDir_Down, 0.28f, nullptr, &center);
-            ImGuiID left = ImGui::DockBuilderSplitNode(center, ImGuiDir_Left, 0.28f, nullptr, &center);
-            (void)ImGui::DockBuilderSplitNode(left, ImGuiDir_Down, 0.35f, nullptr, &left);
-            (void)ImGui::DockBuilderSplitNode(right, ImGuiDir_Down, 0.35f, nullptr, &right);
+        //     ImGui::DockBuilderFinish(dockspace_id);
 
-            // NOTE: No DockBuilderDockWindow() calls here.
-            // Panels open themselves and the user places them; ImGui will persist.
-
-            ImGui::DockBuilderFinish(dockspace_id);
-
-            // Optional: immediately save so next launch uses the split tree
-            ImGui::SaveIniSettingsToDisk(ImGui::GetIO().IniFilename);
-        }
+        //     // Optional: immediately save so next launch uses the split tree
+        //     ImGui::SaveIniSettingsToDisk(ImGui::GetIO().IniFilename);
+        // }
 
         ImGui::End();
     }
@@ -335,263 +320,5 @@ namespace Motion
                 m_ActiveScene.reset();
             }
         }
-    }
-
-    void SceneViewPanel::RenderUI(ScenePanelContext& context)
-    {
-        ImGui::Begin("Project Scenes");
-
-        // ── Top row: Search box + Add button (same line)
-        static char s_SearchBuf[128] = {};
-        {
-            ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 38.0f); // leave room for the button
-            ImGui::InputTextWithHint("##SearchScenes",
-                ICON_MD_SEARCH " Search scenes...",
-                s_SearchBuf, sizeof(s_SearchBuf));
-            ImGui::PopItemWidth();
-
-            ImGui::SameLine();
-            if (ImGui::Button(ICON_MD_ADD "##AddScene"))
-            {
-                ImGui::OpenPopup("New Scene");
-            }
-            ImGui::Separator();
-        }
-
-        // ── Create New Scene modal
-        if (ImGui::BeginPopupModal("New Scene", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
-        {
-            static char s_NewSceneName[128] = {};
-            static bool s_SetActive = true;
-            static bool s_Init = true;
-            static std::string s_Error;
-
-            if (ImGui::IsWindowAppearing() || s_Init)
-            {
-                s_Init = false;
-                s_Error.clear();
-                static int s_Counter = 1;
-                std::snprintf(s_NewSceneName, sizeof(s_NewSceneName), "New Scene %d", s_Counter++);
-                s_SetActive = true;
-                ImGui::SetKeyboardFocusHere();
-            }
-
-            ImGui::TextUnformatted("Scene name:");
-            ImGui::SetNextItemWidth(320.0f);
-            bool enterPressed = ImGui::InputText("##scene_name", s_NewSceneName, sizeof(s_NewSceneName),
-                ImGuiInputTextFlags_EnterReturnsTrue);
-
-            ImGui::Checkbox("Set active after creating", &s_SetActive);
-
-            // Validation helpers
-            auto isBlank = [](const char* s) {
-                for (const char* p = s; *p; ++p) if (!std::isspace((unsigned char)*p)) return false;
-                return true;
-                };
-            auto nameExists = [&](const std::string& n) {
-                for (auto& sc : *context.EditorLayerInstance)
-                    if (sc->GetSpecification().Name == n) return true;
-                return false;
-                };
-
-            if (!s_Error.empty())
-            {
-                ImGui::Spacing();
-                ImGui::TextColored(ImVec4(1, 0.35f, 0.35f, 1), "%s", s_Error.c_str());
-            }
-
-            ImGui::Separator();
-
-            auto tryCreate = [&]() {
-                std::string name = s_NewSceneName;
-                if (isBlank(name.c_str()))
-                {
-                    s_Error = "Name cannot be empty.";
-                    return false;
-                }
-                if (nameExists(name))
-                {
-                    s_Error = "A scene with this name already exists.";
-                    return false;
-                }
-                context.EditorLayerInstance->AddNewScene(name, s_SetActive);
-                s_Error.clear();
-                s_Init = true;
-                ImGui::CloseCurrentPopup();
-                return true;
-                };
-
-            bool createClicked = ImGui::Button("Create", ImVec2(100, 0));
-            if (createClicked || enterPressed)
-                tryCreate();
-
-            ImGui::SameLine();
-            if (ImGui::Button("Cancel", ImVec2(100, 0)))
-            {
-                s_Error.clear();
-                s_Init = true;
-                ImGui::CloseCurrentPopup();
-            }
-
-            ImGui::EndPopup();
-        }
-
-        // ── Tree of scenes (icon on the root)
-        if (ImGui::TreeNodeEx(
-            (void*)context.UILayerInstance,
-            ImGuiTreeNodeFlags_DefaultOpen |
-            ImGuiTreeNodeFlags_Framed |
-            ImGuiTreeNodeFlags_SpanAvailWidth |
-            ImGuiTreeNodeFlags_AllowItemOverlap |
-            ImGuiTreeNodeFlags_FramePadding,
-            "%s  %s", ICON_MD_COLLECTIONS, "Project Scenes"))
-        {
-            // case-insensitive substring matcher
-            auto ci_contains = [](std::string hay, std::string needle)
-                {
-                    std::transform(hay.begin(), hay.end(), hay.begin(),
-                        [](unsigned char c) { return (char)std::tolower(c); });
-                    std::transform(needle.begin(), needle.end(), needle.begin(),
-                        [](unsigned char c) { return (char)std::tolower(c); });
-                    return needle.empty() || (hay.find(needle) != std::string::npos);
-                };
-
-            for (auto& scene : *context.EditorLayerInstance)
-            {
-                ImGui::PushID(scene.get());
-
-                const bool isActive = scene->IsActive();
-
-                // Scene row label with icon + optional active star
-                std::string label = std::format("{}  {}[{:X}]{}",
-                    ICON_MD_DASHBOARD,                     // scene icon
-                    scene->GetName(),
-                    scene->GetID(),
-                    isActive ? std::string("  ") + ICON_MD_STAR : "");
-
-                // Filter using our local static buffer
-                if (!ci_contains(label, std::string(s_SearchBuf)))
-                {
-                    ImGui::PopID();
-                    continue;
-                }
-
-                ImGuiTreeNodeFlags hdrFlags =
-                    ImGuiTreeNodeFlags_FramePadding |
-                    ImGuiTreeNodeFlags_SpanAvailWidth |
-                    ImGuiTreeNodeFlags_Framed;
-
-                bool open = ImGui::CollapsingHeader(label.c_str(), hdrFlags);
-
-                // Left click / activate -> set active
-                if (ImGui::IsItemClicked() ||
-                    ImGui::IsItemActivated() ||
-                    ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) ||
-                    ImGui::IsItemFocused())
-                {
-                    scene->SelectEntityIf();
-                    context.ActiveScene = scene;                        // view-side context
-                    context.EditorLayerInstance->SetActiveScene(scene); // editor state
-                }
-
-                // Right-click context menu
-                if (ImGui::BeginPopupContextItem("SceneCtx"))
-                {
-                    if (ImGui::MenuItem(ICON_MD_EDIT "  Rename..."))
-                    {
-                        ImGui::CloseCurrentPopup();
-                        ImGui::OpenPopup("RenameScenePopup");
-                    }
-                    if (ImGui::MenuItem(ICON_MD_DELETE "  Delete..."))
-                    {
-                        ImGui::CloseCurrentPopup();
-                        ImGui::OpenPopup("DeleteScenePopup");
-                    }
-                    ImGui::EndPopup();
-                }
-
-                // Rename modal (unique per scene thanks to PushID)
-                if (ImGui::BeginPopupModal("RenameScenePopup", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
-                {
-                    static char s_RenameBuf[128] = {};
-                    if (ImGui::IsWindowAppearing())
-                    {
-                        memset(s_RenameBuf, 0, sizeof(s_RenameBuf));
-                        const std::string& n = scene->GetSpecification().Name;
-                        strncpy(s_RenameBuf, n.c_str(), sizeof(s_RenameBuf) - 1);
-                        ImGui::SetKeyboardFocusHere();
-                    }
-
-                    ImGui::TextUnformatted("New scene name:");
-                    ImGui::InputText("##rename", s_RenameBuf, sizeof(s_RenameBuf));
-
-                    ImGui::Separator();
-                    if (ImGui::Button("OK", { 80,0 }))
-                    {
-                        scene->GetSpecification().Name = std::string(s_RenameBuf);
-                        ImGui::CloseCurrentPopup();
-                    }
-                    ImGui::SameLine();
-                    if (ImGui::Button("Cancel", { 80,0 }))
-                    {
-                        ImGui::CloseCurrentPopup();
-                    }
-
-                    ImGui::EndPopup();
-                }
-
-                // Delete confirmation modal
-                if (ImGui::BeginPopupModal("DeleteScenePopup", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
-                {
-                    ImGui::TextWrapped("%s  Delete scene \"%s\"?\nThis cannot be undone.",
-                        ICON_MD_WARNING, scene->GetName().c_str());
-                    ImGui::Separator();
-
-                    if (ImGui::Button("Delete", { 80,0 }))
-                    {
-                        auto id = scene->GetID();
-                        ImGui::CloseCurrentPopup();
-                        context.EditorLayerInstance->DeleteScene(id);
-                        ImGui::EndPopup(); // avoid touching 'scene' after deletion
-                        ImGui::PopID();
-                        break; // container mutated; restart next frame
-                    }
-                    ImGui::SameLine();
-                    if (ImGui::Button("Cancel", { 80,0 }))
-                    {
-                        ImGui::CloseCurrentPopup();
-                    }
-
-                    ImGui::EndPopup();
-                }
-
-                // Optional: inner Entities list (icon on header + bullets with tags)
-                if (open)
-                {
-                    std::string entitiesHeader = std::string(ICON_MD_LIST) + "  Entities";
-                    if (ImGui::CollapsingHeader(entitiesHeader.c_str(), hdrFlags))
-                    {
-                        for (const auto& entity : *scene)
-                        {
-                            if (entity->HasComponent<TagComponent>())
-                            {
-                                const std::string& tag = entity->GetComponent<TagComponent>().Tag;
-                                ImGui::BulletText("%s  %s", ICON_MD_LABEL, tag.c_str());
-                            }
-                            else
-                            {
-                                ImGui::BulletText("%s  %s", ICON_MD_LABEL_OFF, "Unnamed Entity");
-                            }
-                        }
-                    }
-                }
-
-                ImGui::PopID();
-            }
-
-            ImGui::TreePop();
-        }
-
-        ImGui::End();
     }
 }

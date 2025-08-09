@@ -197,6 +197,7 @@ set(
     ${MOTION_APP_DIR}/Layers
     ${MOTION_APP_DIR}/Camera
     ${MOTION_APP_DIR}/Scene
+    ${MOTION_APP_DIR}/Scene/ScenePanels
 )
 
 set(
@@ -208,6 +209,15 @@ set(
     ${MOTION_APP_DIR}/Scene/SceneCamera.hpp
     ${MOTION_APP_DIR}/Scene/SceneRenderer.hpp
     ${MOTION_APP_DIR}/Scene/SceneEnviroment.hpp
+
+    ${MOTION_APP_DIR}/Scene/ScenePanels/MaterialEditorPanel.hpp
+    ${MOTION_APP_DIR}/Scene/ScenePanels/ViewportPanel.hpp
+    ${MOTION_APP_DIR}/Scene/ScenePanels/SettingsPanel.hpp
+    ${MOTION_APP_DIR}/Scene/ScenePanels/EntityInspectPanel.hpp
+    ${MOTION_APP_DIR}/Scene/ScenePanels/PropertiesPanel.hpp
+    ${MOTION_APP_DIR}/Scene/ScenePanels/ScenePanel.hpp
+    ${MOTION_APP_DIR}/Scene/ScenePanels/ProjectSceneViewPanel.hpp
+    ${MOTION_APP_DIR}/Scene/ScenePanels/Panels.hpp
 )
 
 set(
@@ -220,6 +230,13 @@ set(
     ${MOTION_APP_DIR}/Scene/SceneCamera.cpp
     ${MOTION_APP_DIR}/Scene/SceneRenderer.cpp
     ${MOTION_APP_DIR}/Scene/SceneEnviroment.cpp
+
+    ${MOTION_APP_DIR}/Scene/ScenePanels/MaterialEditorPanel.cpp
+    ${MOTION_APP_DIR}/Scene/ScenePanels/ViewportPanel.cpp
+    ${MOTION_APP_DIR}/Scene/ScenePanels/SettingsPanel.cpp
+    ${MOTION_APP_DIR}/Scene/ScenePanels/EntityInspectPanel.cpp
+    ${MOTION_APP_DIR}/Scene/ScenePanels/PropertiesPanel.cpp
+    ${MOTION_APP_DIR}/Scene/ScenePanels/ProjectSceneViewPanel.cpp
 )
 
 add_executable(${MOTION_APP_EXECUTABLE} ${MOTION_APP_HEADERS} ${MOTION_APP_SOURCES})

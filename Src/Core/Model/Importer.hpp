@@ -17,6 +17,6 @@ namespace Motion
         Importer& operator=(Importer&&) = delete;
 
     public:
-        static std::shared_ptr<StaticMesh> ImportModel(const std::filesystem::path& path, const std::string& exportPath = "default");
+        static std::shared_ptr<StaticMesh> ImportModel(const std::filesystem::path& path, bool shouldExport = false, const std::string& exportPath = "default");
     };
 }

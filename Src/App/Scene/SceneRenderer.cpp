@@ -4,6 +4,7 @@
 
 namespace Motion
 {
+    // Current scene & queue
     Scene* SceneRenderer::s_CurrentScene = nullptr;
     static std::vector<SceneDrawCommand> s_CommandQueue{};
 
@@ -13,28 +14,33 @@ namespace Motion
         s_CurrentScene = nullptr;
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // Texture slots
+    // ─────────────────────────────────────────────────────────────────────────
     namespace TEX_SLOTS
     {
-        // IBL
+        // IBL (keep contiguous & consistent with shaders)
         static constexpr int Irradiance = 0;
         static constexpr int Prefilter = 1;
         static constexpr int BRDFLUT = 2;
 
-        // Material (start at 8 to leave room for skybox or extras if you want)
-        static constexpr int Base = 8; // first material slot
+        // Leave 3..7 free for skybox/utility if needed
+
+        // Material samplers start here
+        static constexpr int Base = 8;
     }
 
-    // Order of material bindings (expandable)
+    // ─────────────────────────────────────────────────────────────────────────
+    // Material texture bindings (sampler names & bitmask)
+    // ─────────────────────────────────────────────────────────────────────────
     struct TexBindDesc
     {
         TextureType type;
-        const char* uniformName;  // sampler uniform
-        const char* hasFlagName;  // bool flag uniform (optional; we also set a bitmask)
+        const char* uniformName;  // sampler uniform in shader
         int         slotOffset;   // TEX_SLOTS::Base + offset
         uint32_t    maskBit;      // bit in u_TexMask
     };
 
-    // Bit layout for u_TexMask (match with shader)
     enum TexBits : uint32_t
     {
         TB_BaseColor = 1u << 0,
@@ -44,7 +50,7 @@ namespace Motion
         TB_AO = 1u << 4,
         TB_Emissive = 1u << 5,
         TB_Opacity = 1u << 6,
-        TB_ORM = 1u << 7,   // packed Occlusion-Roughness-Metallic (R,G,B)
+        TB_ORM = 1u << 7,   // packed R/G/B = AO/Rough/Metal
         TB_Clearcoat = 1u << 8,
         TB_ClearcoatR = 1u << 9,
         TB_SpecColor = 1u << 10,
@@ -53,38 +59,76 @@ namespace Motion
         TB_SheenR = 1u << 13,
         TB_Trans = 1u << 14,
         TB_Thick = 1u << 15,
-        // add more bits here if you add more types
     };
 
-    // Declare all supported bindings and their slots (contiguous)
     static const TexBindDesc kBinds[] =
     {
-        // offset order drives texture unit index = TEX_SLOTS::Base + slotOffset
-        { TextureType::BaseColorTexture,        "u_BaseColorTex",       "u_HasBaseColorTex",   0,  TB_BaseColor  },
-        { TextureType::MetallicTexture,         "u_MetallicTex",        "u_HasMetallicTex",    1,  TB_Metallic   },
-        { TextureType::RoughnessTexture,        "u_RoughnessTex",       "u_HasRoughnessTex",   2,  TB_Roughness  },
-        { TextureType::NormalTexture,           "u_NormalTex",          "u_HasNormalTex",      3,  TB_Normal     },
-        { TextureType::AmbientOcclusionTexture, "u_AOTex",              "u_HasAOTex",          4,  TB_AO         },
-        { TextureType::EmissiveTexture,         "u_EmissiveTex",        "u_HasEmissiveTex",    5,  TB_Emissive   },
-        { TextureType::OpacityTexture,          "u_OpacityTex",         "u_HasOpacityTex",     6,  TB_Opacity    },
+        { TextureType::BaseColorTexture,        "u_BaseColorTex",       0,  TB_BaseColor  },
+        { TextureType::MetallicTexture,         "u_MetallicTex",        1,  TB_Metallic   },
+        { TextureType::RoughnessTexture,        "u_RoughnessTex",       2,  TB_Roughness  },
+        { TextureType::NormalTexture,           "u_NormalTex",          3,  TB_Normal     },
+        { TextureType::AmbientOcclusionTexture, "u_AOTex",              4,  TB_AO         },
+        { TextureType::EmissiveTexture,         "u_EmissiveTex",        5,  TB_Emissive   },
+        { TextureType::OpacityTexture,          "u_OpacityTex",         6,  TB_Opacity    },
 
-        // Packed ORM map (R=AO, G=Roughness, B=Metallic)
-        { TextureType::ORMTexture,              "u_ORMTex",             "u_HasORMTex",         7,  TB_ORM        },
+        { TextureType::ORMTexture,              "u_ORMTex",             7,  TB_ORM        },
 
-        // Extended PBR
-        { TextureType::ClearcoatTexture,        "u_ClearcoatTex",       "u_HasClearcoatTex",      8,  TB_Clearcoat  },
-        { TextureType::ClearcoatRoughnessTexture,"u_ClearcoatRTex",     "u_HasClearcoatRTex",     9,  TB_ClearcoatR },
-        { TextureType::SpecularColorTexture,    "u_SpecularColorTex",   "u_HasSpecularColorTex", 10,  TB_SpecColor  },
-        { TextureType::SpecularTexture,         "u_SpecularTex",        "u_HasSpecularTex",      11,  TB_Spec       },
-        { TextureType::SheenColorTexture,       "u_SheenColorTex",      "u_HasSheenColorTex",    12,  TB_SheenColor },
-        { TextureType::SheenRoughnessTexture,   "u_SheenRTex",          "u_HasSheenRTex",        13,  TB_SheenR     },
-        { TextureType::TransmissionTexture,     "u_TransmissionTex",    "u_HasTransmissionTex",  14,  TB_Trans      },
-        { TextureType::ThicknessTexture,        "u_ThicknessTex",       "u_HasThicknessTex",     15,  TB_Thick      },
+        { TextureType::ClearcoatTexture,        "u_ClearcoatTex",       8,  TB_Clearcoat  },
+        { TextureType::ClearcoatRoughnessTexture,"u_ClearcoatRTex",     9,  TB_ClearcoatR },
+        { TextureType::SpecularColorTexture,    "u_SpecularColorTex",   10, TB_SpecColor  },
+        { TextureType::SpecularTexture,         "u_SpecularTex",        11, TB_Spec       },
+        { TextureType::SheenColorTexture,       "u_SheenColorTex",      12, TB_SheenColor },
+        { TextureType::SheenRoughnessTexture,   "u_SheenRTex",          13, TB_SheenR     },
+        { TextureType::TransmissionTexture,     "u_TransmissionTex",    14, TB_Trans      },
+        { TextureType::ThicknessTexture,        "u_ThicknessTex",       15, TB_Thick      },
     };
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // Fallback 2D textures (to avoid sampler type violations)
+    // ─────────────────────────────────────────────────────────────────────────
+    static std::shared_ptr<ITexture> g_FallbackWhite;   // (1,1,1,1)
+    static std::shared_ptr<ITexture> g_FallbackBlack;   // (0,0,0,1)
+    static std::shared_ptr<ITexture> g_FallbackGray;    // (0.5,0.5,0.5,1)
+
+    static void EnsureFallbacks()
+    {
+        if (!g_FallbackWhite) g_FallbackWhite = ITexture::Create(1, 1, { 1.0f, 1.0f, 1.0f });
+        if (!g_FallbackBlack) g_FallbackBlack = ITexture::Create(1, 1, { 0.0f, 0.0f, 0.0f });
+        if (!g_FallbackGray)  g_FallbackGray = ITexture::Create(1, 1, { 0.5f, 0.5f, 0.5f });
+    }
+
+    static std::shared_ptr<ITexture> PickFallback(TextureType t)
+    {
+        switch (t)
+        {
+        case TextureType::BaseColorTexture:        return g_FallbackWhite; // albedo 1
+        case TextureType::MetallicTexture:         return g_FallbackBlack; // 0 metal
+        case TextureType::RoughnessTexture:        return g_FallbackWhite; // 1 rough
+        case TextureType::AmbientOcclusionTexture: return g_FallbackWhite; // AO=1
+        case TextureType::NormalTexture:           return g_FallbackGray;  // flat normal
+        case TextureType::OpacityTexture:          return g_FallbackWhite; // alpha=1
+        case TextureType::EmissiveTexture:         return g_FallbackBlack; // 0 emissive
+        case TextureType::ORMTexture:              return g_FallbackWhite; // not sampled if mask says absent
+        case TextureType::ClearcoatTexture:        return g_FallbackWhite; // clearcoat 1
+        case TextureType::ClearcoatRoughnessTexture: return g_FallbackWhite; // clearcoatR 1
+        case TextureType::SpecularColorTexture:    return g_FallbackWhite; // specular color 1
+        case TextureType::SpecularTexture:         return g_FallbackWhite; // specular 1
+        case TextureType::SheenColorTexture:       return g_FallbackWhite; // sheen color 1
+        case TextureType::SheenRoughnessTexture:   return g_FallbackWhite; // sheenR 1
+        case TextureType::TransmissionTexture:     return g_FallbackWhite; // transmission 1
+        case TextureType::ThicknessTexture:        return g_FallbackWhite; // thickness 1
+        default:                                   return g_FallbackWhite;
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // IBL binding helper
+    // ─────────────────────────────────────────────────────────────────────────
     static inline void BindIBL(IShader* shader, IEnvironment* env)
     {
+        // Ensure environment binds: irradiance (cube) @0, prefiltered (cube) @1, BRDF LUT (2D) @2
         env->BindIBLAll(TEX_SLOTS::Irradiance, TEX_SLOTS::Prefilter, TEX_SLOTS::BRDFLUT);
+
         shader->SetUniform("u_IrradianceMap", TEX_SLOTS::Irradiance);
         shader->SetUniform("u_PrefilteredEnvMap", TEX_SLOTS::Prefilter);
         shader->SetUniform("u_BRDFLUT", TEX_SLOTS::BRDFLUT);
@@ -94,19 +138,27 @@ namespace Motion
         shader->SetUniform("u_IBLIntensity_Specular", I.Specular);
     }
 
-    // Resolve a texture from material instance or its base
+    // Effective material texture (instance overrides base)
     static inline std::shared_ptr<ITexture> GetMatTex(PhysicalBasedMaterialInstance* mat, TextureType type)
     {
-        if (!mat) return nullptr;
-        if (auto it = mat->Texture.find(type); it != mat->Texture.end() && it->second) return it->second;
+        if (!mat)
+            return nullptr;
+
+        if (mat->Texture.contains(type))
+            return mat->Texture.at(type);
+
         if (mat->BaseMaterial)
         {
-            if (auto it = mat->BaseMaterial->Texture.find(type); it != mat->BaseMaterial->Texture.end() && it->second)
-                return it->second;
+            if (mat->BaseMaterial->Texture.contains(type))
+                return mat->BaseMaterial->Texture.at(type);
         }
+
         return nullptr;
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // Render queue flush
+    // ─────────────────────────────────────────────────────────────────────────
     static void FlushQueue() noexcept
     {
         if (s_CommandQueue.empty()) return;
@@ -124,6 +176,8 @@ namespace Motion
         UUID currentViewKey{ 0 };
         bool haveView = false;
 
+        EnsureFallbacks();
+
         for (const auto& cmd : s_CommandQueue)
         {
             IShader* const nextShader = PBR;
@@ -132,17 +186,20 @@ namespace Motion
             auto* const nextEnv = cmd.EnvironmentPtr;
             if (!nextShader || !nextMesh || !nextMat || !nextEnv) continue;
 
+            // Shader switch
             if (currentShader != nextShader) {
                 if (currentShader) currentShader->Unbind();
                 currentShader = nextShader;
                 currentShader->Bind();
             }
 
+            // Environment / IBL
             if (currentEnv != nextEnv) {
                 currentEnv = nextEnv;
                 BindIBL(currentShader, currentEnv);
             }
 
+            // Camera & sun per-view
             if (!haveView || currentViewKey != cmd.SortKey) {
                 haveView = true;
                 currentViewKey = cmd.SortKey;
@@ -151,46 +208,75 @@ namespace Motion
                 currentShader->SetUniform("u_Proj", cmd.ProjectionMatrix);
                 currentShader->SetUniform("u_CameraWorldPos", cmd.CameraPosition);
 
-                // Sun
                 currentShader->SetUniform("u_Sun.direction", cmd.SunDirection);
                 currentShader->SetUniform("u_Sun.color", cmd.SunColor);
                 currentShader->SetUniform("u_Sun.intensity", cmd.SunIntensity);
             }
 
+            // Mesh switch
             if (currentMesh != nextMesh) {
                 if (currentMesh) currentMesh->Unbind();
                 currentMesh = nextMesh;
                 currentMesh->Bind();
             }
 
+            // Material switch
             if (currentMaterial != nextMat) {
                 currentMaterial = nextMat;
 
-                currentShader->SetUniform("u_Material.BaseColor", currentMaterial->Attributes.BaseColor);
-                currentShader->SetUniform("u_Material.Metallic", currentMaterial->Attributes.Metallic);
-                currentShader->SetUniform("u_Material.Roughness", currentMaterial->Attributes.Roughness);
-                currentShader->SetUniform("u_Material.Opacity", currentMaterial->Attributes.Opacity);
+                // Base PBR attributes
+                currentShader->SetUniform("u_Material_BaseColor", currentMaterial->Attributes.BaseColor);
+                currentShader->SetUniform("u_Material_Metallic", currentMaterial->Attributes.Metallic);
+                currentShader->SetUniform("u_Material_Roughness", currentMaterial->Attributes.Roughness);
+                currentShader->SetUniform("u_Material_Opacity", currentMaterial->Attributes.Opacity);
 
-                // Bind all material textures present and build the bitmask
+                // Extended PBR attributes
+                const auto& A = currentMaterial->Attributes;
+                currentShader->SetUniform("u_Material_ClearcoatFactor", A.ClearcoatFactor);
+                currentShader->SetUniform("u_Material_ClearcoatRoughness", A.ClearcoatRoughness);
+                currentShader->SetUniform("u_Material_SpecularColor", A.SpecularColor);
+                currentShader->SetUniform("u_Material_SpecularLevel", A.SpecularLevel);
+                currentShader->SetUniform("u_Material_SheenColor", A.SheenColor);
+                currentShader->SetUniform("u_Material_SheenRoughness", A.SheenRoughness);
+                currentShader->SetUniform("u_Material_Transmission", A.Transmission);
+                currentShader->SetUniform("u_Material_Thickness", A.Thickness);
+                currentShader->SetUniform("u_Material_AttenuationColor", A.AttenuationColor);
+                currentShader->SetUniform("u_Material_AttenuationDist", A.AttenuationDistance);
+                currentShader->SetUniform("u_Material_IOR", A.IOR);
+
+                // Bind all material samplers to fixed slots, real or fallback; build mask
                 uint32_t texMask = 0u;
                 for (const auto& b : kBinds)
                 {
                     const int slot = TEX_SLOTS::Base + b.slotOffset;
-                    if (auto tex = GetMatTex(currentMaterial, b.type))
+
+                    // ALWAYS set the sampler uniform to its intended slot
+                    if (b.uniformName)
+                        currentShader->SetUniform(b.uniformName, slot);
+
+                    // Instance overrides base
+                    std::shared_ptr<ITexture> tex = GetMatTex(currentMaterial, b.type);
+                    if (tex)
                     {
                         tex->Bind(slot);
                         texMask |= b.maskBit;
-                        if (b.uniformName) currentShader->SetUniform(b.uniformName, slot);
-                        if (b.hasFlagName) currentShader->SetUniform(b.hasFlagName, true);
                     }
                     else
                     {
-                        if (b.hasFlagName) currentShader->SetUniform(b.hasFlagName, false);
+                        // Bind safe 2D fallback to avoid sampler/cubemap collisions
+                        PickFallback(b.type)->Bind(slot);
                     }
                 }
                 currentShader->SetUniform("u_TexMask", (int)texMask);
+
+                // Per-texture normal Y flip from the active normal map
+                float normalYFlip = 0.0f;
+                if (auto nrm = GetMatTex(currentMaterial, TextureType::NormalTexture))
+                    normalYFlip = nrm->GetSpecification().InvertGreen ? 1.0f : 0.0f;
+                currentShader->SetUniform("u_NormalYFlip", normalYFlip);
             }
 
+            // Per-draw transforms
             currentShader->SetUniform("u_Model", cmd.ModelMatrix);
             currentShader->SetUniform("u_NormalMatrix", cmd.NormalMatrix);
 
@@ -202,6 +288,9 @@ namespace Motion
         s_CommandQueue.clear();
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // Submit all drawables from the scene
+    // ─────────────────────────────────────────────────────────────────────────
     void SceneRenderer::Submit(Scene* scene) noexcept
     {
         if (!scene) { MOTION_CORE_ERROR("Scene is null >> SKIPPING SUBMISSION"); return; }
@@ -244,15 +333,19 @@ namespace Motion
         }
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // End scene: skybox then opaque queue
+    // ─────────────────────────────────────────────────────────────────────────
     void SceneRenderer::EndScene() noexcept
     {
-        if (s_CommandQueue.empty())
-            return;
-
-        FlushQueue();
         RenderSkyboxPass(s_CurrentScene);
+        if (!s_CommandQueue.empty())
+            FlushQueue();
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // Skybox (delegates to engine environment; handles depth state internally)
+    // ─────────────────────────────────────────────────────────────────────────
     void SceneRenderer::RenderSkyboxPass(Scene* scene) noexcept
     {
         if (!scene) return;
@@ -262,7 +355,6 @@ namespace Motion
         if (!ibl) return;
 
         const auto& cam = scene->GetCamera().Camera;
-        // Delegate *all state & draw* to the engine-side environment
         ibl->Render(cam.View, cam.Projection);
     }
 }

@@ -278,9 +278,6 @@ namespace Motion
         ~ImportedResults() = default;
     };
 
-    // -------------------------------------------------------------
-    // Import (full) with robust textures, duplicate-mesh guard, etc.
-    // -------------------------------------------------------------
     static bool Import(const std::filesystem::path& input, const std::filesystem::path& output, ImportedResults& outResults)
     {
         try
@@ -361,6 +358,41 @@ namespace Motion
                     return std::filesystem::path{};
                 };
 
+            // Helper : resolve to path only (skip embedded) — used for packed ORM detection
+            auto resolvePathOnly = [&](const aiString& aiPath) -> std::filesystem::path
+                {
+                    if (!aiPath.C_Str() || !aiPath.C_Str()[0]) return {};
+                    if (aiPath.C_Str()[0] == '*') return {};
+                    std::filesystem::path p(aiPath.C_Str());
+                    if (p.is_absolute() && std::filesystem::exists(p)) return p;
+                    std::filesystem::path rel = modelDir / p;
+                    if (std::filesystem::exists(rel)) return rel;
+                    std::filesystem::path fallback = input.parent_path() / p;
+                    if (std::filesystem::exists(fallback)) return fallback;
+                    return {};
+                };
+
+            // Detect packed ORM path from a material (AO/Roughness/Metallic point to same file)
+            auto detectPackedORMPath = [&](aiMaterial* mat)->std::filesystem::path
+                {
+                    if (!mat) return {};
+                    auto first = std::filesystem::path{};
+                    auto consider = [&](aiTextureType t)->std::filesystem::path {
+                        if (mat->GetTextureCount(t) == 0) return {};
+                        aiString p; if (mat->GetTexture(t, 0, &p) != aiReturn_SUCCESS) return {};
+                        return resolvePathOnly(p);
+                        };
+                    std::filesystem::path pAO = consider(aiTextureType_AMBIENT_OCCLUSION);
+                    std::filesystem::path pR = consider(aiTextureType_DIFFUSE_ROUGHNESS);
+                    std::filesystem::path pM = consider(aiTextureType_METALNESS);
+
+                    if (!pAO.empty() && pAO == pR && pAO == pM)      first = pAO;
+                    else if (!pAO.empty() && pAO == pR)              first = pAO;
+                    else if (!pAO.empty() && pAO == pM)              first = pAO;
+                    else if (!pR.empty() && pR == pM)              first = pR;
+                    return first;
+                };
+
             std::unordered_map<std::string, TextureAssetID> texturePathToID;
 
             auto loadTextureAsset =
@@ -431,6 +463,26 @@ namespace Motion
                     }
                 };
 
+            // Load all textures of a given Assimp type into our TextureType bucket
+            auto loadAllTexturesOfType =
+                [&](aiMaterial* mat, aiTextureType aiType, TextureType ourType, std::unordered_set<TextureAssetID>& dst)
+                {
+                    if (!mat) return;
+                    const unsigned int texCount = mat->GetTextureCount(aiType);
+                    for (unsigned int i = 0; i < texCount; ++i)
+                    {
+                        aiString texPath;
+                        if (mat->GetTexture(aiType, i, &texPath) != aiReturn_SUCCESS)
+                            continue;
+
+                        auto resolved = resolveTexture(scene, texPath);
+                        if (auto id = loadTextureAsset(resolved, ourType))
+                        {
+                            dst.insert(*id);
+                        }
+                    }
+                };
+
             // ---- Prevent duplicate mesh loads (meshes can appear under multiple nodes)
             std::vector<bool> meshLoaded(scene->mNumMeshes, false);
 
@@ -476,28 +528,7 @@ namespace Motion
                     if (!hasTangents) MikkTSpace::GenerateTangents(outResults.Meshes[meshIndex].Vertices, outResults.Meshes[meshIndex].Indices);
                 };
 
-            // ---- Load all PBR textures for a material (supports multi-slot + embedded)
-            auto load_PBR_Textures =
-                [&](aiMaterial* mat, std::unordered_set<TextureAssetID>& pbrTextureRefs, aiTextureType aiType, TextureType type)
-                {
-                    if (!mat) return;
-
-                    const unsigned int texCount = mat->GetTextureCount(aiType);
-                    for (unsigned int i = 0; i < texCount; ++i)
-                    {
-                        aiString texPath;
-                        if (mat->GetTexture(aiType, i, &texPath) != aiReturn_SUCCESS)
-                            continue;
-
-                        auto resolved = resolveTexture(scene, texPath);
-                        if (auto id = loadTextureAsset(resolved, type))
-                        {
-                            pbrTextureRefs.insert(*id);
-                        }
-                    }
-                };
-
-            // ---- Build one material (PBR)
+            // ---- Build one material (PBR + extended)
             auto loadMaterial =
                 [&](std::uint32_t meshIndex, aiMaterial* material)
                 {
@@ -516,12 +547,48 @@ namespace Motion
                     pbrMaterialAsset->Attributes.Roughness = GetMaterialAttribute<float>(material, AI_MATKEY_ROUGHNESS_FACTOR, 1.0f);
                     pbrMaterialAsset->Attributes.Opacity = GetMaterialAttribute<float>(material, AI_MATKEY_OPACITY, 1.0f);
 
-                    load_PBR_Textures(material, pbrMaterialAsset->TextureRefs, aiTextureType_BASE_COLOR, TextureType::BaseColorTexture);
-                    load_PBR_Textures(material, pbrMaterialAsset->TextureRefs, aiTextureType_METALNESS, TextureType::MetallicTexture);
-                    load_PBR_Textures(material, pbrMaterialAsset->TextureRefs, aiTextureType_DIFFUSE_ROUGHNESS, TextureType::RoughnessTexture);
-                    load_PBR_Textures(material, pbrMaterialAsset->TextureRefs, aiTextureType_AMBIENT_OCCLUSION, TextureType::AmbientOcclusionTexture);
-                    load_PBR_Textures(material, pbrMaterialAsset->TextureRefs, aiTextureType_NORMAL_CAMERA, TextureType::NormalTexture);
-                    // Optional: emissive, opacity, AO/rough/metal packed maps, etc.
+                    // Base PBR
+                    loadAllTexturesOfType(material, aiTextureType_BASE_COLOR, TextureType::BaseColorTexture, pbrMaterialAsset->TextureRefs);
+                    loadAllTexturesOfType(material, aiTextureType_METALNESS, TextureType::MetallicTexture, pbrMaterialAsset->TextureRefs);
+                    loadAllTexturesOfType(material, aiTextureType_DIFFUSE_ROUGHNESS, TextureType::RoughnessTexture, pbrMaterialAsset->TextureRefs);
+                    loadAllTexturesOfType(material, aiTextureType_AMBIENT_OCCLUSION, TextureType::AmbientOcclusionTexture, pbrMaterialAsset->TextureRefs);
+                    loadAllTexturesOfType(material, aiTextureType_NORMAL_CAMERA, TextureType::NormalTexture, pbrMaterialAsset->TextureRefs);
+                    loadAllTexturesOfType(material, aiTextureType_EMISSIVE, TextureType::EmissiveTexture, pbrMaterialAsset->TextureRefs);
+                    loadAllTexturesOfType(material, aiTextureType_OPACITY, TextureType::OpacityTexture, pbrMaterialAsset->TextureRefs);
+
+                    // Legacy/compat fallbacks
+                    loadAllTexturesOfType(material, aiTextureType_DIFFUSE, TextureType::BaseColorTexture, pbrMaterialAsset->TextureRefs);
+                    loadAllTexturesOfType(material, aiTextureType_NORMALS, TextureType::NormalTexture, pbrMaterialAsset->TextureRefs);
+                    loadAllTexturesOfType(material, aiTextureType_LIGHTMAP, TextureType::AmbientOcclusionTexture, pbrMaterialAsset->TextureRefs);
+                    loadAllTexturesOfType(material, aiTextureType_HEIGHT, TextureType::DisplacementTexture, pbrMaterialAsset->TextureRefs);
+
+                    // Extended features (behind ifdefs to match your Assimp version)
+                    loadAllTexturesOfType(material, aiTextureType_CLEARCOAT, TextureType::ClearcoatTexture, pbrMaterialAsset->TextureRefs);
+                    loadAllTexturesOfType(material, aiTextureType_SPECULAR, TextureType::SpecularColorTexture, pbrMaterialAsset->TextureRefs);
+                    loadAllTexturesOfType(material, aiTextureType_SHEEN, TextureType::SheenColorTexture, pbrMaterialAsset->TextureRefs);
+                    loadAllTexturesOfType(material, aiTextureType_TRANSMISSION, TextureType::TransmissionTexture, pbrMaterialAsset->TextureRefs);
+
+#ifdef aiTextureType_CLEARCOAT_ROUGHNESS
+                    loadAllTexturesOfType(material, aiTextureType_CLEARCOAT_ROUGHNESS, TextureType::ClearcoatRoughnessTexture, pbrMaterialAsset->TextureRefs);
+#endif
+#ifdef aiTextureType_SHEEN_ROUGHNESS
+                    loadAllTexturesOfType(material, aiTextureType_SHEEN_ROUGHNESS, TextureType::SheenRoughnessTexture, pbrMaterialAsset->TextureRefs);
+#endif
+#ifdef aiTextureType_TRANSMISSION_THICKNESS
+                    loadAllTexturesOfType(material, aiTextureType_TRANSMISSION_THICKNESS, TextureType::ThicknessTexture, pbrMaterialAsset->TextureRefs);
+#endif
+
+                    // Packed ORM detection: if AO/Roughness/Metallic likely share one file, add an ORM entry
+                    {
+                        std::filesystem::path ormPath = detectPackedORMPath(material);
+                        if (!ormPath.empty())
+                        {
+                            if (auto id = loadTextureAsset(ormPath, TextureType::ORMTexture))
+                            {
+                                pbrMaterialAsset->TextureRefs.insert(*id);
+                            }
+                        }
+                    }
 
                     outResults.Meshes[meshIndex].MaterialRefs.push_back(pbrMaterialRef);
                 };

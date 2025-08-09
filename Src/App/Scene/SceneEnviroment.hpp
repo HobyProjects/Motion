@@ -7,38 +7,44 @@
 
 namespace Motion
 {
-    struct DirectionalLight
+    struct SunLight
     {
-        static constexpr std::int32_t LIGHT_COUNT = 4;
-        UUID LightID{ UniqueIdentity::GetUniqueID() };
-        glm::vec3 LightPosition[LIGHT_COUNT]
-        {
-            { 100.0f,  400.0f, 100.0f },
-            { -300.0f, 200.0f, 50.0f },
-            { 500.0f, 100.0f, -100.0f },
-            { 0.0f,    1000.0f, 0.0f }
-        };
+        glm::vec3 Direction{ 0.0f, -1.0f, 0.0f };  // world-space, normalized
+        glm::vec3 Color{ 1.0f,  1.0f,  1.0f };
+        float     Intensity{ 10.0f };
 
-        glm::vec3 LightColor[LIGHT_COUNT]
+        // Convert a positional light to a directional one (looking at target)
+        void SetFromPosition(const glm::vec3& position, const glm::vec3& target = glm::vec3(0.0f))
         {
-            { 1.0f, 0.8f, 0.6f },
-            { 0.6f, 0.8f, 1.0f },
-            { 0.8f, 1.0f, 0.6f },
-            { 1.0f, 1.0f, 1.0f }
-        };
-
-        float LightIntensity[LIGHT_COUNT]
-        {
-            1.0f, 0.8f, 0.6f, 0.5f
-        };
-
-        DirectionalLight() = default;
-        ~DirectionalLight() = default;
+            Direction = glm::normalize(target - position);
+        }
     };
 
     struct SceneEnvironment
     {
-        DirectionalLight DirectionalLight{};
-    };
+        // Lighting
+        SunLight Sun{};
+        // Image Based Lighting backend (API-specific impl lives behind this interface)
+        std::shared_ptr<IEnvironment> Env; // set by your scene setup: Env = IEnvironment::Create(pathToHDR);
 
+        // Global appearance knobs
+        float    Exposure{ 1.0f };
+        float    Gamma{ 2.2f };
+        glm::vec3 AmbientTint{ 1.0f, 1.0f, 1.0f };
+
+        struct Fog
+        {
+            bool      Enabled{ false };
+            float     Density{ 0.0f };            // exponential fog density
+            glm::vec3 Color{ 0.6f, 0.7f, 0.8f };
+
+        } FogSettings{};
+
+        // Convenience helpers that forward into Env when available
+        inline void SetIBLIntensity(float diffuse, float specular) noexcept { if (Env) Env->SetIntensity({ diffuse, specular }); }
+        inline EnvIntensity GetIBLIntensity() const noexcept { return Env ? Env->GetIntensity() : EnvIntensity{}; }
+        inline void SetSkyboxRotationY(float radians) noexcept { if (Env) Env->SetSkyboxRotationY(radians); }
+        inline float GetSkyboxRotationY() const noexcept { return Env ? Env->GetSkyboxRotationY() : 0.0f; }
+        inline void BindIBLAll(std::uint32_t irrSlot, std::uint32_t preSlot, std::uint32_t brdfSlot) const noexcept { if (Env) Env->BindIBLAll(irrSlot, preSlot, brdfSlot); }
+    };
 }

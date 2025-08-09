@@ -20,7 +20,7 @@ namespace Motion
         virtual void RenderUI(ScenePanelContext& context) override;
 
     private:
-        std::string m_Title{ "Project Scenes" };
+        std::string m_Title{ "ProjectScenes" };
     };
 
     class SceneEditorLayer : public Layer
@@ -34,6 +34,16 @@ namespace Motion
         virtual void OnUpdate(WindowHandle handle, Timer deltaTime) override;
         virtual void OnEvent(WindowHandle handle, IEvent& e);
         virtual void OnUIRender(WindowHandle handle) override;
+
+        void SetActiveScene(const std::shared_ptr<Scene>& scene);
+        void RemoveScene(const std::shared_ptr<Scene>& scene);
+        std::shared_ptr<Scene> AddNewScene(const std::string& name, bool makeActive = false);
+        void DeleteScene(UUID id);
+
+        [[nodiscard]] std::vector<std::shared_ptr<Scene>>::iterator begin() { return m_Scenes.begin(); }
+        [[nodiscard]] std::vector<std::shared_ptr<Scene>>::iterator end() { return m_Scenes.end(); }
+        [[nodiscard]] std::vector<std::shared_ptr<Scene>>::const_iterator begin() const { return m_Scenes.begin(); }
+        [[nodiscard]] std::vector<std::shared_ptr<Scene>>::const_iterator end() const { return m_Scenes.end(); }
 
     private:
         void BuildDockspace();

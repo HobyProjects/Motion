@@ -1,210 +1,302 @@
+// =============================================================
+// PBR.glsl — expanded maps + bitmask + IBL intensity
+// =============================================================
+
 #type vertex
 #version 460 core
 
+// Vertex attributes (match your BufferLayout)
 layout(location = 0) in vec3 a_Position;
-layout(location = 1) in vec2 a_TexCoords;
-layout(location = 2) in vec3 a_Normals;
+layout(location = 1) in vec2 a_TexCoord;
+layout(location = 2) in vec3 a_Normal;
+layout(location = 3) in vec3 a_Tangent;
+layout(location = 4) in vec3 a_Bitangent;
+layout(location = 5) in float a_TangentSign;
 
-out vec3 v_WorldPosition;
-out vec2 v_UV;
-out vec3 v_Normal;
+// Per-draw uniforms (renderer sets these)
+uniform mat4 u_Model;
+uniform mat4 u_View;
+uniform mat4 u_Proj;
 
-uniform mat4 u_ModelMatrix;
-uniform mat4 u_ViewMatrix;
-uniform mat4 u_ProjectionMatrix;
+// Precompute a proper normal matrix on CPU (renderer does this)
 uniform mat3 u_NormalMatrix;
 
-// Displacement Mapping
-uniform sampler2D u_DisplacementTextures;
+out VS_OUT {
+    vec3 WorldPos;
+    vec2 UV;
+    mat3 TBN;
+} vs_out;
 
-struct MaterialAttributes {
-    vec3 BaseColor;
-    float Metallic;
-    float Roughness;
-    float Opacity;
-};
+void main() {
+    vec3 N = normalize(u_NormalMatrix * a_Normal);
+    vec3 T = normalize(u_NormalMatrix * a_Tangent);
+    vec3 B = a_TangentSign * normalize(cross(N, T));
 
-layout(std430, binding = 0) buffer MaterialData {
-    MaterialAttributes attributes;
-};
+    vs_out.TBN      = mat3(T, B, N);
+    vs_out.WorldPos = vec3(u_Model * vec4(a_Position, 1.0));
+    vs_out.UV       = a_TexCoord;
 
-void main()
-{
-    float displacement = texture(u_DisplacementTextures, a_TexCoords).r;
-    vec3 displacedPosition = a_Position + a_Normals * displacement;
-
-    v_WorldPosition = vec3(u_ModelMatrix * vec4(displacedPosition, 1.0));
-    v_Normal = u_NormalMatrix * a_Normals;
-    v_UV = a_TexCoords;
-
-    gl_Position = u_ProjectionMatrix * u_ViewMatrix * vec4(v_WorldPosition, 1.0);
+    gl_Position = u_Proj * u_View * vec4(vs_out.WorldPos, 1.0);
 }
 
 #type fragment
 #version 460 core
 
+in VS_OUT {
+    vec3 WorldPos;
+    vec2 UV;
+    mat3 TBN;
+} fs_in;
+
 layout(location = 0) out vec4 FragColor;
 
-in vec3 v_WorldPosition;
-in vec2 v_UV;
-in vec3 v_Normal;
+// -------------------------------------------------------------
+// Camera + sun light (renderer sets these every view change)
+// -------------------------------------------------------------
+uniform vec3 u_CameraWorldPos;
 
-// Texture Samplers
-uniform sampler2D u_BaseColorTextures;
-uniform sampler2D u_MetallicTextures;
-uniform sampler2D u_RoughnessTextures;
-uniform sampler2D u_AmbientOcclusionTextures;
-uniform sampler2D u_NormalTextures;
+struct DirLight 
+{
+    vec3 direction; // world-space
+    vec3 color;     // linear
+    float intensity;
+};
 
-// IBL
-uniform samplerCube u_IrradianceTextures;
-uniform samplerCube u_PrefilteredTextures;
-uniform sampler2D u_BRDFLUT;
+uniform DirLight u_Sun;
 
-#define MAX_LIGHTS 4 
-#define PI 3.14159265359
+// -------------------------------------------------------------
+// IBL (bindings match renderer: 0, 1, 2)
+// -------------------------------------------------------------
+layout(binding = 0) uniform samplerCube u_IrradianceMap;     // diffuse IBL
+layout(binding = 1) uniform samplerCube u_PrefilteredEnvMap; // specular IBL (mipmapped)
+layout(binding = 2) uniform sampler2D   u_BRDFLUT;           // preintegrated BRDF
 
-// Light & Camera
-uniform vec3 u_CameraPosition;
-uniform vec3 u_LightPosition[MAX_LIGHTS];
-uniform vec3 u_LightColor[MAX_LIGHTS];
-uniform float u_LightIntensity[MAX_LIGHTS];
+uniform float u_IBLIntensity_Diffuse  = 1.0;
+uniform float u_IBLIntensity_Specular = 1.0;
 
-// Material Buffer
-struct MaterialAttributes {
-    vec3 BaseColor;
+// -------------------------------------------------------------
+// Material constants + texture set (bindings start at 8)
+// -------------------------------------------------------------
+struct PBRAttributes 
+{
+    vec3  BaseColor;
     float Metallic;
     float Roughness;
     float Opacity;
 };
 
-layout(std430, binding = 0) buffer MaterialData {
-    MaterialAttributes attributes;
-};
+uniform PBRAttributes u_Material;
 
-vec3 GetNormalFromTexture()
-{
-    vec3 tangentNormal = texture(u_NormalTextures, v_UV).xyz * 2.0 - 1.0;
+// Bitmask of available textures (must match renderer bits)
+uniform int u_TexMask;
 
-    vec3 Q1  = dFdx(v_WorldPosition);
-    vec3 Q2  = dFdy(v_WorldPosition);
-    vec2 st1 = dFdx(v_UV);
-    vec2 st2 = dFdy(v_UV);
+const int TB_BaseColor  = 1<<0;
+const int TB_Metallic   = 1<<1;
+const int TB_Roughness  = 1<<2;
+const int TB_Normal     = 1<<3;
+const int TB_AO         = 1<<4;
+const int TB_Emissive   = 1<<5;
+const int TB_Opacity    = 1<<6;
+const int TB_ORM        = 1<<7;   // R=AO, G=Roughness, B=Metallic
+const int TB_Clearcoat  = 1<<8;
+const int TB_ClearcoatR = 1<<9;
+const int TB_SpecColor  = 1<<10;
+const int TB_Spec       = 1<<11;
+const int TB_SheenColor = 1<<12;
+const int TB_SheenR     = 1<<13;
+const int TB_Trans      = 1<<14;
+const int TB_Thick      = 1<<15;
 
-    vec3 N   =  normalize(v_Normal);
-    vec3 T   =  normalize(Q1*st2.t - Q2*st1.t);
-    vec3 B   = -normalize(cross(N, T));
-    mat3 TBN =  mat3(T, B, N);
+// Material samplers (match SceneRenderer TEX_SLOTS::Base + offsets)
+layout(binding= 8) uniform sampler2D u_BaseColorTex;
+layout(binding= 9) uniform sampler2D u_MetallicTex;
+layout(binding=10) uniform sampler2D u_RoughnessTex;
+layout(binding=11) uniform sampler2D u_NormalTex;
+layout(binding=12) uniform sampler2D u_AOTex;
+layout(binding=13) uniform sampler2D u_EmissiveTex;
+layout(binding=14) uniform sampler2D u_OpacityTex;
+layout(binding=15) uniform sampler2D u_ORMTex;
+layout(binding=16) uniform sampler2D u_ClearcoatTex;
+layout(binding=17) uniform sampler2D u_ClearcoatRTex;
+layout(binding=18) uniform sampler2D u_SpecularColorTex;
+layout(binding=19) uniform sampler2D u_SpecularTex;
+layout(binding=20) uniform sampler2D u_SheenColorTex;
+layout(binding=21) uniform sampler2D u_SheenRTex;
+layout(binding=22) uniform sampler2D u_TransmissionTex;
+layout(binding=23) uniform sampler2D u_ThicknessTex;
 
-    return normalize(TBN * tangentNormal);
+// (Optional) legacy bools; harmless with bitmask, kept for backward-compat
+uniform bool u_HasBaseColorTex, u_HasMetallicTex, u_HasRoughnessTex, u_HasNormalTex, u_HasAOTex, u_HasEmissiveTex, u_HasOpacityTex;
+uniform bool u_HasORMTex, u_HasClearcoatTex, u_HasClearcoatRTex, u_HasSpecularColorTex, u_HasSpecularTex, u_HasSheenColorTex, u_HasSheenRTex, u_HasTransmissionTex, u_HasThicknessTex;
+
+// -------------------------------------------------------------
+// Helpers
+// -------------------------------------------------------------
+const float PI = 3.14159265359;
+
+vec3 SRGBToLinear(vec3 c)
+{ 
+    return pow(c, vec3(2.2)); 
 }
 
-float DistributionGGX(vec3 N, vec3 H, float roughness)
+vec3 LinearToSRGB(vec3 c)
 {
-    float A = roughness * roughness;
-    float A2 = A * A;
-
-    float NdotH1 = max(dot(N, H), 0.0);
-    float NdotH2 = NdotH1 * NdotH1;
-
-    float NOM = A2;
-    float DENOM = (NdotH2 * (A2 - 1.0) + 1.0);
-    DENOM = PI * DENOM * DENOM;
-
-    return NOM / DENOM;
+    return pow(clamp(c, 0.0, 100.0), vec3(1.0/2.2));
 }
 
-float GeometrySchlickGGX(float NdotV, float roughness)
+float DistributionGGX(vec3 N, vec3 H, float roughness) 
 {
-    float R = roughness + 1.0;
-    float K = (R * R) / 8.0;
-
-    float NOM = NdotV;
-    float DENOM = NdotV * (1.0 - K) + K;
-
-    return NOM / DENOM;
+    float a = roughness*roughness;
+    float a2 = a*a;
+    float NdotH = max(dot(N,H), 0.0);
+    float NdotH2 = NdotH*NdotH;
+    float denom = (NdotH2 * (a2 - 1.0) + 1.0);
+    return a2 / max(PI * denom * denom, 1e-5);
 }
 
-float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness)
+float G_SchlickGGX(float NdotV, float roughness) 
 {
-    float NDOTV = max(dot(N, V), 0.0);
-    float NDOTL = max(dot(N, L), 0.0);
-
-    float GGX1 = GeometrySchlickGGX(NDOTV, roughness);
-    float GGX2 = GeometrySchlickGGX(NDOTL, roughness);
-    return GGX1 * GGX2;
+    float r = roughness + 1.0;
+    float k = (r*r)/8.0;
+    return NdotV / (NdotV*(1.0 - k) + k);
 }
 
-vec3 FresnelSchlick(float cosTheta, vec3 F0)
+float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness) 
 {
-    return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
+    float NdotV = max(dot(N,V), 0.0);
+    float NdotL = max(dot(N,L), 0.0);
+    float ggx2 = G_SchlickGGX(NdotV, roughness);
+    float ggx1 = G_SchlickGGX(NdotL, roughness);
+    return ggx1 * ggx2;
 }
 
-vec3 FresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness)
+vec3 FresnelSchlick(float cosTheta, vec3 F0) 
 {
-    return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
-}  
+    return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
+}
 
 void main()
 {
-    // material properties
-    vec3 ALBEDO    = pow(texture(u_BaseColorTextures, v_UV).rgb, vec3(2.2)) * attributes.BaseColor;
-    float METALLIC = texture(u_MetallicTextures, v_UV).r * attributes.Metallic;
-    float ROUGHNESS = texture(u_RoughnessTextures, v_UV).r * attributes.Roughness;
-    float AO = texture(u_AmbientOcclusionTextures, v_UV).r;
-
-    // INPUT LIGHTING DATA
-    vec3 N = GetNormalFromTexture();
-    vec3 V = normalize(u_CameraPosition - v_WorldPosition);
-    vec3 R = reflect(-V, N);
-
-    vec3 F0 = vec3(0.04);
-    F0 = mix(F0, ALBEDO, METALLIC);
-
-    vec3 Lo = vec3(0.0);
-    for(int i = 0; i < MAX_LIGHTS; i++)
-    {
-        // calculate per-light radiance
-        vec3 L = normalize(u_LightPosition[i] - v_WorldPosition);
-        vec3 H = normalize(V + L);
-        float distance = length(u_LightPosition[i] - v_WorldPosition);
-        float attenuation = u_LightIntensity[i] / (distance * distance);
-        vec3 radiance = u_LightColor[i] * attenuation;
-
-        // Cook-Torrance BRDF
-        float NDF = DistributionGGX(N, H, ROUGHNESS);   
-        float G   = GeometrySmith(N, V, L, ROUGHNESS);    
-        vec3 F    = FresnelSchlick(max(dot(H, V), 0.0), F0);        
-        
-        vec3 numerator    = NDF * G * F;
-        float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 0.0001;
-        vec3 specular = numerator / denominator;
-    
-        vec3 kS = F;
-        vec3 kD = vec3(1.0) - kS;
-        kD *= 1.0 - METALLIC;	                
-            
-        float NdotL = max(dot(N, L), 0.0);        
-        Lo += (kD * ALBEDO / PI + specular) * radiance * NdotL;
+    // Normal mapping
+    vec3 N = normalize(fs_in.TBN[2]);
+    bool hasNormal = ((u_TexMask & TB_Normal) != 0) || u_HasNormalTex;
+    if (hasNormal) {
+        vec3 n = texture(u_NormalTex, fs_in.UV).xyz * 2.0 - 1.0;
+        vec3 T = normalize(fs_in.TBN[0]);
+        vec3 B = normalize(fs_in.TBN[1]);
+        N = normalize(mat3(T,B,normalize(N)) * n);
     }
 
-    vec3 F = FresnelSchlickRoughness(max(dot(N, V), 0.0), F0, ROUGHNESS);
-    vec3 kS = F;
-    vec3 kD = (1.0 - kS) * (1.0 - METALLIC);
+    vec3 V = normalize(u_CameraWorldPos - fs_in.WorldPos);
 
-    // IBL Ambient
-    vec3 irradiance = texture(u_IrradianceTextures, N).rgb;
-    vec3 diffuse = irradiance * ALBEDO;
+    // Base color
+    vec3 baseColor = u_Material.BaseColor;
+    if (((u_TexMask & TB_BaseColor) != 0) || u_HasBaseColorTex)
+        baseColor *= SRGBToLinear(texture(u_BaseColorTex, fs_in.UV).rgb);
 
-    const float MAX_REFLECTION_LOD = 4.0;
-    vec3 prefiltered = textureLod(u_PrefilteredTextures, R, ROUGHNESS * MAX_REFLECTION_LOD).rgb;
-    vec2 brdf = texture(u_BRDFLUT, vec2(max(dot(N, V), 0.0), ROUGHNESS)).rg;
-    vec3 specular = prefiltered * (F * brdf.x + brdf.y);
-    vec3 ambient = (kD * diffuse + specular) * AO;
+    // Metallic/Roughness/AO (packed ORM preferred)
+    float metallic  = clamp(u_Material.Metallic,  0.0, 1.0);
+    float roughness = clamp(u_Material.Roughness, 0.04, 1.0);
+    float ao = 1.0;
+
+    if (((u_TexMask & TB_ORM) != 0) || u_HasORMTex) {
+        vec3 orm = texture(u_ORMTex, fs_in.UV).rgb;
+        ao        = orm.r;
+        roughness = clamp(roughness * orm.g, 0.04, 1.0);
+        metallic  = clamp(metallic  * orm.b, 0.0,  1.0);
+    } else {
+        if (((u_TexMask & TB_Metallic)  != 0) || u_HasMetallicTex)  metallic  = clamp(metallic  * texture(u_MetallicTex,  fs_in.UV).r, 0.0, 1.0);
+        if (((u_TexMask & TB_Roughness) != 0) || u_HasRoughnessTex) roughness = clamp(roughness * texture(u_RoughnessTex, fs_in.UV).g, 0.04, 1.0);
+        if (((u_TexMask & TB_AO)        != 0) || u_HasAOTex)        ao        = texture(u_AOTex,        fs_in.UV).r;
+    }
+
+    float opacity = u_Material.Opacity;
+    if (((u_TexMask & TB_Opacity) != 0) || u_HasOpacityTex)
+        opacity *= texture(u_OpacityTex, fs_in.UV).r;
+
+    // Optional cutout
+    // if (opacity < 0.33) discard;
+
+    // Base F0 (metallic workflow)
+    vec3 F0 = mix(vec3(0.04), baseColor, metallic);
+
+    // ===== Direct lighting (single directional) =====
+    vec3 L = normalize(-u_Sun.direction);
+    vec3 H = normalize(V + L);
+    float NdotL = max(dot(N, L), 0.0);
+
+    float  D = DistributionGGX(N, H, roughness);
+    float  G = GeometrySmith(N, V, L, roughness);
+    vec3   F = FresnelSchlick(max(dot(H, V), 0.0), F0);
+
+    vec3  specular = (D * G * F) / max(4.0 * max(dot(N,V),0.0) * NdotL, 1e-5);
+    vec3  kS = F;
+    vec3  kD = (vec3(1.0) - kS) * (1.0 - metallic);
+
+    vec3 Lo = (kD * baseColor / PI + specular) * (u_Sun.color * u_Sun.intensity) * NdotL;
+
+    // ===== IBL =====
+    vec3 R = reflect(-V, N);
+
+    // Diffuse IBL (Lambertian)
+    vec3 irradiance = texture(u_IrradianceMap, N).rgb;
+    vec3 diffuseIBL = irradiance * baseColor;
+
+    // Specular IBL
+    // Choose a conservative max mip count if unknown at runtime
+    const float MAX_REFLECTION_LOD = 5.0;
+    vec3 prefiltered = textureLod(u_PrefilteredEnvMap, R, roughness * MAX_REFLECTION_LOD).rgb;
+    vec2 brdf = texture(u_BRDFLUT, vec2(max(dot(N,V),0.0), roughness)).rg;
+    vec3 specIBL = prefiltered * (F * brdf.x + brdf.y);
+
+    vec3 ambient = (kD * diffuseIBL * u_IBLIntensity_Diffuse + specIBL * u_IBLIntensity_Specular) * ao;
+
     vec3 color = Lo + ambient;
 
-    // Final color
+    // ===== Extended features =====
+    // Emissive
+    if (((u_TexMask & TB_Emissive) != 0) || u_HasEmissiveTex)
+        color += SRGBToLinear(texture(u_EmissiveTex, fs_in.UV).rgb);
+
+    // Clearcoat (extra specular lobe, simple env-only version)
+    if (((u_TexMask & TB_Clearcoat) != 0) || u_HasClearcoatTex) 
+    {
+        float cc  = texture(u_ClearcoatTex,  fs_in.UV).r;
+        float ccr = (((u_TexMask & TB_ClearcoatR) != 0) || u_HasClearcoatRTex) ? texture(u_ClearcoatRTex, fs_in.UV).r : 0.25;
+        vec3  ccF0 = vec3(0.04);
+        vec3  ccF  = FresnelSchlick(max(dot(N,V),0.0), ccF0);
+        vec3  ccSpec = textureLod(u_PrefilteredEnvMap, R, ccr * MAX_REFLECTION_LOD).rgb * (ccF * brdf.x + brdf.y);
+        color = mix(color, color + ccSpec, clamp(cc, 0.0, 1.0));
+    }
+
+    // Sheen
+    if (((u_TexMask & TB_SheenColor) != 0) || u_HasSheenColorTex) 
+    {
+        vec3 sheenC = SRGBToLinear(texture(u_SheenColorTex, fs_in.UV).rgb);
+        float sheenR = (((u_TexMask & TB_SheenR) != 0) || u_HasSheenRTex) ? texture(u_SheenRTex, fs_in.UV).r : 0.5;
+        vec3 sheen = sheenC * textureLod(u_PrefilteredEnvMap, R, sheenR * MAX_REFLECTION_LOD).rgb;
+        color += sheen * 0.25;
+    }
+
+    // Specular workflow assist (specular color / scalar)
+    if (((u_TexMask & TB_Spec) != 0) || u_HasSpecularTex) 
+    {
+        float spec = texture(u_SpecularTex, fs_in.UV).r;
+        vec3  specC = (((u_TexMask & TB_SpecColor) != 0) || u_HasSpecularColorTex)
+                      ? SRGBToLinear(texture(u_SpecularColorTex, fs_in.UV).rgb)
+                      : vec3(spec);
+        color += specC * 0.1;
+    }
+
+    // Transmission / Thickness (cheap thin look)
+    if (((u_TexMask & TB_Trans) != 0) || u_HasTransmissionTex) 
+    {
+        float trans = texture(u_TransmissionTex, fs_in.UV).r;
+        float thick = (((u_TexMask & TB_Thick) != 0) || u_HasThicknessTex) ? texture(u_ThicknessTex, fs_in.UV).r : 0.5;
+        color = mix(color, color + baseColor * trans * thick, 0.25);
+    }
+
+    // Tonemap + gamma
     color = color / (color + vec3(1.0));
-    color = pow(color, vec3(1.0 / 2.2)); 
-    FragColor = vec4(color, attributes.Opacity);
+    FragColor = vec4(LinearToSRGB(color), opacity);
 }

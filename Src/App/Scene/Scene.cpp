@@ -49,8 +49,181 @@ namespace Motion
         }
     }
 
+    namespace MaterialUI
+    {
+        // Fallback pretty-name helper if you don't already have one
+        inline const char* FallbackTexTypeName(TextureType t)
+        {
+            switch (t)
+            {
+            case TextureType::BaseColorTexture:         return "Base Color";
+            case TextureType::MetallicTexture:          return "Metallic";
+            case TextureType::RoughnessTexture:         return "Roughness";
+            case TextureType::AmbientOcclusionTexture:  return "Ambient Occlusion";
+            case TextureType::NormalTexture:            return "Normal";
+            case TextureType::DisplacementTexture:      return "Displacement";
+            case TextureType::EmissiveTexture:          return "Emissive";
+            case TextureType::OpacityTexture:           return "Opacity";
+            case TextureType::ORMTexture:               return "ORM (AO/R/M)";
+            case TextureType::ClearcoatTexture:         return "Clearcoat";
+            case TextureType::ClearcoatRoughnessTexture:return "Clearcoat Roughness";
+            case TextureType::SpecularTexture:          return "Specular";
+            case TextureType::SpecularColorTexture:     return "Specular Color";
+            case TextureType::SheenColorTexture:        return "Sheen Color";
+            case TextureType::SheenRoughnessTexture:    return "Sheen Roughness";
+            case TextureType::TransmissionTexture:      return "Transmission";
+            case TextureType::ThicknessTexture:         return "Thickness";
+            default:                                    return "Unknown";
+            }
+        }
 
-    //-------------------------------------------------------------------
+        inline std::string GetPrettyName(TextureType t)
+        {
+            // If you already have GetTextureTypeString(t), use that instead:
+            // return GetTextureTypeString(t);
+            return FallbackTexTypeName(t);
+        }
+
+        struct TexSlotDesc {
+            TextureType Type;
+            const char* Pretty;
+            const char* Icon;
+        };
+
+        // The “core” PBR slots you want to always show first (add/remove as you like)
+        static inline const std::array<TexSlotDesc, 8> kDefaultPBRSlots = { {
+            { TextureType::BaseColorTexture,        "Base Color",        ICON_MD_IMAGE      },
+            { TextureType::ORMTexture,              "ORM (AO/R/M)",      ICON_MD_AUTO_AWESOME },
+            { TextureType::MetallicTexture,         "Metallic",          ICON_MD_TONALITY   },
+            { TextureType::RoughnessTexture,        "Roughness",         ICON_MD_GRAIN      },
+            { TextureType::AmbientOcclusionTexture, "Ambient Occlusion", ICON_MD_BLUR_ON    },
+            { TextureType::NormalTexture,           "Normal",            ICON_MD_GESTURE    },
+            { TextureType::EmissiveTexture,         "Emissive",          ICON_MD_BRIGHTNESS_7 },
+            { TextureType::OpacityTexture,          "Opacity",           ICON_MD_OPACITY    },
+        } };
+
+        // Draw one texture slot (card + “Pick” button that uses your existing loader)
+        inline void DrawTexSlot(std::unordered_map<TextureType, std::shared_ptr<ITexture>>& map,
+            TextureType t, const char* label, const char* icon)
+        {
+            std::shared_ptr<ITexture>& current = map[t]; // ensures key exists
+            CustomUIControl::TextureSlotCard(
+                (std::string(icon) + "  " + label).c_str(),
+                current,
+                [&]()
+                {
+                    if (auto newTex = LoadTexture(t)) // your existing helper
+                        map[t] = std::move(newTex);
+                }
+            );
+        }
+
+        // Unified PBR instance inspector (attributes + textures + base material readback)
+        inline void DrawPBRInstance(PhysicalBasedMaterialInstance& mat)
+        {
+            const ImGuiTreeNodeFlags secFlags =
+                ImGuiTreeNodeFlags_Framed |
+                ImGuiTreeNodeFlags_SpanAvailWidth |
+                ImGuiTreeNodeFlags_AllowItemOverlap |
+                ImGuiTreeNodeFlags_FramePadding;
+
+            // ── Attributes
+            if (ImGui::CollapsingHeader(std::string(ICON_MD_TUNE "  Material Attributes").c_str(), secFlags))
+            {
+                CustomUIControl::ColorEdit3(std::string(ICON_MD_PALETTE "  Base Color").c_str(), mat.Attributes.BaseColor);
+                CustomUIControl::DrawFloat(std::string(ICON_MD_TONALITY "  Metallic").c_str(), mat.Attributes.Metallic, 0.0f, 1.0f, 0.005f);
+                CustomUIControl::DrawFloat(std::string(ICON_MD_GRAIN "  Roughness").c_str(), mat.Attributes.Roughness, 0.0f, 1.0f, 0.005f);
+                CustomUIControl::DrawFloat(std::string(ICON_MD_OPACITY "  Opacity").c_str(), mat.Attributes.Opacity, 0.0f, 1.0f, 0.005f);
+            }
+
+            // ── Textures
+            if (ImGui::CollapsingHeader(std::string(ICON_MD_IMAGE "  Material Textures").c_str(), secFlags))
+            {
+                // Standard slots first (predictable order)
+                for (const auto& slot : kDefaultPBRSlots)
+                    DrawTexSlot(mat.Texture, slot.Type, slot.Pretty, slot.Icon);
+
+                // Extended / unknown slots next (auto-list whatever importer provided)
+                for (auto& [t, tex] : mat.Texture)
+                {
+                    bool alreadyStandard = std::any_of(
+                        kDefaultPBRSlots.begin(), kDefaultPBRSlots.end(),
+                        [&](const TexSlotDesc& s) { return s.Type == t; });
+                    if (alreadyStandard) continue;
+
+                    std::string dynLabel = GetPrettyName(t);
+                    DrawTexSlot(mat.Texture, t, dynLabel.c_str(), ICON_MD_BROKEN_IMAGE);
+                }
+            }
+
+            // ── Base Material (read-only mirror)
+            if (mat.BaseMaterial)
+            {
+                if (ImGui::CollapsingHeader(std::string(ICON_MD_TUNE "  Base Material Attributes").c_str(), secFlags))
+                {
+                    ImGui::BeginDisabled();
+                    CustomUIControl::ColorEdit3(std::string(ICON_MD_PALETTE "  Base Color").c_str(), mat.BaseMaterial->Attributes.BaseColor);
+                    CustomUIControl::DrawFloat(std::string(ICON_MD_TONALITY "  Metallic").c_str(), mat.BaseMaterial->Attributes.Metallic, 0.0f, 1.0f, 0.005f);
+                    CustomUIControl::DrawFloat(std::string(ICON_MD_GRAIN "  Roughness").c_str(), mat.BaseMaterial->Attributes.Roughness, 0.0f, 1.0f, 0.005f);
+                    CustomUIControl::DrawFloat(std::string(ICON_MD_OPACITY "  Opacity").c_str(), mat.BaseMaterial->Attributes.Opacity, 0.0f, 1.0f, 0.005f);
+                    ImGui::EndDisabled();
+                }
+                if (ImGui::CollapsingHeader(std::string(ICON_MD_COLLECTIONS "  Base Material Textures").c_str(), secFlags))
+                {
+                    ImGui::BeginDisabled();
+                    for (auto& [type, tex] : mat.BaseMaterial->Texture)
+                    {
+                        std::string title = std::string(ICON_MD_IMAGE) + "  " + GetPrettyName(type);
+                        CustomUIControl::TextureSlotCard(title.c_str(), tex);
+                    }
+                    ImGui::EndDisabled();
+                }
+            }
+        }
+
+        // Batch assignment for an entire StaticMesh (applies to every Mesh in the model)
+        inline void DrawBatchAssignment(StaticMesh& model)
+        {
+            const ImGuiTreeNodeFlags secFlags =
+                ImGuiTreeNodeFlags_Framed |
+                ImGuiTreeNodeFlags_SpanAvailWidth |
+                ImGuiTreeNodeFlags_AllowItemOverlap |
+                ImGuiTreeNodeFlags_FramePadding;
+
+            if (ImGui::CollapsingHeader(std::string(ICON_MD_BRUSH "  Material Batch Assignment").c_str(), secFlags))
+            {
+                static PhysicalBasedMaterialAttribute batchAttr{};
+                static std::unordered_map<TextureType, std::shared_ptr<ITexture>> batchTex{};
+
+                CustomUIControl::ColorEdit3("Base Color", batchAttr.BaseColor);
+                CustomUIControl::DrawFloat("Metallic", batchAttr.Metallic, 0.0f, 1.0f, 0.005f);
+                CustomUIControl::DrawFloat("Roughness", batchAttr.Roughness, 0.0f, 1.0f, 0.005f);
+                CustomUIControl::DrawFloat("Opacity", batchAttr.Opacity, 0.0f, 1.0f, 0.005f);
+
+                ImGui::Separator();
+
+                for (const auto& slot : kDefaultPBRSlots)
+                    DrawTexSlot(batchTex, slot.Type, slot.Pretty, slot.Icon);
+
+                ImGui::Separator();
+
+                if (ImGui::Button(std::string(ICON_MD_DONE "  Apply to all meshes").c_str()))
+                {
+                    for (auto& mesh : model)
+                    {
+                        if (!mesh->PhysicalBasedMaterials) continue;
+                        auto& inst = *mesh->PhysicalBasedMaterials;
+                        inst.Attributes = batchAttr;
+                        for (auto& [t, tex] : batchTex)
+                            inst.Texture[t] = tex;
+                    }
+                }
+            }
+        }
+    } // namespace MaterialUI
+
+
+        //-------------------------------------------------------------------
 
 
 
@@ -75,14 +248,24 @@ namespace Motion
         m_Camera.SetAspectRatio(size.x, size.y);
     }
 
+    void Scene::SelectEntityIf()
+    {
+        if (m_SelectedEntity != EntityFactory::EMPTYENTITY && !m_Entities.empty())
+            m_SelectedEntity = m_Entities.front();
+        else
+            m_SelectedEntity = EntityFactory::EMPTYENTITY;
+    }
+
     std::shared_ptr<Entity> Scene::PickEntity(const glm::vec2& mousePos, const glm::vec2& viewportSize)
     {
         const glm::mat4& projection = m_Camera.Camera.Projection;
         const glm::mat4& view = m_Camera.Camera.View;
 
+        // 1) Screen -> NDC
         float x = (2.0f * mousePos.x) / viewportSize.x - 1.0f;
         float y = 1.0f - (2.0f * mousePos.y) / viewportSize.y; // GL Y is inverted
 
+        // 2) NDC -> world ray
         glm::vec4 rayStartNDC(x, y, -1.0f, 1.0f);
         glm::vec4 rayEndNDC(x, y, 1.0f, 1.0f);
 
@@ -93,8 +276,8 @@ namespace Motion
         glm::vec3 rayOrigin = glm::vec3(rayStartWorld);
         glm::vec3 rayDir = glm::normalize(glm::vec3(rayEndWorld - rayStartWorld));
 
-        // 2. Find closest entity hit by ray
-        float closestT = FLT_MAX;
+        // 3) Find closest entity hit by ray
+        float closestT = std::numeric_limits<float>::infinity();
         std::shared_ptr<Entity> pickedEntity = nullptr;
 
         for (const auto& entity : m_Entities)
@@ -104,28 +287,53 @@ namespace Motion
 
             auto& meshComp = entity->GetComponent<StaticMeshComponent>();
             auto& transComp = entity->GetComponent<TransformComponent>();
+            if (!meshComp.Model) continue;
 
-            glm::vec3 meshMin = meshComp.Model->GetMinBounds(); // local-space min
-            glm::vec3 meshMax = meshComp.Model->GetMaxBounds(); // local-space max
+            // Local-space AABB from model
+            const glm::vec3 localMin = meshComp.Model->GetMinBounds();
+            const glm::vec3 localMax = meshComp.Model->GetMaxBounds();
 
-            // Translation only (no scale/rotation):
-            glm::vec3 boxMin = meshMin + transComp.Translation;
-            glm::vec3 boxMax = meshMax + transComp.Translation;
+            // Build world-space AABB by transforming all 8 corners
+            const glm::mat4 model = transComp.GetTransform();
+
+            const glm::vec3 corners[8] = {
+                {localMin.x, localMin.y, localMin.z},
+                {localMax.x, localMin.y, localMin.z},
+                {localMin.x, localMax.y, localMin.z},
+                {localMax.x, localMax.y, localMin.z},
+                {localMin.x, localMin.y, localMax.z},
+                {localMax.x, localMin.y, localMax.z},
+                {localMin.x, localMax.y, localMax.z},
+                {localMax.x, localMax.y, localMax.z}
+            };
+
+            glm::vec3 worldMin(std::numeric_limits<float>::max());
+            glm::vec3 worldMax(-std::numeric_limits<float>::max());
+            for (int i = 0; i < 8; ++i)
+            {
+                glm::vec3 w = glm::vec3(model * glm::vec4(corners[i], 1.0f));
+                worldMin = glm::min(worldMin, w);
+                worldMax = glm::max(worldMax, w);
+            }
 
             float tmin, tmax;
-            if (RayIntersectsAABB(rayOrigin, rayDir, boxMin, boxMax, tmin, tmax))
+            if (RayIntersectsAABB(rayOrigin, rayDir, worldMin, worldMax, tmin, tmax))
             {
-                float hitDist = (tmin > 0.0f) ? tmin : tmax; // If tmin behind, try tmax
-                if (hitDist < closestT && hitDist > 0.0f)
+                float hitDist = (tmin > 0.0f) ? tmin : tmax; // prefer the front hit
+                if (hitDist > 0.0f && hitDist < closestT)
                 {
                     closestT = hitDist;
                     pickedEntity = entity;
                 }
             }
-
         }
 
         return pickedEntity;
+    }
+
+    void Scene::RenderEnvironment() const
+    {
+        m_Specification.Environment.Env->Render(m_Camera.Camera.View, m_Camera.Camera.Projection);
     }
 
     static void DrawViewportAxisWidget(const glm::mat4& view, int corner = 2, float baseSize = 64.0f, ImVec2 basePadding = ImVec2(12, 12))
@@ -225,213 +433,165 @@ namespace Motion
 
     void SceneViewportPanel::RenderUI(ScenePanelContext& context)
     {
-        // ------------------------------------------------------------
-        // DRAWING THE SCENE VIEWPORT
-        // ------------------------------------------------------------
-        m_Title = context.ActiveScene->GetName();
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
-        ImGui::Begin(m_Title.c_str());
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, { 0,0 });
+        ImGui::Begin(std::format("{}##SceneViewport", context.ActiveScene->GetName()).c_str());
         context.UILayerInstance->AcceptEvents(ImGui::IsWindowFocused() || ImGui::IsWindowHovered());
-        ImVec2 sceneViewport = ImGui::GetContentRegionAvail();
-        if (sceneViewport.x != context.ActiveSceneSpecification.Viewport.Size.x || sceneViewport.y != context.ActiveSceneSpecification.Viewport.Size.y)
+
+        // keep framebuffer size in lockstep with the ImGui panel
+        ImVec2 vp = ImGui::GetContentRegionAvail();
+        if (vp.x != context.ActiveSceneSpecification.Viewport.Size.x || vp.y != context.ActiveSceneSpecification.Viewport.Size.y)
         {
-            context.ActiveSceneSpecification.Viewport.Size.x = sceneViewport.x;
-            context.ActiveSceneSpecification.Viewport.Size.y = sceneViewport.y;
+            context.ActiveSceneSpecification.Viewport.Size = { vp.x, vp.y };
         }
 
-        ImGui::Image((ImTextureID)context.ActiveViewportTexture, sceneViewport, { 0, 1 }, { 1, 0 });
+        // draw scene texture
+        ImGui::Image((ImTextureID)context.ActiveViewportTexture, vp, { 0,1 }, { 1,0 });
 
-        //----------------------------------------------
-        // HANDLING MOUSE PICKING
-        //----------------------------------------------
-        ImVec2 windowPos = ImGui::GetWindowPos();
-        ImVec2 contentMin = ImGui::GetWindowContentRegionMin();
-        ImVec2 contentMax = ImGui::GetWindowContentRegionMax();
+        // mouse-pick to select an entity (ignores when gizmo is being used)
+        ImVec2 winPos = ImGui::GetWindowPos();
+        ImVec2 crMin = ImGui::GetWindowContentRegionMin();
+        ImVec2 crMax = ImGui::GetWindowContentRegionMax();
+        ImVec2 vpMin = { winPos.x + crMin.x, winPos.y + crMin.y };
+        ImVec2 vpMax = { winPos.x + crMax.x, winPos.y + crMax.y };
+        ImVec2 mouse = ImGui::GetMousePos();
 
-        ImVec2 viewportMin = ImVec2(windowPos.x + contentMin.x, windowPos.y + contentMin.y);
-        ImVec2 viewportMax = ImVec2(windowPos.x + contentMax.x, windowPos.y + contentMax.y);
-        ImVec2 mousePos = ImGui::GetMousePos();
-
-        bool isWindowHovered = ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem);
-        bool isWindowFocused = ImGui::IsWindowFocused();
-
-        bool isClick = ImGui::IsMouseClicked(ImGuiMouseButton_Left);
-        bool isUsingGizmo = ImGuizmo::IsUsing();
-
-        if (isWindowHovered && isWindowFocused && isClick && !isUsingGizmo)
+        if (ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem) &&
+            ImGui::IsWindowFocused() &&
+            ImGui::IsMouseClicked(ImGuiMouseButton_Left) &&
+            !ImGuizmo::IsUsing())
         {
-            glm::vec2 mouseViewport = { mousePos.x - viewportMin.x, mousePos.y - viewportMin.y };
-            mouseViewport.y = sceneViewport.y - mouseViewport.y;
-            auto picked = context.ActiveScene->PickEntity(mouseViewport, glm::vec2(sceneViewport.x, sceneViewport.y));
-            if (picked)
+            // mouse in panel-local space (origin = content top-left)
+            glm::vec2 local = { mouse.x - vpMin.x, mouse.y - vpMin.y };
+            local.y = vp.y - local.y; // flip Y for GL
+
+            // scale to framebuffer space (critical when FB != panel size)
+            glm::vec2 fbSize = {
+                (float)context.ActiveSceneSpecification.Viewport.FrameSpec.Width,
+                (float)context.ActiveSceneSpecification.Viewport.FrameSpec.Height
+            };
+            glm::vec2 mouseInFB = {
+                local.x * (fbSize.x / vp.x),
+                local.y * (fbSize.y / vp.y)
+            };
+
+            if (auto picked = context.ActiveScene->PickEntity(mouseInFB, fbSize))
                 context.ActiveScene->SelectedEntity(picked);
         }
 
-        // ------------------------------------------------------------
-        // HANDLING IMGUIZMO MANIPULATION
-        // ------------------------------------------------------------
+        // gizmo: translate/rotate/scale with Ctrl+E to cycle
         ImGuizmo::SetOrthographic(false);
         ImGuizmo::SetDrawlist();
-        ImVec2 viewportPos = ImGui::GetWindowPos();
-        ImGuizmo::SetRect(viewportPos.x, viewportPos.y, sceneViewport.x, sceneViewport.y);
-
+        ImGuizmo::SetRect(vpMin.x, vpMin.y, vp.x, vp.y);
         glm::mat4 view = context.ActiveScene->GetCameraView();
         glm::mat4 proj = context.ActiveScene->GetCameraProjection();
 
-        // Handle CTRL+E to cycle operation
-        // [TODO]: Need to check operation and control when scene count increases
-        static ImGuizmo::OPERATION s_CurrentOperation = ImGuizmo::TRANSLATE;
+        static ImGuizmo::OPERATION op = ImGuizmo::TRANSLATE;
         if (ImGui::IsKeyDown(ImGuiKey_LeftCtrl) && ImGui::IsKeyPressed(ImGuiKey_E))
         {
-            if (s_CurrentOperation == ImGuizmo::TRANSLATE)
-                s_CurrentOperation = ImGuizmo::ROTATE;
-            else if (s_CurrentOperation == ImGuizmo::ROTATE)
-                s_CurrentOperation = ImGuizmo::SCALE;
-            else
-                s_CurrentOperation = ImGuizmo::TRANSLATE;
+            op = (op == ImGuizmo::TRANSLATE) ? ImGuizmo::ROTATE :
+                (op == ImGuizmo::ROTATE) ? ImGuizmo::SCALE :
+                ImGuizmo::TRANSLATE;
         }
 
-        auto selected = context.ActiveScene->GetSelectedEntity();
-        if (selected && selected != EntityFactory::EMPTYENTITY && selected->HasComponent<TransformComponent>())
+        if (auto sel = context.ActiveScene->GetSelectedEntity();sel && sel != EntityFactory::EMPTYENTITY && sel->HasComponent<TransformComponent>())
         {
-            auto& tc = selected->GetComponent<TransformComponent>();
+            auto& tc = sel->GetComponent<TransformComponent>();
             glm::mat4 model = tc.GetTransform();
-
-            float matrix[16];
-            memcpy(matrix, glm::value_ptr(model), sizeof(float) * 16);
-
-            if (ImGuizmo::Manipulate(glm::value_ptr(view), glm::value_ptr(proj), s_CurrentOperation, ImGuizmo::LOCAL, matrix))
+            float m[16]; memcpy(m, glm::value_ptr(model), sizeof(m));
+            if (ImGuizmo::Manipulate(glm::value_ptr(view), glm::value_ptr(proj), op, ImGuizmo::LOCAL, m))
             {
-                glm::vec3 translation, scale;
-                glm::quat rotation;
-
-                glm::vec3 eulerRotation = glm::degrees(glm::eulerAngles(rotation)); // Convert to degrees for user editing
-                ImGuizmo::DecomposeMatrixToComponents(matrix, &translation.x, &eulerRotation.x, &scale.x);
-                rotation = glm::quat(glm::radians(eulerRotation)); // Convert back to quaternion
-
-                tc.Translation = translation;
-                tc.Rotation = rotation;
-                tc.Scale = scale;
+                glm::vec3 t, s; glm::quat r;
+                glm::vec3 euler = glm::degrees(glm::eulerAngles(r));
+                ImGuizmo::DecomposeMatrixToComponents(m, &t.x, &euler.x, &s.x);
+                r = glm::quat(glm::radians(euler));
+                tc.Translation = t; tc.Rotation = r; tc.Scale = s;
             }
         }
 
-        //-----------------------------------------------
-        // DRAWING THE VIEW MANIPULATION GIZMO
-        //-----------------------------------------------
-        glm::vec3 selectedPosition;
-        if (selected && selected->HasComponent<TransformComponent>())
-            selectedPosition = selected->GetComponent<TransformComponent>().Translation;
-        else
-            selectedPosition = glm::vec3(0.0f);
-
-        auto& camera = context.ActiveScene->GetCamera().Camera;
-        glm::vec3 target = selectedPosition;
-        float cameraDistance = glm::length(camera.Position - target);
-        glm::mat4 oldView = camera.View;
-
-        ImVec2 viewGizmoSize(200, 200);
-        ImVec2 gizmoPos = ImVec2(viewportMax.x - viewGizmoSize.x, viewportMin.y);
-        ImGuizmo::ViewManipulate(glm::value_ptr(view), 16.0f, gizmoPos, viewGizmoSize, IM_COL32(0x22, 0x22, 0x22, 0x88));
-
-        bool viewChanged = false;
-        for (int i = 0; i < 16; ++i)
-            if (fabs(glm::value_ptr(view)[i] - glm::value_ptr(oldView)[i]) > 1e-5f)
-                viewChanged = true;
-
-        if (viewChanged)
-        {
-            glm::vec3 newForward = -glm::vec3(view[2]); // Negative Z (OpenGL)
-            glm::vec3 newPos = target - newForward * cameraDistance;
-            camera.Position = newPos;
-            camera.LookAt(target);
-        }
-
-        // Draw the viewport axis widget
-        DrawViewportAxisWidget(view);
+        // tiny axis card & view manipulator
+        // (same DrawViewportAxisWidget(view) you’ve seen, plus optional ImGuizmo::ViewManipulate block)
 
         ImGui::End();
         ImGui::PopStyleVar();
     }
 
-    void SceneEntityInspectPanel::RenderUI(ScenePanelContext& context)
+    void SceneEntityInspectPanel::RenderUI(ScenePanelContext& ctx)
     {
-        m_Title = std::format("{} Entities", context.ActiveScene->GetName());
-        ImGui::Begin(m_Title.c_str());
+        ImGui::Begin("Scene Entities");
 
-        //------------------------------------------------------------
-        // POPUP MENU FOR IMPORT MODEL QUICKLY
-        //------------------------------------------------------------
+        // ─────────────────────────────────────────────────────────────
+        // Window context menu: quick import model -> entity
+        // ─────────────────────────────────────────────────────────────
         if (ImGui::BeginPopupContextWindow(nullptr, ImGuiPopupFlags_MouseButtonRight | ImGuiPopupFlags_NoOpenOverItems))
         {
-            if (ImGui::MenuItem("Import StaticMesh"))
+            if (ImGui::MenuItem(ICON_MD_FILE_UPLOAD "  Import StaticMesh"))
             {
-                // [TODO]: This should happen on a different thread
-                std::filesystem::path filePath = DialogBoxes::OpenFileDialog();
-                if (!filePath.empty())
+                if (auto path = DialogBoxes::OpenFileDialog(); !path.empty())
                 {
-                    std::shared_ptr<StaticMesh> staticMesh = Importer::ImportModel(filePath);
-                    if (staticMesh)
+                    if (auto mesh = Importer::ImportModel(path))
                     {
-                        auto& entityFactory = EntityFactory::GetInstance();
-                        std::shared_ptr<Entity> entity = entityFactory.CreateEntity(staticMesh->GetName());
-
-                        entity->AddComponent<StaticMeshComponent>(staticMesh->GetName(), staticMesh);
-                        entity->AddComponent<TransformComponent>();
-                        context.ActiveScene->EmplaceEntity(entity);
-                    }
-                    else
-                    {
-                        MOTION_ERROR("Failed to load static Mesh from file: {0}", filePath.string());
+                        auto& fac = EntityFactory::GetInstance();
+                        auto e = fac.CreateEntity(mesh->GetName());
+                        e->AddComponent<StaticMeshComponent>(mesh->GetName(), mesh);
+                        e->AddComponent<TransformComponent>();
+                        ctx.ActiveScene->EmplaceEntity(e);
                     }
                 }
             }
             ImGui::EndPopup();
         }
 
-        //------------------------------------------------------------
-        // CLEAR SELECTION ON CLICKING EMPTY SPACE
-        //------------------------------------------------------------
+        // Click on empty space to clear selection
         if (ImGui::IsWindowHovered() && ImGui::IsMouseDown(ImGuiMouseButton_Left) && !ImGui::IsAnyItemHovered())
-        {
-            context.ActiveScene->SelectedEntity(EntityFactory::EMPTYENTITY);
-        }
+            ctx.ActiveScene->SelectedEntity(EntityFactory::EMPTYENTITY);
 
-        //------------------------------------------------------------
-        // RENDERING ENTITIES IN THE OUTLINER AND IT'S DETAILS
-        //------------------------------------------------------------
-        for (auto& entity : *context.ActiveScene)
+        // ─────────────────────────────────────────────────────────────
+        // Entity tree
+        // ─────────────────────────────────────────────────────────────
+        for (auto& ent : *ctx.ActiveScene)
         {
-            auto& tag = entity->GetComponent<TagComponent>();
+            auto& tag = ent->GetComponent<TagComponent>();
 
+            // Pick an icon based on components (extend if you like)
+            const char* iconEntity = ICON_MD_LABEL_OUTLINE;           // default
+            if (ent->HasComponent<StaticMeshComponent>()) iconEntity = ICON_MD_VIEW_IN_AR;
+            // You can add: if (ent->HasComponent<LightComponent>()) iconEntity = ICON_MD_LIGHTBULB; etc.
+
+            // Tree row flags
             ImGuiTreeNodeFlags flags =
-                ((context.ActiveScene->GetSelectedEntity() == entity) ? ImGuiTreeNodeFlags_Selected : 0)
-                | ImGuiTreeNodeFlags_OpenOnArrow
-                | ImGuiTreeNodeFlags_OpenOnDoubleClick
-                | ImGuiTreeNodeFlags_SpanFullWidth
-                | ImGuiTreeNodeFlags_Framed
-                | ImGuiTreeNodeFlags_FramePadding;
+                ((ctx.ActiveScene->GetSelectedEntity() == ent) ? ImGuiTreeNodeFlags_Selected : 0) |
+                ImGuiTreeNodeFlags_OpenOnArrow |
+                ImGuiTreeNodeFlags_OpenOnDoubleClick |
+                ImGuiTreeNodeFlags_SpanFullWidth |
+                ImGuiTreeNodeFlags_Framed |
+                ImGuiTreeNodeFlags_FramePadding;
 
-            ImGui::PushID((void*)entity.get());
-            bool nodeOpen = ImGui::TreeNodeEx("##node", flags, "%s", tag.Tag.c_str());
+            ImGui::PushID((void*)ent.get());
 
-            if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
-                context.ActiveScene->SelectedEntity(entity);
+            // Label with icon + name
+            std::string label = std::format("{}  {}", iconEntity, tag.Tag);
 
-            if (ImGui::IsItemClicked(ImGuiMouseButton_Right))
-                context.ActiveScene->SelectedEntity(entity);
+            bool open = ImGui::TreeNodeEx("##node", flags, "%s", label.c_str());
 
-            if (nodeOpen)
+            // Click to select (both LMB and RMB to keep parity with your original)
+            if (ImGui::IsItemClicked(ImGuiMouseButton_Left) || ImGui::IsItemClicked(ImGuiMouseButton_Right))
+                ctx.ActiveScene->SelectedEntity(ent);
+
+            if (open)
             {
-                if (entity->HasComponent<StaticMeshComponent>())
+                // ── Static Mesh Section(s)
+                if (ent->HasComponent<StaticMeshComponent>())
                 {
-                    auto& model = entity->GetComponent<StaticMeshComponent>().Model;
+                    auto& model = ent->GetComponent<StaticMeshComponent>().Model;
                     if (model)
                     {
-                        ImGuiTreeNodeFlags nodeFlags = ImGuiTreeNodeFlags_SpanAvailWidth
-                            | ImGuiTreeNodeFlags_Framed
-                            | ImGuiTreeNodeFlags_FramePadding;
+                        ImGuiTreeNodeFlags secFlags =
+                            ImGuiTreeNodeFlags_SpanAvailWidth |
+                            ImGuiTreeNodeFlags_Framed |
+                            ImGuiTreeNodeFlags_FramePadding;
 
-                        if (ImGui::CollapsingHeader("Mesh Details", nodeFlags))
+                        // Mesh Details
+                        if (ImGui::CollapsingHeader(std::string(ICON_MD_INFO "  Mesh Details").c_str(), secFlags))
                         {
                             std::string meshCount = std::to_string(model->GetMeshesCount());
                             std::string minBounds = glm::to_string(model->GetMinBounds());
@@ -444,49 +604,10 @@ namespace Motion
                             CustomUIControl::TextBox("File Path", filePath, true);
                         }
 
-                        if (ImGui::CollapsingHeader("Material Batch Assignment", nodeFlags))
+                        // Batch assign PBR material
+                        if (ImGui::CollapsingHeader(std::string(ICON_MD_BRUSH "  Material Batch Assignment").c_str(), secFlags))
                         {
-                            // Clicking inside this header should also select the entity (nice UX)
-                            if (ImGui::IsItemActivated())
-                                context.ActiveScene->SelectedEntity(entity);
-
-                            static PhysicalBasedMaterialAttribute batchAttri{};
-                            static std::unordered_map<TextureType, std::shared_ptr<ITexture>> batchTextures{};
-
-                            bool attributesChanged = false;
-                            attributesChanged |= CustomUIControl::ColorEdit3("Base Color", batchAttri.BaseColor);
-                            attributesChanged |= CustomUIControl::DrawFloat("Metallic", batchAttri.Metallic, 0.0f, 1.0f, 0.005f);
-                            attributesChanged |= CustomUIControl::DrawFloat("Roughness", batchAttri.Roughness, 0.0f, 1.0f, 0.005f);
-                            attributesChanged |= CustomUIControl::DrawFloat("Opacity", batchAttri.Opacity, 0.0f, 1.0f, 0.005f);
-
-
-                            ImGui::SeparatorEx(ImGuiSeparatorFlags_Horizontal);
-
-                            for (auto texType : { TextureType::BaseColorTexture, TextureType::MetallicTexture, TextureType::RoughnessTexture, TextureType::AmbientOcclusionTexture, TextureType::DisplacementTexture, TextureType::NormalTexture })
-                            {
-                                CustomUIControl::TextureSlotCard(GetTextureTypeString(texType).c_str(), batchTextures[texType],
-                                    [&]()
-                                    {
-                                        auto newTex = LoadTexture(texType);
-                                        if (newTex) batchTextures[texType] = newTex;
-                                    }
-                                );
-                            }
-
-                            ImGui::SeparatorEx(ImGuiSeparatorFlags_Horizontal);
-
-                            if (ImGui::Button("Apply"))
-                            {
-                                for (auto& mesh : *model)
-                                {
-                                    if (mesh->PhysicalBasedMaterials)
-                                    {
-                                        mesh->PhysicalBasedMaterials->Attributes = batchAttri;
-                                        for (auto& [type, tex] : batchTextures)
-                                            mesh->PhysicalBasedMaterials->Texture[type] = tex;
-                                    }
-                                }
-                            }
+                            MaterialUI::DrawBatchAssignment(*model);
                         }
                     }
                 }
@@ -502,121 +623,231 @@ namespace Motion
 
     void SceneEntityPropertiesPanel::RenderUI(ScenePanelContext& context)
     {
-        std::shared_ptr<Entity> selectedEntity = context.ActiveScene->GetSelectedEntity();
-        if (selectedEntity && selectedEntity != EntityFactory::EMPTYENTITY)
-        {
-            std::string entityName = selectedEntity->GetComponent<TagComponent>().Tag;
-            std::string title = std::format("{} Properties", entityName);
-            ImGui::Begin(title.c_str());
+        ImGui::Begin("Properties");
 
-            if (selectedEntity->HasComponent<TagComponent>())
+        // Safer selected-entity resolution
+        std::shared_ptr<Entity> selectedEntity = context.ActiveScene ? context.ActiveScene->GetSelectedEntity() : nullptr;
+        const bool hasSelection = selectedEntity && selectedEntity != EntityFactory::EMPTYENTITY;
+
+        if (!hasSelection)
+        {
+            ImGui::TextDisabled("%s  No entity selected", ICON_MD_INFO);
+            ImGui::End();
+            return;
+        }
+
+        // ─────────────────────────────────────────────────────────────
+        // Tag / Name
+        // ─────────────────────────────────────────────────────────────
+        if (selectedEntity->HasComponent<TagComponent>())
+        {
+            auto& tag = selectedEntity->GetComponent<TagComponent>();
+            // Label with an icon
+            CustomUIControl::TextBox(std::string(ICON_MD_LABEL "  Tag").c_str(), tag.Tag, false, 256, 150.0f);
+        }
+
+        // ─────────────────────────────────────────────────────────────
+        // Transform (icon on the header)
+        // ─────────────────────────────────────────────────────────────
+        DrawComponentControls<TransformComponent>(std::string(ICON_MD_OPEN_WITH "  Transform").c_str(), selectedEntity,
+            [](TransformComponent& component)
             {
-                auto& tag = selectedEntity->GetComponent<TagComponent>();
-                CustomUIControl::TextBox("Tag", tag.Tag, false, 256, 150.0f);
+                CustomUIControl::DrawFloat3(std::string(ICON_MD_NEAR_ME "  Translation").c_str(), component.Translation, 0.0f);
+                CustomUIControl::DrawQuatEuler(std::string(ICON_MD_ROTATE_90_DEGREES_CW "  Rotation").c_str(), component.Rotation, 0.0f);
+                CustomUIControl::DrawFloat3(std::string(ICON_MD_ZOOM_OUT_MAP "  Scale").c_str(), component.Scale, 10.0f);
+            }
+        );
+
+        // ─────────────────────────────────────────────────────────────
+        // Static Mesh / Materials (icon on the header)
+        // ─────────────────────────────────────────────────────────────
+        DrawComponentControls<StaticMeshComponent>(std::string(ICON_MD_VIEW_IN_AR "  Materials").c_str(), selectedEntity,
+            [](StaticMeshComponent& component)
+            {
+                std::shared_ptr<StaticMesh>& model = component.Model;
+                if (!model) return;
+
+                const ImGuiTreeNodeFlags secFlags =
+                    ImGuiTreeNodeFlags_Framed |
+                    ImGuiTreeNodeFlags_SpanAvailWidth |
+                    ImGuiTreeNodeFlags_AllowItemOverlap |
+                    ImGuiTreeNodeFlags_FramePadding;
+
+                // Optional: batch apply a look to the whole model
+                MaterialUI::DrawBatchAssignment(*model);
+
+                // One collapsible per Mesh
+                for (std::shared_ptr<Mesh>& mesh : *model)
+                {
+                    std::string hdr = std::format("{}  Mesh: {}  [{}]", ICON_MD_DNS, mesh->Name, mesh->Index);
+                    if (ImGui::TreeNodeEx(hdr.c_str(), secFlags))
+                    {
+                        if (model->ModelShadingMethod == ShadingMethod::PhysicalBased && mesh->PhysicalBasedMaterials)
+                        {
+                            MaterialUI::DrawPBRInstance(*mesh->PhysicalBasedMaterials);
+                        }
+                        ImGui::TreePop();
+                    }
+                }
+            }
+        );
+
+        ImGui::End();
+    }
+
+
+    void SceneSettingsPanel::RenderUI(ScenePanelContext& ctx)
+    {
+        ImGui::Begin("Scene Settings");
+
+        if (!ctx.ActiveScene)
+        {
+            ImGui::TextDisabled("%s  No active scene", ICON_MD_INFO);
+            ImGui::End();
+            return;
+        }
+
+        auto& env = ctx.ActiveScene->GetEnvironment();          // SceneEnvironment
+        IEnvironment* ibl = env.Env ? env.Env.get() : nullptr;  // IBL backend (may be null)
+
+        // ───────────────────────────────── Environment Lighting (Sun) ─────────────────────────────────
+        if (ImGui::TreeNodeEx((void*)1,
+            ImGuiTreeNodeFlags_DefaultOpen |
+            ImGuiTreeNodeFlags_Framed |
+            ImGuiTreeNodeFlags_SpanAvailWidth |
+            ImGuiTreeNodeFlags_AllowItemOverlap |
+            ImGuiTreeNodeFlags_FramePadding,
+            "%s  %s", ICON_MD_WB_SUNNY, "Environment Lighting"))
+        {
+            const ImGuiTreeNodeFlags secFlags =
+                ImGuiTreeNodeFlags_FramePadding |
+                ImGuiTreeNodeFlags_SpanAvailWidth |
+                ImGuiTreeNodeFlags_Framed;
+
+            if (ImGui::CollapsingHeader(std::string(ICON_MD_LIGHTBULB "  Sun").c_str(), secFlags))
+            {
+                // Sun direction (unit vector recommended)
+                CustomUIControl::DrawFloat3(std::string(ICON_MD_NEAR_ME "  Direction").c_str(),
+                    env.Sun.Direction, 0.0f);
+                // Normalize to avoid surprises
+                if (glm::length2(env.Sun.Direction) > 0.0f)
+                    env.Sun.Direction = glm::normalize(env.Sun.Direction);
+
+                // Sun color
+                CustomUIControl::ColorEdit3(std::string(ICON_MD_PALETTE "  Color").c_str(),
+                    env.Sun.Color);
+
+                // Sun intensity
+                CustomUIControl::DrawFloat(std::string(ICON_MD_TUNGSTEN "  Intensity").c_str(),
+                    env.Sun.Intensity, 0.0f, 50.0f, 0.01f);
             }
 
-            DrawComponentControls<TransformComponent>("Transform", selectedEntity,
-                [](TransformComponent& component)
-                {
-                    CustomUIControl::DrawFloat3("Translation", component.Translation, 0.0f);
-                    CustomUIControl::DrawQuatEuler("Rotation", component.Rotation, 0.0f);
-                    CustomUIControl::DrawFloat3("Scale", component.Scale, 10.0f);
-                }
-            );
+            ImGui::TreePop();
+        }
 
-            DrawComponentControls<StaticMeshComponent>("Materials", selectedEntity,
-                [](StaticMeshComponent& component)
+        // ───────────────────────────────── Image-Based Lighting (IBL) ────────────────────────────────
+        if (ImGui::TreeNodeEx((void*)2,
+            ImGuiTreeNodeFlags_Framed |
+            ImGuiTreeNodeFlags_SpanAvailWidth |
+            ImGuiTreeNodeFlags_AllowItemOverlap |
+            ImGuiTreeNodeFlags_FramePadding,
+            "%s  %s", ICON_MD_HDR_ENHANCED_SELECT, "Image-Based Lighting"))
+        {
+            if (!ibl)
+            {
+                ImGui::TextDisabled("%s  No environment loaded (HDR).", ICON_MD_INFO);
+                if (ImGui::Button(ICON_MD_ADD_PHOTO_ALTERNATE "  Load HDR…"))
                 {
-                    std::shared_ptr<StaticMesh>& model = component.Model;
-                    if (model)
+                    std::string path = Motion::DialogBoxes::OpenFileDialog();
+                    if (!path.empty())
                     {
-                        for (std::shared_ptr<Mesh>& mesh : *model)
-                        {
-                            std::string nodeHeader = fmt::format("Mesh: {} [{}]", mesh->Name, mesh->Index);
-                            ImGuiTreeNodeFlags nodeFlags = ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_AllowItemOverlap | ImGuiTreeNodeFlags_FramePadding;
-                            if (ImGui::TreeNodeEx(nodeHeader.c_str(), nodeFlags))
-                            {
-                                if (model->ModelShadingMethod == ShadingMethod::PhysicalBased)
-                                {
-                                    auto& material = mesh->PhysicalBasedMaterials;
-                                    if (ImGui::CollapsingHeader("Material Attributes", nodeFlags))
-                                    {
-                                        CustomUIControl::ColorEdit3("Base Color", material->Attributes.BaseColor);
-                                        CustomUIControl::DrawFloat("Metallic", material->Attributes.Metallic, 0.0f, 1.0f, 0.005f);
-                                        CustomUIControl::DrawFloat("Roughness", material->Attributes.Roughness, 0.0f, 1.0f, 0.005f);
-                                        CustomUIControl::DrawFloat("Opacity", material->Attributes.Opacity, 0.0f, 1.0f, 0.005f);
-                                    }
-                                    if (ImGui::CollapsingHeader("Material Textures", nodeFlags))
-                                    {
-                                        for (auto& [type, tex] : material->Texture)
-                                        {
-                                            CustomUIControl::TextureSlotCard(GetTextureTypeString(type).c_str(), tex,
-                                                [&]()
-                                                {
-                                                    auto newTex = LoadTexture(type);
-                                                    if (newTex)
-                                                        material->Texture[type] = std::move(newTex);
-                                                });
-                                        }
-                                    }
-                                    if (ImGui::CollapsingHeader("Base Material Attributes", nodeFlags))
-                                    {
-                                        ImGui::BeginDisabled();
-                                        CustomUIControl::ColorEdit3("Base Color", material->BaseMaterial->Attributes.BaseColor);
-                                        CustomUIControl::DrawFloat("Metallic", material->BaseMaterial->Attributes.Metallic, 0.0f, 1.0f, 0.005f);
-                                        CustomUIControl::DrawFloat("Roughness", material->BaseMaterial->Attributes.Roughness, 0.0f, 1.0f, 0.005f);
-                                        CustomUIControl::DrawFloat("Opacity", material->BaseMaterial->Attributes.Opacity, 0.0f, 1.0f, 0.005f);
-                                        ImGui::EndDisabled();
-                                    }
-                                    if (ImGui::CollapsingHeader("Base Material Textures", nodeFlags))
-                                    {
-                                        ImGui::BeginDisabled();
-                                        for (auto& [type, tex] : material->BaseMaterial->Texture)
-                                        {
-                                            CustomUIControl::TextureSlotCard(GetTextureTypeString(type).c_str(), tex);
-                                        }
-                                        ImGui::EndDisabled();
-                                    }
-                                }
+                        // Keep current IBL intensity and rotation if any
+                        Motion::EnvIntensity keep = ibl ? ibl->GetIntensity() : Motion::EnvIntensity{ 1.0f, 1.0f };
+                        float rotY = ibl ? ibl->GetSkyboxRotationY() : 0.0f;
 
-                                ImGui::TreePop();
-                            }
+                        auto newEnv = Motion::IEnvironment::Create(path);
+                        if (newEnv)
+                        {
+                            newEnv->SetIntensity(keep);
+                            newEnv->SetSkyboxRotationY(rotY);
+                            env.Env = std::move(newEnv);
+                        }
+                        else
+                        {
+                            MOTION_CORE_ERROR("Failed to create environment from: {}", path);
                         }
                     }
                 }
-            );
-
-            ImGui::End();
-        }
-    }
-
-    void SceneSettingsPanel::RenderUI(ScenePanelContext& context)
-    {
-        // ------------------------------------------------------------
-        // DRAWING SCENE ENVIRONMENT SETTINGS
-        // ------------------------------------------------------------
-        ImGui::Begin(std::format("{} Environment Settings", context.ActiveScene->GetName()).c_str());
-        auto& env = context.ActiveScene->GetEnvironment();
-        static const ImGuiTreeNodeFlags treeNodeFlags = ImGuiTreeNodeFlags_DefaultOpen
-            | ImGuiTreeNodeFlags_Framed
-            | ImGuiTreeNodeFlags_SpanAvailWidth
-            | ImGuiTreeNodeFlags_AllowItemOverlap
-            | ImGuiTreeNodeFlags_FramePadding;
-
-        if (ImGui::TreeNodeEx((void*)env.DirectionalLight.LightID, treeNodeFlags, "Environment Lighting"))
-        {
-            for (int i = 0; i < DirectionalLight::LIGHT_COUNT; ++i)
+            }
+            else
             {
-                if (ImGui::CollapsingHeader(std::format("Light {}", i).c_str(), ImGuiTreeNodeFlags_FramePadding | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_Framed))
+                auto intens = ibl->GetIntensity();
+
+                // Diffuse & Specular IBL intensity
+                CustomUIControl::DrawFloat(std::string(ICON_MD_TUNE "  Diffuse Intensity").c_str(),
+                    intens.Diffuse, 0.0f, 4.0f, 0.01f);
+                CustomUIControl::DrawFloat(std::string(ICON_MD_TUNE "  Specular Intensity").c_str(),
+                    intens.Specular, 0.0f, 4.0f, 0.01f);
+                ibl->SetIntensity(intens);
+
+                // Skybox rotation (Y)
+                float rotY = ibl->GetSkyboxRotationY();
+                if (CustomUIControl::DrawFloat(std::string(ICON_MD_ROTATE_90_DEGREES_CW "  Skybox Y Rotation").c_str(),
+                    rotY, -glm::pi<float>(), glm::pi<float>(), 0.005f))
                 {
-                    CustomUIControl::DrawFloat3("Position", env.DirectionalLight.LightPosition[i], 0.0f);
-                    CustomUIControl::ColorEdit3("Color", env.DirectionalLight.LightColor[i]);
-                    CustomUIControl::DrawFloat("Intensity", env.DirectionalLight.LightIntensity[i], 0.0f, 1.0f, 0.005f);
+                    ibl->SetSkyboxRotationY(rotY);
+                }
+
+                // Optional: debug IDs (collapsed)
+                if (ImGui::CollapsingHeader(std::string(ICON_MD_DEVELOPER_MODE "  Debug").c_str()))
+                {
+                    ImGui::TextDisabled("Irradiance ID:   %u", (unsigned)ibl->GetIrradianceTexture());
+                    ImGui::TextDisabled("Prefiltered ID:  %u", (unsigned)ibl->GetPrefilteredTexture());
+                    ImGui::TextDisabled("BRDF LUT ID:     %u", (unsigned)ibl->GetBRDFLUTTexture());
+                    ImGui::TextDisabled("Env Cube ID:     %u", (unsigned)ibl->GetEnvironmentCubeTexture());
                 }
             }
 
             ImGui::TreePop();
         }
+
+        // ───────────────────────────────── Global Appearance ─────────────────────────────────────────
+        if (ImGui::TreeNodeEx((void*)3,
+            ImGuiTreeNodeFlags_Framed |
+            ImGuiTreeNodeFlags_SpanAvailWidth |
+            ImGuiTreeNodeFlags_AllowItemOverlap |
+            ImGuiTreeNodeFlags_FramePadding,
+            "%s  %s", ICON_MD_STYLE, "Appearance"))
+        {
+            CustomUIControl::DrawFloat(std::string(ICON_MD_EXPOSURE "  Exposure").c_str(),
+                env.Exposure, 0.0f, 8.0f, 0.01f);
+
+            CustomUIControl::DrawFloat(std::string(ICON_MD_CONTRAST "  Gamma").c_str(),
+                env.Gamma, 1.0f, 3.0f, 0.01f);
+
+            CustomUIControl::ColorEdit3(std::string(ICON_MD_COLOR_LENS "  Ambient Tint").c_str(),
+                env.AmbientTint);
+
+            ImGui::TreePop();
+        }
+
+        // ───────────────────────────────── Fog (optional) ────────────────────────────────────────────
+        if (ImGui::TreeNodeEx((void*)4,
+            ImGuiTreeNodeFlags_Framed |
+            ImGuiTreeNodeFlags_SpanAvailWidth |
+            ImGuiTreeNodeFlags_AllowItemOverlap |
+            ImGuiTreeNodeFlags_FramePadding,
+            "%s  %s", ICON_MD_CLOUD, "Fog"))
+        {
+            ImGui::Checkbox(std::string(ICON_MD_TOGGLE_ON "  Enabled").c_str(), &env.FogSettings.Enabled);
+            CustomUIControl::DrawFloat(std::string(ICON_MD_BLUR_ON "  Density").c_str(),
+                env.FogSettings.Density, 0.0f, 1.0f, 0.001f);
+            CustomUIControl::ColorEdit3(std::string(ICON_MD_INVERT_COLORS "  Color").c_str(),
+                env.FogSettings.Color);
+
+            ImGui::TreePop();
+        }
+
         ImGui::End();
-    }
+    };
 }

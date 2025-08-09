@@ -40,12 +40,12 @@ namespace Motion
         CustomUIControl& operator=(CustomUIControl&&) = delete;
 
     public:
-        static bool DrawQuatEuler(const char* label, glm::quat& q, float resetDeg = 0.0f, float labelWidth = 120.0f, float speed = 0.2f, const char* fmt = "%.2f");
-        static bool DrawFloat3(const char* label, glm::vec3& v, float resetValue, float labelWidth = 120.0f, float speed = 0.1f, float minV = -FLT_MAX, float maxV = FLT_MAX, const char* fmt = "%.3f");
-        static bool DrawFloat(const char* label, float& value, float minValue = 0.0f, float maxValue = 0.0f, float speed = 0.1f, float labelWidth = 120.0f, const char* fmt = "%.3f");
-        static bool TextBox(const char* label, std::string& textValue, bool isReadOnly, size_t maxLen = 256, float columnWidth = 110.0f);
-        static bool ComboBox(const char* label, int& currentItem, const std::vector<std::string>& items, float labelWidth = 120.0f, float comboWidth = -1.0f);
-        static bool ColorEdit3(const char* label, glm::vec3& color, float labelWidth = 120.0f, float pickerWidth = -1.0f);
+        static bool DrawQuatEuler(const char* label, glm::quat& q, float resetDeg = 0.0f, float labelWidth = 100.0f, float speed = 0.2f, const char* fmt = "%.2f");
+        static bool DrawFloat3(const char* label, glm::vec3& v, float resetValue, float labelWidth = 100.0f, float speed = 0.1f, float minV = -FLT_MAX, float maxV = FLT_MAX, const char* fmt = "%.3f");
+        static bool DrawFloat(const char* label, float& value, float minValue = 0.0f, float maxValue = 0.0f, float speed = 0.1f, float labelWidth = 100.0f, const char* fmt = "%.3f");
+        static bool TextBox(const char* label, std::string& textValue, bool isReadOnly, size_t maxLen = 256, float columnWidth = 100.0f);
+        static bool ComboBox(const char* label, int& currentItem, const std::vector<std::string>& items, float labelWidth = 100.0f, float comboWidth = -1.0f);
+        static bool ColorEdit3(const char* label, glm::vec3& color, float labelWidth = 100.0f, float pickerWidth = -1.0f);
         static void TextureSlotCard(const char* label, std::shared_ptr<ITexture>& texture, const std::function<void()>& onLoad);
         static void TextureSlotCard(const char* label, std::shared_ptr<ITexture>& texture);
     };

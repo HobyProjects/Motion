@@ -1,39 +1,39 @@
 #type vertex
 #version 460 core
-layout (location = 0) in vec3 a_Position;
 
-out vec3 v_WorldPosition;
+layout(location=0) in vec3 a_Pos; // cube
 
-uniform mat4 u_ProjectionMatrix;
-uniform mat4 u_ViewMatrix;
+uniform mat4 u_View; 
+uniform mat4 u_Proj;
+
+out vec3 v_LocalDir;
 
 void main()
-{
-    v_WorldPosition = a_Position;  
-    gl_Position =  u_ProjectionMatrix * u_ViewMatrix * vec4(v_WorldPosition, 1.0);
+{ 
+    v_LocalDir=a_Pos; 
+    gl_Position = u_Proj * u_View * vec4(a_Pos,1.0); 
 }
 
 #type fragment
 #version 460 core
 
-out vec4 FragColor;
-in vec3 v_WorldPosition;
+in vec3 v_LocalDir; out vec4 FragColor;
 
-uniform sampler2D u_EquiRectangular;
+uniform sampler2D u_EquiRectangular; // UniformCache::EquiRectangular
 
-const vec2 invAtan = vec2(0.1591, 0.3183);
+const float PI=3.14159265359;
+
 vec2 SampleSphericalMap(vec3 v)
-{
-    vec2 uv = vec2(atan(v.z, v.x), asin(v.y));
-    uv *= invAtan;
-    uv += 0.5;
-    return uv;
+{ 
+    vec2 uv = vec2(atan(v.z, v.x), asin(v.y)); 
+    uv *= vec2(0.15915494309, 0.31830988618); 
+    uv += 0.5; 
+    return uv; 
 }
-
 void main()
-{		
-    vec2 uv = SampleSphericalMap(normalize(v_WorldPosition));
-    vec3 color = texture(u_EquiRectangular, uv).rgb;
-    
-    FragColor = vec4(color, 1.0);
+{ 
+    vec3 dir = normalize(v_LocalDir); 
+    vec2 uv = SampleSphericalMap(dir); 
+    vec3 c = texture(u_EquiRectangular, uv).rgb; 
+    FragColor=vec4(c,1.0); 
 }

@@ -35,6 +35,8 @@ namespace Motion
         ~SceneSpecification() = default;
     };
 
+    class SceneEditorLayer; // Forward declaration
+
     struct ScenePanelContext
     {
         std::shared_ptr<Scene> ActiveScene{ nullptr };
@@ -42,6 +44,7 @@ namespace Motion
         SceneCamera ActiveCamera{};
         FrameTextureID ActiveViewportTexture{};
         ImGuiLayer* UILayerInstance{ nullptr };
+        SceneEditorLayer* EditorLayerInstance{ nullptr };
     };
 
     enum class PanelCategory
@@ -96,7 +99,7 @@ namespace Motion
         virtual void RenderUI(ScenePanelContext& context) override;
 
     private:
-        std::string m_Title{ "Scene" };
+        std::string m_Title{ "SceneViewport" };
     };
 
     class SceneEntityInspectPanel final : public IScenePanel
@@ -110,7 +113,7 @@ namespace Motion
         virtual void RenderUI(ScenePanelContext& context) override;
 
     private:
-        std::string m_Title{ "Scene Entities" };
+        std::string m_Title{ "SceneEntities" };
     };
 
     class SceneEntityPropertiesPanel final : public IScenePanel
@@ -124,7 +127,7 @@ namespace Motion
         virtual void RenderUI(ScenePanelContext& context) override;
 
     private:
-        std::string m_Title{ "Scene Entity Properties" };
+        std::string m_Title{ "SceneEntityProperties" };
     };
 
     class SceneSettingsPanel final : public IScenePanel
@@ -138,7 +141,7 @@ namespace Motion
         virtual void RenderUI(ScenePanelContext& context) override;
 
     private:
-        std::string m_Title{ "Scene Settings" };
+        std::string m_Title{ "SceneSettings" };
     };
 
     class Scene
@@ -158,6 +161,7 @@ namespace Motion
         //---------------------------------------------------
         // Entity Getters and Setters
         //---------------------------------------------------
+        void SelectEntityIf();
         void SelectedEntity(const std::shared_ptr<Entity>& entity) { m_SelectedEntity = entity; }
         void EmplaceEntity(const std::shared_ptr<Entity>& entity) { m_Entities.emplace_back(std::move(entity)); }
 
@@ -190,6 +194,7 @@ namespace Motion
         [[nodiscard]] bool IsActive() const { return m_Specification.IsActive; }
 
         void Activate(bool active) { m_Specification.IsActive = active; }
+        void RenderEnvironment() const;
 
     private:
         std::vector<std::shared_ptr<Entity>> m_Entities{};

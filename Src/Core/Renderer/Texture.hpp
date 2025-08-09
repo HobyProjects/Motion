@@ -21,15 +21,22 @@ namespace Motion
         EmissiveTexture,
         OpacityTexture,
 
+
         // Physical Based Textures
         BaseColorTexture,
         MetallicTexture,
         RoughnessTexture,
         AmbientOcclusionTexture,
         DisplacementTexture,
-        ClearCoatTexture,
         SheenTexture,
         TransmissionTexture,
+        ORMTexture,
+        ClearcoatTexture,
+        ClearcoatRoughnessTexture,
+        SpecularColorTexture,
+        SheenColorTexture,
+        SheenRoughnessTexture,
+        ThicknessTexture,
 
         // Special Textures
         CubeTexture,
@@ -66,7 +73,6 @@ namespace Motion
         case TextureType::RoughnessTexture: return "Roughness";
         case TextureType::AmbientOcclusionTexture: return "Ambient Occlusion";
         case TextureType::DisplacementTexture: return "Displacement";
-        case TextureType::ClearCoatTexture: return "Clear Coat";
         case TextureType::SheenTexture: return "Sheen";
         case TextureType::TransmissionTexture: return "Transmission";
         case TextureType::CubeTexture: return "Cube";

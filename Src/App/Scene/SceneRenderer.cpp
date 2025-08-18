@@ -16,9 +16,9 @@ namespace Motion
     namespace TEX_SLOTS
     {
         // IBL (keep contiguous & consistent with shaders)
-        static constexpr std::int32_t Irradiance = 0;
-        static constexpr std::int32_t Prefilter = 1;
-        static constexpr std::int32_t BRDFLUT = 2;
+        static constexpr std::int32_t Irradiance = 1;
+        static constexpr std::int32_t Prefilter = 2;
+        static constexpr std::int32_t BRDFLUT = 3;
 
         // Leave 3..7 free for skybox/utility if needed
 

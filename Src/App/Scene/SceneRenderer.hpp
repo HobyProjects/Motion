@@ -17,7 +17,7 @@ namespace Motion
         UUID   SortKey{ 0 };
 
         // Draw payload
-        PhysicalBasedMaterialInstance* PBR_MatPtr{ nullptr };
+        Material* MaterialPointer{ nullptr };
         Mesh* MeshPtr{ nullptr };
         IEnvironment* EnvironmentPtr{ nullptr };
 
@@ -33,14 +33,11 @@ namespace Motion
         glm::vec3 SunColor{ 1.0f, 1.0f, 1.0f };
         float     SunIntensity{ 0.0f };
 
-        // Pipeline hint (kept for compatibility)
-        ShadingMethod ShadingMethod{ ShadingMethod::PhysicalBased };
-
         // Sort by view, then material, environment, mesh to reduce state changes
         bool operator<(const SceneDrawCommand& other) const
         {
-            return std::tie(SortKey, PBR_MatPtr, EnvironmentPtr, MeshPtr)
-                < std::tie(other.SortKey, other.PBR_MatPtr, other.EnvironmentPtr, other.MeshPtr);
+            return std::tie(SortKey, MaterialPointer, EnvironmentPtr, MeshPtr)
+                < std::tie(other.SortKey, other.MaterialPointer, other.EnvironmentPtr, other.MeshPtr);
         }
     };
 

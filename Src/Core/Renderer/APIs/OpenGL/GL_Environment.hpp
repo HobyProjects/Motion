@@ -23,6 +23,7 @@ namespace Motion
 
         void SetIntensity(const EnvIntensity& i) noexcept override { m_Intensity = i; }
         EnvIntensity GetIntensity() const noexcept override { return m_Intensity; }
+        std::int32_t GetMipLevel() const noexcept override { return m_MipLevel; }
 
         void SetSkyboxRotationY(float radians) noexcept override { m_SkyboxRotationY = radians; }
         float GetSkyboxRotationY() const noexcept override { return m_SkyboxRotationY; }
@@ -33,25 +34,22 @@ namespace Motion
         [[nodiscard]] TextureID GetBRDFLUTTexture()     const noexcept override { return m_BRDFLUTTextureID; }
 
     private:
-        // FBO
         BufferID m_FrameBufferID{ 0 };
         BufferID m_RenderBufferID{ 0 };
 
-        // Textures
         TextureID m_EnvironmentCubeTextureID{ 0 };
         TextureID m_PrefilteredTextureID{ 0 };
         TextureID m_IrradianceTextureID{ 0 };
         TextureID m_BRDFLUTTextureID{ 0 };
 
-        // Shaders
-        std::shared_ptr<GL_Shader> m_EnvironmentShader{ nullptr }; // skybox
-        std::shared_ptr<GL_Shader> m_CubeConvertShader{ nullptr };  // equirect->cube
-        std::shared_ptr<GL_Shader> m_PrefilteredShader{ nullptr };  // specular prefilter
-        std::shared_ptr<GL_Shader> m_IrradianceShader{ nullptr };   // diffuse irradiance
-        std::shared_ptr<GL_Shader> m_BRDFShader{ nullptr };         // 2D LUT
+        std::shared_ptr<GL_Shader> m_EnvironmentShader{ nullptr };
+        std::shared_ptr<GL_Shader> m_CubeConvertShader{ nullptr };
+        std::shared_ptr<GL_Shader> m_PrefilteredShader{ nullptr };
+        std::shared_ptr<GL_Shader> m_IrradianceShader{ nullptr };
+        std::shared_ptr<GL_Shader> m_BRDFShader{ nullptr };
 
-        // Artistic controls
-        EnvIntensity m_Intensity{};    // read by renderer -> shader uniforms
+        EnvIntensity m_Intensity{};
         float m_SkyboxRotationY{ 0.0f };
+        std::int32_t m_MipLevel{ 0 };
     };
 }

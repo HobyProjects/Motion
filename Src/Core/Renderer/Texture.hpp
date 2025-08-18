@@ -14,14 +14,10 @@ namespace Motion
 
     enum class TextureType : std::int32_t
     {
-        //Standard Textures
-        DiffuseTexture,
         SpecularTexture,
         NormalTexture,
         EmissiveTexture,
         OpacityTexture,
-
-        // Physical Based Textures
         BaseColorTexture,
         MetallicTexture,
         RoughnessTexture,
@@ -62,7 +58,6 @@ namespace Motion
     {
         switch (type)
         {
-        case TextureType::DiffuseTexture: return "Diffuse";
         case TextureType::SpecularTexture: return "Specular";
         case TextureType::NormalTexture: return "Normal";
         case TextureType::EmissiveTexture: return "Emissive";
@@ -91,13 +86,13 @@ namespace Motion
 
     struct TextureSpecification
     {
+        std::string Name{};
+        std::string TextureFile{};
         TextureID TexID{ 0 };
         std::int32_t Width{ 0 }, Height{ 0 }, Channels{ 0 };
         std::int32_t InternalDataFormat{ 0 }, TextureDataFormat{ 0 };
         TextureType Type{ TextureType::BaseColorTexture };
         TextureSource Source{ TextureSource::Undefined };
-        std::string TextureFile{};
-        std::string Name{};
         bool FlipOnLoadDefault{ true };
         bool InvertGreen{ false };
     };
@@ -111,20 +106,16 @@ namespace Motion
         virtual void Bind() const noexcept = 0;
         virtual void Bind(std::int32_t bindingPoint) const noexcept = 0;
         virtual void Unbind() const noexcept = 0;
+        virtual bool ReloadFromFile(const std::filesystem::path& textureFile, TextureType type, bool flip = true) = 0;
 
         [[nodiscard]] virtual TextureID GetID() const noexcept = 0;
         [[nodiscard]] virtual TextureSpecification& GetSpecification() noexcept = 0;
         [[nodiscard]] virtual TextureSource Source() const noexcept = 0;
 
-        // Create
-        [[nodiscard]] static std::shared_ptr<ITexture> Create(std::int32_t width = 100, std::int32_t height = 100, const glm::vec3& color = { 1.0f, 1.0f, 1.0f }) noexcept;
-        [[nodiscard]] static std::shared_ptr<ITexture> Create(const std::filesystem::path& textureFile, TextureType type = TextureType::BaseColorTexture, bool flip = true) noexcept;
+        [[nodiscard]] static std::shared_ptr<ITexture> Create(std::int32_t width, std::int32_t height, const glm::vec3& color) noexcept;
+        [[nodiscard]] static std::shared_ptr<ITexture> Create(const std::filesystem::path& textureFile, TextureType type) noexcept;
         [[nodiscard]] static std::shared_ptr<ITexture> Create(std::uint8_t* data, TextureType type, std::int32_t width, std::int32_t height, std::int32_t channels) noexcept;
 
-        // NEW: reload into the same GL object (keeps the texture ID stable)
-        virtual bool ReloadFromFile(const std::filesystem::path& textureFile,
-            TextureType type,
-            bool flip = true) = 0;
 
     protected:
         [[nodiscard]] virtual bool LoadTextureFromFile(const std::filesystem::path& textureFile, bool flip) = 0;

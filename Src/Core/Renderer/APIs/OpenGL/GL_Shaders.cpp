@@ -90,14 +90,67 @@ namespace Motion
         default: typeStr = "Unknown"; break;
         }
 
-        if (isCompiled == GL_FALSE)
+        if (!isCompiled)
         {
             GLint maxLength = 0;
             glGetShaderiv(shaderID, GL_INFO_LOG_LENGTH, &maxLength);
 
             std::vector<GLchar> infoLog(maxLength);
             glGetShaderInfoLog(shaderID, maxLength, &maxLength, infoLog.data());
-            MOTION_CORE_ERROR("Shader Compile Error: Shader Type {} | Compile Errors Message: {}", typeStr, infoLog.data());
+            std::string logStr(infoLog.begin(), infoLog.end());
+
+            MOTION_CORE_ERROR("Shader Compile Error: {} Shader", typeStr);
+
+            // Split source code for reference
+            std::istringstream sourceStream(sourceCode);
+            std::vector<std::string> lines;
+            std::string line;
+            while (std::getline(sourceStream, line))
+                lines.push_back(line);
+
+            // Regex for Nvidia/GLSL style errors: 0(153) : error C7623: message
+            std::regex regexPattern(R"(\d+\((\d+)\)\s*:\s*(error|warning)\s+([A-Z]\d+)\s*:\s*(.*))");
+
+            std::istringstream logStream(logStr);
+            while (std::getline(logStream, line))
+            {
+                std::smatch matches;
+                if (std::regex_match(line, matches, regexPattern))
+                {
+                    int lineNum = std::stoi(matches[1].str());
+                    std::string msgType = matches[2].str();
+                    std::string errorCode = matches[3].str();
+                    std::string msg = matches[4].str();
+
+                    // Get corresponding source line
+                    std::string codeLine = (lineNum > 0 && lineNum <= lines.size()) ? lines[lineNum - 1] : "";
+
+                    MOTION_CORE_ERROR(" [{}:{}:{}]  : {}   ", msgType, lineNum, errorCode, msg);
+                    MOTION_CORE_ERROR(" -----> Code : {} \n", codeLine);
+
+                    // Highlight first token in message (best effort)
+                    std::istringstream msgStream(msg);
+                    std::string token;
+                    msgStream >> token;
+
+                    if (!token.empty())
+                    {
+                        size_t colPos = codeLine.find(token);
+                        if (colPos != std::string::npos)
+                        {
+                            std::string pointer(colPos, ' ');
+                            pointer += "^";
+                            MOTION_CORE_ERROR("           {}", pointer);
+                        }
+                    }
+                }
+                else
+                {
+                    // Raw log line if parsing fails
+                    MOTION_CORE_ERROR(line);
+                }
+            }
+
             MOTION_ASSERT(false, "Shader compilation failed: Shader ID {}", shaderID);
         }
 

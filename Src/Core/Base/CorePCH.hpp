@@ -24,6 +24,10 @@
 #include <format>
 #include <variant>
 #include <optional>
+#include <cstdint>
+#include <limits>
+#include <cassert>
+#include <tuple>
 
 //external
 #define GLFW_INCLUDE_NONE
@@ -81,6 +85,7 @@
 
 //Material
 #include "Material.hpp"
+#include "TextureComponents.hpp"
 
 //Maths
 #include "Intersect.hpp"
@@ -125,6 +130,7 @@
 
 //UserInterfaceInitializer
 #include "UI.hpp"
+#include "Controls.hpp"
 
 //ECS
 #include "Entity.hpp"

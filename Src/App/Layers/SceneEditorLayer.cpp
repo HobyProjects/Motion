@@ -29,9 +29,7 @@ namespace Motion
         AM.Create<IShader>("PBR", "Assets/Shaders/PBR.glsl");
         AM.Create<IShader>("PHONG", "Assets/Shaders/Phong.glsl");
 
-        PhysicalBasedMaterial::Import("Assets/Materials/Base/PBR/Base.yaml");
-        Importer::ImportModel("Assets/Primitives/ENG_SPHERE.obj", false);
-
+        BaseMaterial::Import("Assets/Materials/Base/Metal/Base.yaml");
 
         m_Viewport.FrameSpec.Name = "SceneEditorFrame";
         m_Viewport.FrameSpec.Width = (uint32_t)m_CurrentViewportSize.x;
@@ -44,7 +42,7 @@ namespace Motion
         spec.IsActive = true;
         spec.Viewport = m_Viewport;
         spec.Environment = SceneEnvironment();
-        spec.Environment.Env = IEnvironment::Create("Assets/HDRI/Scene4.hdr");
+        spec.Environment.Env = IEnvironment::Create("Assets/HDRI/Scene.hdr");
 
         if (m_Scenes.empty())
             m_Scenes.push_back(std::make_shared<Scene>(spec));
@@ -160,14 +158,14 @@ namespace Motion
 
     void SceneEditorLayer::BuildDockspace()
     {
-        ImGuiWindowFlags host = ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoTitleBar |
+        ImGuiWindowFlags host =
+            ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoTitleBar |
             ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize |
             ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBringToFrontOnFocus |
             ImGuiWindowFlags_NoNavFocus | ImGuiWindowFlags_NoScrollbar |
             ImGuiWindowFlags_NoScrollWithMouse;
 
-        ImGuiDockNodeFlags dock = ImGuiDockNodeFlags_PassthruCentralNode |
-            ImGuiDockNodeFlags_AutoHideTabBar;
+        ImGuiDockNodeFlags dock = ImGuiDockNodeFlags_PassthruCentralNode | ImGuiDockNodeFlags_AutoHideTabBar;
 
         const ImGuiViewport* vp = ImGui::GetMainViewport();
         ImGui::SetNextWindowPos(vp->WorkPos);
@@ -188,35 +186,6 @@ namespace Motion
             ImGui::PopStyleColor();
         }
 
-        // Build default layout only if needed (first run or explicit reset)
-        // static bool built_once = false;
-        // bool need_default_layout = !built_once || s_RequestLayoutReset;
-        // if (need_default_layout && (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_DockingEnable))
-        // {
-        //     built_once = true;
-        //     s_RequestLayoutReset = false;
-
-        //     // Wipe and create the split tree (no docking of windows by title!)
-        //     ImGui::DockBuilderRemoveNode(dockspace_id);
-        //     ImGui::DockBuilderAddNode(dockspace_id, ImGuiDockNodeFlags_DockSpace);
-        //     ImGui::DockBuilderSetNodeSize(dockspace_id, vp->WorkSize);
-
-        //     ImGuiID center = dockspace_id;
-        //     ImGuiID right = ImGui::DockBuilderSplitNode(center, ImGuiDir_Right, 0.28f, nullptr, &center);
-        //     ImGuiID bottom = ImGui::DockBuilderSplitNode(center, ImGuiDir_Down, 0.28f, nullptr, &center);
-        //     ImGuiID left = ImGui::DockBuilderSplitNode(center, ImGuiDir_Left, 0.28f, nullptr, &center);
-        //     (void)ImGui::DockBuilderSplitNode(left, ImGuiDir_Down, 0.35f, nullptr, &left);
-        //     (void)ImGui::DockBuilderSplitNode(right, ImGuiDir_Down, 0.35f, nullptr, &right);
-
-        //     // NOTE: No DockBuilderDockWindow() calls here.
-        //     // Panels open themselves and the user places them; ImGui will persist.
-
-        //     ImGui::DockBuilderFinish(dockspace_id);
-
-        //     // Optional: immediately save so next launch uses the split tree
-        //     ImGui::SaveIniSettingsToDisk(ImGui::GetIO().IniFilename);
-        // }
-
         ImGui::End();
     }
 
@@ -229,24 +198,17 @@ namespace Motion
         m_ActiveScene = scene;
         m_ActiveScene->Activate(true);
 
-        // Keep viewport/fb in sync on scene swap
         m_CurrentViewportSize = m_ActiveScene->GetSpecification().Viewport.Size;
         m_Viewport = m_ActiveScene->GetSpecification().Viewport;
-
-        // If this scene doesn't have a cached texture yet, next OnUpdate will fill it
     }
 
     void SceneEditorLayer::RemoveScene(const std::shared_ptr<Scene>& scene)
     {
         if (!scene) return;
 
-        // if deleting active scene, pick a fallback after erase
         bool deletingActive = (scene == m_ActiveScene);
-
-        // drop any cached texture entry
         m_SceneTextures.erase(scene);
 
-        // erase from list
         auto it = std::find(m_Scenes.begin(), m_Scenes.end(), scene);
         if (it != m_Scenes.end()) m_Scenes.erase(it);
 
@@ -255,13 +217,13 @@ namespace Motion
             SceneSpecification spec{};
             spec.Name = "New Scene";
             spec.IsActive = true;
-            spec.Viewport = m_Viewport; // reuse current viewport
+            spec.Viewport = m_Viewport;
             spec.Environment = SceneEnvironment();
             m_Scenes.push_back(std::make_shared<Scene>(spec));
         }
 
-        if (deletingActive) {
-            // choose first scene as new active
+        if (deletingActive)
+        {
             SetActiveScene(m_Scenes.front());
         }
     }

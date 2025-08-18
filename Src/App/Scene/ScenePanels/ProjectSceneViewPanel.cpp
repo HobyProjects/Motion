@@ -112,14 +112,8 @@ namespace Motion
         }
 
         // ── Tree of scenes (icon on the root)
-        if (ImGui::TreeNodeEx(
-            (void*)context.UILayerInstance,
-            ImGuiTreeNodeFlags_DefaultOpen |
-            ImGuiTreeNodeFlags_Framed |
-            ImGuiTreeNodeFlags_SpanAvailWidth |
-            ImGuiTreeNodeFlags_AllowItemOverlap |
-            ImGuiTreeNodeFlags_FramePadding,
-            "%s  %s", ICON_MD_COLLECTIONS, "Project Scenes"))
+        ImGuiTreeNodeFlags nodeFlags = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_AllowItemOverlap | ImGuiTreeNodeFlags_FramePadding;
+        if (ImGui::TreeNodeEx((void*)context.UILayerInstance, nodeFlags, "%s  %s", ICON_MD_COLLECTIONS, "Project Scenes"))
         {
             // case-insensitive substring matcher
             auto ci_contains = [](std::string hay, std::string needle)
@@ -151,10 +145,7 @@ namespace Motion
                     continue;
                 }
 
-                ImGuiTreeNodeFlags hdrFlags =
-                    ImGuiTreeNodeFlags_FramePadding |
-                    ImGuiTreeNodeFlags_SpanAvailWidth |
-                    ImGuiTreeNodeFlags_Framed;
+                ImGuiTreeNodeFlags hdrFlags = ImGuiTreeNodeFlags_FramePadding | ImGuiTreeNodeFlags_Framed;
 
                 bool open = ImGui::CollapsingHeader(label.c_str(), hdrFlags);
 

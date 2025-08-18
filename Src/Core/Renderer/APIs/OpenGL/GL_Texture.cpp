@@ -2,9 +2,6 @@
 
 namespace Motion
 {
-    // ─────────────────────────────────────────────────────────────────────────────
-// Helpers
-// ─────────────────────────────────────────────────────────────────────────────
     static inline bool ShouldFlipFor(Motion::TextureType type) noexcept
     {
         using TT = Motion::TextureType;
@@ -14,9 +11,9 @@ namespace Motion
         case TT::IrradianceTexture:
         case TT::PrefilteredTexture:
         case TT::BRDFTexture:
-            return false; // cube/IBL resources: no flip
+            return false;
         default:
-            return true;  // regular 2D PBR maps: flip for GL UV origin
+            return true;
         }
     }
 
@@ -28,15 +25,11 @@ namespace Motion
         case TT::BaseColorTexture:
         case TT::EmissiveTexture:
         case TT::SpecularColorTexture:
-            return true;    // color maps are sRGB
+            return true;
         default:
-            return false;   // normal/metal/rough/ao etc. are linear
+            return false;
         }
     }
-
-    // ─────────────────────────────────────────────────────────────────────────────
-    // GL_Texture
-    // ─────────────────────────────────────────────────────────────────────────────
 
     GL_Texture::GL_Texture(std::int32_t width, std::int32_t height, const glm::vec3& color)
     {
@@ -54,9 +47,8 @@ namespace Motion
         m_Specification.InvertGreen = false;
     }
 
-    GL_Texture::GL_Texture(const std::filesystem::path& textureFile, TextureType type, bool /*flip*/)
+    GL_Texture::GL_Texture(const std::filesystem::path& textureFile, TextureType type)
     {
-        // choose flip per type
         m_Specification.Type = type;
         m_Specification.FlipOnLoadDefault = ShouldFlipFor(type);
         m_Specification.InvertGreen = false;
@@ -85,9 +77,9 @@ namespace Motion
 
         switch (channels)
         {
-        case 1: internalFormat = GL_R8;                 dataFormat = GL_RED;  break;
-        case 2: internalFormat = GL_RG8;                dataFormat = GL_RG;   break;
-        case 3: internalFormat = useSRGB ? GL_SRGB8 : GL_RGB8;   dataFormat = GL_RGB;  break;
+        case 1: internalFormat = GL_R8;                                 dataFormat = GL_RED;  break;
+        case 2: internalFormat = GL_RG8;                                dataFormat = GL_RG;   break;
+        case 3: internalFormat = useSRGB ? GL_SRGB8 : GL_RGB8;          dataFormat = GL_RGB;  break;
         case 4: internalFormat = useSRGB ? GL_SRGB8_ALPHA8 : GL_RGBA8;  dataFormat = GL_RGBA; break;
         default:
             MOTION_CORE_ERROR("Unsupported channel count: {}", channels);
@@ -164,9 +156,9 @@ namespace Motion
         return std::make_shared<GL_Texture>(width, height, color);
     }
 
-    std::shared_ptr<GL_Texture> GL_Texture::Create(const std::filesystem::path& textureFile, TextureType type, bool flip) noexcept
+    std::shared_ptr<GL_Texture> GL_Texture::Create(const std::filesystem::path& textureFile, TextureType type) noexcept
     {
-        return std::make_shared<GL_Texture>(textureFile, type, flip);
+        return std::make_shared<GL_Texture>(textureFile, type);
     }
 
     std::shared_ptr<GL_Texture> GL_Texture::Create(std::uint8_t* data, TextureType type, std::int32_t width, std::int32_t height, std::int32_t channels) noexcept
@@ -174,7 +166,6 @@ namespace Motion
         return std::make_shared<GL_Texture>(data, type, width, height, channels);
     }
 
-    // Centralized upload that keeps TexID stable, sets sampler + mips
     bool GL_Texture::UploadRGBA8(int width, int height, const stbi_uc* data, bool useSRGB)
     {
         m_Specification.Width = width;
@@ -260,7 +251,7 @@ namespace Motion
     {
         m_Specification.Width = width;
         m_Specification.Height = height;
-        m_Specification.Channels = 4; // RGBA
+        m_Specification.Channels = 4;
         m_Specification.InternalDataFormat = GL_RGBA8;
         m_Specification.TextureDataFormat = GL_RGBA;
 
@@ -274,14 +265,12 @@ namespace Motion
             textureData[i * 4 + 3] = 255;
         }
 
-        // Mips
         const int mipLevels = static_cast<int>(std::floor(std::log2(std::max(width, height)))) + 1;
 
         glCreateTextures(GL_TEXTURE_2D, 1, &m_Specification.TexID);
         glTextureStorage2D(m_Specification.TexID, mipLevels, m_Specification.InternalDataFormat, width, height);
         glTextureSubImage2D(m_Specification.TexID, 0, 0, 0, width, height, m_Specification.TextureDataFormat, GL_UNSIGNED_BYTE, textureData);
 
-        // Sampler
         glTextureParameteri(m_Specification.TexID, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
         glTextureParameteri(m_Specification.TexID, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         glTextureParameteri(m_Specification.TexID, GL_TEXTURE_WRAP_S, GL_REPEAT);
@@ -296,10 +285,6 @@ namespace Motion
         return true;
     }
 
-    // ─────────────────────────────────────────────────────────────────────────────
-    // GL_CubeTexture (unchanged)
-    // ─────────────────────────────────────────────────────────────────────────────
-
     GL_CubeTexture::GL_CubeTexture(const std::filesystem::path& textureFile)
     {
         if (!std::filesystem::exists(textureFile))
@@ -308,7 +293,7 @@ namespace Motion
         }
 
         std::int32_t width, height, channels;
-        stbi_set_flip_vertically_on_load(false); // Cube maps should not be flipped
+        stbi_set_flip_vertically_on_load(false);
         float* data = stbi_loadf(textureFile.string().c_str(), &width, &height, &channels, STBI_rgb_alpha);
         if (!data)
         {
@@ -319,14 +304,9 @@ namespace Motion
         {
             float* resizedTexture{ nullptr };
             std::int32_t resizedWidth = width;
-            std::int32_t resizedHeight = width; // Cube maps must be square
-
+            std::int32_t resizedHeight = width;
             MOTION_CORE_WARN("Cube map texture {0} must have square dimensions, but got {1} x {2} resizing...", textureFile.string(), width, height);
-
-            resizedTexture = stbir_resize_float_linear(
-                data, width, height, 0,
-                0, resizedWidth, resizedHeight, 0, STBIR_RGBA
-            );
+            resizedTexture = stbir_resize_float_linear(data, width, height, 0, 0, resizedWidth, resizedHeight, 0, STBIR_RGBA);
 
             if (!resizedTexture)
             {
@@ -336,7 +316,7 @@ namespace Motion
             else
             {
                 stbi_image_free(data);
-                data = nullptr; // Free original data
+                data = nullptr;
 
                 MOTION_CORE_INFO("Cube map texture {0} resized to {1} x {2}", textureFile.string(), resizedWidth, resizedHeight);
                 data = resizedTexture;
@@ -345,7 +325,7 @@ namespace Motion
             }
         }
 
-        std::int32_t internalDataformat = GL_RGBA32F; // HDR
+        std::int32_t internalDataformat = GL_RGBA32F;
         std::int32_t textureDataFormat = GL_RGBA;
 
         glCreateTextures(GL_TEXTURE_CUBE_MAP, 1, &m_TexID);

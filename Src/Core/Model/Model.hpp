@@ -31,9 +31,6 @@ namespace Motion
         std::vector<std::shared_ptr<Mesh>>::const_iterator begin() const { return m_Meshes.begin(); }
         std::vector<std::shared_ptr<Mesh>>::const_iterator end() const { return m_Meshes.end(); }
 
-    public:
-        ShadingMethod ModelShadingMethod{ ShadingMethod::PhysicalBased };
-
     private:
         std::vector<std::shared_ptr<Mesh>> m_Meshes;
         glm::vec3 m_MinBounds{ FLT_MAX, FLT_MAX, FLT_MAX };

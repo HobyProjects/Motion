@@ -28,9 +28,6 @@ namespace Motion
     {
         ImGui::Begin("Scene Entities");
 
-        // ─────────────────────────────────────────────────────────────
-        // Window context menu: quick import model -> entity
-        // ─────────────────────────────────────────────────────────────
         if (ImGui::BeginPopupContextWindow(nullptr, ImGuiPopupFlags_MouseButtonRight | ImGuiPopupFlags_NoOpenOverItems))
         {
             if (ImGui::MenuItem(ICON_MD_FILE_UPLOAD "  Import StaticMesh"))
@@ -106,10 +103,10 @@ namespace Motion
                             std::string maxBounds = glm::to_string(model->GetMaxBounds());
                             std::string filePath = model->GetSource();
 
-                            CustomUIControl::TextBox("Mesh Count", meshCount, true);
-                            CustomUIControl::TextBox("Min Bounds", minBounds, true);
-                            CustomUIControl::TextBox("Max Bounds", maxBounds, true);
-                            CustomUIControl::TextBox("File Path", filePath, true);
+                            UI::TextBox("Mesh Count", meshCount, true);
+                            UI::TextBox("Min Bounds", minBounds, true);
+                            UI::TextBox("Max Bounds", maxBounds, true);
+                            UI::TextBox("File Path", filePath, true);
                         }
                     }
                 }

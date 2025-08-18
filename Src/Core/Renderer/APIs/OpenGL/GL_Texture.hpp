@@ -11,24 +11,23 @@ namespace Motion
     {
     public:
         GL_Texture(std::int32_t width, std::int32_t height, const glm::vec3& color);
-        GL_Texture(const std::filesystem::path& textureFile, TextureType type, bool flip = true);
+        GL_Texture(const std::filesystem::path& textureFile, TextureType type);
         GL_Texture(std::uint8_t* data, TextureType type, std::int32_t width, std::int32_t height, std::int32_t channels);
         virtual ~GL_Texture();
 
         void Bind() const noexcept override;
         void Bind(std::int32_t bindingPoint) const noexcept override;
         void Unbind() const noexcept override;
+        bool ReloadFromFile(const std::filesystem::path& textureFile, TextureType type, bool flip = true) override;
 
         [[nodiscard]] TextureID GetID() const noexcept override;
         [[nodiscard]] TextureSpecification& GetSpecification() noexcept override;
         [[nodiscard]] TextureSource Source() const noexcept override;
 
-        [[nodiscard]] static std::shared_ptr<GL_Texture> Create(std::int32_t width = 100, std::int32_t height = 100, const glm::vec3& color = { 1.0f, 1.0f, 1.0f }) noexcept;
-        [[nodiscard]] static std::shared_ptr<GL_Texture> Create(const std::filesystem::path& textureFile, TextureType type = TextureType::BaseColorTexture, bool flip = true) noexcept;
+        [[nodiscard]] static std::shared_ptr<GL_Texture> Create(std::int32_t width, std::int32_t height, const glm::vec3& color) noexcept;
+        [[nodiscard]] static std::shared_ptr<GL_Texture> Create(const std::filesystem::path& textureFile, TextureType type) noexcept;
         [[nodiscard]] static std::shared_ptr<GL_Texture> Create(std::uint8_t* data, TextureType type, std::int32_t width, std::int32_t height, std::int32_t channels) noexcept;
 
-        // NEW: reload into the same GL id
-        bool ReloadFromFile(const std::filesystem::path& textureFile, TextureType type, bool flip = true) override;
 
     protected:
         bool LoadTextureFromFile(const std::filesystem::path& textureFile, bool flip) override;

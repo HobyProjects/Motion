@@ -3,49 +3,6 @@
 
 namespace Motion
 {
-    //-------------------------------------------------------------------
-    // HELPER FUNCTIONS AND STATIC VARIABLES
-    //-------------------------------------------------------------------
-
-    static const ImGuiTreeNodeFlags kHeaderOpen = ImGuiTreeNodeFlags_DefaultOpen;
-    static const struct TexSlotDesc
-    {
-        TextureType Type;
-        const char* Pretty;
-        const char* Icon;
-
-    } kDefaultSlots[] =
-    {
-        { TextureType::BaseColorTexture,  "Base Color",  ICON_MD_PALETTE },
-        { TextureType::ORMTexture,        "ORM (AO/R/M)",ICON_MD_TONALITY },
-        { TextureType::NormalTexture,     "Normal",      ICON_MD_TERRAIN },
-        { TextureType::EmissiveTexture,   "Emissive",    ICON_MD_BRIGHTNESS_5 },
-        { TextureType::OpacityTexture,    "Opacity",     ICON_MD_OPACITY },
-    };
-
-    static std::shared_ptr<ITexture> LoadTexture(TextureType type)
-    {
-        std::filesystem::path file = DialogBoxes::OpenFileDialog();
-        if (!file.empty())
-        {
-            auto newTex = ITexture::Create(file, type, true);
-            if (newTex)
-            {
-                return newTex; // Return the loaded texture
-            }
-            else
-            {
-                MOTION_ERROR("Failed to load texture from file: {0}", file.string());
-                return nullptr;
-            }
-        }
-
-        MOTION_ERROR("No file selected for texture loading");
-        return nullptr; // Return null if no file was selected
-    }
-
-    // ----------------------------------------------------------------------------------------------------------------------------------------------
-
     Scene::Scene(const SceneSpecification& spec)
     {
         m_Specification = spec;

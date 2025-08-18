@@ -203,16 +203,15 @@ namespace Motion
         glBindTexture(GL_TEXTURE_CUBE_MAP, m_EnvironmentCubeTextureID);
 
         glBindFramebuffer(GL_FRAMEBUFFER, m_FrameBufferID);
-        // dynamic mip count from base size
-        const std::uint32_t maxMip = 1u + (std::uint32_t)std::floor(std::log2((float)ENVIRONMENT_PREFILTERED_SIZE));
-        for (std::uint32_t mip = 0; mip < maxMip; ++mip)
+        m_MipLevel = (std::int32_t)(1 + std::floor(std::log2((float)ENVIRONMENT_PREFILTERED_SIZE)));
+        for (std::uint32_t mip = 0; mip < m_MipLevel; ++mip)
         {
             const std::uint32_t mipDim = ENVIRONMENT_PREFILTERED_SIZE >> mip;
             glBindRenderbuffer(GL_RENDERBUFFER, m_RenderBufferID);
             glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, mipDim, mipDim);
             glViewport(0, 0, mipDim, mipDim);
 
-            float roughness = (float)mip / (float)(maxMip - 1);
+            float roughness = (float)mip / (float)(m_MipLevel - 1);
             m_PrefilteredShader->SetUniform("u_PrefilteredRoughness", roughness);
             for (int i = 0;i < 6;++i)
             {

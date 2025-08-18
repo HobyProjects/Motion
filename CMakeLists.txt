@@ -102,6 +102,7 @@ set(
     ${MOTION_CORE_DIR}/Model/Importer.hpp
 
     ${MOTION_CORE_DIR}/Material/Material.hpp
+    ${MOTION_CORE_DIR}/Material/TextureComponents.hpp
     ${MOTION_CORE_DIR}/Maths/Intersect.hpp
 
     ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL/GL_Buffers.hpp
@@ -117,6 +118,7 @@ set(
     ${MOTION_CORE_DIR}/Window/GLFW_Window.hpp
 
     ${MOTION_CORE_DIR}/UI/UI.hpp
+    ${MOTION_CORE_DIR}/UI/Controls.hpp
     ${MOTION_CORE_DIR}/UI/MaterialFonts/IconsMaterialDesign.h
     ${MOTION_CORE_DIR}/Platform/DialogBoxes.hpp
 
@@ -162,6 +164,7 @@ set(
     ${MOTION_CORE_DIR}/Window/GLFW_Window.cpp
 
     ${MOTION_CORE_DIR}/UI/UI.cpp
+    ${MOTION_CORE_DIR}/UI/Controls.cpp
     ${MOTION_CORE_DIR}/Platform/DialogBoxes.cpp
     ${MOTION_CORE_DIR}/ECS/Entity.cpp
 )

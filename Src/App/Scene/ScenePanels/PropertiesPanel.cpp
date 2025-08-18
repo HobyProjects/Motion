@@ -39,25 +39,20 @@ namespace Motion
             return;
         }
 
-        // ─────────────────────────────────────────────────────────────
-        // Tag / Name
-        // ─────────────────────────────────────────────────────────────
         if (selectedEntity->HasComponent<TagComponent>())
         {
             auto& tag = selectedEntity->GetComponent<TagComponent>();
-            // Label with an icon
-            CustomUIControl::TextBox(std::string(ICON_MD_LABEL "  Tag").c_str(), tag.Tag, false, 256, 150.0f);
+            UI::TextBox(ICON_MD_LABEL" Name Tag", tag.Tag, false, 256);
         }
 
-        // ─────────────────────────────────────────────────────────────
-        // Transform (icon on the header)
-        // ─────────────────────────────────────────────────────────────
         DrawComponentControls<TransformComponent>(std::string(ICON_MD_OPEN_WITH "  Transform").c_str(), selectedEntity,
             [](TransformComponent& component)
             {
-                CustomUIControl::DrawFloat3(std::string(ICON_MD_NEAR_ME "  Translation").c_str(), component.Translation, 0.0f);
-                CustomUIControl::DrawQuatEuler(std::string(ICON_MD_ROTATE_90_DEGREES_CW "  Rotation").c_str(), component.Rotation, 0.0f);
-                CustomUIControl::DrawFloat3(std::string(ICON_MD_ZOOM_OUT_MAP "  Scale").c_str(), component.Scale, 10.0f);
+                UI::BeginPropertyGrid("transform-grid");
+                UI::DragFloat3(ICON_MD_DIRECTIONS "  Translation", component.Translation, 0.0f, 0.1f);
+                UI::DragFloat3(ICON_MD_ROTATE_90_DEGREES_CW "  Rotation", component.Rotation, 0.1f, 0.0f);
+                UI::DragFloat3(ICON_MD_ZOOM_OUT_MAP "  Scale", component.Scale, 0.1f, 0.0f);
+                UI::EndPropertyGrid();
             }
         );
 

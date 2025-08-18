@@ -23,8 +23,6 @@ namespace Motion
         void Unbind() const noexcept;
         void Render();
 
-        void SetMaterial(const std::shared_ptr<PhysicalBasedMaterialInstance>& material) noexcept;
-
         [[nodiscard]] std::int32_t GetIndicesCount() const noexcept;
         [[nodiscard]] std::shared_ptr<StaticMesh> GetParentModel() const noexcept;
         [[nodiscard]] RendererID GetID() const noexcept { return m_VertexArray->GetID(); }
@@ -36,7 +34,7 @@ namespace Motion
     public:
         std::uint32_t Index{ 0 };
         std::string Name{ "Unnamed Mesh" };
-        std::shared_ptr<PhysicalBasedMaterialInstance> PhysicalBasedMaterials{ nullptr };
+        std::shared_ptr<Material> Materials{ nullptr };
 
     private:
         std::shared_ptr<IVertexBuffer> m_VertexBuffer{ nullptr };

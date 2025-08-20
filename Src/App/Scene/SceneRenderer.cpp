@@ -63,7 +63,7 @@ namespace Motion
     static inline void BindIBL(IShader* shader, IEnvironment* env)
     {
         // Ensure environment binds: irradiance (cube) @0, prefiltered (cube) @1, BRDF LUT (2D) @2
-        env->BindIBLAll(TEX_SLOTS::Irradiance, TEX_SLOTS::Prefilter, TEX_SLOTS::BRDFLUT);
+        env->BindAll(TEX_SLOTS::Irradiance, TEX_SLOTS::Prefilter, TEX_SLOTS::BRDFLUT);
 
         shader->SetUniform("u_IrradianceTexture", TEX_SLOTS::Irradiance);
         shader->SetUniform("u_PrefilteredTexture", TEX_SLOTS::Prefilter);
@@ -156,9 +156,9 @@ namespace Motion
                     {
                         if (baseMat->Textures[TextureType::BaseColorTexture])
                         {
+                            currentShader->SetUniform("u_Attributes.BaseColor", C.BaseColor);
                             baseMat->Textures[TextureType::BaseColorTexture]->Bind(TEX_SLOTS::BaseColor);
                             currentShader->SetUniform("u_Textures.BaseColorTexture", TEX_SLOTS::BaseColor);
-                            currentShader->SetUniform("u_Attributes.BaseColor", C.BaseColor);
                             texMask |= TB_BaseColor;
                         }
                         else
@@ -311,12 +311,15 @@ namespace Motion
                 if (currentMaterial->HasTexture<ExtendedTextures>())
                 {
                     const auto& A = currentMaterial->GetTexture<ExtendedTextures>();
+                    currentShader->SetUniform("u_Attributes.ClearcoatFactor", A.ClearcoatFactor);
+                    currentShader->SetUniform("u_Attributes.ClearcoatRoughnessFactor", A.ClearcoatRoughnessFactor);
+                    currentShader->SetUniform("u_Attributes.SpecularColor", A.SpecularColor);
+                    currentShader->SetUniform("u_Attributes.SpecularLevel", A.SpecularLevel);
 
                     if (A.ClearcoatTexture)
                     {
                         A.ClearcoatTexture->Bind(TEX_SLOTS::Clearcoat);
                         currentShader->SetUniform("u_Textures.ClearcoatTexture", TEX_SLOTS::Clearcoat);
-                        currentShader->SetUniform("u_Attributes.ClearcoatFactor", A.ClearcoatFactor);
                         texMask |= TB_Clearcoat;
                     }
 
@@ -324,7 +327,6 @@ namespace Motion
                     {
                         A.ClearcoatRoughnessTexture->Bind(TEX_SLOTS::ClearcoatR);
                         currentShader->SetUniform("u_Textures.ClearcoatRoughnessTexture", TEX_SLOTS::ClearcoatR);
-                        currentShader->SetUniform("u_Attributes.ClearcoatRoughnessFactor", A.ClearcoatRoughnessFactor);
                         texMask |= TB_ClearcoatR;
                     }
 
@@ -332,7 +334,6 @@ namespace Motion
                     {
                         A.SpecularColorTexture->Bind(TEX_SLOTS::SpecularColor);
                         currentShader->SetUniform("u_Textures.SpecularColorTexture", TEX_SLOTS::SpecularColor);
-                        currentShader->SetUniform("u_Attributes.SpecularColor", A.SpecularColor);
                         texMask |= TB_SpecColor;
                     }
 
@@ -340,7 +341,6 @@ namespace Motion
                     {
                         A.SpecularTexture->Bind(TEX_SLOTS::Specular);
                         currentShader->SetUniform("u_Textures.SpecularTexture", TEX_SLOTS::Specular);
-                        currentShader->SetUniform("u_Attributes.SpecularLevel", A.SpecularLevel);
                         texMask |= TB_Spec;
                     }
                 }
@@ -359,11 +359,13 @@ namespace Motion
                 if (currentMaterial->HasTexture<SheenFabricTextures>())
                 {
                     const auto& A = currentMaterial->GetTexture<SheenFabricTextures>();
+                    currentShader->SetUniform("u_Attributes.SheenColor", A.SheenColor);
+                    currentShader->SetUniform("u_Attributes.SheenRoughnessFactor", A.SheenRoughness);
+
                     if (A.SheenTexture)
                     {
                         A.SheenTexture->Bind(TEX_SLOTS::SheenColor);
                         currentShader->SetUniform("u_Textures.SheenColorTexture", TEX_SLOTS::SheenColor);
-                        currentShader->SetUniform("u_Attributes.SheenColor", A.SheenColor);
                         texMask |= TB_SheenColor;
                     }
 
@@ -371,7 +373,6 @@ namespace Motion
                     {
                         A.SheenRoughnessTexture->Bind(TEX_SLOTS::SheenR);
                         currentShader->SetUniform("u_Textures.SheenRoughnessTexture", TEX_SLOTS::SheenR);
-                        currentShader->SetUniform("u_Attributes.SheenRoughnessFactor", A.SheenRoughness);
                         texMask |= TB_SheenR;
                     }
                 }
@@ -379,12 +380,16 @@ namespace Motion
                 if (currentMaterial->HasTexture<TransmissionSubsurfaceTextures>())
                 {
                     const auto& A = currentMaterial->GetTexture<TransmissionSubsurfaceTextures>();
+                    currentShader->SetUniform("u_Attributes.TransmissionFactor", A.Transmission);
+                    currentShader->SetUniform("u_Attributes.ThicknessFactor", A.Thickness);
+                    currentShader->SetUniform("u_Attributes.AttenuationColor", A.AttenuationColor);
+                    currentShader->SetUniform("u_Attributes.AttenuationDistance", A.AttenuationDistance);
+                    currentShader->SetUniform("u_Attributes.IOR", A.IOR);
 
                     if (A.TransmissionTexture)
                     {
                         A.TransmissionTexture->Bind(TEX_SLOTS::Transmission);
                         currentShader->SetUniform("u_Textures.TransmissionTexture", TEX_SLOTS::Transmission);
-                        currentShader->SetUniform("u_Attributes.TransmissionFactor", A.Transmission);
                         texMask |= TB_Trans;
                     }
 
@@ -392,16 +397,8 @@ namespace Motion
                     {
                         A.ThicknessTexture->Bind(TEX_SLOTS::Thickness);
                         currentShader->SetUniform("u_Textures.ThicknessTexture", TEX_SLOTS::Thickness);
-                        currentShader->SetUniform("u_Attributes.ThicknessFactor", A.Thickness);
 
                         texMask |= TB_Thick;
-                    }
-
-                    if (A.ThicknessTexture && A.TransmissionTexture)
-                    {
-                        currentShader->SetUniform("u_Attributes.AttenuationColor", A.AttenuationColor);
-                        currentShader->SetUniform("u_Attributes.AttenuationDistance", A.AttenuationDistance);
-                        currentShader->SetUniform("u_Attributes.IOR", A.IOR);
                     }
                 }
 
@@ -440,7 +437,7 @@ namespace Motion
                 cmd.SortKey = scene->GetID();
                 cmd.MaterialPointer = mesh->Materials.get();
                 cmd.MeshPtr = mesh.get();
-                cmd.EnvironmentPtr = scene->GetEnvironment().Env.get();
+                cmd.EnvironmentPtr = scene->GetEnvironment().EnvironmentInstance.get();
 
                 cmd.ModelMatrix = entity->HasComponent<TransformComponent>()
                     ? entity->GetComponent<TransformComponent>().GetTransform()
@@ -475,7 +472,7 @@ namespace Motion
         if (!scene) return;
 
         auto& env = scene->GetEnvironment();
-        IEnvironment* ibl = env.Env ? env.Env.get() : nullptr;
+        IEnvironment* ibl = env.EnvironmentInstance ? env.EnvironmentInstance.get() : nullptr;
         if (!ibl) return;
 
         const auto& cam = scene->GetCamera().Camera;

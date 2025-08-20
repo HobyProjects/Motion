@@ -34,7 +34,6 @@ namespace Motion
         bool GenerateTexture2D(std::int32_t width, std::int32_t height, const glm::vec3& color) override;
 
     private:
-        // NEW: centralized upload (RGBA8 or SRGB8_A8), keeps same TexID, sets sampler + mips
         bool UploadRGBA8(int width, int height, const stbi_uc* data, bool useSRGB);
 
         TextureSpecification m_Specification{};

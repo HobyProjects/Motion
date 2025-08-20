@@ -42,7 +42,7 @@ namespace Motion
         spec.IsActive = true;
         spec.Viewport = m_Viewport;
         spec.Environment = SceneEnvironment();
-        spec.Environment.Env = IEnvironment::Create("Assets/HDRI/Scene.hdr");
+        spec.Environment.EnvironmentInstance = IEnvironment::Create("Assets/HDRI/Scene.hdr");
 
         if (m_Scenes.empty())
             m_Scenes.push_back(std::make_shared<Scene>(spec));

@@ -15,7 +15,7 @@ namespace Motion
         }
 
         auto& env = ctx.ActiveScene->GetEnvironment();          // SceneEnvironment
-        IEnvironment* ibl = env.Env ? env.Env.get() : nullptr;  // IBL backend (may be null)
+        IEnvironment* ibl = env.EnvironmentInstance ? env.EnvironmentInstance.get() : nullptr;  // IBL backend (may be null)
 
         // ───────────────────────────────── Environment Lighting (Sun) ─────────────────────────────────
         ImGuiTreeNodeFlags envFlags = ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_AllowItemOverlap | ImGuiTreeNodeFlags_FramePadding;
@@ -43,7 +43,7 @@ namespace Motion
 
         // ───────────────────────────────── Image-Based Lighting (IBL) ────────────────────────────────
         ImGuiTreeNodeFlags iblFlags = ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_AllowItemOverlap | ImGuiTreeNodeFlags_FramePadding;
-        if (ImGui::TreeNodeEx((void*)2, iblFlags, "%s  %s", ICON_MD_HDR_ENHANCED_SELECT, "Image-Based Lighting"))
+        if (ImGui::TreeNodeEx((void*)2, iblFlags, "%s  %s", ICON_MD_HDR_ENHANCED_SELECT, "Image Based Lighting"))
         {
             if (UI::BeginPropertyGrid("ibl-properties"))
             {
@@ -56,7 +56,7 @@ namespace Motion
                         if (!path.empty())
                         {
                             // Keep current IBL intensity and rotation if any
-                            Motion::EnvIntensity keep = ibl ? ibl->GetIntensity() : Motion::EnvIntensity{ 1.0f, 1.0f };
+                            Motion::EnvironmentIntensity keep = ibl ? ibl->GetIntensity() : Motion::EnvironmentIntensity{ 1.0f, 1.0f };
                             float rotY = ibl ? ibl->GetSkyboxRotationY() : 0.0f;
 
                             auto newEnv = Motion::IEnvironment::Create(path);
@@ -64,7 +64,7 @@ namespace Motion
                             {
                                 newEnv->SetIntensity(keep);
                                 newEnv->SetSkyboxRotationY(rotY);
-                                env.Env = std::move(newEnv);
+                                env.EnvironmentInstance = std::move(newEnv);
                             }
                             else
                             {

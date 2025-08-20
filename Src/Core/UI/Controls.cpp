@@ -296,63 +296,6 @@ namespace Motion::UI
         return changed;
     }
 
-    bool TextureCard(const char* label, std::shared_ptr<ITexture>& texture, bool canReload, bool canClear, TextureActionCallback onAction, ImVec2 uv0, ImVec2 uv1, ImVec2 cardSize, ImVec2 previewMax)
-    {
-        ScopeID idScope(label);
-        ImGui::TableNextColumn();
-        PropertyLabel(label);
-        ImGui::TableNextColumn();
-
-        // Card
-        bool changed = false;
-        const ImVec2 card = cardSize;
-        ImGui::BeginChild(("##card" + std::to_string(GetUID())).c_str(), card, true, ImGuiWindowFlags_NoScrollbar);
-        {
-            // Preview
-            ImVec2 avail = ImGui::GetContentRegionAvail();
-            ImVec2 sz = previewMax;
-            sz.x = std::min(sz.x, avail.x);
-            sz.y = std::min(sz.y, avail.y - ImGui::GetFrameHeight() - 8.0f);
-            ImVec2 p0 = ImGui::GetCursorScreenPos();
-            ImGui::Dummy(ImVec2((avail.x - sz.x) * 0.5f, 0));
-            ImGui::SameLine();
-
-            if (texture)
-            {
-                ImTextureID textureID = (ImTextureID)(intptr_t)texture->GetID();
-                ImGui::Image(textureID ? textureID : (ImTextureID)(intptr_t)0, ImVec2(100, 100));
-            }
-            else
-            {
-                ImGui::Image((ImTextureID)(intptr_t)0, ImVec2(100, 100));
-            }
-
-            ImGui::SetCursorPosY(card.y - ImGui::GetFrameHeight() - 6.0f);
-            ImGui::Separator();
-            if (ImGui::Button(ICON_MD_UPLOAD))
-            {
-                if (onAction)
-                    onAction(TextureAction::RequestUpload, texture);
-            }
-
-            ImGui::SameLine();
-            if (canReload)
-            {
-                if (ImGui::Button(ICON_MD_REFRESH) && onAction)
-                    onAction(TextureAction::RequestReload, texture);
-            }
-
-            ImGui::SameLine();
-            if (canClear && ImGui::Button(ICON_MD_CLEAR))
-            {
-                if (onAction)
-                    onAction(TextureAction::RequestClear, texture);
-            }
-        }
-        ImGui::EndChild();
-        return changed;
-    }
-
     bool CollapsibleSection(const char* label, bool defaultOpen)
     {
         ImGuiTreeNodeFlags f = ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_DefaultOpen * defaultOpen | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_AllowItemOverlap;
@@ -383,7 +326,309 @@ namespace Motion::UI
     void ToolbarEnd()
     {
         ImGui::EndGroup();
-        ImGui::NewLine();
         ImGui::PopID();
     }
+
+    static ImTextureID AsImTextureID(const std::shared_ptr<ITexture>& t)
+    {
+        if (!t) return (ImTextureID)(uintptr_t)0; // null texture
+        return (ImTextureID)(uintptr_t)t->GetID(); // OpenGL: GLuint id
+    }
+
+    static std::string NiceFilename(const std::shared_ptr<ITexture>& t)
+    {
+        if (!t) return "(none)";
+        const auto& spec = t->GetSpecification();
+        if (!spec.TextureFile.empty())
+            return std::filesystem::path(spec.TextureFile).filename().string();
+        if (spec.Width && spec.Height)
+            return fmt::format("{}x{}", spec.Width, spec.Height);
+        return "(runtime)";
+    }
+
+    void EmptyTextureSlot(ImDrawList* dl, const ImRect& r, float cell)
+    {
+        const ImU32 c0 = IM_COL32(110, 110, 110, 255);
+        const ImU32 c1 = IM_COL32(70, 70, 70, 255);
+
+        for (float y = r.Min.y; y < r.Max.y; y += cell)
+        {
+            for (float x = r.Min.x; x < r.Max.x; x += cell)
+            {
+                bool alt = (int)((x - r.Min.x) / cell + (y - r.Min.y) / cell) & 1;
+                ImRect q(ImVec2(x, y), ImVec2(std::min(x + cell, r.Max.x), std::min(y + cell, r.Max.y)));
+                dl->AddRectFilled(q.Min, q.Max, alt ? c0 : c1);
+            }
+        }
+        dl->AddRect(r.Min, r.Max, IM_COL32(50, 50, 50, 255), 6.0f, 0, 1.0f);
+    }
+
+    TextureSlotAction TextureSlot(const char* label, std::shared_ptr<ITexture>& tex, TextureType type, TextureSlotActionCallback onAction, bool showLabelAbove, int previewSize)
+    {
+        TextureSlotAction result = TextureSlotAction::None;
+
+        ImGui::PushID(label);
+        if (showLabelAbove)
+        {
+            ImGui::TextUnformatted(label);
+            ImGui::Spacing();
+        }
+
+        float size = (float)previewSize;
+        ImVec2 p0 = ImGui::GetCursorScreenPos();
+        ImRect rect(p0, ImVec2(p0.x + size, p0.y + size));
+
+        auto* dl = ImGui::GetWindowDrawList();
+        EmptyTextureSlot(dl, rect, 10.0f);
+
+        if (tex)
+        {
+            ImGui::SetCursorScreenPos(rect.Min);
+            ImGui::Image(AsImTextureID(tex), ImVec2(size, size), ImVec2(0, 1), ImVec2(1, 0));
+        }
+        else
+        {
+            ImGui::SetCursorScreenPos(ImVec2(rect.Min.x + 8, rect.Min.y + size * 0.5f - ImGui::GetTextLineHeight() * 0.5f));
+            ImGui::TextDisabled("Click to load");
+        }
+
+        ImGui::SetCursorScreenPos(rect.Min);
+        ImGui::InvisibleButton("tex_btn", ImVec2(size, size));
+
+        if (ImGui::IsItemHovered())
+        {
+            ImGui::BeginTooltip();
+            const int big = std::min(previewSize * 2, 512);
+            if (tex)
+                ImGui::Image(AsImTextureID(tex), ImVec2((float)big, (float)big), ImVec2(0, 1), ImVec2(1, 0));
+            else
+                ImGui::Dummy(ImVec2((float)big, (float)big));
+            ImGui::Separator();
+            ImGui::TextUnformatted(std::format("Expected: {}", GetTextureTypeString(type)).c_str());
+            if (tex)
+            {
+                const auto& sp = tex->GetSpecification();
+                if (!sp.TextureFile.empty()) ImGui::TextUnformatted(sp.TextureFile.c_str());
+                ImGui::Text("Size: %ux%u", sp.Width, sp.Height);
+            }
+
+            ImGui::EndTooltip();
+        }
+
+        if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
+        {
+            std::filesystem::path path = DialogBoxes::OpenFileDialog();
+            if (!path.empty())
+            {
+                if (!tex) tex = ITexture::Create(path, type);
+                else      tex->ReloadFromFile(path, type);
+                if (onAction)
+                {
+                    onAction(TextureSlotAction::Upload, tex);
+                    result = TextureSlotAction::Upload;
+                }
+                else
+                {
+                    result = TextureSlotAction::Upload;
+                }
+            }
+        }
+
+        if (ImGui::BeginPopupContextItem("tex_ctx"))
+        {
+            if (ImGui::MenuItem(ICON_MD_UPLOAD " Load Texture"))
+            {
+                std::filesystem::path path = DialogBoxes::OpenFileDialog();
+                if (!path.empty())
+                {
+                    if (!tex) tex = ITexture::Create(path, type);
+                    else      tex->ReloadFromFile(path, type);
+
+                    if (onAction)
+                    {
+                        onAction(TextureSlotAction::Upload, tex);
+                        result = TextureSlotAction::Upload;
+                    }
+                    else
+                    {
+                        result = TextureSlotAction::Upload;
+                    }
+                }
+            }
+            bool canReload = tex && !tex->GetSpecification().TextureFile.empty();
+            if (ImGui::MenuItem(ICON_MD_REFRESH " Reload", nullptr, false, canReload))
+            {
+                tex->ReloadFromFile(tex->GetSpecification().TextureFile, type);
+                if (onAction)
+                {
+                    onAction(TextureSlotAction::Reload, tex);
+                    result = TextureSlotAction::Reload;
+                }
+                else
+                {
+                    result = TextureSlotAction::Reload;
+                }
+            }
+            if (ImGui::MenuItem(ICON_MD_CLEAR " Clear", nullptr, false, tex != nullptr))
+            {
+                std::shared_ptr<ITexture> emptyTex{ nullptr };
+                tex.swap(emptyTex);
+
+                tex = nullptr;
+                emptyTex.reset();
+
+                if (onAction)
+                {
+                    onAction(TextureSlotAction::Clear, tex);
+                    result = TextureSlotAction::Clear;
+                }
+                else
+                {
+                    result = TextureSlotAction::Clear;
+                }
+            }
+            if (tex)
+            {
+                ImGui::Separator();
+                if (ImGui::MenuItem(ICON_MD_FLIP " Flip", nullptr, false, tex != nullptr))
+                {
+                    bool flipped = tex->GetSpecification().FlipOnLoadDefault;
+                    tex->ReloadFromFile(tex->GetSpecification().TextureFile, type, !flipped);
+                }
+
+                ImGui::Separator();
+                if (ImGui::MenuItem(ICON_MD_FILE_COPY " Copy Path", nullptr, false, !tex->GetSpecification().TextureFile.empty()))
+                    ImGui::SetClipboardText(tex->GetSpecification().TextureFile.c_str());
+            }
+            ImGui::EndPopup();
+        }
+
+        if (ImGui::BeginDragDropTarget())
+        {
+            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("ASSET_PATH"))
+            {
+                const char* path = (const char*)payload->Data;
+                if (path && *path)
+                {
+                    if (!tex) tex = ITexture::Create(path, type);
+                    else      tex->ReloadFromFile(path, type);
+                    if (onAction)
+                    {
+                        onAction(TextureSlotAction::Upload, tex);
+                        result = TextureSlotAction::Upload;
+                    }
+                    else
+                    {
+                        result = TextureSlotAction::Upload;
+                    }
+                }
+            }
+
+            ImGui::EndDragDropTarget();
+        }
+
+        ImGui::SetCursorScreenPos(ImVec2(rect.Min.x, rect.Max.y + 6));
+        ImGui::PushTextWrapPos(rect.Min.x + size);
+        ImGui::TextUnformatted(NiceFilename(tex).c_str());
+        ImGui::PopTextWrapPos();
+
+        ImGui::Dummy(ImVec2(0, 12));
+        ImGui::PopID();
+        return result;
+    }
+
+    static GridTableState& _grid()
+    {
+        static GridTableState s;
+        return s;
+    }
+
+    bool GridBegin(const char* id, int cols, ImVec2 cellSize, const GridTableOptions& opt)
+    {
+        if (cols <= 0) cols = 1;
+        auto& st = _grid();
+        st.cols = cols;
+        st.cellIndex = 0;
+        st.cellSize = cellSize;
+        st.pad = opt.cellPadding;
+        st.drawBg = opt.drawCellBg;
+        st.bgCol = opt.cellBgColor;
+        st.rounding = opt.rounding;
+        st.id = ImGui::GetID(id);
+
+        if (!ImGui::BeginTable(id, cols, opt.tableFlags))
+            return false;
+
+        // fixed column widths
+        for (int c = 0; c < cols; ++c)
+            ImGui::TableSetupColumn(nullptr, ImGuiTableColumnFlags_WidthFixed, cellSize.x + st.pad.x * 2.0f);
+
+        ImGui::TableNextRow(ImGuiTableRowFlags_None, cellSize.y + st.pad.y * 2.0f);
+        st.began = true;
+        return true;
+    }
+
+    void GridEnd()
+    {
+        auto& st = _grid();
+        if (st.began) {
+            ImGui::EndTable();
+            st = GridTableState{}; // reset
+        }
+    }
+
+    bool GridCellBegin()
+    {
+        auto& st = _grid();
+        IM_ASSERT(st.began && "GridCellBegin() without GridTableBegin()");
+        const int col = st.cellIndex % st.cols;
+        if (col == 0 && st.cellIndex != 0) {
+            // next row with the requested height
+            ImGui::TableNextRow(ImGuiTableRowFlags_None, st.cellSize.y + st.pad.y * 2.0f);
+        }
+        ImGui::TableSetColumnIndex(col);
+
+        // Reserve the cell area with an InvisibleButton so hover/clicks are scoped to the cell.
+        ImVec2 reserve = ImVec2(st.cellSize.x + st.pad.x * 2.0f, st.cellSize.y + st.pad.y * 2.0f);
+        ImGui::PushID(st.cellIndex);
+        ImVec2 p0 = ImGui::GetCursorScreenPos();
+        ImGui::InvisibleButton("##cell", reserve);
+
+        ImDrawList* dl = ImGui::GetWindowDrawList();
+        ImRect cellRect(p0, ImVec2(p0.x + reserve.x, p0.y + reserve.y));
+
+        if (st.drawBg)
+            dl->AddRectFilled(cellRect.Min, cellRect.Max, st.bgCol, st.rounding);
+
+        // Clip and move cursor to content area
+        ImRect content(ImVec2(cellRect.Min.x + st.pad.x, cellRect.Min.y + st.pad.y), ImVec2(cellRect.Max.x - st.pad.x, cellRect.Max.y - st.pad.y));
+        ImGui::PushClipRect(content.Min, content.Max, true);
+        ImGui::SetCursorScreenPos(content.Min);
+        ImGui::BeginGroup();
+
+        return true;
+    }
+
+    void GridCellEnd()
+    {
+        ImGui::EndGroup();
+        ImGui::PopClipRect();
+        ImGui::PopID();
+        _grid().cellIndex++;
+    }
+
+    Grid& Grid::newline()
+    {
+        if (!ok) return *this;
+        auto& st = _grid();
+        int col = st.cellIndex % st.cols;
+        if (col != 0)
+        {
+            for (int i = 0, pad = st.cols - col; i < pad; ++i)
+                cell([] {});
+        }
+
+        return *this;
+    }
+
 }

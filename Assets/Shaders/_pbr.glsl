@@ -12,7 +12,7 @@ layout (location = 4) in vec3 a_Bitangents;
 uniform mat4 u_ModelMatrix;
 uniform mat4 u_ViewMatrix;
 uniform mat4 u_ProjectionMatrix;
-uniform mat4 u_NormalMatrix;
+uniform mat3 u_NormalMatrix;
 
 //======================================
 
@@ -103,11 +103,11 @@ struct Attributes
     float ClearcoatRoughnessFactor;
     float SpecularLevel;
     float SheenRoughnessFactor;
-    float Transmission;
-    float Thickness;
+    float TransmissionFactor;
+    float ThicknessFactor;
     float AttenuationDistance;
     float IOR;
-}
+};
 
 const int TB_BaseColor      = 1 << 0;
 const int TB_Metallic       = 1 << 1;
@@ -139,7 +139,7 @@ uniform samplerCube     u_PrefilteredTexture;
 uniform sampler2D       u_BRDFLUTTexture;
 uniform float           u_IBLIntensity_Diffuse;
 uniform float           u_IBLIntensity_Specular;
-uniform float           u_IBLMipLevels; // < Get it from the Environment class
+uniform float           u_IBLMipLevels; 
 
 uniform Textures        u_Textures;
 uniform Attributes      u_Attributes;
@@ -162,7 +162,7 @@ vec3 FresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness)
     return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(1.0 - cosTheta, 5.0);
 }
 
-float DistributionGGX(float N, float H, float roughness)
+float DistributionGGX(vec3 N, vec3 H, float roughness)
 {
     float a         = roughness * roughness;
     float a2        = a * a;
@@ -194,7 +194,7 @@ float GeometrySmith(vec3 N, vec3 V, vec3 L, float rough)
     return ggx1 * ggx2;
 }
 
-float ApplyNormalMaps(vec3 N, vec3 T, vec3 B, vec2 UVs)
+vec3 ApplyNormalMaps(vec3 N, vec3 T, vec3 B, vec2 UVs)
 {
     if(!HasTexture(TB_Normal))
     {
@@ -249,7 +249,7 @@ void main()
     vec3 emissiveColor      = vec3(0.0);
 
     float metallicFactor    = 0.0;
-    float roughnessFactor   = 0.0;
+    float roughnessFactor   = 0.5;
     float opacity           = 1.0;
     float AO                = 1.0;
 
@@ -399,14 +399,15 @@ void main()
             attenuationColor    = u_Attributes.AttenuationColor;
 
             float DIST          = attenuationDistance * thicknessFactor;
-            float ATTE          = attenuation(attenuationColor, attenuationDistance, DIST);
+            vec3 ATTE           = Attenuation(attenuationColor, attenuationDistance, DIST);
+            
             vec3 transmitted    = transmissionEnvironment * baseColor * ATTE;
 
             float reflectWeight     = max(max(F0.r, max(F0.g, F0.b)), 0.04);
             float transmitWeight    = (1.0 - reflectWeight) * transmissionFactor;
 
             ambient     = mix(ambient, transmitted, transmitWeight);
-            Lo          = (1.0 - transmitWeight) * 0.5;
+            Lo          *= (1.0 - transmitWeight) * 0.5;
             opacity     = mix(opacity, opacity * (1.0 - transmissionFactor * 0.5), 1.0);
         }
     }

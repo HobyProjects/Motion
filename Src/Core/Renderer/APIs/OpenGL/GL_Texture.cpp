@@ -228,6 +228,7 @@ namespace Motion
     {
         m_Specification.Type = type;
         m_Specification.FlipOnLoadDefault = flip;
+        m_Specification.InvertGreen = false;
 
         stbi_set_flip_vertically_on_load(flip);
         int w = 0, h = 0, n = 0;

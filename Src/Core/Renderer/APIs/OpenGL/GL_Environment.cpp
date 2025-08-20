@@ -266,7 +266,7 @@ namespace Motion
     void GL_Environment::BindPrefilteredTexture(std::uint32_t slot) const noexcept { glBindTextureUnit(slot, m_PrefilteredTextureID); }
     void GL_Environment::BindIrradianceTexture(std::uint32_t slot) const noexcept { glBindTextureUnit(slot, m_IrradianceTextureID); }
 
-    void GL_Environment::BindIBLAll(std::uint32_t irr, std::uint32_t pre, std::uint32_t brdf) const noexcept
+    void GL_Environment::BindAll(std::uint32_t irr, std::uint32_t pre, std::uint32_t brdf) const noexcept
     {
         BindIrradianceTexture(irr);
         BindPrefilteredTexture(pre);

@@ -4,7 +4,11 @@
 
 namespace Motion
 {
-    struct EnvIntensity { float Diffuse = 1.0f; float Specular = 1.0f; };
+    struct EnvironmentIntensity
+    {
+        float Diffuse = 1.0f;
+        float Specular = 1.0f;
+    };
 
     class IEnvironment
     {
@@ -16,11 +20,11 @@ namespace Motion
         virtual void BindPrefilteredTexture(std::uint32_t slot) const noexcept = 0;
         virtual void BindIrradianceTexture(std::uint32_t slot) const noexcept = 0;
 
-        virtual void BindIBLAll(std::uint32_t irrSlot, std::uint32_t preSlot, std::uint32_t brdfSlot) const noexcept = 0;
+        virtual void BindAll(std::uint32_t irrSlot, std::uint32_t preSlot, std::uint32_t brdfSlot) const noexcept = 0;
         virtual void Render(glm::mat4 viewMatrix, glm::mat4 projectionMatrix) noexcept = 0;
 
-        virtual void         SetIntensity(const EnvIntensity& i) noexcept = 0;
-        virtual EnvIntensity GetIntensity() const noexcept = 0;
+        virtual void SetIntensity(const EnvironmentIntensity& i) noexcept = 0;
+        virtual EnvironmentIntensity GetIntensity() const noexcept = 0;
         virtual std::int32_t GetMipLevel() const noexcept = 0;
 
         virtual void  SetSkyboxRotationY(float radians) noexcept = 0;

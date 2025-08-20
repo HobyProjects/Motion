@@ -18,11 +18,11 @@ namespace Motion
         void BindBRDFLUTTexture(std::uint32_t slot) const noexcept override;
         void BindPrefilteredTexture(std::uint32_t slot) const noexcept override;
         void BindIrradianceTexture(std::uint32_t slot) const noexcept override;
-        void BindIBLAll(std::uint32_t irrSlot, std::uint32_t preSlot, std::uint32_t brdfSlot) const noexcept override;
+        void BindAll(std::uint32_t irrSlot, std::uint32_t preSlot, std::uint32_t brdfSlot) const noexcept override;
         void Render(glm::mat4 viewMatrix, glm::mat4 projectionMatrix) noexcept override;
 
-        void SetIntensity(const EnvIntensity& i) noexcept override { m_Intensity = i; }
-        EnvIntensity GetIntensity() const noexcept override { return m_Intensity; }
+        void SetIntensity(const EnvironmentIntensity& i) noexcept override { m_Intensity = i; }
+        EnvironmentIntensity GetIntensity() const noexcept override { return m_Intensity; }
         std::int32_t GetMipLevel() const noexcept override { return m_MipLevel; }
 
         void SetSkyboxRotationY(float radians) noexcept override { m_SkyboxRotationY = radians; }
@@ -48,7 +48,7 @@ namespace Motion
         std::shared_ptr<GL_Shader> m_IrradianceShader{ nullptr };
         std::shared_ptr<GL_Shader> m_BRDFShader{ nullptr };
 
-        EnvIntensity m_Intensity{};
+        EnvironmentIntensity m_Intensity{};
         float m_SkyboxRotationY{ 0.0f };
         std::int32_t m_MipLevel{ 0 };
     };

@@ -31,6 +31,9 @@ namespace Motion
         std::vector<std::shared_ptr<Mesh>>::const_iterator begin() const { return m_Meshes.begin(); }
         std::vector<std::shared_ptr<Mesh>>::const_iterator end() const { return m_Meshes.end(); }
 
+        std::shared_ptr<Mesh>& operator[](std::size_t idx) { return m_Meshes[idx]; }
+        const std::shared_ptr<Mesh>& operator[](std::size_t idx) const { return m_Meshes[idx]; }
+
     private:
         std::vector<std::shared_ptr<Mesh>> m_Meshes;
         glm::vec3 m_MinBounds{ FLT_MAX, FLT_MAX, FLT_MAX };

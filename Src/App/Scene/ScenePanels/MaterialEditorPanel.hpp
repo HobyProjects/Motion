@@ -12,10 +12,15 @@ namespace Motion
 
         std::string GetTitle() const override { return m_Title; }
         PanelCategory GetCategory() const override { return PanelCategory::InspectorPanel; }
-        void RenderUI(ScenePanelContext& context) override;
+        void RenderUI(ScenePanelContext& ctx) override;
 
     private:
-        std::string m_Title{ "MaterialEditor" };
-        std::shared_ptr<Material> m_SelectedMaterial{ nullptr };
+        std::string m_Title = "Material Editor";
+        int m_SelectedMesh = -1;
+
+        void DrawMaterialUI(ScenePanelContext& ctx, std::shared_ptr<Material>& mat);
+        void DrawAttributes(std::shared_ptr<Material>& mat);
+        void DrawTexturesSlots(std::shared_ptr<Material>& mat);
+        void Toolbar(std::shared_ptr<Material>& mat);
     };
 }

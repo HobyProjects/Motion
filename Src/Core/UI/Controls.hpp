@@ -3,8 +3,12 @@
 #include <string>
 #include <vector>
 #include <functional>
+#include <algorithm>
+
+#include <imgui/imgui.h>
 #include <glm/glm.hpp>
 
+#define MOTION_UI_TEXTURESLOT_CALLBACK(CALLBACK_FUNC) [this](auto&&... args) -> decltype(auto) { return this->CALLBACK_FUNC(std::forward<decltype(args)>(args)...); }
 namespace Motion::UI
 {
     inline std::uint32_t GetUID()
@@ -102,29 +106,23 @@ namespace Motion::UI
     bool SearchBox(const char* id, std::string& query, const char* hint = "Search...");
     bool ComboBox(const char* label, const std::vector<std::string>& options, int& index, ComboChangedFn onChanged = nullptr);
 
+    bool CollapsibleSection(const char* label, bool defaultOpen = true);
+
+    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     struct Tag
     {
         std::string text{};
         bool selected{ false };
     };
-
     bool TagChips(const char* label, std::vector<Tag>& tags, ActionFn onAdd = nullptr, ActionFn onRemove = nullptr);
 
-    enum class TextureAction : int { RequestUpload = 0, RequestReload, RequestClear };
-    using TextureActionCallback = std::function<void(TextureAction, std::shared_ptr<ITexture>&)>;
-    bool TextureCard(
-        const char* label,
-        std::shared_ptr<ITexture>& texture,
-        bool canReload = true, bool canClear = true,
-        TextureActionCallback onAction = nullptr,
-        ImVec2 uv0 = ImVec2(0, 0), ImVec2 uv1 = ImVec2(1, 1),
-        ImVec2 cardSize = ImVec2(200, 200), ImVec2 previewMax = ImVec2(150, 150)
-    );
+    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    bool CollapsibleSection(const char* label, bool defaultOpen = true);
     void ToolbarBegin(const char* id);
     bool ToolbarButton(const char* id, const char* iconText, const char* tooltip = nullptr);
     void ToolbarEnd();
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     inline void SmallHelp(const char* text)
     {
@@ -136,5 +134,90 @@ namespace Motion::UI
             ImGui::PopTextWrapPos(); ImGui::EndTooltip();
         }
     }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    enum class TextureSlotResult
+    {
+        None,
+        LoadedNew,
+        Reloaded,
+        Cleared
+    };
+
+    enum class TextureSlotAction : int { Upload = 0, Reload, Clear, None };
+    using TextureSlotActionCallback = std::function<void(TextureSlotAction, std::shared_ptr<ITexture>&)>;
+
+    TextureSlotAction TextureSlot(const char* label, std::shared_ptr<ITexture>& tex, TextureType type, TextureSlotActionCallback onAction = nullptr, bool showLabelAbove = false, int previewSize = 100);
+    void EmptyTextureSlot(ImDrawList* dl, const ImRect& r, float cell = 10.0f);
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    struct GridTableOptions
+    {
+        ImVec2 cellPadding{ 8, 6 };   // inside each cell
+        bool   drawCellBg = false;
+        ImU32  cellBgColor = IM_COL32(40, 40, 40, 40);
+        float  rounding = 6.0f;
+        ImGuiTableFlags tableFlags = ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_NoPadOuterX | ImGuiTableFlags_NoHostExtendX | ImGuiTableFlags_BordersInner | ImGuiTableFlags_RowBg;
+    };
+
+    struct GridTableState
+    {
+        int cols = 0;
+        int cellIndex = 0;
+        ImVec2 cellSize;
+        ImVec2 pad;
+        bool drawBg = false;
+        ImU32 bgCol = 0;
+        float rounding = 0.0f;
+        ImGuiID id = 0;
+        bool began = false;
+    };
+
+    bool GridBegin(const char* id, int cols, ImVec2 cellSize = ImVec2(120, 120), const GridTableOptions& opt = {});
+    void GridEnd();
+    bool GridCellBegin();
+    void GridCellEnd();
+
+    struct Grid
+    {
+        bool  ok = false;
+        int   cols = 1;
+
+        Grid(const char* id, int columns, ImVec2 cellSize, const GridTableOptions& opts = {}) : cols(columns)
+        {
+            ok = UI::GridBegin(id, columns, cellSize, opts);
+        }
+
+        ~Grid()
+        {
+            if (ok) UI::GridEnd();
+        }
+
+        template <class Fn>
+        Grid& cell(Fn&& fn)
+        {
+            if (!ok) return *this;
+            if (UI::GridCellBegin())
+            {
+                std::forward<Fn>(fn)();
+                UI::GridCellEnd();
+            }
+
+            return *this;
+        }
+
+        template <class Fn>
+        Grid& times(int n, Fn&& fn)
+        {
+            for (int i = 0; i < n; ++i)
+                cell([&] { std::forward<Fn>(fn)(i); });
+
+            return *this;
+        }
+
+        Grid& newline();
+    };
 
 }

@@ -22,10 +22,10 @@ namespace Motion
     struct SceneEnvironment
     {
         SunLight Sun{};
-        std::shared_ptr<IEnvironment> Env;
+        std::shared_ptr<IEnvironment> EnvironmentInstance;
 
-        float    Exposure{ 1.0f };
-        float    Gamma{ 2.2f };
+        float Exposure{ 1.0f };
+        float Gamma{ 2.2f };
         glm::vec3 AmbientTint{ 1.0f, 1.0f, 1.0f };
 
         struct Fog
@@ -36,10 +36,10 @@ namespace Motion
 
         } FogSettings{};
 
-        inline void SetIBLIntensity(float diffuse, float specular) noexcept { if (Env) Env->SetIntensity({ diffuse, specular }); }
-        inline EnvIntensity GetIBLIntensity() const noexcept { return Env ? Env->GetIntensity() : EnvIntensity{}; }
-        inline void SetSkyboxRotationY(float radians) noexcept { if (Env) Env->SetSkyboxRotationY(radians); }
-        inline float GetSkyboxRotationY() const noexcept { return Env ? Env->GetSkyboxRotationY() : 0.0f; }
-        inline void BindIBLAll(std::uint32_t irrSlot, std::uint32_t preSlot, std::uint32_t brdfSlot) const noexcept { if (Env) Env->BindIBLAll(irrSlot, preSlot, brdfSlot); }
+        inline void SetIBLIntensity(float diffuse, float specular) noexcept { if (EnvironmentInstance) EnvironmentInstance->SetIntensity({ diffuse, specular }); }
+        inline EnvironmentIntensity GetIBLIntensity() const noexcept { return EnvironmentInstance ? EnvironmentInstance->GetIntensity() : EnvironmentIntensity{}; }
+        inline void SetSkyboxRotationY(float radians) noexcept { if (EnvironmentInstance) EnvironmentInstance->SetSkyboxRotationY(radians); }
+        inline float GetSkyboxRotationY() const noexcept { return EnvironmentInstance ? EnvironmentInstance->GetSkyboxRotationY() : 0.0f; }
+        inline void BindAll(std::uint32_t irrSlot, std::uint32_t preSlot, std::uint32_t brdfSlot) const noexcept { if (EnvironmentInstance) EnvironmentInstance->BindAll(irrSlot, preSlot, brdfSlot); }
     };
 }

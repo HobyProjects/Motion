@@ -28,6 +28,7 @@ namespace Motion
         ~BaseMaterial() = default;
 
         static void Import(const std::filesystem::path& materialYAML);
+        void SerializeYAML(const std::filesystem::path& outFile) const;
     };
 
     using MaterialHandle = entt::entity;

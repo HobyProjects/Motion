@@ -47,13 +47,9 @@ namespace Motion
             ImGui::EndPopup();
         }
 
-        // Click on empty space to clear selection
         if (ImGui::IsWindowHovered() && ImGui::IsMouseDown(ImGuiMouseButton_Left) && !ImGui::IsAnyItemHovered())
             ctx.ActiveScene->SelectedEntity(EntityFactory::EMPTYENTITY);
 
-        // ─────────────────────────────────────────────────────────────
-        // Entity tree
-        // ─────────────────────────────────────────────────────────────
         for (auto& ent : *ctx.ActiveScene)
         {
             auto& tag = ent->GetComponent<TagComponent>();
@@ -73,18 +69,14 @@ namespace Motion
 
             ImGui::PushID((void*)ent.get());
 
-            // Label with icon + name
             std::string label = std::format("{}  {}", iconEntity, tag.Tag);
-
             bool open = ImGui::TreeNodeEx("##node", flags, "%s", label.c_str());
 
-            // Click to select (both LMB and RMB to keep parity with your original)
             if (ImGui::IsItemClicked(ImGuiMouseButton_Left) || ImGui::IsItemClicked(ImGuiMouseButton_Right))
                 ctx.ActiveScene->SelectedEntity(ent);
 
             if (open)
             {
-                // ── Static Mesh Section(s)
                 if (ent->HasComponent<StaticMeshComponent>())
                 {
                     auto& model = ent->GetComponent<StaticMeshComponent>().Model;
@@ -103,10 +95,15 @@ namespace Motion
                             std::string maxBounds = glm::to_string(model->GetMaxBounds());
                             std::string filePath = model->GetSource();
 
-                            UI::TextBox("Mesh Count", meshCount, true);
-                            UI::TextBox("Min Bounds", minBounds, true);
-                            UI::TextBox("Max Bounds", maxBounds, true);
-                            UI::TextBox("File Path", filePath, true);
+                            if (UI::BeginPropertyGrid("##entity-details"))
+                            {
+                                UI::TextBox("Mesh Count", meshCount, true);
+                                UI::TextBox("Min Bounds", minBounds, true);
+                                UI::TextBox("Max Bounds", maxBounds, true);
+                                UI::TextBox("File Path", filePath, true);
+
+                                UI::EndPropertyGrid();
+                            }
                         }
                     }
                 }

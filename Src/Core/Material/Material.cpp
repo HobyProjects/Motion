@@ -85,5 +85,53 @@ namespace Motion
         _Registry.destroy(handle);
         material->Destroy();
     }
+
+    void BaseMaterial::SerializeYAML(const std::filesystem::path& outFile) const
+    {
+        YAML::Emitter out;
+        out << YAML::BeginMap;
+        out << YAML::Key << "Material" << YAML::Value << YAML::BeginMap;
+
+        out << YAML::Key << "Name" << YAML::Value << outFile.filename().stem().string();
+
+        out << YAML::Key << "Parameters" << YAML::Value << YAML::BeginMap;
+        out << YAML::Key << "BaseColor" << YAML::Value << YAML::Flow << YAML::BeginSeq << BaseColor.x << BaseColor.y << BaseColor.z << YAML::EndSeq;
+        out << YAML::Key << "MetallicFactor" << YAML::Value << MetallicFactor;
+        out << YAML::Key << "RoughnessFactor" << YAML::Value << RoughnessFactor;
+        out << YAML::Key << "OpacityFactor" << YAML::Value << OpacityFactor;
+        out << YAML::EndMap;
+
+        out << YAML::Key << "Textures" << YAML::Value << YAML::BeginMap;
+        auto writeTex =
+            [&](TextureType t, const char* key)
+            {
+                auto it = Textures.find(t);
+                if (it != Textures.end() && it->second)
+                {
+                    const auto& spec = it->second->GetSpecification();
+                    std::string path = spec.TextureFile.empty() ? fmt::format("<generated:{}:{}x{}>", GetTextureTypeString(t), spec.Width, spec.Height) : spec.TextureFile;
+                    out << YAML::Key << key << YAML::Value << path;
+                }
+            };
+
+        writeTex(TextureType::BaseColorTexture, "BaseColor");
+        writeTex(TextureType::MetallicTexture, "Metallic");
+        writeTex(TextureType::RoughnessTexture, "Roughness");
+        writeTex(TextureType::NormalTexture, "Normal");
+        writeTex(TextureType::AmbientOcclusionTexture, "AO");
+        writeTex(TextureType::EmissiveTexture, "Emissive");
+        writeTex(TextureType::OpacityTexture, "Opacity");
+        writeTex(TextureType::ORMTexture, "ORM");
+        writeTex(TextureType::DisplacementTexture, "Displacement");
+        out << YAML::EndMap;
+
+        out << YAML::EndMap; // Material
+        out << YAML::EndMap;
+
+        std::filesystem::create_directories(outFile.parent_path());
+        std::ofstream fout(outFile);
+        MOTION_ASSERT(fout.good(), "Failed to write material YAML '{}'", outFile.string());
+        fout << out.c_str();
+    }
 }
 

@@ -1,0 +1,14 @@
+Material:
+  Name: MetalBaseMaterial
+  Category: Metal
+  Parameters:
+    BaseColor: [0.95, 0.64, 0.54]
+    Metallic: 1.0
+    Roughness: 0.5
+    Opacity: 1.0
+  Textures:
+    BaseColor: Assets/Materials/Metal/Base_Color.png
+    Normal: Assets/Materials/Metal/Base_NormalGL.png
+    Roughness: Assets/Materials/Metal/Base_Roughness.png
+    Metallic: Assets/Materials/Metal/Base_Metalness.png
+    Displacement: Assets/Materials/Metal/Base_Displacement.png

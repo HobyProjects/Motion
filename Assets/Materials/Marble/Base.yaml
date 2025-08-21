@@ -1,0 +1,13 @@
+Material:
+  Name: MarbleBaseMaterial
+  Category: Marble
+  Parameters:
+    BaseColor: [0.9, 0.9, 0.9]
+    Metallic: 0.0
+    Roughness: 0.5
+    Opacity: 1.0
+  Textures:
+    BaseColor: Assets/Materials/Marble/Base_Color.png
+    Normal: Assets/Materials/Marble/Base_NormalGL.png
+    Roughness: Assets/Materials/Marble/Base_Roughness.png
+    Displacement: Assets/Materials/Marble/Base_Displacement.png

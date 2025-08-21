@@ -28,7 +28,7 @@ namespace Motion
 
             if (ImGui::CollapsingHeader(std::string(ICON_MD_LIGHTBULB "  Sun").c_str(), secFlags))
             {
-                if (UI::BeginPropertyGrid("sun-properties"))
+                if (UI::BeginPropertyGrid("##sun-properties"))
                 {
                     UI::DragFloat3(ICON_MD_DIRECTIONS "Direction", env.Sun.Direction);
                     UI::ColorEdit3(ICON_MD_PALETTE "Color", env.Sun.Color);
@@ -76,13 +76,13 @@ namespace Motion
                 else
                 {
                     auto intens = ibl->GetIntensity();
-                    UI::DragFloat(ICON_MD_TUNE "  Diffuse Intensity", &intens.Diffuse, 0.0f, 4.0f, 0.01f);
-                    UI::DragFloat(ICON_MD_TUNE "  Specular Intensity", &intens.Specular, 0.0f, 4.0f, 0.01f);
+                    UI::SliderFloat(ICON_MD_TUNE "  Diffuse Intensity", &intens.Diffuse, 0.0f, 10.0f);
+                    UI::SliderFloat(ICON_MD_TUNE "  Specular Intensity", &intens.Specular, 0.0f, 10.0f);
                     ibl->SetIntensity(intens);
 
                     // Skybox rotation (Y)
                     float rotY = ibl->GetSkyboxRotationY();
-                    if (UI::DragFloat(ICON_MD_ROTATE_90_DEGREES_CW "  Skybox Y Rotation", &rotY, -glm::pi<float>(), glm::pi<float>(), 0.005f))
+                    if (UI::SliderFloat(ICON_MD_ROTATE_90_DEGREES_CW "  Skybox Y Rotation", &rotY, -glm::pi<float>(), glm::pi<float>()))
                     {
                         ibl->SetSkyboxRotationY(rotY);
                     }

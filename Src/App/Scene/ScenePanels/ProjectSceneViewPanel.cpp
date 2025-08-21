@@ -60,13 +60,13 @@ namespace Motion
 
                 };
 
-            auto nameExists = [&](const std::string& n)
+            auto nameExists =
+                [&](const std::string& n)
                 {
                     for (const std::shared_ptr<Scene>& sc : *context.EditorLayerInstance)
                         if (sc->GetSpecification().Name == n) return true;
 
                     return false;
-
                 };
 
             if (!s_Error.empty())
@@ -234,20 +234,16 @@ namespace Motion
                 // Optional: inner Entities list (icon on header + bullets with tags)
                 if (open)
                 {
-                    std::string entitiesHeader = std::string(ICON_MD_LIST) + "  Entities";
-                    if (ImGui::CollapsingHeader(entitiesHeader.c_str(), hdrFlags))
+                    for (const auto& entity : *scene)
                     {
-                        for (const auto& entity : *scene)
+                        if (entity->HasComponent<TagComponent>())
                         {
-                            if (entity->HasComponent<TagComponent>())
-                            {
-                                const std::string& tag = entity->GetComponent<TagComponent>().Tag;
-                                ImGui::BulletText("%s  %s", ICON_MD_LABEL, tag.c_str());
-                            }
-                            else
-                            {
-                                ImGui::BulletText("%s  %s", ICON_MD_LABEL_OFF, "Unnamed Entity");
-                            }
+                            const std::string& tag = entity->GetComponent<TagComponent>().Tag;
+                            ImGui::BulletText("%s  %s", ICON_MD_LABEL, tag.c_str());
+                        }
+                        else
+                        {
+                            ImGui::BulletText("%s  %s", ICON_MD_LABEL_OFF, "Unnamed Entity");
                         }
                     }
                 }

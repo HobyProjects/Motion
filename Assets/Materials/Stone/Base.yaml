@@ -1,0 +1,15 @@
+Material:
+  Name: StoneBaseMaterial
+  Category: Stone
+  Parameters:
+    BaseColor: [0.5, 0.5, 0.5]
+    Metallic: 0.0
+    Roughness: 1.0
+    Opacity: 1.0
+  Textures:
+    BaseColor: Assets/Materials/Stone/Base_Color.png
+    Normal: Assets/Materials/Stone/Base_NormalGL.png
+    Roughness: Assets/Materials/Stone/Base_Roughness.png
+    Metallic: Assets/Materials/Stone/Base_Metalness.png
+    AmbientOcclusion: Assets/Materials/Stone/Base_AmbientOcclusion.png
+    Displacement: Assets/Materials/Stone/Base_Displacement.png

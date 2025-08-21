@@ -1,0 +1,13 @@
+Material:
+  Name: PlasticBaseMaterial
+  Category: Plastic
+  Parameters:
+    BaseColor: [0.9, 0.1, 0.1]
+    Metallic: 0.0
+    Roughness: 0.2
+    Opacity: 1.0
+  Textures:
+    BaseColor: Assets/Materials/Plastic/Base_Color.png
+    Normal: Assets/Materials/Plastic/Base_NormalGL.png
+    Roughness: Assets/Materials/Plastic/Base_Roughness.png
+    Displacement: Assets/Materials/Plastic/Base_Displacement.png

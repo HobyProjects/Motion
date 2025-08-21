@@ -1,6 +1,5 @@
 #include "CorePCH.hpp"
 #include "MaterialEditorPanel.hpp"
-#include <numeric>
 
 namespace Motion
 {

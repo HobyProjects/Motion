@@ -1,0 +1,13 @@
+Material:
+  Name: RubberBaseMaterial
+  Category: Rubber
+  Parameters:
+    BaseColor: [0.03, 0.03, 0.03]
+    Metallic: 0.0
+    Roughness: 0.2
+    Opacity: 1.0
+  Textures:
+    BaseColor: Assets/Materials/Rubber/Base_Color.png
+    Normal: Assets/Materials/Rubber/Base_NormalGL.png
+    Roughness: Assets/Materials/Rubber/Base_Roughness.png
+    Displacement: Assets/Materials/Rubber/Base_Displacement.png

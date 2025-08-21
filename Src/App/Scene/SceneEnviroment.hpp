@@ -9,7 +9,7 @@ namespace Motion
 {
     struct SunLight
     {
-        glm::vec3 Direction{ 0.0f, 0.0f, 0.0f };
+        glm::vec3 Direction{ -100.0f, -100.0f, -50.0f };
         glm::vec3 Color{ 1.0f,  1.0f,  1.0f };
         float Intensity{ 10.0f };
 

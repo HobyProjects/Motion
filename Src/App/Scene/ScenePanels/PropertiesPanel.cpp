@@ -41,14 +41,16 @@ namespace Motion
 
         if (selectedEntity->HasComponent<TagComponent>())
         {
+            UI::BeginPropertyGrid("##tag-grid");
             auto& tag = selectedEntity->GetComponent<TagComponent>();
             UI::TextBox(ICON_MD_LABEL" Name Tag", tag.Tag, false, 256);
+            UI::EndPropertyGrid();
         }
 
         DrawComponentControls<TransformComponent>(std::string(ICON_MD_OPEN_WITH "  Transform").c_str(), selectedEntity,
             [](TransformComponent& component)
             {
-                UI::BeginPropertyGrid("transform-grid");
+                UI::BeginPropertyGrid("##transform-grid");
                 UI::DragFloat3(ICON_MD_DIRECTIONS "  Translation", component.Translation, 0.0f, 0.1f);
                 UI::DragFloat3(ICON_MD_ROTATE_90_DEGREES_CW "  Rotation", component.Rotation, 0.1f, 0.0f);
                 UI::DragFloat3(ICON_MD_ZOOM_OUT_MAP "  Scale", component.Scale, 0.1f, 0.0f);

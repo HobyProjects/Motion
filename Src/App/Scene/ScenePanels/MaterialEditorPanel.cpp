@@ -189,161 +189,112 @@ namespace Motion
 
     void MaterialEditorPanel::DrawAttributes(std::shared_ptr<Material>& mat)
     {
-        auto baseMaterial = mat->GetBaseMaterial();
-        if (!baseMaterial)
+        if(mat->HasTexture<AlphaProperties>())
         {
-            MOTION_ASSERT(false, "Material has no BaseMaterial!");
-            return;
-        }
+            auto& A = mat->GetTexture<AlphaProperties>();
+            if(UI::BeginPropertyGrid("##alpha-prop"))
+            {                
+                ImGui::BeginDisabled(!A.OpacityTexture);
+                std::int32_t mode = static_cast<std::int32_t>(A.Mode);
+                UI::ComboBox("Alpha Mode", { "Opaque", "Mask", "Blend"}, mode, [&](std::int32_t newMode, const std::string&) { A.Mode = static_cast<AlphaMode>(newMode); });
+                
+                ImGui::BeginDisabled(mode != static_cast<std::int32_t>(AlphaMode::Mask));
+                UI::SliderFloat("Alpha Cutoff", &A.AlphaCutoff, 0.0f, 1.0f, "%.3f");
+                ImGui::EndDisabled();
 
-        if (mat->HasTexture<CoreTextures>())
-        {
-            auto& core = mat->GetTexture<CoreTextures>();
-            if (UI::CollapsibleSection("Core Texture Parameters"))
-            {
-                if (UI::BeginPropertyGrid("##core-pram"))
-                {
-                    if (core.AlbedoTexture)
-                        UI::ColorEdit3("Base Color", core.BaseColor);
-                    else
-                        UI::ColorEdit3("Base Color", baseMaterial->BaseColor);
+                UI::SliderFloat("Opacity Factor", &A.OpacityFactor, 0.0f, 1.0f, "%.3f");
+                ImGui::EndDisabled();
 
-                    if (core.MetallicTexture)
-                        UI::SliderFloat("Metallic Factor", &core.MetallicFactor, 0.0f, 1.0f);
-                    else
-                        UI::SliderFloat("Metallic Factor", &baseMaterial->MetallicFactor, 0.0f, 1.0f);
-
-                    if (core.RoughnessTexture)
-                        UI::SliderFloat("Roughness Factor", &core.RoughnessFactor, 0.0f, 1.0f);
-                    else
-                        UI::SliderFloat("Roughness Factor", &baseMaterial->RoughnessFactor, 0.0f, 1.0f);
-
-                    if (core.OpacityTexture)
-                        UI::SliderFloat("Opacity Factor", &core.Opacity, 0.0f, 1.0f);
-                    else
-                        UI::SliderFloat("Opacity Factor", &baseMaterial->OpacityFactor, 0.0f, 1.0f);
-
-                    UI::EndPropertyGrid();
-                }
+                UI::EndPropertyGrid();
             }
         }
 
-        if (mat->HasTexture<ExtendedTextures>())
+        ImGui::SeparatorEx(ImGuiSeparatorFlags_Horizontal, 3.0f);
+
+        if(mat->HasTexture<CorePBR>())
         {
-            auto& ext = mat->GetTexture<ExtendedTextures>();
-            if (UI::CollapsibleSection("Extended Texture Parameters"))
+            auto& C = mat->GetTexture<CorePBR>();
+
+            if(UI::BeginPropertyGrid("##core-pbr"))
             {
-                if (UI::BeginPropertyGrid("##ext-pram"))
-                {
-                    UI::SliderFloat("Clearcoat Factor", &ext.ClearcoatFactor, 0.0f, 1.0f);
-                    UI::SliderFloat("Clearcoat Roughness Factor", &ext.ClearcoatRoughnessFactor, 0.0f, 1.0f);
-                    UI::SliderFloat("Specular Level", &ext.SpecularLevel, 0.0f, 1.0f);
-                    UI::ColorEdit3("Specular Color", ext.SpecularColor);
+                ImGui::BeginDisabled(!C.BaseColorTexture);
+                UI::ColorEdit4("Base Color", C.BaseColorFactor);
+                ImGui::EndDisabled();
 
-                    UI::EndPropertyGrid();
-                }
+                ImGui::BeginDisabled(!C.MetallicTexture);
+                UI::SliderFloat("Metallic Factor", &C.MetallicFactor, 0.0f, 1.0f, "%.3f");
+                ImGui::EndDisabled();
+
+                ImGui::BeginDisabled(!C.RoughnessTexture);
+                UI::SliderFloat("Roughness Factor", &C.RoughnessFactor, 0.0f, 1.0f, "%.3f");
+                ImGui::EndDisabled();
+
+                ImGui::BeginDisabled(!C.NormalTexture);
+                UI::SliderFloat("Normal Scaling", &C.NormalScale, 0.0f, 1.0f, "%.3f");
+                ImGui::EndDisabled();
+
+                ImGui::BeginDisabled(!C.OcclusionTexture);
+                UI::SliderFloat("Occlusion Strength", &C.OcclusionStrength, 0.0f, 1.0f, "%.3f");
+                ImGui::EndDisabled();
+
+                ImGui::BeginDisabled(!C.EmissiveTexture);
+                UI::ColorEdit3("Emissive Factor", C.EmissiveFactor);
+                UI::SliderFloat("Emissive Strength", &C.EmissiveStrength, 0.0f, 1.0f, "%.3f");
+                ImGui::EndDisabled();
+
+                ImGui::BeginDisabled(!C.DisplacementTexture);
+                UI::SliderFloat("Displacement Scale", &C.DisplacementScale, 0.0f, 1.0f, "%.3f");
+                UI::SliderFloat("Displacement Bias", &C.DisplacementBias, -1.0f, 1.0f, "%.3f");
+                ImGui::EndDisabled();   
+
+                UI::EndPropertyGrid();
             }
+
+             ImGui::SeparatorEx(ImGuiSeparatorFlags_Horizontal);
         }
-
-        if (mat->HasTexture<SheenFabricTextures>())
-        {
-            auto& sheen = mat->GetTexture<SheenFabricTextures>();
-            if (UI::CollapsibleSection("Sheen & Fabric Parameters"))
-            {
-                if (UI::BeginPropertyGrid("##sheen-pram"))
-                {
-                    UI::ColorEdit3("Sheen Color", sheen.SheenColor);
-                    UI::SliderFloat("Sheen Roughness Factor", &sheen.SheenRoughness, 0.0f, 1.0f);
-
-                    UI::EndPropertyGrid();
-                }
-            }
-        }
-
-        if (mat->HasTexture<TransmissionSubsurfaceTextures>())
-        {
-            auto& trans = mat->GetTexture<TransmissionSubsurfaceTextures>();
-            if (UI::CollapsibleSection("Transmission & Subsurface Parameters"))
-            {
-                if (UI::BeginPropertyGrid("##trans-pram"))
-                {
-                    UI::SliderFloat("Transmission", &trans.Transmission, 0.0f, 1.0f);
-                    UI::SliderFloat("Thickness", &trans.Thickness, 0.0f, 1.0f);
-                    UI::ColorEdit3("Attenuation Color", trans.AttenuationColor);
-                    UI::SliderFloat("Attenuation Distance", &trans.AttenuationDistance, 0.0f, 1.0f);
-
-                    UI::EndPropertyGrid();
-                }
-            }
-        }
-
     }
 
     void MaterialEditorPanel::DrawTexturesSlots(std::shared_ptr<Material>& mat)
     {
-        if (mat->HasTexture<CoreTextures>())
+        if(mat->HasTexture<AlphaProperties>())
         {
-            auto& core = mat->GetTexture<CoreTextures>();
-            if (UI::CollapsibleSection("Core Textures"))
-            {
-                UI::Grid grid("##core-textures-grid", 4, ImVec2(100, 100));
-                grid.cell([&] { UI::TextureSlot("Base Color", core.AlbedoTexture, TextureType::BaseColorTexture);})
-                    .cell([&] { UI::TextureSlot("Metallic", core.MetallicTexture, TextureType::MetallicTexture);})
-                    .cell([&] { UI::TextureSlot("Roughness", core.RoughnessTexture, TextureType::RoughnessTexture);})
-                    .cell([&] { UI::TextureSlot("Normal Map", core.NormalMapTexture, TextureType::NormalTexture);})
-
-                    .newline()
-
-                    .cell([&] { UI::TextureSlot("Ambient Occlusion", core.AmbientOcclusionTexture, TextureType::AmbientOcclusionTexture);})
-                    .cell([&] { UI::TextureSlot("Displacement", core.DisplacementTexture, TextureType::DisplacementTexture);})
-                    .cell([&] { UI::TextureSlot("Emissive", core.EmissiveTexture, TextureType::EmissiveTexture);})
-                    .cell([&] { UI::TextureSlot("Opacity", core.OpacityTexture, TextureType::OpacityTexture);});
-            }
+            auto& A = mat->GetTexture<AlphaProperties>();
+            UI::TextureSlot("Opacity Texture", A.OpacityTexture, TextureType::OpacityTexture, nullptr, true);
         }
 
-        if (mat->HasTexture<ExtendedTextures>())
-        {
-            auto& ext = mat->GetTexture<ExtendedTextures>();
-            if (UI::CollapsibleSection("Extended Textures"))
-            {
-                UI::Grid grid("##extended-textures-grid", 4, ImVec2(100, 100));
-                grid.cell([&] { UI::TextureSlot("Clearcoat Texture", ext.ClearcoatTexture, TextureType::ClearcoatTexture); })
-                    .cell([&] { UI::TextureSlot("Clearcoat Roughness Texture", ext.ClearcoatRoughnessTexture, TextureType::ClearcoatRoughnessTexture); })
-                    .cell([&] { UI::TextureSlot("Specular Texture", ext.SpecularTexture, TextureType::SpecularTexture); })
-                    .cell([&] { UI::TextureSlot("Specular Color Texture", ext.SpecularColorTexture, TextureType::SpecularColorTexture); });
-            }
-        }
+        ImGui::SeparatorEx(ImGuiSeparatorFlags_Horizontal, 3.0f);
 
-        if (mat->HasTexture<PackedTextures>())
+        if(mat->HasTexture<CorePBR>())
         {
-            auto& packed = mat->GetTexture<PackedTextures>();
-            if (UI::CollapsibleSection("Packed Textures"))
-            {
-                UI::Grid grid("##packed-textures-grid", 1, ImVec2(100, 100));
-                grid.cell([&] { UI::TextureSlot("ORM Texture", packed.ORMTexture, TextureType::ORMTexture); });
-            }
-        }
+            auto& C = mat->GetTexture<CorePBR>();
 
-        if (mat->HasTexture<SheenFabricTextures>())
-        {
-            auto& sheen = mat->GetTexture<SheenFabricTextures>();
-            if (UI::CollapsibleSection("Sheen & Fabric Textures"))
+            struct TextureEntry { const char* Label; std::shared_ptr<ITexture>& Tex; TextureType Type; };
+            std::vector<TextureEntry> textures = 
             {
-                UI::Grid grid("##sheen-textures-grid", 2, ImVec2(100, 100));
-                grid.cell([&] { UI::TextureSlot("Sheen Texture", sheen.SheenTexture, TextureType::SheenTexture); });
-                grid.cell([&] { UI::TextureSlot("Sheen Roughness Texture", sheen.SheenRoughnessTexture, TextureType::SheenRoughnessTexture); });
-            }
-        }
+                {"Base Color", C.BaseColorTexture, TextureType::BaseColorTexture},
+                {"Metallic", C.MetallicTexture, TextureType::MetallicTexture},
+                {"Roughness", C.RoughnessTexture, TextureType::RoughnessTexture},
+                {"Normal", C.NormalTexture, TextureType::NormalTexture},
+                {"Occlusion", C.OcclusionTexture, TextureType::AmbientOcclusionTexture},
+                {"Emissive", C.EmissiveTexture, TextureType::EmissiveTexture},
+                {"Displacement", C.DisplacementTexture, TextureType::DisplacementTexture},
+            };
 
-        if (mat->HasTexture<TransmissionSubsurfaceTextures>())
-        {
-            auto& trans = mat->GetTexture<TransmissionSubsurfaceTextures>();
-            if (UI::CollapsibleSection("Transmission & Subsurface Textures"))
+            const int columns = 4;                     // number of cards per row
+            const float cardSpacing = 3.0f;            // space between cards
+
+            ImGui::BeginTable("##core-pbr", columns, ImGuiTableFlags_NoBordersInBody);
+
+            for(size_t i = 0; i < textures.size(); i++)
             {
-                UI::Grid grid("##transmission-textures-grid", 2, ImVec2(100, 100));
-                grid.cell([&] { UI::TextureSlot("Transmission Texture", trans.TransmissionTexture, TextureType::TransmissionTexture); });
-                grid.cell([&] { UI::TextureSlot("Thickness Texture", trans.ThicknessTexture, TextureType::ThicknessTexture); });
+                if(i % columns == 0)
+                    ImGui::TableNextRow();
+
+                ImGui::TableNextColumn();
+                UI::TextureSlot(textures[i].Label, textures[i].Tex, textures[i].Type, nullptr, true);
             }
+
+            ImGui::EndTable();
         }
     }
 }

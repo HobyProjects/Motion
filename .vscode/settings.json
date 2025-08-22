@@ -163,7 +163,7 @@
     "C_Cpp.intelliSenseEngine": "default",
     "C_Cpp.enhancedColorization": "enabled",
     "C_Cpp.autocompleteAddParentheses": true,
-    "C_Cpp.formatting": "vcFormat",
+    "C_Cpp.formatting": "default",
     "editor.formatOnSave": true,
     "editor.tabSize": 4,
     "editor.insertSpaces": true,
@@ -299,5 +299,6 @@
         "VOUT",
         "xyww"
     ],
-    "dotnet.defaultSolution": "build/Debug-x64/Motion.sln"
+    "dotnet.defaultSolution": "build/Debug-x64/Motion.sln",
+    "C_Cpp.clang_format_fallbackStyle": "none"
 }

@@ -82,7 +82,7 @@ namespace Motion::UI
     }
 
     using ActionFn = std::function<void()>;
-    using ComboChangedFn = std::function<void(int, const std::string&)>;
+    using ComboChangedFn = std::function<void(std::int32_t, const std::string&)>;
 
     bool DragFloat(const char* label, float* v, float speed = 0.1f, float minV = -FLT_MAX, float maxV = FLT_MAX, const char* fmt = "%.3f");
     bool DragFloat2(const char* label, float v[2], float speed = 0.1f, float minV = -FLT_MAX, float maxV = FLT_MAX, const char* fmt = "%.3f");

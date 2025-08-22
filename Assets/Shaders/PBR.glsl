@@ -434,7 +434,7 @@ void main()
     if (HasTexture(TB_Anisotropy))
     {
         // Texture .rg in [0..1] → [-1..1] tangent-space direction
-        vec2 rg = texture(u_Textures.AnisotropyTexture, UV).rg * 2.0 - 1.0;
+        vec2 rg = texture(u_AnisotropyTexture, UV).rg * 2.0 - 1.0;
         float len = length(rg);
         if (len > 1e-4)
         {
@@ -496,11 +496,11 @@ void main()
 
     // Optional masks
     if (HasTexture(TB_Iridescence))
-        iriFactor *= texture(u_Textures.IridescenceTexture, UV).r;
+        iriFactor *= texture(u_IridescenceTexture, UV).r;
 
     float tLerp = 0.5;
     if (HasTexture(TB_IridescenceThick))
-        tLerp = texture(u_Textures.IridescenceThicknessTexture, UV).r;
+        tLerp = texture(u_IridescenceThicknessTexture, UV).r;
 
     float iriThickness = mix(iriThickMin, iriThickMax, tLerp);
 

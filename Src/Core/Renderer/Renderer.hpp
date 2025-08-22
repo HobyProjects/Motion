@@ -10,28 +10,30 @@ namespace Motion
 {
     enum class RenderingAPI : std::uint8_t
     {
-        OpenGL = Bits<1>::value,
-        Vulkan = Bits<2>::value,
-        DirectX = Bits<3>::value
+        OpenGL      = Bits<1>::value,
+        Vulkan      = Bits<2>::value,
+        DirectX     = Bits<3>::value
     };
 
-    enum DrawFlags : std::uint8_t
+    enum class DrawFlags : std::uint8_t
     {
-        DepthTest = Bits<1>::value,
-        SkipDepthMask = Bits<2>::value,
-        Wireframe = Bits<3>::value,
+        DepthTest       = Bits<1>::value,
+        SkipDepthMask   = Bits<2>::value,
+        Wireframe       = Bits<3>::value,
+        CullFace        = Bits<4>::value,
+        Blending        = Bits<5>::value
     };
 
-    enum class DepthFunction : GLenum
+    enum class DepthFunction : std::uint32_t
     {
-        Never = Bits<1>::value,
-        Less = Bits<2>::value,
-        Equal = Bits<3>::value,
-        LessEqual = Bits<4>::value,
-        Greater = Bits<5>::value,
-        NotEqual = Bits<6>::value,
-        GreaterEqual = Bits<7>::value,
-        Always = Bits<8>::value
+        Never           = Bits<1>::value,
+        Less            = Bits<2>::value,
+        Equal           = Bits<3>::value,
+        LessEqual       = Bits<4>::value,
+        Greater         = Bits<5>::value,
+        NotEqual        = Bits<6>::value,
+        GreaterEqual    = Bits<7>::value,
+        Always          = Bits<8>::value
     };
 
     inline std::uint8_t operator|(RenderingAPI a, RenderingAPI b) { return static_cast<std::uint8_t>(a) | static_cast<std::uint8_t>(b); }

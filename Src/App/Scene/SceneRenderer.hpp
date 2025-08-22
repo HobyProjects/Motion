@@ -6,38 +6,36 @@
 #include "Model.hpp"
 #include "SceneEnviroment.hpp"
 #include "Environment.hpp"
+#include "Shaders.hpp"
 
 namespace Motion
 {
-    class Scene; // forward declaration
-
+    class Scene; 
     struct SceneDrawCommand
     {
-        // Sort/group key — e.g., per-view or per-camera id
-        UUID   SortKey{ 0 };
+        UUID            SortKey{ 0 };
 
-        // Draw payload
-        Material* MaterialPointer{ nullptr };
-        Mesh* MeshPtr{ nullptr };
-        IEnvironment* EnvironmentPtr{ nullptr };
+        Material*           MaterialPointer{ nullptr };
+        Mesh*               MeshPointer{ nullptr };
+        IEnvironment*       EnvironmentPointer{ nullptr };
 
-        // Transforms & camera
+        ShaderFeatureMask   ShaderMask{ GLSL_SHADER_EXT_NONE };
+        DrawFlags           Flags{ DrawFlags::DepthTest | DrawFlags::CullFace };
+
         glm::mat4 ModelMatrix{ 1.0f };
         glm::mat4 ViewMatrix{ 1.0f };
         glm::mat4 ProjectionMatrix{ 1.0f };
         glm::mat3 NormalMatrix{ 1.0f };
         glm::vec3 CameraPosition{ 0.0f, 0.0f, 0.0f };
 
-        // Single directional light (“Sun”) pushed per view
         glm::vec3 SunDirection{ 0.0f, -1.0f, 0.0f };
         glm::vec3 SunColor{ 1.0f, 1.0f, 1.0f };
         float     SunIntensity{ 0.0f };
 
-        // Sort by view, then material, environment, mesh to reduce state changes
         bool operator<(const SceneDrawCommand& other) const
         {
-            return std::tie(SortKey, MaterialPointer, EnvironmentPtr, MeshPtr)
-                < std::tie(other.SortKey, other.MaterialPointer, other.EnvironmentPtr, other.MeshPtr);
+            return std::tie(SortKey, MaterialPointer, EnvironmentPointer, MeshPointer)
+                < std::tie(other.SortKey, other.MaterialPointer, other.EnvironmentPointer, other.MeshPointer);
         }
     };
 

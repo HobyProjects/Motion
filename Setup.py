@@ -358,7 +358,7 @@ def main():
     Logger.info("==========================================")
     Logger.info(f"Build Configuration: {args.config}")
     Logger.info(f"Build Packages : {', '.join([pkg.name for pkg in packages])}")
-    Logger.info(f"System Name: {platform.system()}")
+    Logger.info(f"System: {platform.system()}")
     Logger.info("==========================================")
 
     generator = detect_generator()

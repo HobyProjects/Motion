@@ -366,34 +366,42 @@ namespace Motion::UI
     TextureSlotAction TextureSlot(const char* label, std::shared_ptr<ITexture>& tex, TextureType type, TextureSlotActionCallback onAction, bool showLabelAbove, int previewSize)
     {
         TextureSlotAction result = TextureSlotAction::None;
-
         ImGui::PushID(label);
-        if (showLabelAbove)
-        {
-            ImGui::TextUnformatted(label);
-            ImGui::Spacing();
-        }
 
-        float size = (float)previewSize;
+        // Card styling
+        float padding = 8.0f;
+        float cornerRadius = 8.0f;
+        ImVec2 size((float)previewSize, (float)previewSize);
+
         ImVec2 p0 = ImGui::GetCursorScreenPos();
-        ImRect rect(p0, ImVec2(p0.x + size, p0.y + size));
+        ImVec2 p1 = ImVec2(p0.x + size.x + padding * 2, p0.y + size.y + padding * 2 + ImGui::GetTextLineHeight() * 1.5f);
+        ImRect cardRect(p0, p1);
 
+        // Draw card background
         auto* dl = ImGui::GetWindowDrawList();
-        EmptyTextureSlot(dl, rect, 10.0f);
+        ImU32 colBg = ImGui::GetColorU32(ImGuiCol_FrameBg);
+        ImU32 colHover = ImGui::GetColorU32(ImGuiCol_HeaderHovered);
+        bool hovered = ImGui::IsMouseHoveringRect(cardRect.Min, cardRect.Max);
+
+        dl->AddRectFilled(cardRect.Min, cardRect.Max, hovered ? colHover : colBg, cornerRadius);
+
+        // Draw texture preview
+        ImVec2 texPos = ImVec2(p0.x + padding, p0.y + padding);
+        ImRect texRect(texPos, ImVec2(texPos.x + size.x, texPos.y + size.y));
 
         if (tex)
-        {
-            ImGui::SetCursorScreenPos(rect.Min);
-            ImGui::Image(AsImTextureID(tex), ImVec2(size, size), ImVec2(0, 1), ImVec2(1, 0));
-        }
+            dl->AddImage(AsImTextureID(tex), texRect.Min, texRect.Max, ImVec2(0, 1), ImVec2(1, 0));
         else
         {
-            ImGui::SetCursorScreenPos(ImVec2(rect.Min.x + 8, rect.Min.y + size * 0.5f - ImGui::GetTextLineHeight() * 0.5f));
+            // empty slot placeholder
+            dl->AddRect(texRect.Min, texRect.Max, ImGui::GetColorU32(ImGuiCol_Border), cornerRadius);
+            ImGui::SetCursorScreenPos(ImVec2(texRect.Min.x + 4, texRect.Min.y + size.y * 0.5f - ImGui::GetTextLineHeight() * 0.5f));
             ImGui::TextDisabled("Click to load");
         }
 
-        ImGui::SetCursorScreenPos(rect.Min);
-        ImGui::InvisibleButton("tex_btn", ImVec2(size, size));
+        // Invisible button to handle interactions
+        ImGui::SetCursorScreenPos(texRect.Min);
+        ImGui::InvisibleButton("tex_card_btn", ImVec2(size.x, size.y));
 
         if (ImGui::IsItemHovered())
         {
@@ -409,9 +417,8 @@ namespace Motion::UI
             {
                 const auto& sp = tex->GetSpecification();
                 if (!sp.TextureFile.empty()) ImGui::TextUnformatted(sp.TextureFile.c_str());
-                ImGui::Text("Size: %ux%u", sp.Width, sp.Height);
+                ImGui::Text("Size: %u x %u", sp.Width, sp.Height);
             }
-
             ImGui::EndTooltip();
         }
 
@@ -420,89 +427,47 @@ namespace Motion::UI
             std::filesystem::path path = DialogBoxes::OpenFileDialog();
             if (!path.empty())
             {
-                if (!tex) tex = ITexture::Create(path, type);
-                else      tex->ReloadFromFile(path, type);
-                if (onAction)
-                {
-                    onAction(TextureSlotAction::Upload, tex);
-                    result = TextureSlotAction::Upload;
-                }
-                else
-                {
-                    result = TextureSlotAction::Upload;
-                }
+                if (!tex)       tex = ITexture::Create(path, type);
+                else            tex->ReloadFromFile(path, type);
+                if (onAction)   onAction(TextureSlotAction::Upload, tex);
+                result          = TextureSlotAction::Upload;
             }
         }
 
-        if (ImGui::BeginPopupContextItem("tex_ctx"))
+        // Context menu
+        if (ImGui::BeginPopupContextItem("tex_card_ctx"))
         {
-            if (ImGui::MenuItem(ICON_MD_UPLOAD " Load Texture"))
+            if (ImGui::MenuItem("Load Texture"))
             {
                 std::filesystem::path path = DialogBoxes::OpenFileDialog();
                 if (!path.empty())
                 {
-                    if (!tex) tex = ITexture::Create(path, type);
-                    else      tex->ReloadFromFile(path, type);
-
-                    if (onAction)
-                    {
-                        onAction(TextureSlotAction::Upload, tex);
-                        result = TextureSlotAction::Upload;
-                    }
-                    else
-                    {
-                        result = TextureSlotAction::Upload;
-                    }
+                    if (!tex)       tex = ITexture::Create(path, type);
+                    else            tex->ReloadFromFile(path, type);
+                    if (onAction)   onAction(TextureSlotAction::Upload, tex);
+                    result          = TextureSlotAction::Upload;
                 }
             }
+
             bool canReload = tex && !tex->GetSpecification().TextureFile.empty();
-            if (ImGui::MenuItem(ICON_MD_REFRESH " Reload", nullptr, false, canReload))
+            if (ImGui::MenuItem("Reload", nullptr, false, canReload))
             {
                 tex->ReloadFromFile(tex->GetSpecification().TextureFile, type);
-                if (onAction)
-                {
-                    onAction(TextureSlotAction::Reload, tex);
-                    result = TextureSlotAction::Reload;
-                }
-                else
-                {
-                    result = TextureSlotAction::Reload;
-                }
+                if (onAction)   onAction(TextureSlotAction::Reload, tex);
+                result          = TextureSlotAction::Reload;
             }
-            if (ImGui::MenuItem(ICON_MD_CLEAR " Clear", nullptr, false, tex != nullptr))
+
+            if (ImGui::MenuItem("Clear", nullptr, false, tex != nullptr))
             {
-                std::shared_ptr<ITexture> emptyTex{ nullptr };
-                tex.swap(emptyTex);
-
-                tex = nullptr;
-                emptyTex.reset();
-
-                if (onAction)
-                {
-                    onAction(TextureSlotAction::Clear, tex);
-                    result = TextureSlotAction::Clear;
-                }
-                else
-                {
-                    result = TextureSlotAction::Clear;
-                }
+                tex.reset();
+                if (onAction)   onAction(TextureSlotAction::Clear, tex);
+                result          = TextureSlotAction::Clear;
             }
-            if (tex)
-            {
-                ImGui::Separator();
-                if (ImGui::MenuItem(ICON_MD_FLIP " Flip", nullptr, false, tex != nullptr))
-                {
-                    bool flipped = tex->GetSpecification().FlipOnLoadDefault;
-                    tex->ReloadFromFile(tex->GetSpecification().TextureFile, type, !flipped);
-                }
 
-                ImGui::Separator();
-                if (ImGui::MenuItem(ICON_MD_FILE_COPY " Copy Path", nullptr, false, !tex->GetSpecification().TextureFile.empty()))
-                    ImGui::SetClipboardText(tex->GetSpecification().TextureFile.c_str());
-            }
             ImGui::EndPopup();
         }
 
+        // Drag & drop
         if (ImGui::BeginDragDropTarget())
         {
             if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("ASSET_PATH"))
@@ -510,31 +475,54 @@ namespace Motion::UI
                 const char* path = (const char*)payload->Data;
                 if (path && *path)
                 {
-                    if (!tex) tex = ITexture::Create(path, type);
-                    else      tex->ReloadFromFile(path, type);
-                    if (onAction)
-                    {
-                        onAction(TextureSlotAction::Upload, tex);
-                        result = TextureSlotAction::Upload;
-                    }
-                    else
-                    {
-                        result = TextureSlotAction::Upload;
-                    }
+                    if (!tex)       tex = ITexture::Create(path, type);
+                    else            tex->ReloadFromFile(path, type);
+                    if (onAction)   onAction(TextureSlotAction::Upload, tex);
+                    result          = TextureSlotAction::Upload;
                 }
             }
-
             ImGui::EndDragDropTarget();
         }
 
-        ImGui::SetCursorScreenPos(ImVec2(rect.Min.x, rect.Max.y + 6));
-        ImGui::PushTextWrapPos(rect.Min.x + size);
+        // Draw texture name below preview
+        ImGui::SetCursorScreenPos(ImVec2(p0.x + padding, texRect.Max.y + 4));
+        ImGui::PushTextWrapPos(texRect.Max.x);
         ImGui::TextUnformatted(NiceFilename(tex).c_str());
         ImGui::PopTextWrapPos();
 
         ImGui::Dummy(ImVec2(0, 12));
         ImGui::PopID();
         return result;
+    }
+
+    void TextureSlotGridDynamic(std::vector<std::shared_ptr<ITexture>>& textures, TextureSlotActionCallback onAction, int previewSize, float padding, bool showLabelAbove)
+    {
+        if (textures.empty())
+            return;
+
+        ImGui::BeginChild("##TextureGridChild", ImVec2(0, 0), false, ImGuiWindowFlags_AlwaysUseWindowPadding);
+
+        float availWidth = ImGui::GetContentRegionAvail().x;
+        float itemSize = (float)previewSize + padding;
+        int columns = std::max(1, (int)(availWidth / itemSize));
+
+        int currentColumn = 0;
+        for (size_t i = 0; i < textures.size(); i++)
+        {
+            TextureSlot(("##tex" + std::to_string(i)).c_str(), textures[i], textures[i]->GetSpecification().Type, onAction, showLabelAbove, previewSize);
+
+            currentColumn++;
+            if (currentColumn < columns)
+            {
+                ImGui::SameLine(); // continue on the same row
+            }
+            else
+            {
+                currentColumn = 0; // move to next row
+            }
+        }
+
+        ImGui::EndChild();
     }
 
     static GridTableState& _grid()

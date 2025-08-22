@@ -26,8 +26,7 @@ namespace Motion
         AM.Create<IShader>("ENV_PRE", "Assets/Shaders/EnvironmentPrefiltered.glsl");
         AM.Create<IShader>("ENV_CUB", "Assets/Shaders/EnvironmentCubeConverter.glsl");
         AM.Create<IShader>("ENV_BRD", "Assets/Shaders/EnvironmentBRDF.glsl");
-        AM.Create<IShader>("PBR", "Assets/Shaders/PBR.glsl");
-        AM.Create<IShader>("PHONG", "Assets/Shaders/Phong.glsl");
+        AM.Create<IShader>("PBR", "Assets/Shaders/ModularPBR.glsl");
 
         BaseMaterial::Import("Assets/Materials/Base/Metal/Base.yaml");
 

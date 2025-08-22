@@ -356,12 +356,12 @@ namespace Motion
                     {
                         const BufferLayout layout
                         {
-                            {UniformCache::Position,    BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Position)},
-                            {UniformCache::TexCoords,   BufferComponents::UV,  BufferStride::F2, false, offsetof(Vertex, TexCoord)},
-                            {UniformCache::Normals,     BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Normal)},
-                            {UniformCache::Tangents,    BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Tangent)},
-                            {UniformCache::Bitangents,  BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Bitangent)},
-                            {UniformCache::TangentSign, BufferComponents::X,   BufferStride::F1, false, offsetof(Vertex, TangentSign)}
+                            {"a_Position",    BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Position)},
+                            {"a_TexCoords",   BufferComponents::UV,  BufferStride::F2, false, offsetof(Vertex, TexCoord)},
+                            {"a_Normals",     BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Normal)},
+                            {"a_Tangents",    BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Tangent)},
+                            {"a_Bitangents",  BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Bitangent)},
+                            {"a_TangentSign", BufferComponents::X,   BufferStride::F1, false, offsetof(Vertex, TangentSign)}
                         };
 
                         auto meshPtr = Mesh::Create(mesh.Vertices.data(), static_cast<std::uint32_t>(mesh.Vertices.size()), mesh.Indices.data(), static_cast<std::uint32_t>(mesh.Indices.size()), layout, staticMesh);

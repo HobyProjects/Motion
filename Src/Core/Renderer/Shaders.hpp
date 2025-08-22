@@ -15,98 +15,119 @@
 
 namespace Motion
 {
-    using ShaderID = std::int32_t;
-    using ShaderProgramID = std::int32_t;
-    using UniformLocation = std::int32_t;
+    using ShaderID          = std::int32_t;
+    using ShaderProgramID   = std::int32_t;
+    using UniformLocation   = std::int32_t;
 
     enum class ShaderType : std::int32_t
     {
-        None = 0,
-        Vertex = 1,
-        Fragment = 2,
-        Geometry = 3,
-        Compute = 4,
-        TessellationControl = 5,
-        TessellationEvaluation = 6
+        None                    = 0,
+        Vertex                  = 1,
+        Fragment                = 2,
+        Geometry                = 3,
+        Compute                 = 4,
+        TessellationControl     = 5,
+        TessellationEvaluation  = 6
     };
 
     inline std::int32_t operator|(ShaderType a, ShaderType b) { return static_cast<std::int32_t>(a) | static_cast<std::int32_t>(b); }
     inline std::int32_t operator&(ShaderType a, ShaderType b) { return static_cast<std::int32_t>(a) & static_cast<std::int32_t>(b); }
 
-    struct UniformCache
-    {
-        inline static constexpr std::string_view Position = "a_Position";
-        inline static constexpr std::string_view TexCoords = "a_TexCoords";
-        inline static constexpr std::string_view Normals = "a_Normals";
-        inline static constexpr std::string_view Tangents = "a_Tangents";
-        inline static constexpr std::string_view Bitangents = "a_Bitangents";
-        inline static constexpr std::string_view TangentSign = "a_TangentSign";
-
-        inline static constexpr std::string_view ViewProjMatrix = "u_ViewProjMatrix";
-        inline static constexpr std::string_view ViewMatrix = "u_ViewMatrix";
-        inline static constexpr std::string_view ProjectionMatrix = "u_ProjectionMatrix";
-        inline static constexpr std::string_view ModelMatrix = "u_ModelMatrix";
-        inline static constexpr std::string_view NormalMatrix = "u_NormalMatrix";
-
-        inline static constexpr std::string_view CameraPosition = "u_CameraPosition";
-        inline static constexpr std::string_view LightPosition = "u_LightPosition";
-        inline static constexpr std::string_view LightColor = "u_LightColor";
-        inline static constexpr std::string_view LightIntensity = "u_LightIntensity";
-
-        inline static constexpr std::string_view PBR_BaseColorTextures = "u_BaseColorTextures";
-        inline static constexpr std::string_view PBR_MetallicTextures = "u_MetallicTextures";
-        inline static constexpr std::string_view PBR_RoughnessTextures = "u_RoughnessTextures";
-        inline static constexpr std::string_view PBR_AmbientOcclusionTextures = "u_AmbientOcclusionTextures";
-        inline static constexpr std::string_view PBR_DisplacementTextures = "u_DisplacementTextures";
-        inline static constexpr std::string_view PBR_NormalTextures = "u_NormalTextures";
-
-        inline static constexpr std::string_view STD_DiffuseTexture = "u_DiffuseTexture";
-        inline static constexpr std::string_view STD_SpecularTexture = "u_SpecularTexture";
-        inline static constexpr std::string_view STD_NormalTexture = "u_NormalTexture";
-        inline static constexpr std::string_view STD_EmissiveTexture = "u_EmissiveTexture";
-        inline static constexpr std::string_view STD_OpacityTexture = "u_OpacityTexture";
-
-        inline static constexpr std::string_view EnvironmentTexture = "u_EnvironmentTexture";
-        inline static constexpr std::string_view PrefilteredRoughness = "u_PrefilteredRoughness";
-        inline static constexpr std::string_view IrradianceTextures = "u_IrradianceTextures";
-        inline static constexpr std::string_view PrefilteredTextures = "u_PrefilteredTextures";
-        inline static constexpr std::string_view PrefilteredResolution = "u_PrefilteredResolution";
-        inline static constexpr std::string_view EquiRectangular = "u_EquiRectangular";
-        inline static constexpr std::string_view BRDFLUT = "u_BRDFLUT";
-    };
-
     class IShader : public IAsset
     {
     public:
-        IShader() = default;
-        virtual ~IShader() = default;
+        IShader()           = default;
+        virtual ~IShader()  = default;
 
-        virtual void Bind() const = 0;
-        virtual void Unbind() const = 0;
+        virtual void Bind()     const = 0;
+        virtual void Unbind()   const = 0;
 
-        virtual void SetUniform(const std::string_view uniformName, float value) = 0;
-        virtual void SetUniform(const std::string_view uniformName, std::int32_t value) = 0;
-        virtual void SetUniform(const std::string_view uniformName, const glm::vec2& value) = 0;
-        virtual void SetUniform(const std::string_view uniformName, const glm::vec3& value) = 0;
-        virtual void SetUniform(const std::string_view uniformName, const glm::vec4& value) = 0;
-        virtual void SetUniform(const std::string_view uniformName, const glm::mat2& value) = 0;
-        virtual void SetUniform(const std::string_view uniformName, const glm::mat3& value) = 0;
-        virtual void SetUniform(const std::string_view uniformName, const glm::mat4& value) = 0;
-        virtual void SetUniform(const std::string_view uniformName, std::int32_t size, std::uint32_t* values) = 0;
+        virtual void SetUniform(const std::string_view uniformName,             float value) = 0;
+        virtual void SetUniform(const std::string_view uniformName,      std::int32_t value) = 0;
+        virtual void SetUniform(const std::string_view uniformName,  const glm::vec2& value) = 0;
+        virtual void SetUniform(const std::string_view uniformName,  const glm::vec3& value) = 0;
+        virtual void SetUniform(const std::string_view uniformName,  const glm::vec4& value) = 0;
+        virtual void SetUniform(const std::string_view uniformName,  const glm::mat2& value) = 0;
+        virtual void SetUniform(const std::string_view uniformName,  const glm::mat3& value) = 0;
+        virtual void SetUniform(const std::string_view uniformName,  const glm::mat4& value) = 0;
+        virtual void SetUniform(const std::string_view uniformName,  std::int32_t size, std::uint32_t* values) = 0;
 
-        [[nodiscard]] virtual ShaderProgramID ProgramID() const = 0;
-        [[nodiscard]] virtual std::string GetName() const = 0;
-        [[nodiscard]] virtual UniformLocation GetUniformLocation(const std::string_view uniformName) = 0;
+        [[nodiscard]] virtual ShaderProgramID   ProgramID() const = 0;
+        [[nodiscard]] virtual std::string       GetName()   const = 0;
+        [[nodiscard]] virtual UniformLocation   GetUniformLocation(const std::string_view uniformName) = 0;
 
         static void AttachShaderProgram(ShaderID shaderID, ShaderProgramID programID);
         static void LinkShaderProgram(ShaderProgramID programID);
         static void ValidateShaderProgram(ShaderProgramID programID);
         static void DeleteShaderProgram(ShaderProgramID programID);
 
-        [[nodiscard]] static ShaderProgramID CreateShaderProgram();
-        [[nodiscard]] static std::string ReadShaderFile(const std::filesystem::path& filePath);
-        [[nodiscard]] static ShaderID CompileShader(ShaderType shaderType, const std::string& sourceCode);
+        [[nodiscard]] static ShaderProgramID    CreateShaderProgram();
+        [[nodiscard]] static std::string        ReadShaderFile(const std::filesystem::path& filePath);
+        [[nodiscard]] static ShaderID           CompileShader(ShaderType shaderType, const std::string& sourceCode);
+        
         [[nodiscard]] static std::unordered_map<ShaderType, std::string> ReadFullShaderFile(const std::filesystem::path& filePath);
         [[nodiscard]] static std::unordered_map<ShaderType, std::string> ReadShaderFiles(const std::filesystem::path& vertexPath, const std::filesystem::path& fragmentPath);
+    };
+
+    using ShaderFeatureMask = std::uint32_t;
+    enum : ShaderFeatureMask
+    {
+        GLSL_SHADER_EXT_NONE               = 1 << 0,
+        GLSL_SHADER_EXT_CLEARCOAT          = 1 << 1,
+        GLSL_SHADER_EXT_SPECULAR           = 1 << 2,
+        GLSL_SHADER_EXT_SHEEN              = 1 << 3,
+        GLSL_SHADER_EXT_TRANSMISSION       = 1 << 4,
+        GLSL_SHADER_EXT_VOLUME             = 1 << 5,
+        GLSL_SHADER_EXT_IRIDESCENCE        = 1 << 6,
+        GLSL_SHADER_EXT_ANISOTROPY         = 1 << 7
+    };
+
+    struct ShaderVariantKey
+    {
+        UUID                    BaseShaderID;
+        ShaderFeatureMask       Features;
+        std::filesystem::path   SourceFiles;
+
+        bool operator==(const ShaderVariantKey& other) const
+        {
+            return BaseShaderID == other.BaseShaderID && Features == other.Features && SourceFiles == other.SourceFiles;
+        }
+    };
+
+    struct ShaderVariantHashCode
+    {
+        std::size_t operator()(const ShaderVariantKey& key) const
+        {
+            std::size_t hash    = std::hash<UUID>()(key.BaseShaderID);
+            hash               ^= std::hash<ShaderFeatureMask>()(key.Features);
+            hash               ^= std::hash<std::filesystem::path>()(key.SourceFiles);
+            return hash;
+        }
+    };
+
+    class ShaderVariant
+    {
+    private:
+        ShaderVariant()     = default;
+        ~ShaderVariant()    = default;
+
+        ShaderVariant(const ShaderVariant&)             = delete;
+        ShaderVariant& operator=(const ShaderVariant&)  = delete;
+        ShaderVariant(ShaderVariant&&)                  = delete;
+        ShaderVariant& operator=(ShaderVariant&&)       = delete;
+
+    public:
+        static ShaderVariant& GetInstance()
+        {
+            static ShaderVariant    instance;
+            return                  instance;
+        }
+
+    public:
+        std::shared_ptr<IShader>    MakeAccessible(UUID baseUUID, const std::string& baseName, const std::filesystem::path& sourceFile, ShaderFeatureMask features);
+        void                        Invalidate(UUID baseUUID);
+
+    private:
+        std::unordered_map<ShaderVariantKey, std::weak_ptr<IShader>, ShaderVariantHashCode> m_ShaderCache;
     };
 }

@@ -11,6 +11,7 @@ namespace Motion
     {
         AlphaMode Mode{ AlphaMode::Opaque };
         float AlphaCutoff{ 0.5f }; // used only when Mode == Mask
+        
         // Some content exports an Opacity texture; keep factor for scalar control.
         float OpacityFactor{ 1.0f };
         std::shared_ptr<ITexture> OpacityTexture{ nullptr };
@@ -21,7 +22,7 @@ namespace Motion
     {
         // Base color / albedo (sRGB)
         std::shared_ptr<ITexture> BaseColorTexture{ nullptr };
-        glm::vec3 BaseColorFactor{ 1.0f, 1.0f, 1.0f };
+        glm::vec4 BaseColorFactor{ 1.0f, 1.0f, 1.0f, 1.0f };
 
         // Metallic/Roughness workflow (linear)
         // Support either separate textures or packed ORM (see PackedMaps).
@@ -101,11 +102,6 @@ namespace Motion
         float ThicknessFactor{ 0.0f };          // meters, typically [0..1] range from exporters
         float AttenuationDistance{ 0.0f };      // 0 = infinity (no absorption)
         glm::vec3 AttenuationColor{ 1.0f, 1.0f, 1.0f };
-    };
-
-    // --- KHR_materials_ior ----------------------------------------------------
-    struct IORExtension
-    {
         float IOR{ 1.5f };
     };
 

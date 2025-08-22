@@ -10,11 +10,11 @@
 
 namespace Motion
 {
-    inline constexpr std::int32_t SHADER_BUFFER_DEFAULT_SIZE = 1024;
-    inline constexpr std::int32_t SHADER_BUFFER_MAX_SIZE = 65536;
-    inline constexpr std::int32_t SHADER_BUFFER_MAX_BINDING = 16;
-    inline constexpr std::int32_t UNIFORM_BUFFER_MAX_BINDING = 16;
-    inline constexpr std::int32_t UNIFORM_BUFFER_MAX_SIZE = 65536;
+    inline constexpr std::int32_t SHADER_BUFFER_DEFAULT_SIZE    = 1024;
+    inline constexpr std::int32_t SHADER_BUFFER_MAX_SIZE        = 65536;
+    inline constexpr std::int32_t SHADER_BUFFER_MAX_BINDING     = 16;
+    inline constexpr std::int32_t UNIFORM_BUFFER_MAX_BINDING    = 16;
+    inline constexpr std::int32_t UNIFORM_BUFFER_MAX_SIZE       = 65536;
 
     enum class BufferComponents : std::int32_t
     {
@@ -56,11 +56,11 @@ namespace Motion
 
     struct BufferElements
     {
-        std::string_view AttributeName;
-        int32_t Offset{ -1 };
-        BufferComponents Components{ BufferComponents::NAN_ };
-        BufferStride Stride{ BufferStride::NAN_ };
-        bool Normalized{ false };
+        std::string_view    AttributeName;
+        int32_t             Offset{ -1 };
+        BufferComponents    Components{ BufferComponents::NAN_ };
+        BufferStride        Stride{ BufferStride::NAN_ };
+        bool                Normalized{ false };
 
         BufferElements(const std::string_view attributeName, BufferComponents components, BufferStride stride, bool normalized, int32_t offset)
             : AttributeName(attributeName), Components(components), Stride(stride), Normalized(normalized), Offset(offset) {
@@ -75,10 +75,10 @@ namespace Motion
         BufferLayout(const std::initializer_list<BufferElements>& elements) : m_Elements(elements) { CalculateStride(); }
         ~BufferLayout() = default;
 
-        std::int32_t GetStride() const { return m_Stride; }
-        const std::vector<BufferElements>& GetElements() const { return m_Elements; }
-        std::vector<BufferElements>::iterator begin() { return m_Elements.begin(); }
-        std::vector<BufferElements>::iterator end() { return m_Elements.end(); }
+        std::int32_t                                GetStride() const { return m_Stride; }
+        const std::vector<BufferElements>&          GetElements() const { return m_Elements; }
+        std::vector<BufferElements>::iterator       begin() { return m_Elements.begin(); }
+        std::vector<BufferElements>::iterator       end() { return m_Elements.end(); }
 
     private:
         void CalculateStride()
@@ -123,10 +123,10 @@ namespace Motion
         IElementBuffer() = default;
         virtual ~IElementBuffer() = default;
 
-        virtual void Bind() const = 0;
-        virtual void Unbind() const = 0;
-        virtual BufferID GetID() const = 0;
-        virtual std::int32_t GetElementCount() const = 0;
+        virtual void            Bind() const    = 0;
+        virtual void            Unbind() const  = 0;
+        virtual BufferID        GetID() const   = 0;
+        virtual std::int32_t    GetElementCount() const = 0;
 
         static std::shared_ptr<IElementBuffer> Create(std::uint32_t* data, std::uint32_t indicesCount);
     };
@@ -137,9 +137,9 @@ namespace Motion
         IShaderBuffer() = default;
         virtual ~IShaderBuffer() = default;
 
-        virtual void Bind() const = 0;
-        virtual void Unbind() const = 0;
-        virtual BufferID GetID() const = 0;
+        virtual void     Bind()   const = 0;
+        virtual void     Unbind() const = 0;
+        virtual BufferID GetID()  const = 0;
 
         virtual void SetBufferData(std::int32_t offset, std::int32_t size, const glm::mat4& data) = 0;
         virtual void SetBufferData(std::int32_t offset, std::int32_t size, const glm::mat3& data) = 0;
@@ -148,6 +148,9 @@ namespace Motion
         virtual void SetBufferData(std::int32_t offset, std::int32_t size, const glm::vec2& data) = 0;
         virtual void SetBufferData(std::int32_t offset, std::int32_t size, float data) = 0;
         virtual void SetRawBufferData(std::int32_t size, const void* data) = 0;
+        virtual void SetRawBufferData(std::int32_t offset, std::int32_t size, const void* data) = 0;
+        virtual void Resize(std::int32_t newSize) = 0;
+        virtual void Orphan(std::int32_t newSize = -1) = 0;
 
         static std::shared_ptr<IShaderBuffer> Create(std::int32_t size, BindingPoint binding);
     };

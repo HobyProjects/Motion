@@ -26,7 +26,7 @@ namespace Motion
 
     void SceneEntityPropertiesPanel::RenderUI(ScenePanelContext& context)
     {
-        ImGui::Begin("Properties");
+        ImGui::Begin(ICON_MD_SETTINGS " Properties");
 
         // Safer selected-entity resolution
         std::shared_ptr<Entity> selectedEntity = context.ActiveScene ? context.ActiveScene->GetSelectedEntity() : nullptr;
@@ -47,13 +47,13 @@ namespace Motion
             UI::EndPropertyGrid();
         }
 
-        DrawComponentControls<TransformComponent>(std::string(ICON_MD_OPEN_WITH "  Transform").c_str(), selectedEntity,
+        DrawComponentControls<TransformComponent>(std::string(ICON_MD_OPEN_WITH " Transform").c_str(), selectedEntity,
             [](TransformComponent& component)
             {
                 UI::BeginPropertyGrid("##transform-grid");
-                UI::DragFloat3(ICON_MD_DIRECTIONS "  Translation", component.Translation, 0.0f, 0.1f);
-                UI::DragFloat3(ICON_MD_ROTATE_90_DEGREES_CW "  Rotation", component.Rotation, 0.1f, 0.0f);
-                UI::DragFloat3(ICON_MD_ZOOM_OUT_MAP "  Scale", component.Scale, 0.1f, 0.0f);
+                UI::DragFloat3(ICON_MD_DIRECTIONS " Translation", component.Translation, 0.0f, 0.1f);
+                UI::DragFloat3(ICON_MD_ROTATE_90_DEGREES_CW " Rotation", component.Rotation, 0.1f, -glm::pi<float>(), glm::pi<float>());
+                UI::DragFloat3(ICON_MD_ZOOM_OUT_MAP " Scale", component.Scale, 0.1f, 10.0f);
                 UI::EndPropertyGrid();
             }
         );

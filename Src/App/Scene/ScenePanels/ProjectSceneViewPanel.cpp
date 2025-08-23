@@ -57,7 +57,6 @@ namespace Motion
                 {
                     for (const char* p = s; *p; ++p) if (!std::isspace((unsigned char)*p)) return false;
                     return true;
-
                 };
 
             auto nameExists =
@@ -209,8 +208,7 @@ namespace Motion
                 // Delete confirmation modal
                 if (ImGui::BeginPopupModal("DeleteScenePopup", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
                 {
-                    ImGui::TextWrapped("%s  Delete scene \"%s\"?\nThis cannot be undone.",
-                        ICON_MD_WARNING, scene->GetName().c_str());
+                    ImGui::TextWrapped("%s  Delete scene \"%s\"?\nThis cannot be undone.", ICON_MD_WARNING, scene->GetName().c_str());
                     ImGui::Separator();
 
                     if (ImGui::Button("Delete", { 80,0 }))

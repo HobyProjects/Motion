@@ -26,7 +26,7 @@ namespace Motion
 
     void SceneEntityInspectPanel::RenderUI(ScenePanelContext& ctx)
     {
-        ImGui::Begin("Scene Entities");
+        ImGui::Begin(ICON_MD_DATA_OBJECT " Scene Entities");
 
         if (ImGui::BeginPopupContextWindow(nullptr, ImGuiPopupFlags_MouseButtonRight | ImGuiPopupFlags_NoOpenOverItems))
         {
@@ -54,8 +54,7 @@ namespace Motion
         {
             auto& tag = ent->GetComponent<TagComponent>();
 
-            // Pick an icon based on components (extend if you like)
-            const char* iconEntity = ICON_MD_LABEL_OUTLINE;           // default
+            const char* iconEntity = ICON_MD_LABEL_OUTLINE;    
             if (ent->HasComponent<StaticMeshComponent>()) iconEntity = ICON_MD_VIEW_IN_AR;
 
             // Tree row flags
@@ -68,7 +67,6 @@ namespace Motion
                 ImGuiTreeNodeFlags_FramePadding;
 
             ImGui::PushID((void*)ent.get());
-
             std::string label = std::format("{}  {}", iconEntity, tag.Tag);
             bool open = ImGui::TreeNodeEx("##node", flags, "%s", label.c_str());
 
@@ -87,7 +85,6 @@ namespace Motion
                             ImGuiTreeNodeFlags_Framed |
                             ImGuiTreeNodeFlags_FramePadding;
 
-                        // Mesh Details
                         if (ImGui::CollapsingHeader(std::string(ICON_MD_INFO "  Mesh Details").c_str(), secFlags))
                         {
                             std::string meshCount = std::to_string(model->GetMeshesCount());

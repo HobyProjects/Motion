@@ -5,7 +5,7 @@ namespace Motion
 {
     void SceneSettingsPanel::RenderUI(ScenePanelContext& ctx)
     {
-        ImGui::Begin("Scene Settings");
+        ImGui::Begin(ICON_MD_ENERGY_SAVINGS_LEAF " Scene Settings");
 
         if (!ctx.ActiveScene)
         {
@@ -19,14 +19,14 @@ namespace Motion
 
         // ───────────────────────────────── Environment Lighting (Sun) ─────────────────────────────────
         ImGuiTreeNodeFlags envFlags = ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_AllowItemOverlap | ImGuiTreeNodeFlags_FramePadding;
-        if (ImGui::TreeNodeEx((void*)1, envFlags, "%s  %s", ICON_MD_WB_SUNNY, "Environment Lighting"))
+        if (ImGui::TreeNodeEx((void*)1, envFlags, "%s  %s", ICON_MD_WB_SUNNY " Environment"))
         {
             const ImGuiTreeNodeFlags secFlags =
                 ImGuiTreeNodeFlags_FramePadding |
                 ImGuiTreeNodeFlags_SpanAvailWidth |
                 ImGuiTreeNodeFlags_Framed;
 
-            if (ImGui::CollapsingHeader(std::string(ICON_MD_LIGHTBULB "  Sun").c_str(), secFlags))
+            if (ImGui::CollapsingHeader(ICON_MD_LIGHTBULB " Sun", secFlags))
             {
                 if (UI::BeginPropertyGrid("##sun-properties"))
                 {
@@ -55,8 +55,7 @@ namespace Motion
                         std::string path = Motion::DialogBoxes::OpenFileDialog();
                         if (!path.empty())
                         {
-                            // Keep current IBL intensity and rotation if any
-                            Motion::EnvironmentIntensity keep = ibl ? ibl->GetIntensity() : Motion::EnvironmentIntensity{ 1.0f, 1.0f };
+                            Motion::EnvironmentIntensity keep = ibl ? ibl->GetIntensity() : EnvironmentIntensity{ 1.0f, 1.0f };
                             float rotY = ibl ? ibl->GetSkyboxRotationY() : 0.0f;
 
                             auto newEnv = Motion::IEnvironment::Create(path);
@@ -76,13 +75,12 @@ namespace Motion
                 else
                 {
                     auto intens = ibl->GetIntensity();
-                    UI::SliderFloat(ICON_MD_TUNE "  Diffuse Intensity", &intens.Diffuse, 0.0f, 10.0f);
-                    UI::SliderFloat(ICON_MD_TUNE "  Specular Intensity", &intens.Specular, 0.0f, 10.0f);
+                    UI::SliderFloat(ICON_MD_TUNE " Diffuse", &intens.Diffuse, 0.0f, 10.0f);
+                    UI::SliderFloat(ICON_MD_TUNE " Specular", &intens.Specular, 0.0f, 10.0f);
                     ibl->SetIntensity(intens);
 
-                    // Skybox rotation (Y)
                     float rotY = ibl->GetSkyboxRotationY();
-                    if (UI::SliderFloat(ICON_MD_ROTATE_90_DEGREES_CW "  Skybox Y Rotation", &rotY, -glm::pi<float>(), glm::pi<float>()))
+                    if (UI::SliderFloat(ICON_MD_ROTATE_90_DEGREES_CW " Skybox Y", &rotY, -glm::pi<float>(), glm::pi<float>()))
                     {
                         ibl->SetSkyboxRotationY(rotY);
                     }
@@ -101,9 +99,9 @@ namespace Motion
         {
             if (UI::BeginPropertyGrid("appearance-grid"))
             {
-                UI::DragFloat(ICON_MD_EXPOSURE "  Exposure", &env.Exposure, 0.0f, 8.0f, 0.01f);
-                UI::DragFloat(ICON_MD_CONTRAST "  Gamma", &env.Gamma, 1.0f, 3.0f, 0.01f);
-                UI::ColorEdit3(ICON_MD_INVERT_COLORS "  Ambient Tint", env.AmbientTint);
+                UI::DragFloat(ICON_MD_EXPOSURE " Exposure", &env.Exposure, 0.0f, 8.0f, 0.01f);
+                UI::DragFloat(ICON_MD_CONTRAST " Gamma", &env.Gamma, 1.0f, 3.0f, 0.01f);
+                UI::ColorEdit3(ICON_MD_INVERT_COLORS " Ambient Tint", env.AmbientTint);
                 UI::EndPropertyGrid();
             }
 
@@ -118,8 +116,8 @@ namespace Motion
             if (UI::BeginPropertyGrid("fog-grid"))
             {
                 UI::ToggleSwitch("Enabled", env.FogSettings.Enabled);
-                UI::DragFloat(ICON_MD_BLUR_ON "  Density", &env.FogSettings.Density, 0.0f, 1.0f, 0.001f);
-                UI::ColorEdit3(ICON_MD_INVERT_COLORS "  Color", env.FogSettings.Color);
+                UI::DragFloat(ICON_MD_BLUR_ON " Density", &env.FogSettings.Density, 0.0f, 1.0f, 0.001f);
+                UI::ColorEdit3(ICON_MD_INVERT_COLORS " Color", env.FogSettings.Color);
                 UI::EndPropertyGrid();
             }
 

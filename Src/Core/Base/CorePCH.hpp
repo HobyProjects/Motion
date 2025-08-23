@@ -74,6 +74,8 @@
 #include "Asserts.hpp"
 #include "Log.hpp"
 #include "UUID.hpp"
+#include "Timer.hpp"
+#include "ThreadPool.hpp"
 
 //Layers
 #include "Layer.hpp"

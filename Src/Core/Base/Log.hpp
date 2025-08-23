@@ -1,10 +1,10 @@
 #pragma once 
 
-#include "Base.hpp"
-
 #include <spdlog/spdlog.h>
 #include <spdlog/fmt/ostr.h>
 
+#include "Base.hpp"
+#include "Controls.hpp"
 namespace Motion
 {
     class Loggers
@@ -19,14 +19,6 @@ namespace Motion
         Loggers&& operator=(const Loggers&&) = delete;
 
     public:
-        /**
-         * @brief Returns the singleton instance of Loggers.
-         *
-         * This method ensures that only one instance of Loggers exists throughout the application.
-         * It initializes the instance if it does not already exist.
-         *
-         * @return Reference to the singleton Loggers instance.
-         */
         static Loggers& GetInstance() noexcept
         {
             static Loggers instance;
@@ -38,10 +30,12 @@ namespace Motion
 
         [[nodiscard]] std::shared_ptr<spdlog::logger> CoreLogger() const;
         [[nodiscard]] std::shared_ptr<spdlog::logger> AppLogger() const;
+        [[nodiscard]] std::shared_ptr<ImGuiConsoleSink> ImGuiSink() const { return m_ImGuiSink; }
 
     private:
         std::shared_ptr<spdlog::logger> m_CoreLogger{ nullptr };
         std::shared_ptr<spdlog::logger> m_AppLogger{ nullptr };
+        std::shared_ptr<ImGuiConsoleSink> m_ImGuiSink{ nullptr };
         std::once_flag m_InitializeLoggers{};
     };
 }

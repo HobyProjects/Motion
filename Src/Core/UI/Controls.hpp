@@ -7,6 +7,11 @@
 
 #include <imgui/imgui.h>
 #include <glm/glm.hpp>
+#include <spdlog/sinks/base_sink.h>
+#include <spdlog/details/log_msg.h>
+#include <spdlog/pattern_formatter.h>
+
+#include "Texture.hpp"
 
 #define MOTION_UI_TEXTURESLOT_CALLBACK(CALLBACK_FUNC) [this](auto&&... args) -> decltype(auto) { return this->CALLBACK_FUNC(std::forward<decltype(args)>(args)...); }
 namespace Motion::UI
@@ -148,7 +153,7 @@ namespace Motion::UI
     enum class TextureSlotAction : int { Upload = 0, Reload, Clear, None };
     using TextureSlotActionCallback = std::function<void(TextureSlotAction, std::shared_ptr<ITexture>&)>;
 
-    TextureSlotAction TextureSlot(const char* label, std::shared_ptr<ITexture>& tex, TextureType type, TextureSlotActionCallback onAction = nullptr, bool showLabelAbove = false, int previewSize = 100);
+    TextureSlotAction TextureSlot(const char* label, std::shared_ptr<ITexture>& tex, TextureType type, TextureSlotActionCallback onAction = nullptr, bool showLabelAbove = false, int previewSize = 150);
     void EmptyTextureSlot(ImDrawList* dl, const ImRect& r, float cell = 10.0f);
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -218,6 +223,101 @@ namespace Motion::UI
         }
 
         Grid& newline();
+    };
+}
+
+namespace Motion
+{
+    class ImGuiConsoleSink : public spdlog::sinks::base_sink<std::mutex>
+    {
+    public:
+        struct Item {
+            spdlog::level::level_enum level;
+            std::string text;
+        };
+
+        void Clear()
+        {
+            std::scoped_lock lock(mutex_);
+            items_.clear();
+        }
+
+        // Call this from your ImGui frame
+        void Draw(const char* title = "Console", bool* p_open = nullptr)
+        {
+            if (!ImGui::Begin(title, p_open)) { ImGui::End(); return; }
+
+            if (ImGui::Button("Clear")) Clear();
+            ImGui::SameLine();
+            bool do_copy = ImGui::Button("Copy");
+            ImGui::SameLine();
+            filter_.Draw("Filter", 220.0f);
+            ImGui::Separator();
+
+            ImGui::BeginChild("ScrollingRegion", ImVec2(0,0), false, ImGuiWindowFlags_HorizontalScrollbar);
+            if (do_copy) ImGui::LogToClipboard();
+
+            {
+                std::scoped_lock lock(mutex_);
+                for (const auto& it : items_)
+                {
+                    const char* msg = it.text.c_str();
+                    if (filter_.IsActive() && !filter_.PassFilter(msg))
+                        continue;
+
+                    ImVec4 col = ColorForLevel(it.level);
+                    ImGui::PushStyleColor(ImGuiCol_Text, col);
+                    ImGui::TextUnformatted(msg);
+                    ImGui::PopStyleColor();
+                }
+            }
+
+            if (auto_scroll_ && ImGui::GetScrollY() >= ImGui::GetScrollMaxY())
+                ImGui::SetScrollHereY(1.0f);
+
+            if (do_copy) ImGui::LogFinish();
+            ImGui::EndChild();
+            ImGui::End();
+        }
+
+        // Optional runtime toggles
+        bool& AutoScroll() { return auto_scroll_; }
+        ImGuiTextFilter& Filter() { return filter_; }
+
+    protected:
+        // spdlog sink implementation
+        void sink_it_(const spdlog::details::log_msg& msg) override
+        {
+            spdlog::memory_buf_t formatted;
+            base_sink<std::mutex>::formatter_->format(msg, formatted);
+
+            std::scoped_lock lock(mutex_);
+            items_.push_back(Item{
+                msg.level,
+                std::string(formatted.data(), formatted.size())
+            });
+        }
+
+        void flush_() override {}
+
+    private:
+        static ImVec4 ColorForLevel(spdlog::level::level_enum lvl)
+        {
+            switch (lvl) {
+                case spdlog::level::trace:    return ImVec4(0.75f, 0.75f, 0.75f, 1.0f);
+                case spdlog::level::debug:    return ImVec4(0.60f, 0.80f, 1.00f, 1.0f);
+                case spdlog::level::info:     return ImVec4(1.00f, 1.00f, 1.00f, 1.0f);
+                case spdlog::level::warn:     return ImVec4(1.00f, 0.85f, 0.45f, 1.0f);
+                case spdlog::level::err:      return ImVec4(1.00f, 0.45f, 0.45f, 1.0f);
+                case spdlog::level::critical: return ImVec4(1.00f, 0.20f, 0.20f, 1.0f);
+                default:                      return ImVec4(1.00f, 1.00f, 1.00f, 1.0f);
+            }
+        }
+
+        std::mutex mutex_;
+        std::vector<Item> items_;
+        ImGuiTextFilter filter_;
+        bool auto_scroll_ = true;
     };
 
 }

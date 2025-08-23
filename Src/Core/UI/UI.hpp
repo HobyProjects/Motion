@@ -22,7 +22,7 @@ namespace Motion
         static void UseColorLight() noexcept;
 
     private:
-        static void UseColorDarkImpl(const ImVec4& accent) noexcept;
+        static void UseColorDarkImpl(const ImVec4& accent = ImVec4(0.95f, 0.35f, 0.15f, 1.0f)) noexcept;
         static void UseColorLightImpl(const ImVec4& accent) noexcept;
     };
 

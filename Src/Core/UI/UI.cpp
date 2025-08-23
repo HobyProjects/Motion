@@ -42,7 +42,6 @@ namespace Motion
             default:                        MOTION_ASSERT(false, "Unknown base API!"); break;
             }
 
-            LoadDefaultFonts("Assets/Fonts/JetBrainsMono/JetBrainsMono-Regular.ttf", 18.0f);
             ApplyTheme(Theme::Dark); // your preferred default
 
             MOTION_CORE_INFO("IMGUI initialized successfully. IMGUI VERSION: {0}", IMGUI_VERSION);
@@ -87,24 +86,34 @@ namespace Motion
         ImGuiIO& io = ImGui::GetIO();
         io.Fonts->Clear();
 
-        ImFontConfig cfg{};
-        cfg.OversampleH = 3;
-        cfg.OversampleV = 3;
-        cfg.PixelSnapH = false;
+        // ---- Base text font ----
+        ImFontConfig textCfg{};
+        textCfg.OversampleH = 3;
+        textCfg.OversampleV = 3;
+        textCfg.PixelSnapH  = false;
 
-        // 1) Base text font (use Dear ImGui default if path is null)
         ImFont* base = nullptr;
         if (fontPath && *fontPath)
-            base = io.Fonts->AddFontFromFileTTF(GetFullPath(fontPath).c_str(), sizePx, &cfg);
+            base = io.Fonts->AddFontFromFileTTF(GetFullPath(fontPath).c_str(), sizePx, &textCfg);
         if (!base) base = io.Fonts->AddFontDefault();
 
-        // 2) Merge Material Icons (monoscaled) into base
+        // ---- Material Icons merged into base ----
         static const ImWchar icon_ranges[] = { (ImWchar)ICON_MIN_MD, (ImWchar)ICON_MAX_MD, 0 };
+
+        // Tune these two to align with your theme
+        const float iconScale   = 1.0f;           // icons slightly larger than text
+        const float iconSizePx  = sizePx * iconScale;
+        const float iconYOffset = 1.0f;           // move icons up/down in pixels (try -2..+2)
+
         ImFontConfig iconCfg{};
-        iconCfg.MergeMode = true;
-        iconCfg.PixelSnapH = true;
-        iconCfg.GlyphMinAdvanceX = sizePx * 1.0f; // make icons readable next to text
-        io.Fonts->AddFontFromFileTTF(GetFullPath("Assets/Fonts/MaterialIconFonts/MaterialIcons-Regular.ttf").c_str(), sizePx, &iconCfg, icon_ranges);
+        iconCfg.MergeMode      = true;             // merge into *last* font (our base)
+        iconCfg.PixelSnapH     = true;
+        iconCfg.OversampleH    = 1;                // oversampling 1 is fine for icon glyphs
+        iconCfg.OversampleV    = 1;
+        iconCfg.GlyphMinAdvanceX = iconSizePx;     // keeps icons readable beside text
+        iconCfg.GlyphOffset    = ImVec2(0.1f, iconYOffset);
+
+        io.Fonts->AddFontFromFileTTF("Assets/Fonts/MaterialIconFonts/MaterialIcons-Regular.ttf", iconSizePx, &iconCfg, icon_ranges);
 
         // Build atlas
         (void)io.Fonts->Build();
@@ -132,126 +141,146 @@ namespace Motion
     void UserInterfaceInitializer::UseColorDark() noexcept { ApplyTheme(Theme::Dark); }
     void UserInterfaceInitializer::UseColorLight() noexcept { ApplyTheme(Theme::Light); }
 
+    static inline ImVec4 Mix(const ImVec4& a, const ImVec4& b, float t) 
+    {
+        return ImVec4(
+            a.x + (b.x - a.x) * t,
+            a.y + (b.y - a.y) * t,
+            a.z + (b.z - a.z) * t,
+            a.w + (b.w - a.w) * t
+        );
+    }
+
+    static inline ImVec4 RGBA(int r, int g, int b, float a = 1.0f) 
+    {
+        return ImVec4(r / 255.f, g / 255.f, b / 255.f, a);
+    }
+
     void UserInterfaceInitializer::UseColorDarkImpl(const ImVec4& accent) noexcept
     {
         ImGuiStyle& style = ImGui::GetStyle();
 
-        auto rgba = [](int r, int g, int b, float a = 1.0f) -> ImVec4 {
-            return ImVec4(r / 255.0f, g / 255.0f, b / 255.0f, a);
-            };
-        auto lerp = [](const ImVec4& a, const ImVec4& b, float t) -> ImVec4 {
-            return ImVec4(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t, a.z + (b.z - a.z) * t, a.w + (b.w - a.w) * t);
-            };
-
+        // Layout / geometry
         style.AntiAliasedFill = true;
         style.AntiAliasedLines = true;
         style.AntiAliasedLinesUseTex = true;
 
-        style.ScrollbarSize = 12.0f;
-        style.GrabMinSize = 10.0f;
+        style.WindowPadding      = ImVec2(10, 10);
+        style.FramePadding       = ImVec2(8, 6);
+        style.ItemSpacing        = ImVec2(8, 6);
+        style.ItemInnerSpacing   = ImVec2(6, 5);
 
-        style.WindowRounding = 8.0f;
-        style.ChildRounding = 8.0f;
-        style.FrameRounding = 5.0f;
-        style.PopupRounding = 5.0f;
-        style.ScrollbarRounding = 5.0f;
-        style.GrabRounding = 5.0f;
-        style.TabRounding = 5.0f;
+        style.ScrollbarSize      = 12.0f;
+        style.GrabMinSize        = 10.0f;
 
-        style.WindowBorderSize = 1.0f;
-        style.FrameBorderSize = 1.0f;
-        style.TabBorderSize = 0.0f;
+        style.WindowRounding     = 10.0f;
+        style.ChildRounding      = 10.0f;
+        style.FrameRounding      = 8.0f;
+        style.PopupRounding      = 8.0f;
+        style.ScrollbarRounding  = 6.0f;
+        style.GrabRounding       = 6.0f;
+        style.TabRounding        = 6.0f;
 
-        style.SeparatorTextBorderSize = 1.0f;
-        style.SeparatorTextPadding = ImVec2(10, 4);
-        style.DisabledAlpha = 0.50f;
+        style.WindowBorderSize   = 0.0f;
+        style.FrameBorderSize    = 0.0f;
+        style.TabBorderSize      = 0.0f;
 
-        const ImVec4 bg00 = rgba(30, 30, 30);
-        const ImVec4 bg01 = rgba(40, 40, 40);
-        const ImVec4 bg02 = rgba(50, 50, 50);
-        const ImVec4 bg03 = rgba(60, 60, 60);
-        const ImVec4 bg04 = rgba(70, 70, 70);
-        const ImVec4 brd = rgba(90, 90, 90, 230);
+        style.DisabledAlpha      = 0.45f;
 
-        const ImVec4 tx1 = rgba(200, 200, 200);
-        const ImVec4 tx3 = rgba(120, 120, 120);
+        // Neutral *dark* palette (no hue bias)
+        const ImVec4 N00 = RGBA( 14,  14,  15);      // deepest
+        const ImVec4 N01 = RGBA( 18,  18,  19);      // window bg
+        const ImVec4 N02 = RGBA( 25,  26,  27);      // frame bg / passive
+        const ImVec4 N03 = RGBA( 32,  33,  35);      // hover
+        const ImVec4 N04 = RGBA( 42,  44,  47);      // active / headers
+        const ImVec4 BRD = ImVec4(0.30f, 0.30f, 0.32f, 0.60f); // subtle border
 
-        const ImVec4 acc = accent;
-        const ImVec4 accHover = lerp(acc, rgba(255, 255, 255), 0.10f);
-        const ImVec4 accActive = lerp(acc, rgba(0, 0, 0), 0.15f);
-        const ImVec4 ok = rgba(80, 160, 80);
+        const ImVec4 TXT  = RGBA(235, 235, 235);
+        const ImVec4 TXT2 = RGBA(170, 170, 170);
+        const ImVec4 TXT3 = RGBA(120, 120, 120);
+
+        const ImVec4 acc        = accent;
+        const ImVec4 accHover   = Mix(acc, ImVec4(1,1,1,1), 0.12f);
+        const ImVec4 accActive  = Mix(acc, ImVec4(0,0,0,1), 0.15f);
 
         ImVec4* c = style.Colors;
-        c[ImGuiCol_Text] = tx1;
-        c[ImGuiCol_TextDisabled] = tx3;
 
-        c[ImGuiCol_WindowBg] = bg01;
-        c[ImGuiCol_ChildBg] = bg00;
-        c[ImGuiCol_PopupBg] = ImVec4(bg01.x, bg01.y, bg01.z, 0.98f);
-        c[ImGuiCol_ModalWindowDimBg] = ImVec4(bg00.x, bg00.y, bg00.z, 0.85f);
+        // Text
+        c[ImGuiCol_Text]                 = TXT;
+        c[ImGuiCol_TextDisabled]         = TXT3;
 
-        c[ImGuiCol_Border] = brd;
-        c[ImGuiCol_BorderShadow] = ImVec4(0, 0, 0, 0);
+        // Windows / popups / docking
+        c[ImGuiCol_WindowBg]             = ImVec4(N01.x, N01.y, N01.z, 0.98f);
+        c[ImGuiCol_ChildBg]              = N00;
+        c[ImGuiCol_PopupBg]              = ImVec4(N01.x, N01.y, N01.z, 0.98f);
+        c[ImGuiCol_ModalWindowDimBg]     = ImVec4(N00.x, N00.y, N00.z, 0.75f);
+        c[ImGuiCol_DockingEmptyBg]       = N00;
+        c[ImGuiCol_DockingPreview]       = ImVec4(acc.x, acc.y, acc.z, 0.35f);
 
-        c[ImGuiCol_MenuBarBg] = bg00;
-        c[ImGuiCol_Header] = ImVec4(bg02.x, bg02.y, bg02.z, 0.95f);
-        c[ImGuiCol_HeaderHovered] = bg03;
-        c[ImGuiCol_HeaderActive] = bg04;
+        // Borders / separators
+        c[ImGuiCol_Border]               = BRD;
+        c[ImGuiCol_BorderShadow]         = ImVec4(0,0,0,0);
+        c[ImGuiCol_Separator]            = ImVec4(BRD.x, BRD.y, BRD.z, 0.65f);
+        c[ImGuiCol_SeparatorHovered]     = accHover;
+        c[ImGuiCol_SeparatorActive]      = accActive;
 
-        c[ImGuiCol_FrameBg] = bg02;
-        c[ImGuiCol_FrameBgHovered] = bg03;
-        c[ImGuiCol_FrameBgActive] = bg04;
+        // Headers (collapsing, selectable, table header)
+        c[ImGuiCol_Header]               = ImVec4(N02.x, N02.y, N02.z, 0.95f);
+        c[ImGuiCol_HeaderHovered]        = N03;
+        c[ImGuiCol_HeaderActive]         = N04;
 
-        c[ImGuiCol_Button] = bg02;
-        c[ImGuiCol_ButtonHovered] = bg03;
-        c[ImGuiCol_ButtonActive] = ImVec4(acc.x, acc.y, acc.z, 0.90f);
+        // Frames (input, sliders, combo)
+        c[ImGuiCol_FrameBg]              = N02;
+        c[ImGuiCol_FrameBgHovered]       = N03;
+        c[ImGuiCol_FrameBgActive]        = N04;
 
-        c[ImGuiCol_CheckMark] = acc;
-        c[ImGuiCol_SliderGrab] = ImVec4((acc.x + bg02.x) * 0.65f, (acc.y + bg02.y) * 0.65f, (acc.z + bg02.z) * 0.65f, 1.0f);
-        c[ImGuiCol_SliderGrabActive] = accActive;
+        // Buttons
+        c[ImGuiCol_Button]               = N02;
+        c[ImGuiCol_ButtonHovered]        = N03;
+        c[ImGuiCol_ButtonActive]         = ImVec4(acc.x, acc.y, acc.z, 0.90f);
 
-        c[ImGuiCol_Tab] = rgba(40, 45, 55);
-        c[ImGuiCol_TabHovered] = rgba(50, 55, 70);
-        c[ImGuiCol_TabActive] = rgba(45, 50, 60);
-        c[ImGuiCol_TabUnfocused] = rgba(35, 40, 50);
-        c[ImGuiCol_TabUnfocusedActive] = rgba(40, 45, 55);
+        // Tabs
+        c[ImGuiCol_Tab]                  = RGBA(28,29,30);
+        c[ImGuiCol_TabHovered]           = N03;
+        c[ImGuiCol_TabActive]            = RGBA(34,35,37);
+        c[ImGuiCol_TabUnfocused]         = RGBA(24,25,26);
+        c[ImGuiCol_TabUnfocusedActive]   = RGBA(28,29,30);
 
-        c[ImGuiCol_TitleBg] = bg00;
-        c[ImGuiCol_TitleBgActive] = bg02;
-        c[ImGuiCol_TitleBgCollapsed] = ImVec4(bg00.x, bg00.y, bg00.z, 0.75f);
+        // Titles
+        c[ImGuiCol_TitleBg]              = N00;
+        c[ImGuiCol_TitleBgActive]        = N02;
+        c[ImGuiCol_TitleBgCollapsed]     = ImVec4(N00.x, N00.y, N00.z, 0.70f);
 
-        c[ImGuiCol_Separator] = ImVec4(brd.x, brd.y, brd.z, 0.65f);
-        c[ImGuiCol_SeparatorHovered] = accHover;
-        c[ImGuiCol_SeparatorActive] = accActive;
+        // Widgets
+        c[ImGuiCol_CheckMark]            = acc;
+        c[ImGuiCol_SliderGrab]           = Mix(acc, N02, 0.35f);
+        c[ImGuiCol_SliderGrabActive]     = accActive;
 
-        c[ImGuiCol_ScrollbarBg] = ImVec4(bg00.x, bg00.y, bg00.z, 0.60f);
-        c[ImGuiCol_ScrollbarGrab] = rgba(50, 55, 65);
-        c[ImGuiCol_ScrollbarGrabHovered] = rgba(60, 65, 80);
-        c[ImGuiCol_ScrollbarGrabActive] = rgba(70, 75, 90);
+        // Scrollbar
+        c[ImGuiCol_ScrollbarBg]          = ImVec4(N00.x, N00.y, N00.z, 0.55f);
+        c[ImGuiCol_ScrollbarGrab]        = RGBA(48,49,52);
+        c[ImGuiCol_ScrollbarGrabHovered] = RGBA(58,59,63);
+        c[ImGuiCol_ScrollbarGrabActive]  = RGBA(68,69,74);
 
-        c[ImGuiCol_ResizeGrip] = ImVec4(acc.x, acc.y, acc.z, 0.22f);
-        c[ImGuiCol_ResizeGripHovered] = ImVec4(accHover.x, accHover.y, accHover.z, 0.78f);
-        c[ImGuiCol_ResizeGripActive] = accActive;
+        // Tables
+        c[ImGuiCol_TableHeaderBg]        = RGBA(30,31,33);
+        c[ImGuiCol_TableBorderStrong]    = RGBA(44,46,48);
+        c[ImGuiCol_TableBorderLight]     = RGBA(36,37,39);
+        c[ImGuiCol_TableRowBg]           = ImVec4(0,0,0,0);
+        c[ImGuiCol_TableRowBgAlt]        = ImVec4(1,1,1,0.03f);
 
-        c[ImGuiCol_DockingPreview] = ImVec4(acc.x, acc.y, acc.z, 0.38f);
-        c[ImGuiCol_DockingEmptyBg] = bg00;
+        // Navigation / selections / misc
+        c[ImGuiCol_TextSelectedBg]       = ImVec4(acc.x, acc.y, acc.z, 0.35f);
+        c[ImGuiCol_DragDropTarget]       = acc;
+        c[ImGuiCol_NavHighlight]         = ImVec4(acc.x, acc.y, acc.z, 0.85f);
+        c[ImGuiCol_NavWindowingHighlight]= ImVec4(acc.x, acc.y, acc.z, 0.30f);
+        c[ImGuiCol_NavWindowingDimBg]    = ImVec4(N00.x, N00.y, N00.z, 0.60f);
 
-        c[ImGuiCol_TableHeaderBg] = rgba(40, 45, 55);
-        c[ImGuiCol_TableBorderStrong] = rgba(50, 55, 70);
-        c[ImGuiCol_TableBorderLight] = rgba(40, 45, 55);
-        c[ImGuiCol_TableRowBg] = ImVec4(0, 0, 0, 0);
-        c[ImGuiCol_TableRowBgAlt] = ImVec4(1, 1, 1, 0.03f);
-
-        c[ImGuiCol_TextSelectedBg] = ImVec4(acc.x, acc.y, acc.z, 0.35f);
-        c[ImGuiCol_DragDropTarget] = acc;
-        c[ImGuiCol_NavHighlight] = ImVec4(acc.x, acc.y, acc.z, 0.90f);
-        c[ImGuiCol_NavWindowingHighlight] = ImVec4(acc.x, acc.y, acc.z, 0.35f);
-        c[ImGuiCol_NavWindowingDimBg] = ImVec4(bg00.x, bg00.y, bg00.z, 0.60f);
-
-        c[ImGuiCol_PlotLines] = acc;
-        c[ImGuiCol_PlotLinesHovered] = lerp(acc, rgba(255, 255, 255), 0.10f);
-        c[ImGuiCol_PlotHistogram] = ok;
-        c[ImGuiCol_PlotHistogramHovered] = lerp(ok, rgba(255, 255, 255), 0.10f);
+        // Plots
+        c[ImGuiCol_PlotLines]            = acc;
+        c[ImGuiCol_PlotLinesHovered]     = accHover;
+        c[ImGuiCol_PlotHistogram]        = Mix(acc, ImVec4(1,1,1,1), 0.05f);
+        c[ImGuiCol_PlotHistogramHovered] = accHover;
     }
 
     void UserInterfaceInitializer::UseColorLightImpl(const ImVec4& accent) noexcept

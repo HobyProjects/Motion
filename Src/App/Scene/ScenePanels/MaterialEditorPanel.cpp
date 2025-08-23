@@ -12,7 +12,7 @@ namespace Motion
 
     void MaterialEditorPanel::RenderUI(ScenePanelContext& ctx)
     {
-        ImGui::Begin("Material Editor");
+        ImGui::Begin(ICON_MD_IMAGE " Material Editor");
 
         if (!ctx.ActiveScene) return;
 
@@ -194,17 +194,15 @@ namespace Motion
             auto& A = mat->GetTexture<AlphaProperties>();
             if(UI::BeginPropertyGrid("##alpha-prop"))
             {                
-                ImGui::BeginDisabled(!A.OpacityTexture);
                 std::int32_t mode = static_cast<std::int32_t>(A.Mode);
                 UI::ComboBox("Alpha Mode", { "Opaque", "Mask", "Blend"}, mode, [&](std::int32_t newMode, const std::string&) { A.Mode = static_cast<AlphaMode>(newMode); });
                 
                 ImGui::BeginDisabled(mode != static_cast<std::int32_t>(AlphaMode::Mask));
                 UI::SliderFloat("Alpha Cutoff", &A.AlphaCutoff, 0.0f, 1.0f, "%.3f");
                 ImGui::EndDisabled();
-
+                
                 UI::SliderFloat("Opacity Factor", &A.OpacityFactor, 0.0f, 1.0f, "%.3f");
-                ImGui::EndDisabled();
-
+                
                 UI::EndPropertyGrid();
             }
         }
@@ -250,7 +248,7 @@ namespace Motion
                 UI::EndPropertyGrid();
             }
 
-             ImGui::SeparatorEx(ImGuiSeparatorFlags_Horizontal);
+            ImGui::SeparatorEx(ImGuiSeparatorFlags_Horizontal);
         }
     }
 
@@ -291,7 +289,7 @@ namespace Motion
                     ImGui::TableNextRow();
 
                 ImGui::TableNextColumn();
-                UI::TextureSlot(textures[i].Label, textures[i].Tex, textures[i].Type, nullptr, true);
+                UI::TextureSlot(textures[i].Label, textures[i].Tex, textures[i].Type, nullptr, false);
             }
 
             ImGui::EndTable();

@@ -71,6 +71,7 @@ set(
     ${MOTION_CORE_DIR}/Base/KeyCodes.hpp
     ${MOTION_CORE_DIR}/Base/Timer.hpp
     ${MOTION_CORE_DIR}/Base/UUID.hpp
+    ${MOTION_CORE_DIR}/Base/ThreadPool.hpp
 
     ${MOTION_CORE_DIR}/Layer/Layer.hpp
     ${MOTION_CORE_DIR}/Layer/LayersManager.hpp

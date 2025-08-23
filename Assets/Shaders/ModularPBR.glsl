@@ -33,6 +33,8 @@ uniform struct
     vec3  EmissiveFactor;
     float EmissiveStrength;
 
+    float SpecularStrength; // scales specular lobe (direct & IBL)
+
     float NormalScale;
     float NormalYFlip;     
     float DisplacementScale;
@@ -64,8 +66,10 @@ void main()
     vec3 B   = normalize(Nrm * a_Bitangents);
     vec3 N   = normalize(Nrm * a_Normals);
 
-    T = normalize(T - dot(T, N) * N);
-    B = normalize(cross(N, T) * a_TangentSign);
+    // Orthonormalize T against N
+    T = normalize(T - N * dot(T, N));
+    // Recompute B using handedness
+    B = cross(N, T) * (a_TangentSign * 2.0 - 1.0);
 
     v_TBN = mat3(T, B, N);
 
@@ -117,7 +121,7 @@ const int TB_OPACITY      = 1 << 6;
 const int TB_ORM          = 1 << 7;
 const int TB_DISPLACEMENT = 1 << 8;
 
-uniform int u_TextureBitmask;
+uniform int   u_TextureBitmask;
 
 uniform struct 
 {
@@ -127,6 +131,8 @@ uniform struct
     float OcclusionStrength;
     vec3  EmissiveFactor;
     float EmissiveStrength;
+
+    float SpecularStrength; // scales specular lobe (direct & IBL)
 
     float NormalScale;
     float NormalYFlip;     
@@ -139,23 +145,22 @@ uniform struct
 
 } u_Attributes;
 
-// Environment / lighting
-uniform samplerCube     u_IrradianceTexture;
-uniform samplerCube     u_PrefilteredTexture;
-uniform sampler2D       u_BRDFLUTTexture;
-uniform float           u_IBLIntensity_Diffuse;
-uniform float           u_IBLIntensity_Specular;
-uniform float           u_IBLMipLevels;
-uniform vec3            u_CameraPosition;
-
-struct DirectionalLight
+uniform struct 
 {
-    vec3 Direction; // direction *towards* the light source
-    vec3 Color;
+    vec3 Direction;
     float Intensity;
-};
+    vec3 Color;
 
-uniform DirectionalLight u_SunLight;
+}u_SunLight;
+
+// Environment
+uniform samplerCube u_IrradianceTexture;
+uniform samplerCube u_PrefilteredTexture;
+uniform sampler2D   u_BRDFLUTTexture;
+uniform float       u_IBLIntensity_Diffuse;
+uniform float       u_IBLIntensity_Specular;
+uniform float       u_IBLMipLevels;
+uniform vec3        u_CameraPosition;
 
 // Textures
 uniform sampler2D u_BaseColorTexture;
@@ -188,18 +193,18 @@ float D_GGX(float NoH, float a)
     return a2 / (PI * d * d + 1e-7);
 }
 
-float V_SmithG1(float NoV, float a)
+float V_SmithG1(float NoV, float roughness)
 {
-    // Schlick-GGX G1
-    float k = ((a + 1.0) * (a + 1.0)) / 8.0;
+    // Schlick-GGX G1 expects perceptual roughness, not alpha
+    float k = ((roughness + 1.0) * (roughness + 1.0)) / 8.0;
     return NoV / (NoV * (1.0 - k) + k + 1e-7);
 }
 
-float V_SmithGGX(float NoV, float NoL, float a)
+float V_SmithGGX(float NoV, float NoL, float roughness)
 {
     // Visibility term that already includes the 1/(4*NoV*NoL) denominator
-    float gV = V_SmithG1(NoV, a);
-    float gL = V_SmithG1(NoL, a);
+    float gV = V_SmithG1(NoV, roughness);
+    float gL = V_SmithG1(NoL, roughness);
     return (gV * gL) / (4.0 * max(NoV, 1e-4) * max(NoL, 1e-4) + 1e-7);
 }
 
@@ -273,26 +278,26 @@ void main()
     float alpha = evalAlpha(baseSample);
 
     // Metallic / Roughness / AO
-    float metallic  = u_Attributes.MetallicFactor;
-    float roughness = u_Attributes.RoughnessFactor;
-    float ao        = 1.0;
+    float ao        = 0.0;
+    float metallicT = 0.0;
+    float roughT    = 0.0;
 
     if (HasTex(TB_ORM))
     {
-        vec3 orm   = texture(u_ORMTexture, v_UV).rgb;
-        ao         = mix(1.0, orm.r, u_Attributes.OcclusionStrength);
-        roughness  = orm.g;
-        metallic   = orm.b;
+        vec3 orm = texture(u_ORMTexture, v_UV).rgb; // R=AO, G=Roughness, B=Metallic
+        ao     = mix(1.0, orm.r, u_Attributes.OcclusionStrength);
+        roughT = orm.g;
+        metallicT = orm.b;
     }
     else
     {
-        if (HasTex(TB_METALLIC))  metallic  = texture(u_MetallicTexture,  v_UV).r;
-        if (HasTex(TB_ROUGHNESS)) roughness = texture(u_RoughnessTexture, v_UV).r;
-        if (HasTex(TB_AO))        ao        = mix(1.0, texture(u_OcclusionTexture, v_UV).r, u_Attributes.OcclusionStrength);
+        if (HasTex(TB_AO))        ao     = mix(1.0, texture(u_OcclusionTexture, v_UV).r, u_Attributes.OcclusionStrength);
+        if (HasTex(TB_METALLIC))  metallicT  = texture(u_MetallicTexture,  v_UV).r;
+        if (HasTex(TB_ROUGHNESS)) roughT     = texture(u_RoughnessTexture, v_UV).r;
     }
 
-    roughness = clamp(roughness, 0.04, 1.0);
-    metallic  = saturate(metallic);
+    float metallic  = saturate(u_Attributes.MetallicFactor  * metallicT);
+    float roughness = clamp(u_Attributes.RoughnessFactor * roughT, 1e-4, 1.0);
 
     // Emissive
     vec3 emissive = vec3(0.0);
@@ -310,21 +315,21 @@ void main()
     // BRDF
     vec3 F0, kd;
     computeF0AndAlbedo(baseColor, metallic, F0, kd);
-    float a = roughness * roughness;
+    float a = roughness * roughness; // alpha for GGX NDF
 
-    float  D = D_GGX(NoH, a);
-    float  G = V_SmithGGX(NoV, NoL, a); // already includes 1/(4*NoV*NoL)
-    vec3   F = F_Schlick(F0, VoH);
-    vec3 specBRDF = (D * G) * F;
-    vec3 diffBRDF = kd * baseColor / PI;
+    float  D        = D_GGX(NoH, a);
+    float  G        = V_SmithGGX(NoV, NoL, roughness); // G1 uses perceptual roughness
+    vec3   F        = F_Schlick(F0, VoH);
+    vec3 specBRDF   = (D * G) * F * max(u_Attributes.SpecularStrength, 0.0);
+    vec3 diffBRDF   = kd * baseColor / PI;
 
     // Direct lighting (not AO-attenuated)
     vec3 direct = (diffBRDF + specBRDF) * (NoL * u_SunLight.Color * u_SunLight.Intensity);
 
     // IBL (AO attenuates ambient only)
-    vec3 iblD = diffuseIBL(Nn) * diffBRDF * u_IBLIntensity_Diffuse;
-    vec3 iblS = specularIBL(Nn, V, roughness, F0) * u_IBLIntensity_Specular;
+    vec3 iblD   = diffuseIBL(Nn) * diffBRDF * u_IBLIntensity_Diffuse;
+    vec3 iblS   = specularIBL(Nn, V, roughness, F0) * u_IBLIntensity_Specular * max(u_Attributes.SpecularStrength, 0.0);
 
-    vec3 color = direct + (iblD + iblS) * ao + emissive;
-    FragColor = vec4(saturate(color), alpha);
+    vec3 color  = direct + (iblD + iblS) * ao + emissive;
+    FragColor   = vec4(saturate(color), alpha);
 }

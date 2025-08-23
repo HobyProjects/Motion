@@ -89,31 +89,141 @@ namespace Motion
         ImGui::Begin(std::format("{}##SceneViewport", context.ActiveScene->GetName()).c_str());
         context.UILayerInstance->AcceptEvents(ImGui::IsWindowFocused() || ImGui::IsWindowHovered());
 
+        // Keep the gizmo op accessible to the overlay
+        static ImGuizmo::OPERATION op = ImGuizmo::TRANSLATE;
+
+        // Viewport size tracking
         ImVec2 vp = ImGui::GetContentRegionAvail();
         if (vp.x != context.ActiveSceneSpecification.Viewport.Size.x || vp.y != context.ActiveSceneSpecification.Viewport.Size.y)
-        {
             context.ActiveSceneSpecification.Viewport.Size = { vp.x, vp.y };
-        }
 
+        // Draw the actual viewport image
         ImGui::Image((ImTextureID)context.ActiveViewportTexture, vp, { 0,1 }, { 1,0 });
 
+        // Compute the viewport rect in screen space (used by overlay & gizmo)
         ImVec2 winPos = ImGui::GetWindowPos();
-        ImVec2 crMin = ImGui::GetWindowContentRegionMin();
-        ImVec2 crMax = ImGui::GetWindowContentRegionMax();
-        ImVec2 vpMin = { winPos.x + crMin.x, winPos.y + crMin.y };
-        ImVec2 vpMax = { winPos.x + crMax.x, winPos.y + crMax.y };
-        ImVec2 mouse = ImGui::GetMousePos();
+        ImVec2 crMin  = ImGui::GetWindowContentRegionMin();
+        ImVec2 crMax  = ImGui::GetWindowContentRegionMax();
+        ImVec2 vpMin  = { winPos.x + crMin.x, winPos.y + crMin.y };
+        ImVec2 vpMax  = { winPos.x + crMax.x, winPos.y + crMax.y };
+        ImVec2 mouse  = ImGui::GetMousePos();
 
+        // ---------- Floating top-center toolbar overlay (over the image) ----------
+        
+        {
+            ImGuiIO& io = ImGui::GetIO();
+            const float scale     = io.FontGlobalScale > 0.0f ? io.FontGlobalScale : 1.0f;
+
+            const float buttonW   = 30.0f * scale;
+            const float buttonH   = 25.0f * scale;
+            const float spacing   = 8.0f  * scale;
+            const float pad       = 8.0f  * scale;
+            const float topOffset = 8.0f  * scale;
+
+            const float totalW = buttonW * 3.0f + spacing * 2.0f;
+
+            // Position the overlay in the top-center of the viewport
+            ImVec2 overlayPos  = { vpMin.x + (vp.x - totalW) * 0.5f - pad, vpMin.y + topOffset - pad };
+            ImVec2 overlaySize = { totalW + pad * 2.0f, buttonH + pad * 2.0f };
+
+            ImGui::SetNextWindowPos(overlayPos, ImGuiCond_Always);
+            ImGui::SetNextWindowSize(overlaySize, ImGuiCond_Always);
+            ImGui::SetNextWindowBgAlpha(0.0f); // fully transparent
+            ImGuiWindowFlags overlayFlags =
+                ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize
+                | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar
+                | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoScrollWithMouse
+                | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoDocking;
+
+            ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
+            ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
+            if (ImGui::Begin("##ViewportToolbarOverlay", nullptr, overlayFlags))
+            {
+                ImGui::SetCursorPos(ImVec2(pad, pad));
+                ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 6.0f * scale);
+
+                if (ImGui::Button(ICON_MD_PLAY_ARROW, ImVec2(buttonW, buttonH))) 
+                {
+                    // action
+                }
+                ImGui::SameLine(0.0f, spacing);
+                if (ImGui::Button(ICON_MD_STOP, ImVec2(buttonW, buttonH))) 
+                {
+                    // action
+                }
+                ImGui::SameLine(0.0f, spacing);
+                if (ImGui::Button(ICON_MD_PAUSE, ImVec2(buttonW, buttonH))) 
+                {
+                    // action
+                }
+
+                ImGui::PopStyleVar(); // FrameRounding
+            }
+
+            ImGui::End();
+            ImGui::PopStyleVar(2);
+        }
+
+        // ---- Floating top-right overlay (Camera controls) ----
+        {
+            ImGuiIO& io = ImGui::GetIO();
+            const float scale     = io.FontGlobalScale > 0.0f ? io.FontGlobalScale : 1.0f;
+            const float pad       = 8.0f  * scale;   // margin from the edges
+            const float topOffset = 8.0f  * scale;   // distance from top inside the viewport
+            const float gap       = 16.0f * scale;   // gap between groups
+
+            ImVec2 anchor = ImVec2(vpMax.x - pad, vpMin.y + topOffset);
+            ImGui::SetNextWindowPos(anchor, ImGuiCond_Always, ImVec2(1.0f, 0.0f));
+            ImGui::SetNextWindowBgAlpha(0.0f); // fully transparent
+            ImGuiWindowFlags overlayFlags =
+                ImGuiWindowFlags_NoDecoration
+                | ImGuiWindowFlags_AlwaysAutoResize
+                | ImGuiWindowFlags_NoSavedSettings
+                | ImGuiWindowFlags_NoMove
+                | ImGuiWindowFlags_NoDocking;
+
+            ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(4, 4));
+            if (ImGui::Begin("##CameraControlsOverlay", nullptr, overlayFlags))
+            {
+                ImGui::PushItemWidth(80.0f * scale);
+
+                // Camera Speed
+                ImGui::TextUnformatted(ICON_MD_DIRECTIONS);
+                ImGui::SameLine();
+
+                float* speedPtr = &context.ActiveCamera.Camera.TranslationSpeed;
+                ImGui::DragFloat("##CamSpeed", speedPtr, 0.05f, 0.05f, 10.0f);
+
+                ImGui::SameLine(0.0f, 20.0f * scale); // spacing between groups
+
+                // Camera Sensitivity
+                ImGui::TextUnformatted(ICON_MD_LOOKS);
+                ImGui::SameLine();
+
+                float* sensPtr = &context.ActiveCamera.Camera.Sensitivity;
+                ImGui::DragFloat("##CamSens", sensPtr, 0.05f, 0.05f, 3.0f, "%.2f");
+
+                ImGui::PopItemWidth();
+            }
+            ImGui::End();
+            ImGui::PopStyleVar();
+        }
+    
+        // -------------------------------------------------------------------------
+
+        // Entity picking (clicks on the overlay won't trigger this)
         if (ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem) && ImGui::IsWindowFocused() && ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !ImGuizmo::IsUsing())
         {
             glm::vec2 local = { mouse.x - vpMin.x, mouse.y - vpMin.y };
             local.y = vp.y - local.y;
 
-            glm::vec2 fbSize = {
+            glm::vec2 fbSize = 
+            {
                 (float)context.ActiveSceneSpecification.Viewport.FrameSpec.Width,
                 (float)context.ActiveSceneSpecification.Viewport.FrameSpec.Height
             };
-            glm::vec2 mouseInFB = {
+            glm::vec2 mouseInFB = 
+            {
                 local.x * (fbSize.x / vp.x),
                 local.y * (fbSize.y / vp.y)
             };
@@ -125,22 +235,23 @@ namespace Motion
         ImGuizmo::SetOrthographic(false);
         ImGuizmo::SetDrawlist();
         ImGuizmo::SetRect(vpMin.x, vpMin.y, vp.x, vp.y);
+
         glm::mat4 view = context.ActiveScene->GetCameraView();
         glm::mat4 proj = context.ActiveScene->GetCameraProjection();
-
-        static ImGuizmo::OPERATION op = ImGuizmo::TRANSLATE;
         if (ImGui::IsKeyDown(ImGuiKey_LeftCtrl) && ImGui::IsKeyPressed(ImGuiKey_E))
         {
             op = (op == ImGuizmo::TRANSLATE) ? ImGuizmo::ROTATE :
-                (op == ImGuizmo::ROTATE) ? ImGuizmo::SCALE :
-                ImGuizmo::TRANSLATE;
+                (op == ImGuizmo::ROTATE)    ? ImGuizmo::SCALE  :
+                                            ImGuizmo::TRANSLATE;
         }
 
-        if (auto sel = context.ActiveScene->GetSelectedEntity();sel && sel != EntityFactory::EMPTYENTITY && sel->HasComponent<TransformComponent>())
+        if (auto sel = context.ActiveScene->GetSelectedEntity();
+            sel && sel != EntityFactory::EMPTYENTITY && sel->HasComponent<TransformComponent>())
         {
             auto& tc = sel->GetComponent<TransformComponent>();
             glm::mat4 model = tc.GetTransform();
             float m[16]; memcpy(m, glm::value_ptr(model), sizeof(m));
+
             if (ImGuizmo::Manipulate(glm::value_ptr(view), glm::value_ptr(proj), op, ImGuizmo::LOCAL, m))
             {
                 glm::vec3 t, s; glm::quat r;

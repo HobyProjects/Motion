@@ -110,12 +110,6 @@ namespace Motion
                 currentShader->SetUniform("u_OpacityTexture", TEX_SLOTS::Opacity);
                 texMask |= TB_OPACITY;
             }
-            else if (baseMat->Textures[TextureType::OpacityTexture])
-            {
-                baseMat->Textures[TextureType::OpacityTexture]->Bind(TEX_SLOTS::Opacity);
-                currentShader->SetUniform("u_OpacityTexture", TEX_SLOTS::Opacity);
-                texMask |= TB_OPACITY;
-            }
         }
 
         if (currentMaterial->HasTexture<CorePBR>())
@@ -137,21 +131,10 @@ namespace Motion
                 float normalYFlip = C.NormalTexture->GetSpecification().InvertGreen ? 1.0f : 0.0f;
                 currentShader->SetUniform("u_Attributes.NormalYFlip", normalYFlip);
             }
-            else if (baseMat->Textures[TextureType::NormalTexture])
-            {
-                float normalYFlip = baseMat->Textures[TextureType::NormalTexture]->GetSpecification().InvertGreen ? 1.0f : 0.0f;
-                currentShader->SetUniform("u_Attributes.NormalYFlip", normalYFlip);
-            }
 
             if (C.BaseColorTexture)
             {
                 C.BaseColorTexture->Bind(TEX_SLOTS::BaseColor);
-                currentShader->SetUniform("u_BaseColorTexture", TEX_SLOTS::BaseColor);
-                texMask |= TB_BASE_COLOR;
-            }
-            else if (baseMat->Textures[TextureType::BaseColorTexture])
-            {
-                baseMat->Textures[TextureType::BaseColorTexture]->Bind(TEX_SLOTS::BaseColor);
                 currentShader->SetUniform("u_BaseColorTexture", TEX_SLOTS::BaseColor);
                 texMask |= TB_BASE_COLOR;
             }
@@ -162,22 +145,10 @@ namespace Motion
                 currentShader->SetUniform("u_NormalTexture", TEX_SLOTS::Normal);
                 texMask |= TB_NORMAL;
             }
-            else if (baseMat->Textures[TextureType::NormalTexture])
-            {
-                baseMat->Textures[TextureType::NormalTexture]->Bind(TEX_SLOTS::Normal);
-                currentShader->SetUniform("u_NormalTexture", TEX_SLOTS::Normal);
-                texMask |= TB_NORMAL;
-            }
 
             if (C.MetallicTexture)
             {
                 C.MetallicTexture->Bind(TEX_SLOTS::Metallic);
-                currentShader->SetUniform("u_MetallicTexture", TEX_SLOTS::Metallic);
-                texMask |= TB_METALLIC;
-            }
-            else if (baseMat->Textures[TextureType::MetallicTexture])
-            {
-                baseMat->Textures[TextureType::MetallicTexture]->Bind(TEX_SLOTS::Metallic);
                 currentShader->SetUniform("u_MetallicTexture", TEX_SLOTS::Metallic);
                 texMask |= TB_METALLIC;
             }
@@ -188,22 +159,10 @@ namespace Motion
                 currentShader->SetUniform("u_RoughnessTexture", TEX_SLOTS::Roughness);
                 texMask |= TB_ROUGHNESS;
             }
-            else if (baseMat->Textures[TextureType::RoughnessTexture])
-            {
-                baseMat->Textures[TextureType::RoughnessTexture]->Bind(TEX_SLOTS::Roughness);
-                currentShader->SetUniform("u_RoughnessTexture", TEX_SLOTS::Roughness);
-                texMask |= TB_ROUGHNESS;
-            }
 
             if (C.EmissiveTexture)
             {
                 C.EmissiveTexture->Bind(TEX_SLOTS::Emissive);
-                currentShader->SetUniform("u_EmissiveTexture", TEX_SLOTS::Emissive);
-                texMask |= TB_EMISSIVE;
-            }
-            else if (baseMat->Textures[TextureType::EmissiveTexture])
-            {
-                baseMat->Textures[TextureType::EmissiveTexture]->Bind(TEX_SLOTS::Emissive);
                 currentShader->SetUniform("u_EmissiveTexture", TEX_SLOTS::Emissive);
                 texMask |= TB_EMISSIVE;
             }
@@ -214,22 +173,10 @@ namespace Motion
                 currentShader->SetUniform("u_OcclusionTexture", TEX_SLOTS::AO);
                 texMask |= TB_AO;
             }
-            else if (baseMat->Textures[TextureType::AmbientOcclusionTexture])
-            {
-                baseMat->Textures[TextureType::AmbientOcclusionTexture]->Bind(TEX_SLOTS::AO);
-                currentShader->SetUniform("u_OcclusionTexture", TEX_SLOTS::AO);
-                texMask |= TB_AO;
-            }
 
             if (C.DisplacementTexture)
             {
                 C.DisplacementTexture->Bind(TEX_SLOTS::Displacement);
-                currentShader->SetUniform("u_DisplacementTexture", TEX_SLOTS::Displacement);
-                texMask |= TB_DISPLACEMENT;
-            }
-            else if (baseMat->Textures[TextureType::DisplacementTexture])
-            {
-                baseMat->Textures[TextureType::DisplacementTexture]->Bind(TEX_SLOTS::Displacement);
                 currentShader->SetUniform("u_DisplacementTexture", TEX_SLOTS::Displacement);
                 texMask |= TB_DISPLACEMENT;
             }

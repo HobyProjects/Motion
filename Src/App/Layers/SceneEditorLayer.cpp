@@ -143,13 +143,18 @@ namespace Motion
     {
         BuildDockspace();
 
+        if(auto sink = Loggers::GetInstance().ImGuiSink())
+        {
+            sink->Draw(ICON_MD_TERMINAL " Console");
+        }
+
         ScenePanelContext panelContext;
-        panelContext.ActiveScene = m_ActiveScene;
-        panelContext.ActiveCamera = m_ActiveScene->GetCamera();
-        panelContext.ActiveSceneSpecification = m_ActiveScene->GetSpecification();
-        panelContext.ActiveViewportTexture = m_SceneTextures[m_ActiveScene];
-        panelContext.UILayerInstance = s_ImGuiLayer.get();
-        panelContext.EditorLayerInstance = this;
+        panelContext.ActiveScene                    = m_ActiveScene;
+        panelContext.ActiveCamera                   = m_ActiveScene->GetCamera();
+        panelContext.ActiveSceneSpecification       = m_ActiveScene->GetSpecification();
+        panelContext.ActiveViewportTexture          = m_SceneTextures[m_ActiveScene];
+        panelContext.UILayerInstance                = s_ImGuiLayer.get();
+        panelContext.EditorLayerInstance            = this;
 
         for (const auto& panel : *m_Panels)
             panel->RenderUI(panelContext);
@@ -187,7 +192,6 @@ namespace Motion
 
         ImGui::End();
     }
-
 
     void SceneEditorLayer::SetActiveScene(const std::shared_ptr<Scene>& scene)
     {

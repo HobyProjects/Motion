@@ -457,6 +457,18 @@ namespace Motion::UI
                 result          = TextureSlotAction::Reload;
             }
 
+            if(tex)
+            {
+                ImGui::Separator();
+                if(ImGui::MenuItem("Flip"))
+                {
+                    auto& file = tex->GetSpecification().TextureFile;
+                    auto flip = !tex->GetSpecification().FlipOnLoadDefault;
+                    tex->ReloadFromFile(file, type, flip);
+                }
+                ImGui::Separator();
+            }
+
             if (ImGui::MenuItem("Clear", nullptr, false, tex != nullptr))
             {
                 tex.reset();

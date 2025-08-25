@@ -26,9 +26,22 @@ namespace Motion
 
     std::string ToString(const std::wstring& wstr)
     {
-        // Use wstring_convert with UTF-8 facet (deprecated but still available in C++17)
-        std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
-        return converter.to_bytes(wstr);
+        if (wstr.empty())
+            return std::string();
+
+        // Convert wide UTF-16 string to UTF-8 using Win32 API
+        int size_needed = WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), -1, nullptr, 0, nullptr, nullptr);
+        if (size_needed <= 0)
+            return std::string();
+
+        std::string result(size_needed, '\0');
+        WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), -1, &result[0], size_needed, nullptr, nullptr);
+
+        // Remove the trailing null added by WideCharToMultiByte
+        if (!result.empty() && result.back() == '\0')
+            result.pop_back();
+
+        return result;
     }
 
     std::string DialogBoxes::OpenFileDialog()

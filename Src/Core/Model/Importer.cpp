@@ -128,51 +128,55 @@ namespace Motion
 
         static void GetPosition(const SMikkTSpaceContext* context, float pos[3], std::int32_t face, std::int32_t vert)
         {
-            auto* adapter = static_cast<MeshMikkTSpaceAdapter*>(context->m_pUserData);
-            std::int32_t idx = adapter->Indices[face * 3 + vert];
-            const glm::vec3& p = adapter->Vertices[idx].Position;
-            pos[0] = p.x; pos[1] = p.y; pos[2] = p.z;
+            auto*               adapter = static_cast<MeshMikkTSpaceAdapter*>(context->m_pUserData);
+            std::int32_t        idx     = adapter->Indices[face * 3 + vert];
+            const glm::vec3&    p       = adapter->Vertices[idx].Position;
+
+            pos[0] = p.x; 
+            pos[1] = p.y; 
+            pos[2] = p.z;
         }
 
         static void GetNormal(const SMikkTSpaceContext* context, float norm[3], std::int32_t face, std::int32_t vert)
         {
-            auto* adapter = static_cast<MeshMikkTSpaceAdapter*>(context->m_pUserData);
-            std::int32_t idx = adapter->Indices[face * 3 + vert];
-            const glm::vec3& n = adapter->Vertices[idx].Normal;
-            norm[0] = n.x; norm[1] = n.y; norm[2] = n.z;
+            auto* adapter           = static_cast<MeshMikkTSpaceAdapter*>(context->m_pUserData);
+            std::int32_t idx        = adapter->Indices[face * 3 + vert];
+            const glm::vec3& n      = adapter->Vertices[idx].Normal;
+            norm[0] = n.x; norm[1]  = n.y; norm[2] = n.z;
         }
 
         static void GetTexCoord(const SMikkTSpaceContext* context, float uv[2], std::int32_t face, std::int32_t vert)
         {
-            auto* adapter = static_cast<MeshMikkTSpaceAdapter*>(context->m_pUserData);
-            std::int32_t idx = adapter->Indices[face * 3 + vert];
-            const glm::vec2& t = adapter->Vertices[idx].TexCoord;
-            uv[0] = t.x; uv[1] = t.y;
+            auto* adapter       = static_cast<MeshMikkTSpaceAdapter*>(context->m_pUserData);
+            std::int32_t idx    = adapter->Indices[face * 3 + vert];
+            const glm::vec2& t  = adapter->Vertices[idx].TexCoord;
+            uv[0] = t.x; uv[1]  = t.y;
         }
 
-        static void SetTSpaceBasic(const SMikkTSpaceContext* context, const float tangent[3], float sign, std::int32_t face, std::int32_t vert)
+        static void SetTSpaceBasic(const SMikkTSpaceContext* context, const float tangent[4], float sign, std::int32_t face, std::int32_t vert)
         {
-            auto* adapter = static_cast<MeshMikkTSpaceAdapter*>(context->m_pUserData);
-            std::int32_t idx = adapter->Indices[face * 3 + vert];
-            adapter->Vertices[idx].Tangent = glm::vec3(tangent[0], tangent[1], tangent[2]);
-            adapter->Vertices[idx].TangentSign = sign;
+            auto* adapter       = static_cast<MeshMikkTSpaceAdapter*>(context->m_pUserData);
+            std::int32_t idx    = adapter->Indices[face * 3 + vert];
+            
+            adapter->Vertices[idx].Tangent      = glm::vec4(tangent[0], tangent[1], tangent[2], tangent[3]);
+            adapter->Vertices[idx].Tangent.w    = sign;
         }
 
         inline void GenerateTangents(std::vector<Vertex>& vertices, const std::vector<std::uint32_t>& indices)
         {
-            MeshMikkTSpaceAdapter adapter{ vertices, indices };
-            SMikkTSpaceInterface iface{};
-            iface.m_getNumFaces = GetNumFaces;
-            iface.m_getNumVerticesOfFace = GetNumVerticesOfFace;
-            iface.m_getPosition = GetPosition;
-            iface.m_getNormal = GetNormal;
-            iface.m_getTexCoord = GetTexCoord;
-            iface.m_setTSpaceBasic = SetTSpaceBasic;
-            iface.m_setTSpace = nullptr;
+            MeshMikkTSpaceAdapter   adapter{ vertices, indices };
+            SMikkTSpaceInterface    iface{};
+            iface.m_getNumFaces             = GetNumFaces;
+            iface.m_getNumVerticesOfFace    = GetNumVerticesOfFace;
+            iface.m_getPosition             = GetPosition;
+            iface.m_getNormal               = GetNormal;
+            iface.m_getTexCoord             = GetTexCoord;
+            iface.m_setTSpaceBasic          = SetTSpaceBasic;
+            iface.m_setTSpace               = nullptr;
 
             SMikkTSpaceContext context{};
-            context.m_pInterface = &iface;
-            context.m_pUserData = &adapter;
+            context.m_pInterface    = &iface;
+            context.m_pUserData     = &adapter;
 
             genTangSpaceDefault(&context);
         }
@@ -276,17 +280,14 @@ namespace Motion
 
                     for (std::uint32_t i = 0; i < mesh->mNumVertices; ++i)
                     {
-                        Vertex vertex
-                        {
-                            .Position = { mesh->mVertices[i].x, mesh->mVertices[i].y, mesh->mVertices[i].z },
-                            .TexCoord = hasUVs ? glm::vec2(mesh->mTextureCoords[0][i].x, mesh->mTextureCoords[0][i].y) : glm::vec2{ 0.f, 0.f },
-                            .Normal = hasNormals ? glm::vec3(mesh->mNormals[i].x,  mesh->mNormals[i].y,  mesh->mNormals[i].z) : glm::vec3{ 0.f, 0.f, 1.f },
-                            .Tangent = hasTangents ? glm::vec3(mesh->mTangents[i].x,  mesh->mTangents[i].y,  mesh->mTangents[i].z) : glm::vec3{ 1.f, 0.f, 0.f },
-                            .Bitangent = hasTangents ? glm::vec3(mesh->mBitangents[i].x, mesh->mBitangents[i].y, mesh->mBitangents[i].z) : glm::vec3{ 0.f, 1.f, 0.f },
-                            .TangentSign = hasTangents ? ((glm::dot(glm::cross(hasNormals ? glm::vec3(mesh->mNormals[i].x, mesh->mNormals[i].y, mesh->mNormals[i].z) : glm::vec3{ 0.f, 0.f, 1.f }, glm::vec3(mesh->mTangents[i].x, mesh->mTangents[i].y, mesh->mTangents[i].z)), glm::vec3(mesh->mBitangents[i].x, mesh->mBitangents[i].y, mesh->mBitangents[i].z)) < 0.f) ? -1.f : 1.f) : 1.f
-                        };
-
-                        verts.push_back(std::move(vertex));
+                        Vertex vtx;
+                        vtx.Position = { mesh->mVertices[i].x, mesh->mVertices[i].y, mesh->mVertices[i].z };
+                        vtx.TexCoord = hasUVs ? glm::vec2(mesh->mTextureCoords[0][i].x, mesh->mTextureCoords[0][i].y) : glm::vec2{ 0.f, 0.f };
+                        vtx.Normal = hasNormals ? glm::vec3(mesh->mNormals[i].x,  mesh->mNormals[i].y,  mesh->mNormals[i].z) : glm::vec3{ 0.f, 0.f, 1.f };
+                        vtx.Tangent = hasTangents ? glm::vec4(mesh->mTangents[i].x,  mesh->mTangents[i].y,  mesh->mTangents[i].z, 0.0f) : glm::vec4{ 1.f, 0.f, 0.f, 0.0f };
+                        vtx.Bitangent = hasTangents ? glm::vec3(mesh->mBitangents[i].x, mesh->mBitangents[i].y, mesh->mBitangents[i].z) : glm::vec3{ 0.f, 1.f, 0.f };
+                        vtx.Tangent.w = hasTangents ? ((glm::dot(glm::cross(hasNormals ? glm::vec3(mesh->mNormals[i].x, mesh->mNormals[i].y, mesh->mNormals[i].z)  : glm::vec3{ 0.f, 0.f, 1.f }, glm::vec3(mesh->mTangents[i].x, mesh->mTangents[i].y, mesh->mTangents[i].z)), glm::vec3(mesh->mBitangents[i].x, mesh->mBitangents[i].y, mesh->mBitangents[i].z)) < 0.f)  ? -1.f : 1.f) : 1.f;
+                        verts.push_back(std::move(vtx));
                     }
 
                     auto& idxs = outResults.Meshes[meshIndex].Indices;
@@ -359,9 +360,8 @@ namespace Motion
                             {"a_Position",    BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Position)},
                             {"a_TexCoords",   BufferComponents::UV,  BufferStride::F2, false, offsetof(Vertex, TexCoord)},
                             {"a_Normals",     BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Normal)},
-                            {"a_Tangents",    BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Tangent)},
-                            {"a_Bitangents",  BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Bitangent)},
-                            {"a_TangentSign", BufferComponents::X,   BufferStride::F1, false, offsetof(Vertex, TangentSign)}
+                            {"a_Tangents",    BufferComponents::XYZW, BufferStride::F4, false, offsetof(Vertex, Tangent)},
+                            {"a_Bitangents",  BufferComponents::XYZ, BufferStride::F3, false, offsetof(Vertex, Bitangent)}
                         };
 
                         auto meshPtr = Mesh::Create(mesh.Vertices.data(), static_cast<std::uint32_t>(mesh.Vertices.size()), mesh.Indices.data(), static_cast<std::uint32_t>(mesh.Indices.size()), layout, staticMesh);

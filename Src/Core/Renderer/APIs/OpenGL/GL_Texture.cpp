@@ -40,7 +40,6 @@ namespace Motion
         }
 
         m_Specification.Type = TextureType::BaseColorTexture;
-        m_Specification.Source = TextureSource::GeneratedTexture;
         m_Specification.TextureFile = "System Generated";
         m_Specification.Name = std::format("System Generated:{} Texture", GetTextureTypeString(m_Specification.Type));
         m_Specification.FlipOnLoadDefault = true;
@@ -59,7 +58,6 @@ namespace Motion
             return;
         }
 
-        m_Specification.Source = TextureSource::TextureFile;
         m_Specification.TextureFile = textureFile.string();
         m_Specification.Name = std::format("{} Texture", GetTextureTypeString(m_Specification.Type));
     }
@@ -146,11 +144,6 @@ namespace Motion
         return m_Specification;
     }
 
-    TextureSource GL_Texture::Source() const noexcept
-    {
-        return m_Specification.Source;
-    }
-
     std::shared_ptr<GL_Texture> GL_Texture::Create(std::int32_t width, std::int32_t height, const glm::vec3& color) noexcept
     {
         return std::make_shared<GL_Texture>(width, height, color);
@@ -219,7 +212,6 @@ namespace Motion
         const bool ok = UploadRGBA8(w, h, pixels, IsSRGB(m_Specification.Type));
         stbi_image_free(pixels);
 
-        m_Specification.Source = TextureSource::TextureFile;
         m_Specification.TextureFile = textureFile.string();
         return ok;
     }
@@ -242,7 +234,6 @@ namespace Motion
         const bool ok = UploadRGBA8(w, h, pixels, IsSRGB(type));
         stbi_image_free(pixels);
 
-        m_Specification.Source = TextureSource::TextureFile;
         m_Specification.TextureFile = textureFile.string();
         m_Specification.Name = std::format("{} Texture", GetTextureTypeString(type));
         return ok;
@@ -286,7 +277,7 @@ namespace Motion
         return true;
     }
 
-    GL_CubeTexture::GL_CubeTexture(const std::filesystem::path& textureFile)
+    GL_CubeMapTexture::GL_CubeMapTexture(const std::filesystem::path& textureFile)
     {
         if (!std::filesystem::exists(textureFile))
         {
@@ -351,7 +342,7 @@ namespace Motion
         MOTION_CORE_INFO("Cube map texture {0} loaded successfully with ID {1}", textureFile.string(), m_TexID);
     }
 
-    GL_CubeTexture::GL_CubeTexture(
+    GL_CubeMapTexture::GL_CubeMapTexture(
         const std::filesystem::path& posX_texture, const std::filesystem::path& negX_texture,
         const std::filesystem::path& posY_texture, const std::filesystem::path& negY_texture,
         const std::filesystem::path& posZ_texture, const std::filesystem::path& negZ_texture)
@@ -409,32 +400,32 @@ namespace Motion
         stbi_image_free(negZ);
     }
 
-    GL_CubeTexture::~GL_CubeTexture()
+    GL_CubeMapTexture::~GL_CubeMapTexture()
     {
         glDeleteTextures(1, &m_TexID);
     }
 
-    void GL_CubeTexture::Bind(std::int32_t bindingPoint) const noexcept
+    void GL_CubeMapTexture::Bind(std::int32_t bindingPoint) const noexcept
     {
         glBindTextureUnit(bindingPoint, m_TexID);
     }
 
-    void GL_CubeTexture::Bind() const noexcept
+    void GL_CubeMapTexture::Bind() const noexcept
     {
         glBindTextureUnit(0, m_TexID);
     }
 
-    void GL_CubeTexture::Unbind() const noexcept
+    void GL_CubeMapTexture::Unbind() const noexcept
     {
         glBindTextureUnit(0, 0);
     }
 
-    TextureID GL_CubeTexture::GetID() const noexcept
+    TextureID GL_CubeMapTexture::GetID() const noexcept
     {
         return m_TexID;
     }
 
-    void GL_CubeTexture::SetFace(std::int32_t face, std::int32_t mipLevel, std::int32_t width, std::int32_t height, std::int32_t format, const void* data)
+    void GL_CubeMapTexture::SetFace(std::int32_t face, std::int32_t mipLevel, std::int32_t width, std::int32_t height, std::int32_t format, const void* data)
     {
         if (data != nullptr)
         {
@@ -447,16 +438,16 @@ namespace Motion
         }
     }
 
-    std::shared_ptr<GL_CubeTexture> GL_CubeTexture::Create(const std::filesystem::path& textureFile) noexcept
+    std::shared_ptr<GL_CubeMapTexture> GL_CubeMapTexture::Create(const std::filesystem::path& textureFile) noexcept
     {
-        return std::make_shared<GL_CubeTexture>(textureFile);
+        return std::make_shared<GL_CubeMapTexture>(textureFile);
     }
 
-    std::shared_ptr<GL_CubeTexture> GL_CubeTexture::Create(
+    std::shared_ptr<GL_CubeMapTexture> GL_CubeMapTexture::Create(
         const std::filesystem::path& posX_texture, const std::filesystem::path& negX_texture,
         const std::filesystem::path& posY_texture, const std::filesystem::path& negY_texture,
         const std::filesystem::path& posZ_texture, const std::filesystem::path& negZ_texture) noexcept
     {
-        return std::make_shared<GL_CubeTexture>(posX_texture, negX_texture, posY_texture, negY_texture, posZ_texture, negZ_texture);
+        return std::make_shared<GL_CubeMapTexture>(posX_texture, negX_texture, posY_texture, negY_texture, posZ_texture, negZ_texture);
     }
 }

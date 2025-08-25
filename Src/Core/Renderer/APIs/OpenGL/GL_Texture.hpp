@@ -22,7 +22,6 @@ namespace Motion
 
         [[nodiscard]] TextureID GetID() const noexcept override;
         [[nodiscard]] TextureSpecification& GetSpecification() noexcept override;
-        [[nodiscard]] TextureSource Source() const noexcept override;
 
         [[nodiscard]] static std::shared_ptr<GL_Texture> Create(std::int32_t width, std::int32_t height, const glm::vec3& color) noexcept;
         [[nodiscard]] static std::shared_ptr<GL_Texture> Create(const std::filesystem::path& textureFile, TextureType type) noexcept;
@@ -39,16 +38,16 @@ namespace Motion
         TextureSpecification m_Specification{};
     };
 
-    class GL_CubeTexture final : public ICubeTexture
+    class GL_CubeMapTexture final : public ICubeMapTexture
     {
     public:
-        GL_CubeTexture(const std::filesystem::path& textureFile);
-        GL_CubeTexture(
+        GL_CubeMapTexture(const std::filesystem::path& textureFile);
+        GL_CubeMapTexture(
             const std::filesystem::path& posX_texture, const std::filesystem::path& negX_texture,
             const std::filesystem::path& posY_texture, const std::filesystem::path& negY_texture,
             const std::filesystem::path& posZ_texture, const std::filesystem::path& negZ_texture);
 
-        virtual ~GL_CubeTexture();
+        virtual ~GL_CubeMapTexture();
 
         void Bind(std::int32_t bindingPoint = 0) const noexcept override;
         void Bind() const noexcept override;
@@ -57,8 +56,8 @@ namespace Motion
 
         [[nodiscard]] TextureID GetID() const noexcept override;
 
-        [[nodiscard]] static std::shared_ptr<GL_CubeTexture> Create(const std::filesystem::path& textureFile) noexcept;
-        [[nodiscard]] static std::shared_ptr<GL_CubeTexture> Create(
+        [[nodiscard]] static std::shared_ptr<GL_CubeMapTexture> Create(const std::filesystem::path& textureFile) noexcept;
+        [[nodiscard]] static std::shared_ptr<GL_CubeMapTexture> Create(
             const std::filesystem::path& posX_texture, const std::filesystem::path& negX_texture,
             const std::filesystem::path& posY_texture, const std::filesystem::path& negY_texture,
             const std::filesystem::path& posZ_texture, const std::filesystem::path& negZ_texture) noexcept;

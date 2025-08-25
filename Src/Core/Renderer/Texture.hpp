@@ -26,6 +26,7 @@ namespace Motion
         SheenTexture,
         TransmissionTexture,
         ORMTexture,
+
         ClearcoatTexture,
         ClearcoatRoughnessTexture,
         ClearcoatNormalTexture,
@@ -37,20 +38,11 @@ namespace Motion
         IridescenceTexture,
         IridescenceThicknessTexture,
 
-        // Special Textures
         CubeTexture,
         IrradianceTexture,
         PrefilteredTexture,
         BRDFTexture,
         UnknownTexture
-    };
-
-    enum class TextureSource : std::int32_t
-    {
-        Undefined = 0,
-        TextureFile,
-        GeneratedTexture,
-        CubeMapTextureFile,
     };
 
     inline TextureType operator|(TextureType a, TextureType b) { return static_cast<TextureType>(static_cast<std::int32_t>(a) | static_cast<std::int32_t>(b)); }
@@ -62,32 +54,32 @@ namespace Motion
     {
         switch (type)
         {
-        case TextureType::SpecularTexture: return "Specular";
-        case TextureType::NormalTexture: return "Normal";
-        case TextureType::EmissiveTexture: return "Emissive";
-        case TextureType::OpacityTexture: return "Opacity";
-        case TextureType::BaseColorTexture: return "Base Color";
-        case TextureType::MetallicTexture: return "Metallic";
-        case TextureType::RoughnessTexture: return "Roughness";
-        case TextureType::AmbientOcclusionTexture: return "Ambient Occlusion";
-        case TextureType::DisplacementTexture: return "Displacement";
-        case TextureType::SheenTexture: return "Sheen";
-        case TextureType::TransmissionTexture: return "Transmission";
-        case TextureType::ORMTexture: return "ORM (AO/R/M)";
-        case TextureType::ClearcoatTexture: return "Clearcoat";
-        case TextureType::ClearcoatRoughnessTexture: return "Clearcoat Roughness";
-        case TextureType::ClearcoatNormalTexture: return "Clearcoat Normal";
-        case TextureType::SpecularColorTexture: return "Specular Color";
-        case TextureType::SheenColorTexture: return "Sheen Color";
-        case TextureType::SheenRoughnessTexture: return "Sheen Roughness";
-        case TextureType::ThicknessTexture: return "Thickness";
-        case TextureType::AnisotropyTexture: return "Anisotropy";
-        case TextureType::IridescenceTexture: return "Iridescence";
-        case TextureType::IridescenceThicknessTexture: return "Iridescence Thickness";
-        case TextureType::CubeTexture: return "Cube";
-        case TextureType::IrradianceTexture: return "Irradiance";
-        case TextureType::PrefilteredTexture: return "Prefiltered";
-        case TextureType::BRDFTexture: return "BRDF";
+        case TextureType::SpecularTexture:              return "Specular";
+        case TextureType::NormalTexture:                return "Normal";
+        case TextureType::EmissiveTexture:              return "Emissive";
+        case TextureType::OpacityTexture:               return "Opacity";
+        case TextureType::BaseColorTexture:             return "Base Color";
+        case TextureType::MetallicTexture:              return "Metallic";
+        case TextureType::RoughnessTexture:             return "Roughness";
+        case TextureType::AmbientOcclusionTexture:      return "Ambient Occlusion";
+        case TextureType::DisplacementTexture:          return "Displacement";
+        case TextureType::SheenTexture:                 return "Sheen";
+        case TextureType::TransmissionTexture:          return "Transmission";
+        case TextureType::ORMTexture:                   return "ORM (AO/R/M)";
+        case TextureType::ClearcoatTexture:             return "Clearcoat";
+        case TextureType::ClearcoatRoughnessTexture:    return "Clearcoat Roughness";
+        case TextureType::ClearcoatNormalTexture:       return "Clearcoat Normal";
+        case TextureType::SpecularColorTexture:         return "Specular Color";
+        case TextureType::SheenColorTexture:            return "Sheen Color";
+        case TextureType::SheenRoughnessTexture:        return "Sheen Roughness";
+        case TextureType::ThicknessTexture:             return "Thickness";
+        case TextureType::AnisotropyTexture:            return "Anisotropy";
+        case TextureType::IridescenceTexture:           return "Iridescence";
+        case TextureType::IridescenceThicknessTexture:  return "Iridescence Thickness";
+        case TextureType::CubeTexture:                  return "Cube";
+        case TextureType::IrradianceTexture:            return "Irradiance";
+        case TextureType::PrefilteredTexture:           return "Prefiltered";
+        case TextureType::BRDFTexture:                  return "BRDF";
         default: return "Unknown";
         }
     }
@@ -100,7 +92,6 @@ namespace Motion
         std::int32_t Width{ 0 }, Height{ 0 }, Channels{ 0 };
         std::int32_t InternalDataFormat{ 0 }, TextureDataFormat{ 0 };
         TextureType Type{ TextureType::BaseColorTexture };
-        TextureSource Source{ TextureSource::Undefined };
         bool FlipOnLoadDefault{ true };
         bool InvertGreen{ false };
     };
@@ -118,7 +109,6 @@ namespace Motion
 
         [[nodiscard]] virtual TextureID GetID() const noexcept = 0;
         [[nodiscard]] virtual TextureSpecification& GetSpecification() noexcept = 0;
-        [[nodiscard]] virtual TextureSource Source() const noexcept = 0;
 
         [[nodiscard]] static std::shared_ptr<ITexture> Create(std::int32_t width, std::int32_t height, const glm::vec3& color) noexcept;
         [[nodiscard]] static std::shared_ptr<ITexture> Create(const std::filesystem::path& textureFile, TextureType type) noexcept;
@@ -130,11 +120,11 @@ namespace Motion
         [[nodiscard]] virtual bool GenerateTexture2D(std::int32_t width, std::int32_t height, const glm::vec3& color) = 0;
     };
 
-    class ICubeTexture
+    class ICubeMapTexture
     {
     public:
-        ICubeTexture() = default;
-        virtual ~ICubeTexture() = default;
+        ICubeMapTexture() = default;
+        virtual ~ICubeMapTexture() = default;
 
         virtual void Bind(std::int32_t bindingPoint = 0) const noexcept = 0;
         virtual void Bind() const noexcept = 0;
@@ -143,8 +133,8 @@ namespace Motion
 
         [[nodiscard]] virtual TextureID GetID() const noexcept = 0;
 
-        [[nodiscard]] static std::shared_ptr<ICubeTexture> Create(const std::filesystem::path& textureFile) noexcept;
-        [[nodiscard]] static std::shared_ptr<ICubeTexture> Create(
+        [[nodiscard]] static std::shared_ptr<ICubeMapTexture> Create(const std::filesystem::path& textureFile) noexcept;
+        [[nodiscard]] static std::shared_ptr<ICubeMapTexture> Create(
             const std::filesystem::path& posX_texture, const std::filesystem::path& negX_texture,
             const std::filesystem::path& posY_texture, const std::filesystem::path& negY_texture,
             const std::filesystem::path& posZ_texture, const std::filesystem::path& negZ_texture) noexcept;

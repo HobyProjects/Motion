@@ -109,6 +109,5 @@ namespace Motion
 
     void Scene::RenderEnvironment() const
     {
-        m_Specification.Environment.EnvironmentInstance->Render(m_Camera.Camera.View, m_Camera.Camera.Projection);
     }
 }

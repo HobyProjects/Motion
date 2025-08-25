@@ -58,12 +58,12 @@ namespace Motion
     }
 
 
-    std::shared_ptr<ICubeTexture> ICubeTexture::Create(const std::filesystem::path& textureFile) noexcept
+    std::shared_ptr<ICubeMapTexture> ICubeMapTexture::Create(const std::filesystem::path& textureFile) noexcept
     {
         switch (Renderer::GetAPI())
         {
         case RenderingAPI::OpenGL:
-            return GL_CubeTexture::Create(textureFile);
+            return GL_CubeMapTexture::Create(textureFile);
         case RenderingAPI::Vulkan:
             MOTION_ASSERT(false, "Vulkan API is not yet implemented for cube map textures.");
             return nullptr;
@@ -77,12 +77,12 @@ namespace Motion
     }
 
 
-    std::shared_ptr<ICubeTexture> ICubeTexture::Create(const std::filesystem::path& posX_texture, const std::filesystem::path& negX_texture, const std::filesystem::path& posY_texture, const std::filesystem::path& negY_texture, const std::filesystem::path& posZ_texture, const std::filesystem::path& negZ_texture) noexcept
+    std::shared_ptr<ICubeMapTexture> ICubeMapTexture::Create(const std::filesystem::path& posX_texture, const std::filesystem::path& negX_texture, const std::filesystem::path& posY_texture, const std::filesystem::path& negY_texture, const std::filesystem::path& posZ_texture, const std::filesystem::path& negZ_texture) noexcept
     {
         switch (Renderer::GetAPI())
         {
         case RenderingAPI::OpenGL:
-            return GL_CubeTexture::Create(posX_texture, negX_texture, posY_texture, negY_texture, posZ_texture, negZ_texture);
+            return GL_CubeMapTexture::Create(posX_texture, negX_texture, posY_texture, negY_texture, posZ_texture, negZ_texture);
         case RenderingAPI::Vulkan:
             MOTION_ASSERT(false, "Vulkan API is not yet implemented for cube map textures.");
             return nullptr;

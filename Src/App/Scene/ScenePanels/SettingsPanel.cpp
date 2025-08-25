@@ -52,38 +52,12 @@ namespace Motion
                     ImGui::TextDisabled("%s  No environment loaded (HDR).", ICON_MD_INFO);
                     if (ImGui::Button(ICON_MD_ADD_PHOTO_ALTERNATE "  Load HDR…"))
                     {
-                        std::string path = Motion::DialogBoxes::OpenFileDialog();
-                        if (!path.empty())
-                        {
-                            Motion::EnvironmentIntensity keep = ibl ? ibl->GetIntensity() : EnvironmentIntensity{ 1.0f, 1.0f };
-                            float rotY = ibl ? ibl->GetSkyboxRotationY() : 0.0f;
 
-                            auto newEnv = Motion::IEnvironment::Create(path);
-                            if (newEnv)
-                            {
-                                newEnv->SetIntensity(keep);
-                                newEnv->SetSkyboxRotationY(rotY);
-                                env.EnvironmentInstance = std::move(newEnv);
-                            }
-                            else
-                            {
-                                MOTION_CORE_ERROR("Failed to create environment from: {}", path);
-                            }
-                        }
                     }
                 }
                 else
                 {
-                    auto intens = ibl->GetIntensity();
-                    UI::SliderFloat(ICON_MD_TUNE " Diffuse", &intens.Diffuse, 0.0f, 10.0f);
-                    UI::SliderFloat(ICON_MD_TUNE " Specular", &intens.Specular, 0.0f, 10.0f);
-                    ibl->SetIntensity(intens);
-
-                    float rotY = ibl->GetSkyboxRotationY();
-                    if (UI::SliderFloat(ICON_MD_ROTATE_90_DEGREES_CW " Skybox Y", &rotY, -glm::pi<float>(), glm::pi<float>()))
-                    {
-                        ibl->SetSkyboxRotationY(rotY);
-                    }
+                    
                 }
 
                 UI::EndPropertyGrid();

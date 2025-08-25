@@ -64,18 +64,19 @@ namespace Motion
 
     static inline void BindIBL(IShader* shader, IEnvironment* env)
     {
-        env->BindAll(TEX_SLOTS::Irradiance, TEX_SLOTS::Prefilter, TEX_SLOTS::BRDFLUT);
+        IBLTextureBinding binding;
+        binding.SlotBRDFLUT = TEX_SLOTS::BRDFLUT;
+        binding.SlotIrradiance = TEX_SLOTS::Irradiance;
+        binding.SlotPrefiltered =  TEX_SLOTS::Prefilter;
+
+        env->BindIBL(binding);
 
         shader->SetUniform("u_IrradianceTexture",   TEX_SLOTS::Irradiance);
         shader->SetUniform("u_PrefilteredTexture",  TEX_SLOTS::Prefilter);
         shader->SetUniform("u_BRDFLUTTexture",      TEX_SLOTS::BRDFLUT);
-
-        auto I      = env->GetIntensity();
-        auto MIP    = env->GetMipLevel();
-
-        shader->SetUniform("u_IBLIntensity_Diffuse",    I.Diffuse);
-        shader->SetUniform("u_IBLIntensity_Specular",   I.Specular);
-        shader->SetUniform("u_IBLMipLevels",            (float)MIP);
+        shader->SetUniform("u_IBLIntensity_Diffuse",    1.0f);
+        shader->SetUniform("u_IBLIntensity_Specular",   1.0f);
+        shader->SetUniform("u_IBLMipLevels",            5.0f);
     }
 
     static ShaderFeatureMask GetShaderMask(Material* currentMaterial)
@@ -531,6 +532,6 @@ namespace Motion
         if (!ibl)       return;
 
         const auto& cam = scene->GetCamera().Camera;
-        ibl->Render(cam.View, cam.Projection);
+        ibl->RenderSkyBox(cam.Projection, cam.View);
     }
 }

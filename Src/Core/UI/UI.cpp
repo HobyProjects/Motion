@@ -79,14 +79,11 @@ namespace Motion
         return fullPath.string();
     }
 
-    // -------- Fonts ----------------------------------------------------------
-
     void UserInterfaceInitializer::LoadDefaultFonts(const char* fontPath, float sizePx) noexcept
     {
         ImGuiIO& io = ImGui::GetIO();
         io.Fonts->Clear();
 
-        // ---- Base text font ----
         ImFontConfig textCfg{};
         textCfg.OversampleH = 3;
         textCfg.OversampleV = 3;
@@ -97,29 +94,23 @@ namespace Motion
             base = io.Fonts->AddFontFromFileTTF(GetFullPath(fontPath).c_str(), sizePx, &textCfg);
         if (!base) base = io.Fonts->AddFontDefault();
 
-        // ---- Material Icons merged into base ----
         static const ImWchar icon_ranges[] = { (ImWchar)ICON_MIN_MD, (ImWchar)ICON_MAX_MD, 0 };
 
-        // Tune these two to align with your theme
-        const float iconScale   = 1.0f;           // icons slightly larger than text
+        const float iconScale   = 1.0f;       
         const float iconSizePx  = sizePx * iconScale;
-        const float iconYOffset = 1.0f;           // move icons up/down in pixels (try -2..+2)
+        const float iconYOffset = 1.0f;         
 
         ImFontConfig iconCfg{};
-        iconCfg.MergeMode      = true;             // merge into *last* font (our base)
+        iconCfg.MergeMode      = true;           
         iconCfg.PixelSnapH     = true;
-        iconCfg.OversampleH    = 1;                // oversampling 1 is fine for icon glyphs
+        iconCfg.OversampleH    = 1;              
         iconCfg.OversampleV    = 1;
-        iconCfg.GlyphMinAdvanceX = iconSizePx;     // keeps icons readable beside text
+        iconCfg.GlyphMinAdvanceX = iconSizePx;     
         iconCfg.GlyphOffset    = ImVec2(0.1f, iconYOffset);
 
         io.Fonts->AddFontFromFileTTF("Assets/Fonts/MaterialIconFonts/MaterialIcons-Regular.ttf", iconSizePx, &iconCfg, icon_ranges);
-
-        // Build atlas
         (void)io.Fonts->Build();
     }
-
-    // -------- Themes ---------------------------------------------------------
 
     void UserInterfaceInitializer::ApplyTheme(Theme t, ImVec4 accent) noexcept
     {
@@ -160,7 +151,6 @@ namespace Motion
     {
         ImGuiStyle& style = ImGui::GetStyle();
 
-        // Layout / geometry
         style.AntiAliasedFill = true;
         style.AntiAliasedLines = true;
         style.AntiAliasedLinesUseTex = true;
@@ -187,13 +177,12 @@ namespace Motion
 
         style.DisabledAlpha      = 0.45f;
 
-        // Neutral *dark* palette (no hue bias)
-        const ImVec4 N00 = RGBA( 14,  14,  15);      // deepest
-        const ImVec4 N01 = RGBA( 18,  18,  19);      // window bg
-        const ImVec4 N02 = RGBA( 25,  26,  27);      // frame bg / passive
-        const ImVec4 N03 = RGBA( 32,  33,  35);      // hover
-        const ImVec4 N04 = RGBA( 42,  44,  47);      // active / headers
-        const ImVec4 BRD = ImVec4(0.30f, 0.30f, 0.32f, 0.60f); // subtle border
+        const ImVec4 N00 = RGBA( 14,  14,  15);      
+        const ImVec4 N01 = RGBA( 18,  18,  19);    
+        const ImVec4 N02 = RGBA( 25,  26,  27);    
+        const ImVec4 N03 = RGBA( 32,  33,  35); 
+        const ImVec4 N04 = RGBA( 42,  44,  47);     
+        const ImVec4 BRD = ImVec4(0.30f, 0.30f, 0.32f, 0.60f); 
 
         const ImVec4 TXT  = RGBA(235, 235, 235);
         const ImVec4 TXT2 = RGBA(170, 170, 170);
@@ -205,11 +194,9 @@ namespace Motion
 
         ImVec4* c = style.Colors;
 
-        // Text
         c[ImGuiCol_Text]                 = TXT;
         c[ImGuiCol_TextDisabled]         = TXT3;
 
-        // Windows / popups / docking
         c[ImGuiCol_WindowBg]             = ImVec4(N01.x, N01.y, N01.z, 0.98f);
         c[ImGuiCol_ChildBg]              = N00;
         c[ImGuiCol_PopupBg]              = ImVec4(N01.x, N01.y, N01.z, 0.98f);
@@ -217,66 +204,55 @@ namespace Motion
         c[ImGuiCol_DockingEmptyBg]       = N00;
         c[ImGuiCol_DockingPreview]       = ImVec4(acc.x, acc.y, acc.z, 0.35f);
 
-        // Borders / separators
         c[ImGuiCol_Border]               = BRD;
         c[ImGuiCol_BorderShadow]         = ImVec4(0,0,0,0);
         c[ImGuiCol_Separator]            = ImVec4(BRD.x, BRD.y, BRD.z, 0.65f);
         c[ImGuiCol_SeparatorHovered]     = accHover;
         c[ImGuiCol_SeparatorActive]      = accActive;
 
-        // Headers (collapsing, selectable, table header)
         c[ImGuiCol_Header]               = ImVec4(N02.x, N02.y, N02.z, 0.95f);
         c[ImGuiCol_HeaderHovered]        = N03;
         c[ImGuiCol_HeaderActive]         = N04;
 
-        // Frames (input, sliders, combo)
         c[ImGuiCol_FrameBg]              = N02;
         c[ImGuiCol_FrameBgHovered]       = N03;
         c[ImGuiCol_FrameBgActive]        = N04;
 
-        // Buttons
         c[ImGuiCol_Button]               = N02;
         c[ImGuiCol_ButtonHovered]        = N03;
         c[ImGuiCol_ButtonActive]         = ImVec4(acc.x, acc.y, acc.z, 0.90f);
 
-        // Tabs
         c[ImGuiCol_Tab]                  = RGBA(28,29,30);
         c[ImGuiCol_TabHovered]           = N03;
         c[ImGuiCol_TabActive]            = RGBA(34,35,37);
         c[ImGuiCol_TabUnfocused]         = RGBA(24,25,26);
         c[ImGuiCol_TabUnfocusedActive]   = RGBA(28,29,30);
 
-        // Titles
         c[ImGuiCol_TitleBg]              = N00;
         c[ImGuiCol_TitleBgActive]        = N02;
         c[ImGuiCol_TitleBgCollapsed]     = ImVec4(N00.x, N00.y, N00.z, 0.70f);
 
-        // Widgets
         c[ImGuiCol_CheckMark]            = acc;
         c[ImGuiCol_SliderGrab]           = Mix(acc, N02, 0.35f);
         c[ImGuiCol_SliderGrabActive]     = accActive;
 
-        // Scrollbar
         c[ImGuiCol_ScrollbarBg]          = ImVec4(N00.x, N00.y, N00.z, 0.55f);
         c[ImGuiCol_ScrollbarGrab]        = RGBA(48,49,52);
         c[ImGuiCol_ScrollbarGrabHovered] = RGBA(58,59,63);
         c[ImGuiCol_ScrollbarGrabActive]  = RGBA(68,69,74);
 
-        // Tables
         c[ImGuiCol_TableHeaderBg]        = RGBA(30,31,33);
         c[ImGuiCol_TableBorderStrong]    = RGBA(44,46,48);
         c[ImGuiCol_TableBorderLight]     = RGBA(36,37,39);
         c[ImGuiCol_TableRowBg]           = ImVec4(0,0,0,0);
         c[ImGuiCol_TableRowBgAlt]        = ImVec4(1,1,1,0.03f);
 
-        // Navigation / selections / misc
         c[ImGuiCol_TextSelectedBg]       = ImVec4(acc.x, acc.y, acc.z, 0.35f);
         c[ImGuiCol_DragDropTarget]       = acc;
         c[ImGuiCol_NavHighlight]         = ImVec4(acc.x, acc.y, acc.z, 0.85f);
         c[ImGuiCol_NavWindowingHighlight]= ImVec4(acc.x, acc.y, acc.z, 0.30f);
         c[ImGuiCol_NavWindowingDimBg]    = ImVec4(N00.x, N00.y, N00.z, 0.60f);
 
-        // Plots
         c[ImGuiCol_PlotLines]            = acc;
         c[ImGuiCol_PlotLinesHovered]     = accHover;
         c[ImGuiCol_PlotHistogram]        = Mix(acc, ImVec4(1,1,1,1), 0.05f);

@@ -128,14 +128,6 @@ namespace Motion
         CoreAPI& operator=(CoreAPI&&) = delete;
 
     public:
-        /**
-         * @brief Returns the singleton instance of CoreAPI.
-         *
-         * This method ensures that only one instance of CoreAPI exists throughout the application.
-         * It initializes the instance if it does not already exist.
-         *
-         * @return Reference to the singleton CoreAPI instance.
-         */
         [[nodiscard]] static CoreAPI& GetInstance() noexcept
         {
             static CoreAPI instance;
@@ -165,14 +157,6 @@ namespace Motion
         WindowManager& operator=(WindowManager&&) = delete;
 
     public:
-        /**
-         * @brief Returns the singleton instance of WindowManager.
-         *
-         * This method ensures that only one instance of WindowManager exists throughout the application.
-         * It initializes the instance if it does not already exist.
-         *
-         * @return Reference to the singleton WindowManager instance.
-         */
         [[nodiscard]] static WindowManager& GetInstance() noexcept
         {
             static WindowManager instance;

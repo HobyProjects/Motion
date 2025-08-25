@@ -21,14 +21,14 @@ namespace Motion
         //---------------------------------------------------------------------------
 
         auto& AM = AssetManager::GetInstance();
-        AM.Create<IShader>("ENV", "Assets/Shaders/Environment.glsl");
-        AM.Create<IShader>("ENV_IRR", "Assets/Shaders/EnvironmentIrradiance.glsl");
-        AM.Create<IShader>("ENV_PRE", "Assets/Shaders/EnvironmentPrefiltered.glsl");
-        AM.Create<IShader>("ENV_CUB", "Assets/Shaders/EnvironmentCubeConverter.glsl");
-        AM.Create<IShader>("ENV_BRD", "Assets/Shaders/EnvironmentBRDF.glsl");
-        AM.Create<IShader>("PBR", "Assets/Shaders/ModularPBR.glsl");
+        AM.Create<IShader>("ENV_SKY", "Assets/Shaders/GLSL/Environment/Environment.glsl");
+        AM.Create<IShader>("ENV_IRR", "Assets/Shaders/GLSL/Environment/EnvironmentIrradiance.glsl");
+        AM.Create<IShader>("ENV_PRE", "Assets/Shaders/GLSL/Environment/EnvironmentPrefiltered.glsl");
+        AM.Create<IShader>("ENV_CUB", "Assets/Shaders/GLSL/Environment/EnvironmentCubeConverter.glsl");
+        AM.Create<IShader>("ENV_BRD", "Assets/Shaders/GLSL/Environment/EnvironmentBRDF.glsl");
+        AM.Create<IShader>("PBR", "Assets/Shaders/GLSL/ModularPBR.glsl");
 
-        BaseMaterial::Import("Assets/Materials/Base/Metal/Base.yaml");
+        BaseMaterial::Import("Assets/Materials/Metal/Base.yaml");
 
         m_Viewport.FrameSpec.Name = "SceneEditorFrame";
         m_Viewport.FrameSpec.Width = (uint32_t)m_CurrentViewportSize.x;
@@ -36,12 +36,17 @@ namespace Motion
         m_Viewport.Size = m_CurrentViewportSize;
         m_Framebuffer = IFrameBuffer::Create(m_Viewport.FrameSpec);
 
+        EnvironmentSpecification specEnv;
+        specEnv.UseSHDiffuse = false;
+        specEnv.BuildBRDFLUT = true;
+        specEnv.HDRfile = "Assets/HDRI/Scene.hdr";
+
         SceneSpecification spec{};
         spec.Name = "Default Scene";
         spec.IsActive = true;
         spec.Viewport = m_Viewport;
         spec.Environment = SceneEnvironment();
-        spec.Environment.EnvironmentInstance = IEnvironment::Create("Assets/HDRI/Scene.hdr");
+        spec.Environment.EnvironmentInstance = IEnvironment::Create(specEnv);
 
         if (m_Scenes.empty())
             m_Scenes.push_back(std::make_shared<Scene>(spec));

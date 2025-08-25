@@ -12,14 +12,6 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 
-include(PlatformConfiguration) # This includes the function to configure platform-specific settings
-include(CompilerConfiguration) # This includes the function to set compiler configurations
-
-# #############################################################################
-# Compiler Configuration
-# #############################################################################
-SetCompilerConfigurations()
-
 # ##############################################################################
 # Dependencies
 # ##############################################################################
@@ -35,11 +27,6 @@ find_package(stb CONFIG REQUIRED)
 find_package(fastgltf CONFIG REQUIRED)
 find_package(MikkTSpace CONFIG REQUIRED)
 find_package(imguizmo CONFIG REQUIRED)
-
-# ##############################################################################
-# Platform Specific Configuration
-# ##############################################################################
-ConfigurePlatform()
 
 # ##############################################################################
 # Motion Engine - Core Library
@@ -251,7 +238,7 @@ add_custom_target(
     MotionEngineResources ALL
     COMMAND ${CMAKE_COMMAND} -E copy_directory
     ${PROJECT_SOURCE_DIR}/Assets
-    ${PROJECT_BINARY_DIR}/${CMAKE_BUILD_TYPE}/Assets
+    ${PROJECT_BINARY_DIR}/Assets
     COMMENT "Copying resources into the binary dir"
 )
 add_dependencies(${MOTION_APP_EXECUTABLE} MotionEngineResources)

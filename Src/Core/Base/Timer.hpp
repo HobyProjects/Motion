@@ -53,7 +53,7 @@ namespace Motion
             switch (coreAPI.API())
             {
             case PlatformBaseAPIs::GLFW: return static_cast<T>(glfwGetTime());
-            case PlatformBaseAPIs::Win32: MOTION_ASSERT(false, "Win32 is not supported yet") return static_cast<T>(0);
+            case PlatformBaseAPIs::Win32: MOTION_ASSERT(false, "Win32 is not supported yet"); return static_cast<T>(0);
             }
 
             return static_cast<T>(0);
@@ -69,10 +69,11 @@ namespace Motion
          */
         static T GetSystemTicksSeconds()
         {
-            switch (CoreAPI::GetBaseAPI()->API())
+            auto& coreAPI = CoreAPI::GetInstance();
+            switch (coreAPI.API())
             {
             case PlatformBaseAPIs::GLFW: return static_cast<T>(glfwGetTime());
-            case PlatformBaseAPIs::Win32: MOTION_ASSERT(false, "Win32 is not supported yet") return static_cast<T>(0);
+            case PlatformBaseAPIs::Win32: MOTION_ASSERT(false, "Win32 is not supported yet"); return static_cast<T>(0);
             }
 
             return static_cast<T>(0);
@@ -88,10 +89,11 @@ namespace Motion
          */
         static T GetSystemTicksMilliseconds()
         {
-            switch (CoreAPI::GetBaseAPI()->API())
+            auto& coreAPI = CoreAPI::GetInstance();
+            switch (coreAPI.API())
             {
             case PlatformBaseAPIs::GLFW: return static_cast<T>(glfwGetTime() * 1000.0f);
-            case PlatformBaseAPIs::Win32: MOTION_ASSERT(false, "Win32 is not supported yet") return static_cast<T>(0);
+            case PlatformBaseAPIs::Win32: MOTION_ASSERT(false, "Win32 is not supported yet"); return static_cast<T>(0);
             }
 
             return static_cast<T>(0);

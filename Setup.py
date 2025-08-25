@@ -187,50 +187,44 @@ def select_generator(probe_only: bool = False) -> tuple[str | None, list[tuple[s
 
 # ===================== Presets =====================
 def generate_presets(dir_path: str, packages: list[Package], generator: str | None):
-    def hash_data(data): return hashlib.md5(json.dumps(data, indent=2).encode()).hexdigest()
-
-    def platform_flags():
-        if platform.system() == "Windows":
-            return {"DEBUG": "/ZI", "RELEASE": "/O2", "RELWITHDEBINFO": "/O2 /Zi", "MINSIZEREL": "/O1"}
-        return {"DEBUG": "-g -O0", "RELEASE": "-O3", "RELWITHDEBINFO": "-O2 -g", "MINSIZEREL": "-Os"}
+    def hash_data(data): 
+        return hashlib.md5(json.dumps(data, indent=2).encode()).hexdigest()
 
     def common_vars():
-        flags = platform_flags()
         system = platform.system()
         sep = ";" if system == "Windows" else ":"
         prefix_path = sep.join(os.path.abspath(pkg.prefix_directory) for pkg in packages)
 
         return {
-            "CMAKE_CXX_STANDARD": "20", 
-            "CMAKE_CXX_STANDARD_REQUIRED": "ON", 
+            # Language standards
+            "CMAKE_CXX_STANDARD": "20",
+            "CMAKE_CXX_STANDARD_REQUIRED": "ON",
             "CMAKE_CXX_EXTENSIONS": "OFF",
-            "CMAKE_C_STANDARD": "17", 
+            "CMAKE_C_STANDARD": "17",
             "CMAKE_C_STANDARD_REQUIRED": "ON",
             "CMAKE_C_EXTENSIONS": "OFF",
+
+            # Paths
             "CMAKE_PREFIX_PATH": prefix_path,
             "CMAKE_INSTALL_PREFIX": prefix_path,
-            "CMAKE_CXX_FLAGS_DEBUG": flags["DEBUG"], 
-            "CMAKE_CXX_FLAGS_RELEASE": flags["RELEASE"],
-            "CMAKE_CXX_FLAGS_RELWITHDEBINFO": flags["RELWITHDEBINFO"], 
-            "CMAKE_CXX_FLAGS_MINSIZEREL": flags["MINSIZEREL"],
-            "CMAKE_C_FLAGS_DEBUG": flags["DEBUG"], 
-            "CMAKE_C_FLAGS_RELEASE": flags["RELEASE"],
-            "CMAKE_C_FLAGS_RELWITHDEBINFO": flags["RELWITHDEBINFO"], 
-            "CMAKE_C_FLAGS_MINSIZEREL": flags["MINSIZEREL"],
-            "CMAKE_SYSTEM_NAME": system, 
-            "CMAKE_SYSTEM_VERSION": platform.release(), 
+
+            # Informational (not used to branch logic)
+            "CMAKE_SYSTEM_NAME": system,
+            "CMAKE_SYSTEM_VERSION": platform.release(),
             "CMAKE_SYSTEM_PROCESSOR": platform.machine(),
-            "CMAKE_GENERATOR": generator
         }
 
     def preset(name, cfg):
         return {
-            "name": f"{name}-x64", 
-            "inherits": "base", 
+            "name": f"{name}-x64",
+            "inherits": "base",
             "displayName": f"{name} x64",
             "description": f"{name} configuration for x64",
             "architecture": {"value": "x86_64", "strategy": "external"},
-            "cacheVariables": {"CMAKE_BUILD_TYPE": cfg},
+            "cacheVariables": {
+                # Only set the build type; flags are handled by CMake/toolchain
+                "CMAKE_BUILD_TYPE": cfg
+            },
             "binaryDir": f"${{sourceDir}}/build/{name}-x64"
         }
 
@@ -241,6 +235,7 @@ def generate_presets(dir_path: str, packages: list[Package], generator: str | No
         "cacheVariables": common_vars()
     }
     if generator:
+        # Pin the generator only here, not via cacheVariables
         base["generator"] = generator
 
     root = {
@@ -254,16 +249,38 @@ def generate_presets(dir_path: str, packages: list[Package], generator: str | No
             preset("MinSizeRel", "MinSizeRel"),
         ],
         "buildPresets": [
-            {"name": "base", "hidden": True, "configurePreset": "base", "jobs": os.cpu_count() or 1, "cleanFirst": True},
-            *[{"name": f"{cfg}-x64", "inherits": "base", "configurePreset": f"{cfg}-x64"}
-              for cfg in ["Debug", "RelWithDebInfo", "Release", "MinSizeRel"]]
+            {
+                "name": "base",
+                "hidden": True,
+                "configurePreset": "base",
+                "jobs": os.cpu_count() or 1,
+                "cleanFirst": True
+            },
+            *[
+                {
+                    "name": f"{cfg}-x64",
+                    "inherits": "base",
+                    "configurePreset": f"{cfg}-x64"
+                }
+                for cfg in ["Debug", "RelWithDebInfo", "Release", "MinSizeRel"]
+            ]
         ],
         "testPresets": [
-            {"name": "base", "hidden": True, "configurePreset": "base",
-             "execution": {"noTestsAction": "error", "stopOnFailure": False},
-             "output": {"outputOnFailure": True}},
-            *[{"name": f"{cfg}-x64", "inherits": "base", "configurePreset": f"{cfg}-x64"}
-              for cfg in ["Debug", "RelWithDebInfo", "Release", "MinSizeRel"]]
+            {
+                "name": "base",
+                "hidden": True,
+                "configurePreset": "base",
+                "execution": {"noTestsAction": "error", "stopOnFailure": False},
+                "output": {"outputOnFailure": True}
+            },
+            *[
+                {
+                    "name": f"{cfg}-x64",
+                    "inherits": "base",
+                    "configurePreset": f"{cfg}-x64"
+                }
+                for cfg in ["Debug", "RelWithDebInfo", "Release", "MinSizeRel"]
+            ]
         ]
     }
 

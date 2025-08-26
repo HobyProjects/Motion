@@ -332,10 +332,10 @@ def generate_vscode_files(packages: list[Package]):
     system = platform.system()
     if system == "Windows":
         debug_type = "cppvsdbg"
-        program_path = "${workspaceFolder}/build/Debug-x64/YourEngine.exe"
+        program_path = "${workspaceFolder}/build/Debug-x64/MotionEngine.exe"
     else:
         debug_type = "cppdbg"
-        program_path = "${workspaceFolder}/build/Debug-x64/YourEngine"
+        program_path = "${workspaceFolder}/build/Debug-x64/MotionEngine"
     launch = {
         "version": "0.2.0",
         "configurations": [

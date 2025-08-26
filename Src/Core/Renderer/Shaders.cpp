@@ -157,14 +157,23 @@ namespace Motion
 
     static std::string CreateDefinitions(ShaderFeatureMask features)
     {
+        using SFM = ShaderFeatureMask;
         std::ostringstream ss;
-        if(features & GLSL_SHADER_EXT_CLEARCOAT)        ss << "#define GLSL_SHADER_EXT_CLEARCOAT\n";
-        if(features & GLSL_SHADER_EXT_SPECULAR)         ss << "#define GLSL_SHADER_EXT_SPECULAR\n";
-        if(features & GLSL_SHADER_EXT_SHEEN)            ss << "#define GLSL_SHADER_EXT_SHEEN\n";
-        if(features & GLSL_SHADER_EXT_TRANSMISSION)     ss << "#define GLSL_SHADER_EXT_TRANSMISSION\n";
-        if(features & GLSL_SHADER_EXT_VOLUME)           ss << "#define GLSL_SHADER_EXT_VOLUME\n";
-        if(features & GLSL_SHADER_EXT_IRIDESCENCE)      ss << "#define GLSL_SHADER_EXT_IRIDESCENCE\n";
-        if(features & GLSL_SHADER_EXT_ANISOTROPY)       ss << "#define GLSL_SHADER_EXT_ANISOTROPY\n";
+
+        if (features & SFM::USE_SH9)                        ss << "#define USE_SH9 1\n";
+        if (features & SFM::USE_ORM_MAP)                    ss << "#define USE_ORM_MAP 1\n";
+        if (features & SFM::USE_OPACITY_MAP)                ss << "#define USE_OPACITY_MAP 1\n";
+        if (features & SFM::USE_ALPHA_MODE_OPAQUE)          ss << "#define USE_ALPHA_MODE_OPAQUE 1\n";
+        if (features & SFM::USE_ALPHA_MODE_MASK)            ss << "#define USE_ALPHA_MODE_MASK 1\n";
+        if (features & SFM::USE_ALPHA_MODE_BLEND)           ss << "#define USE_ALPHA_MODE_BLEND 1\n";
+        if (features & SFM::USE_ALPHA_BLEND_PREMULTIPLIED)  ss << "#define USE_ALPHA_BLEND_PREMULTIPLIED 1\n";
+
+        ss << "#define CAMERA_UBO_BINDING "     << ShaderVariant::CAMERA_UBO_BINDING    << "\n";
+        ss << "#define OBJECT_UBO_BINDING "     << ShaderVariant::OBJECT_UBO_BINDING    << "\n";
+        ss << "#define LIGHT_UBO_BINDING "      << ShaderVariant::LIGHT_UBO_BINDING     << "\n";
+        ss << "#define MATERIAL_UBO_BINDING "   << ShaderVariant::MATERIAL_UBO_BINDING  << "\n";
+        ss << "#define SH9_UBO_BINDING "        << ShaderVariant::SH9_UBO_BINDING       << "\n";
+
         return ss.str();
     }
 
@@ -215,7 +224,7 @@ namespace Motion
         return out;
     }
 
-    std::shared_ptr<IShader> ShaderVariant::MakeAccessible(UUID baseUUID, const std::string & baseName, const std::filesystem::path & sourceFile, ShaderFeatureMask features)
+    std::shared_ptr<IShader> ShaderVariant::GetVariant(UUID baseUUID, const std::string & baseName, const std::filesystem::path & sourceFile, ShaderFeatureMask features)
     {
         ShaderVariantKey key{ baseUUID, features, sourceFile };
         auto it = m_ShaderCache.find(key);
@@ -259,7 +268,7 @@ namespace Motion
     {
         for (auto it = m_ShaderCache.begin(); it != m_ShaderCache.end(); )
         {
-            if (it->first.BaseShaderID == baseUUID) it = m_ShaderCache.erase(it);
+            if (it->first.VariantID == baseUUID) it = m_ShaderCache.erase(it);
             else ++it;
         }
     }

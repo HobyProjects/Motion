@@ -69,28 +69,31 @@ namespace Motion
         [[nodiscard]] static std::unordered_map<ShaderType, std::string> ReadShaderFiles(const std::filesystem::path& vertexPath, const std::filesystem::path& fragmentPath);
     };
 
-    using ShaderFeatureMask = std::uint32_t;
-    enum : ShaderFeatureMask
+    enum class ShaderFeatureMask : std::uint32_t
     {
-        GLSL_SHADER_EXT_NONE               = 1 << 0,
-        GLSL_SHADER_EXT_CLEARCOAT          = 1 << 1,
-        GLSL_SHADER_EXT_SPECULAR           = 1 << 2,
-        GLSL_SHADER_EXT_SHEEN              = 1 << 3,
-        GLSL_SHADER_EXT_TRANSMISSION       = 1 << 4,
-        GLSL_SHADER_EXT_VOLUME             = 1 << 5,
-        GLSL_SHADER_EXT_IRIDESCENCE        = 1 << 6,
-        GLSL_SHADER_EXT_ANISOTROPY         = 1 << 7
+        USE_SH9                             = MOTION_BIT(0),
+        USE_ORM_MAP                         = MOTION_BIT(1),
+        USE_OPACITY_MAP                     = MOTION_BIT(2),
+        USE_ALPHA_MODE_OPAQUE               = MOTION_BIT(3),
+        USE_ALPHA_MODE_MASK                 = MOTION_BIT(4),
+        USE_ALPHA_MODE_BLEND                = MOTION_BIT(5),
+        USE_ALPHA_BLEND_PREMULTIPLIED       = MOTION_BIT(6)
     };
+
+    inline std::uint32_t operator|(ShaderFeatureMask a, ShaderFeatureMask b) { return static_cast<std::uint32_t>(a) | static_cast<std::uint32_t>(b); }
+    inline std::uint32_t operator&(ShaderFeatureMask a, ShaderFeatureMask b) { return static_cast<std::uint32_t>(a) & static_cast<std::uint32_t>(b); }
+    inline std::uint32_t operator|=(ShaderFeatureMask& a, ShaderFeatureMask b) { a = static_cast<ShaderFeatureMask>(a | b); return static_cast<std::uint32_t>(a); }
+    inline std::uint32_t operator&=(ShaderFeatureMask& a, ShaderFeatureMask b) { a = static_cast<ShaderFeatureMask>(a & b); return static_cast<std::uint32_t>(a); }
 
     struct ShaderVariantKey
     {
-        UUID                    BaseShaderID;
+        UUID                    VariantID;
         ShaderFeatureMask       Features;
         std::filesystem::path   SourceFiles;
 
         bool operator==(const ShaderVariantKey& other) const
         {
-            return BaseShaderID == other.BaseShaderID && Features == other.Features && SourceFiles == other.SourceFiles;
+            return VariantID == other.VariantID && Features == other.Features && SourceFiles == other.SourceFiles;
         }
     };
 
@@ -98,7 +101,7 @@ namespace Motion
     {
         std::size_t operator()(const ShaderVariantKey& key) const
         {
-            std::size_t hash    = std::hash<UUID>()(key.BaseShaderID);
+            std::size_t hash    = std::hash<UUID>()(key.VariantID);
             hash               ^= std::hash<ShaderFeatureMask>()(key.Features);
             hash               ^= std::hash<std::filesystem::path>()(key.SourceFiles);
             return hash;
@@ -117,15 +120,22 @@ namespace Motion
         ShaderVariant& operator=(ShaderVariant&&)       = delete;
 
     public:
+        inline static const std::int32_t CAMERA_UBO_BINDING       = 0;
+        inline static const std::int32_t OBJECT_UBO_BINDING       = 1;
+        inline static const std::int32_t LIGHT_UBO_BINDING        = 2;
+        inline static const std::int32_t MATERIAL_UBO_BINDING     = 3;
+        inline static const std::int32_t SH9_UBO_BINDING          = 4;
+
+    public:
         static ShaderVariant& GetInstance()
         {
-            static ShaderVariant    instance;
-            return                  instance;
+            static ShaderVariant instance;
+            return instance;
         }
 
     public:
-        std::shared_ptr<IShader>    MakeAccessible(UUID baseUUID, const std::string& baseName, const std::filesystem::path& sourceFile, ShaderFeatureMask features);
-        void                        Invalidate(UUID baseUUID);
+        std::shared_ptr<IShader> GetVariant(UUID baseUUID, const std::string& baseName, const std::filesystem::path& sourceFile, ShaderFeatureMask features);
+        void Invalidate(UUID baseUUID);
 
     private:
         std::unordered_map<ShaderVariantKey, std::weak_ptr<IShader>, ShaderVariantHashCode> m_ShaderCache;

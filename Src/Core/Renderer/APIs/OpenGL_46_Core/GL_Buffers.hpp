@@ -97,6 +97,9 @@ namespace Motion
         virtual void SetBufferData(std::int32_t offset, std::int32_t size, const glm::vec2& data) override;
         virtual void SetBufferData(std::int32_t offset, std::int32_t size, float data) override;
         virtual void SetRawBufferData(std::int32_t size, const void* data) override;
+        virtual void SetRawBufferData(std::int32_t offset, std::int32_t size, const void* data) override;
+        virtual void Resize(std::int32_t newSize) override;
+        virtual void Orphan(std::int32_t newSize = -1) override;
 
         static std::shared_ptr<GL_UniformBuffer> Create(std::int32_t size, BindingPoint binding);
 

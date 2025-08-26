@@ -87,7 +87,7 @@
 
 //Material
 #include "Material.hpp"
-#include "TextureComponents.hpp"
+#include "MaterialComponents.hpp"
 
 //Maths
 #include "Intersect.hpp"
@@ -114,6 +114,7 @@
 #include "Thumbnail.hpp"
 #include "PostProcessor.hpp"
 #include "Environment.hpp"
+#include "RenderingStage.hpp"
 #include "Renderer.hpp"
 
 //Renderer - OpenGL
@@ -125,6 +126,7 @@
 #include "GL_Arrays.hpp"
 #include "GL_Environment.hpp"
 #include "GLFW_GL_Context.hpp"
+#include "GL_RenderingStage.hpp"
 
 //Window
 #include "Window.hpp"

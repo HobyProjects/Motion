@@ -248,6 +248,29 @@ namespace Motion
         glNamedBufferSubData(m_UniformBufferID, 0, size, data);
     }
 
+    void GL_UniformBuffer::SetRawBufferData(std::int32_t offset, std::int32_t size, const void * data)
+    {
+        glNamedBufferSubData(m_UniformBufferID, offset, size, data);
+    }
+
+    void GL_UniformBuffer::Resize(std::int32_t newSize)
+    {
+        glNamedBufferData(m_UniformBufferID, newSize, nullptr, GL_DYNAMIC_DRAW);
+    }
+
+    void GL_UniformBuffer::Orphan(std::int32_t newSize)
+    {
+        if (newSize > 0)
+        {
+            glNamedBufferData(m_UniformBufferID, newSize, nullptr, GL_DYNAMIC_DRAW);
+            return;
+        }
+
+        GLint sz = 0;
+        glGetNamedBufferParameteriv(m_UniformBufferID, GL_BUFFER_SIZE, &sz);
+        glNamedBufferData(m_UniformBufferID, sz, nullptr, GL_DYNAMIC_DRAW);
+    }
+
     std::shared_ptr<GL_UniformBuffer> GL_UniformBuffer::Create(std::int32_t size, BindingPoint binding)
     {
         return std::make_shared<GL_UniformBuffer>(size, binding);
@@ -402,100 +425,103 @@ namespace Motion
         return std::make_shared<GL_FrameBuffer>(specification);
     }
 
-    static GLenum GL_ColorAttachmentFormat(FrameBufferColorAttachmentStandards type)
+    using FB_CAS = FrameBufferColorAttachmentStandards;
+
+    static GLenum GL_ColorAttachmentFormat(FB_CAS type)
     {
         switch (type)
         {
-            case FrameBufferColorAttachmentStandards::Standard:             return GL_RGBA8;
-            case FrameBufferColorAttachmentStandards::HighDynamicRange:     return GL_RGBA16F;
-            case FrameBufferColorAttachmentStandards::LightweightHDR:       return GL_RGB10_A2;
-            case FrameBufferColorAttachmentStandards::SingleChannelFloat16: return GL_R16F;
-            case FrameBufferColorAttachmentStandards::SingleChannelFloat32: return GL_R32F;
-            case FrameBufferColorAttachmentStandards::MultiChannelFloat16:  return GL_RG16F;
-            case FrameBufferColorAttachmentStandards::MultiChannelFloat32:  return GL_RG32F;
-            default:                                                        return GL_NONE;
+            case FB_CAS::Standard:             return GL_RGBA8;
+            case FB_CAS::HighDynamicRange:     return GL_RGBA16F;
+            case FB_CAS::LightweightHDR:       return GL_RGB10_A2;
+            case FB_CAS::SingleChannelFloat16: return GL_R16F;
+            case FB_CAS::SingleChannelFloat32: return GL_R32F;
+            case FB_CAS::MultiChannelFloat16:  return GL_RG16F;
+            case FB_CAS::MultiChannelFloat32:  return GL_RG32F;
+            default:                           return GL_NONE;
         }
     }
 
-    static GLenum GL_Texture2D_Format(FrameBufferColorAttachmentStandards type)
+    static GLenum GL_Texture2D_Format(FB_CAS type)
     {
         switch (type)
         {
-        case FrameBufferColorAttachmentStandards::Standard:                 return GL_RGBA;
-        case FrameBufferColorAttachmentStandards::HighDynamicRange:         return GL_RGBA;
-        case FrameBufferColorAttachmentStandards::LightweightHDR:           return GL_RGB;
-        case FrameBufferColorAttachmentStandards::SingleChannelFloat16:     return GL_RED;
-        case FrameBufferColorAttachmentStandards::SingleChannelFloat32:     return GL_RED;
-        case FrameBufferColorAttachmentStandards::MultiChannelFloat16:      return GL_RG;
-        case FrameBufferColorAttachmentStandards::MultiChannelFloat32:      return GL_RG;
-        default:                                                            return GL_NONE;
+            case FB_CAS::Standard:                 return GL_RGBA;
+            case FB_CAS::HighDynamicRange:         return GL_RGBA;
+            case FB_CAS::LightweightHDR:           return GL_RGB;
+            case FB_CAS::SingleChannelFloat16:     return GL_RED;
+            case FB_CAS::SingleChannelFloat32:     return GL_RED;
+            case FB_CAS::MultiChannelFloat16:      return GL_RG;
+            case FB_CAS::MultiChannelFloat32:      return GL_RG;
+            default:                               return GL_NONE;
         }
     }
 
-    static  GLenum GL_Texture2D_Type(FrameBufferColorAttachmentStandards type)
+    static  GLenum GL_Texture2D_Type(FB_CAS type)
     {
         switch (type)
         {
-        case FrameBufferColorAttachmentStandards::Standard:                 return GL_UNSIGNED_BYTE;
-        case FrameBufferColorAttachmentStandards::HighDynamicRange:         return GL_HALF_FLOAT;
-        case FrameBufferColorAttachmentStandards::LightweightHDR:           return GL_UNSIGNED_INT_2_10_10_10_REV;
-        case FrameBufferColorAttachmentStandards::SingleChannelFloat16:     return GL_HALF_FLOAT;
-        case FrameBufferColorAttachmentStandards::SingleChannelFloat32:     return GL_FLOAT;
-        case FrameBufferColorAttachmentStandards::MultiChannelFloat16:      return GL_HALF_FLOAT;
-        case FrameBufferColorAttachmentStandards::MultiChannelFloat32:      return GL_FLOAT;
-        default:                                                            return GL_NONE;
+            case FB_CAS::Standard:                 return GL_UNSIGNED_BYTE;
+            case FB_CAS::HighDynamicRange:         return GL_HALF_FLOAT;
+            case FB_CAS::LightweightHDR:           return GL_UNSIGNED_INT_2_10_10_10_REV;
+            case FB_CAS::SingleChannelFloat16:     return GL_HALF_FLOAT;
+            case FB_CAS::SingleChannelFloat32:     return GL_FLOAT;
+            case FB_CAS::MultiChannelFloat16:      return GL_HALF_FLOAT;
+            case FB_CAS::MultiChannelFloat32:      return GL_FLOAT;
+            default:                               return GL_NONE;
         }
     }
 
-    static GLenum GL_DepthAttachmentFormat(FrameBufferDepthAttachmentStandards type)
+    using FB_DAS = FrameBufferDepthAttachmentStandards;
+    static GLenum GL_DepthAttachmentFormat(FB_DAS type)
     {
         switch (type)
         {
-        case FrameBufferDepthAttachmentStandards::Standard:
-        case FrameBufferDepthAttachmentStandards::StandardPrecision:        return GL_DEPTH_COMPONENT24;
-        case FrameBufferDepthAttachmentStandards::HighPrecision:            return GL_DEPTH_COMPONENT32F;
-        case FrameBufferDepthAttachmentStandards::CommonCombined:           return GL_DEPTH24_STENCIL8;
-        case FrameBufferDepthAttachmentStandards::HighPrecisionCombined:    return GL_DEPTH32F_STENCIL8;
-        default:                                                            return GL_NONE;
+            case FB_DAS::Standard:
+            case FB_DAS::StandardPrecision:        return GL_DEPTH_COMPONENT24;
+            case FB_DAS::HighPrecision:            return GL_DEPTH_COMPONENT32F;
+            case FB_DAS::CommonCombined:           return GL_DEPTH24_STENCIL8;
+            case FB_DAS::HighPrecisionCombined:    return GL_DEPTH32F_STENCIL8;
+            default:                               return GL_NONE;
         }
     }
 
-    static GLenum GL_Texture2D_DepthFormat(FrameBufferDepthAttachmentStandards type)
+    static GLenum GL_Texture2D_DepthFormat(FB_DAS type)
     {
         switch (type)
         {
-        case FrameBufferDepthAttachmentStandards::Standard:
-        case FrameBufferDepthAttachmentStandards::StandardPrecision:        return GL_DEPTH_COMPONENT;
-        case FrameBufferDepthAttachmentStandards::HighPrecision:            return GL_DEPTH_COMPONENT;
-        case FrameBufferDepthAttachmentStandards::CommonCombined:           return GL_DEPTH_STENCIL;
-        case FrameBufferDepthAttachmentStandards::HighPrecisionCombined:    return GL_DEPTH_STENCIL;
-        default:                                                            return GL_NONE;
+            case FB_DAS::Standard:
+            case FB_DAS::StandardPrecision:        return GL_DEPTH_COMPONENT;
+            case FB_DAS::HighPrecision:            return GL_DEPTH_COMPONENT;
+            case FB_DAS::CommonCombined:           return GL_DEPTH_STENCIL;
+            case FB_DAS::HighPrecisionCombined:    return GL_DEPTH_STENCIL;
+            default:                               return GL_NONE;
         }
     }
 
-    static GLenum GL_Texture2D_DepthType(FrameBufferDepthAttachmentStandards type)
+    static GLenum GL_Texture2D_DepthType(FB_DAS type)
     {
         switch (type)
         {
-        case FrameBufferDepthAttachmentStandards::Standard:
-        case FrameBufferDepthAttachmentStandards::StandardPrecision:        return GL_UNSIGNED_INT;
-        case FrameBufferDepthAttachmentStandards::HighPrecision:            return GL_FLOAT;
-        case FrameBufferDepthAttachmentStandards::CommonCombined:           return GL_UNSIGNED_INT_24_8;
-        case FrameBufferDepthAttachmentStandards::HighPrecisionCombined:    return GL_FLOAT_32_UNSIGNED_INT_24_8_REV;
-        default:                                                            return GL_NONE;
+            case FB_DAS::Standard:
+            case FB_DAS::StandardPrecision:        return GL_UNSIGNED_INT;
+            case FB_DAS::HighPrecision:            return GL_FLOAT;
+            case FB_DAS::CommonCombined:           return GL_UNSIGNED_INT_24_8;
+            case FB_DAS::HighPrecisionCombined:    return GL_FLOAT_32_UNSIGNED_INT_24_8_REV;
+            default:                               return GL_NONE;
         }
     }
 
-    static GLenum GetDepthAttachmentPoint(FrameBufferDepthAttachmentStandards type)
+    static GLenum GetDepthAttachmentPoint(FB_DAS type)
     {
         switch (type)
         {
-        case FrameBufferDepthAttachmentStandards::CommonCombined:
-        case FrameBufferDepthAttachmentStandards::HighPrecisionCombined:    return GL_DEPTH_STENCIL_ATTACHMENT;
-        case FrameBufferDepthAttachmentStandards::Standard:
-        case FrameBufferDepthAttachmentStandards::StandardPrecision:
-        case FrameBufferDepthAttachmentStandards::HighPrecision:            return GL_DEPTH_ATTACHMENT;
-        default:                                                            return GL_NONE;
+            case FB_DAS::CommonCombined:
+            case FB_DAS::HighPrecisionCombined:    return GL_DEPTH_STENCIL_ATTACHMENT;
+            case FB_DAS::Standard:
+            case FB_DAS::StandardPrecision:
+            case FB_DAS::HighPrecision:            return GL_DEPTH_ATTACHMENT;
+            default:                               return GL_NONE;
         }
     }
 

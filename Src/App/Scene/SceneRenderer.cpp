@@ -417,7 +417,7 @@ namespace Motion
             if(cmd.ShaderMask == GLSL_SHADER_EXT_NONE)
                 nextShader = basePBR;
             else
-                nextShader = SV.MakeAccessible(basePBR->GetUUID(), "PBR_MOD", modularPath, cmd.ShaderMask).get();
+                nextShader = SV.GetVariant(basePBR->GetUUID(), "PBR_MOD", modularPath, cmd.ShaderMask).get();
 
             if(currentShader != nextShader)
             {

@@ -24,10 +24,7 @@ namespace Motion
         std::filesystem::path HDRfile{};
         bool UseSHDiffuse{true};
         bool BuildBRDFLUT{true};
-        bool CompressBC6H{false};
-
-        float DiffuseIntensity{1.0f};
-        float SpecularIntensity{1.0f};
+        bool CompressBC6H{false};;
     };
 
     class IEnvironment
@@ -48,8 +45,6 @@ namespace Motion
 
         public:
             static constexpr std::int32_t SH_BUFFER_BINDING_POINT = 5;
-            
-        public:
             static std::shared_ptr<IEnvironment> Create(const EnvironmentSpecification& spec);
     };
 }

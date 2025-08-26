@@ -1,13 +1,16 @@
 #type vertex
 #version 460 core
 
-layout (location = 0) vec3 aPosition;
-layout (location = 1) vec2 aTexCoord;
-layout (location = 2) vec3 aNormal;
-layout (location = 3) vec4 aTangent;
-layout (location = 4) vec3 aBitangent;
+//[FEATURES_ENABLE_DISABLE]
+// ^^^^^^^^^^^^^^^^^^^^^^^ DO NOT REMOVE (IT HELPS TO ADD #define AT RUNTIME)
 
-layout(std140, binding = 0) uniform Camera 
+layout (location = 0) in vec3  aPosition;
+layout (location = 1) in vec2  aTexCoord;
+layout (location = 2) in vec3  aNormal;
+layout (location = 3) in vec4  aTangent;
+layout (location = 4) in vec3  aBitangent;
+
+layout(std140, binding = CAMERA_UBO_BINDING) uniform Camera 
 {
     mat4 uView;
     mat4 uProj;
@@ -15,7 +18,7 @@ layout(std140, binding = 0) uniform Camera
     float _pad0;
 };
 
-layout(std140, binding = 1) uniform Object
+layout(std140, binding = OBJECT_UBO_BINDING) uniform Object
 {
     mat4 uModel;
 };
@@ -38,7 +41,7 @@ void main()
     vNormalWS   = N;
 
     vec3 T      = normalize(nmat * aTangent.xyz);
-    T           = normalize(cross(N, T));
+    T           = normalize(T - N * dot(N, T));
     vec3 B      = normalize(cross(N, T)) * aTangent.w;
 
     vTangentWS      = T;
@@ -50,9 +53,12 @@ void main()
 #type tessellation_control
 #version 460 core
 
+//[FEATURES_ENABLE_DISABLE]
+// ^^^^^^^^^^^^^^^^^^^^^^^ DO NOT REMOVE (IT HELPS TO ADD #define AT RUNTIME)
+
 layout (vertices = 3) out;
 
-layout(std140, binding = 0) uniform Camera 
+layout(std140, binding = CAMERA_UBO_BINDING) uniform Camera 
 {
     mat4 uView;
     mat4 uProj;
@@ -135,9 +141,12 @@ void main()
 #type tessellation_evaluation
 #version 460 core
 
+//[FEATURES_ENABLE_DISABLE]
+// ^^^^^^^^^^^^^^^^^^^^^^^ DO NOT REMOVE (IT HELPS TO ADD #define AT RUNTIME)
+
 layout(triangles, equal_spacing, cw) in;
 
-layout(std140, binding = 0) uniform Camera 
+layout(std140, binding = CAMERA_UBO_BINDING) uniform Camera 
 {
     mat4 uView;
     mat4 uProj;

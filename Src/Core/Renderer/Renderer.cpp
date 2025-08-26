@@ -17,18 +17,10 @@ namespace Motion
     {
         switch (s_RenderingAPI)
         {
-        case RenderingAPI::OpenGL:
-            GL_Init();
-            break;
-        case RenderingAPI::Vulkan:
-            MOTION_ASSERT(false, "Vulkan is not implemented yet!");
-            break;
-        case RenderingAPI::DirectX:
-            MOTION_ASSERT(false, "DirectX is not implemented yet!");
-            break;
-        default:
-            MOTION_ASSERT(false, "Unknown rendering API!");
-            break;
+            case RenderingAPI::OpenGL:      GL_Init();break;
+            case RenderingAPI::Vulkan:      MOTION_ASSERT(false, "Vulkan is not implemented yet!");break;
+            case RenderingAPI::DirectX:     MOTION_ASSERT(false, "DirectX is not implemented yet!");break;
+            default:                        MOTION_ASSERT(false, "Unknown rendering API!");break;
         }
     }
 
@@ -36,18 +28,10 @@ namespace Motion
     {
         switch (s_RenderingAPI)
         {
-        case RenderingAPI::OpenGL:
-            GL_Quit();
-            break;
-        case RenderingAPI::Vulkan:
-            MOTION_ASSERT(false, "Vulkan is not implemented yet!");
-            break;
-        case RenderingAPI::DirectX:
-            MOTION_ASSERT(false, "DirectX is not implemented yet!");
-            break;
-        default:
-            MOTION_ASSERT(false, "Unknown rendering API!");
-            break;
+            case RenderingAPI::OpenGL:          GL_Quit();break;
+            case RenderingAPI::Vulkan:          MOTION_ASSERT(false, "Vulkan is not implemented yet!"); break;
+            case RenderingAPI::DirectX:         MOTION_ASSERT(false, "DirectX is not implemented yet!"); break;
+            default:                            MOTION_ASSERT(false, "Unknown rendering API!");break;
         }
     }
 
@@ -60,18 +44,10 @@ namespace Motion
     {
         switch (s_RenderingAPI)
         {
-        case RenderingAPI::OpenGL:
-            GL_Clear();
-            break;
-        case RenderingAPI::Vulkan:
-            MOTION_ASSERT(false, "Vulkan is not implemented yet!");
-            break;
-        case RenderingAPI::DirectX:
-            MOTION_ASSERT(false, "DirectX is not implemented yet!");
-            break;
-        default:
-            MOTION_ASSERT(false, "Unknown rendering API!");
-            break;
+            case RenderingAPI::OpenGL:      GL_Clear();break;
+            case RenderingAPI::Vulkan:      MOTION_ASSERT(false, "Vulkan is not implemented yet!");break;
+            case RenderingAPI::DirectX:     MOTION_ASSERT(false, "DirectX is not implemented yet!");break;
+            default:                        MOTION_ASSERT(false, "Unknown rendering API!");break;
         }
     }
 
@@ -79,18 +55,10 @@ namespace Motion
     {
         switch (s_RenderingAPI)
         {
-        case RenderingAPI::OpenGL:
-            GL_ClearColor(color);
-            break;
-        case RenderingAPI::Vulkan:
-            MOTION_ASSERT(false, "Vulkan is not implemented yet!");
-            break;
-        case RenderingAPI::DirectX:
-            MOTION_ASSERT(false, "DirectX is not implemented yet!");
-            break;
-        default:
-            MOTION_ASSERT(false, "Unknown rendering API!");
-            break;
+            case RenderingAPI::OpenGL:      GL_ClearColor(color);break;
+            case RenderingAPI::Vulkan:      MOTION_ASSERT(false, "Vulkan is not implemented yet!");break;
+            case RenderingAPI::DirectX:     MOTION_ASSERT(false, "DirectX is not implemented yet!");break;
+            default:                        MOTION_ASSERT(false, "Unknown rendering API!");break;
         }
     }
 
@@ -98,18 +66,10 @@ namespace Motion
     {
         switch (s_RenderingAPI)
         {
-        case RenderingAPI::OpenGL:
-            GL_SetViewport(x, y, width, height);
-            break;
-        case RenderingAPI::Vulkan:
-            MOTION_ASSERT(false, "Vulkan is not implemented yet!");
-            break;
-        case RenderingAPI::DirectX:
-            MOTION_ASSERT(false, "DirectX is not implemented yet!");
-            break;
-        default:
-            MOTION_ASSERT(false, "Unknown rendering API!");
-            break;
+            case RenderingAPI::OpenGL:      GL_SetViewport(x, y, width, height);break;
+            case RenderingAPI::Vulkan:      MOTION_ASSERT(false, "Vulkan is not implemented yet!");break;
+            case RenderingAPI::DirectX:     MOTION_ASSERT(false, "DirectX is not implemented yet!");break;
+            default:                        MOTION_ASSERT(false, "Unknown rendering API!");break;
         }
     }
 
@@ -117,17 +77,10 @@ namespace Motion
     {
         switch (s_RenderingAPI)
         {
-        case RenderingAPI::OpenGL:
-            return GL_GetMaxTextureSlots();
-        case RenderingAPI::Vulkan:
-            MOTION_ASSERT(false, "Vulkan is not implemented yet!");
-            return 0;
-        case RenderingAPI::DirectX:
-            MOTION_ASSERT(false, "DirectX is not implemented yet!");
-            return 0;
-        default:
-            MOTION_ASSERT(false, "Unknown rendering API!");
-            return 0;
+            case RenderingAPI::OpenGL:      return GL_GetMaxTextureSlots();
+            case RenderingAPI::Vulkan:      MOTION_ASSERT(false, "Vulkan is not implemented yet!"); return 0;
+            case RenderingAPI::DirectX:     MOTION_ASSERT(false, "DirectX is not implemented yet!"); return 0;
+            default:                        MOTION_ASSERT(false, "Unknown rendering API!"); return 0;
         }
     }
 
@@ -135,18 +88,10 @@ namespace Motion
     {
         switch (s_RenderingAPI)
         {
-        case RenderingAPI::OpenGL:
-            GL_BindTextureUnit(slot, textureID);
-            break;
-        case RenderingAPI::Vulkan:
-            MOTION_ASSERT(false, "Vulkan is not implemented yet!");
-            break;
-        case RenderingAPI::DirectX:
-            MOTION_ASSERT(false, "DirectX is not implemented yet!");
-            break;
-        default:
-            MOTION_ASSERT(false, "Unknown rendering API!");
-            break;
+            case RenderingAPI::OpenGL:      GL_BindTextureUnit(slot, textureID);break;
+            case RenderingAPI::Vulkan:      MOTION_ASSERT(false, "Vulkan is not implemented yet!");break;
+            case RenderingAPI::DirectX:     MOTION_ASSERT(false, "DirectX is not implemented yet!");break;
+            default:                        MOTION_ASSERT(false, "Unknown rendering API!");break;
         }
     }
 
@@ -154,18 +99,10 @@ namespace Motion
     {
         switch (s_RenderingAPI)
         {
-        case RenderingAPI::OpenGL:
-            GL_UnbindTextureUnit(slot);
-            break;
-        case RenderingAPI::Vulkan:
-            MOTION_ASSERT(false, "Vulkan is not implemented yet!");
-            break;
-        case RenderingAPI::DirectX:
-            MOTION_ASSERT(false, "DirectX is not implemented yet!");
-            break;
-        default:
-            MOTION_ASSERT(false, "Unknown rendering API!");
-            break;
+            case RenderingAPI::OpenGL:      GL_UnbindTextureUnit(slot);break;
+            case RenderingAPI::Vulkan:      MOTION_ASSERT(false, "Vulkan is not implemented yet!");break;
+            case RenderingAPI::DirectX:     MOTION_ASSERT(false, "DirectX is not implemented yet!");break;
+            default:                        MOTION_ASSERT(false, "Unknown rendering API!");break;
         }
     }
 
@@ -173,95 +110,10 @@ namespace Motion
     {
         switch (s_RenderingAPI)
         {
-        case RenderingAPI::OpenGL:
-            GL_DrawIndexed(indicesCount);
-            break;
-        case RenderingAPI::Vulkan:
-            MOTION_ASSERT(false, "Vulkan is not implemented yet!");
-            break;
-        case RenderingAPI::DirectX:
-            MOTION_ASSERT(false, "DirectX is not implemented yet!");
-            break;
-        default:
-            MOTION_ASSERT(false, "Unknown rendering API!");
-            break;
-        }
-    }
-
-    void Renderer::ApplyDrawFlags(DrawFlags flags)
-    {
-        switch (s_RenderingAPI)
-        {
-        case RenderingAPI::OpenGL:
-            GL_ApplyDrawFlags(flags);
-            break;
-        case RenderingAPI::Vulkan:
-            MOTION_ASSERT(false, "Vulkan is not implemented yet!");
-            break;
-        case RenderingAPI::DirectX:
-            MOTION_ASSERT(false, "DirectX is not implemented yet!");
-            break;
-        default:
-            MOTION_ASSERT(false, "Unknown rendering API!");
-            break;
-        };
-    }
-
-    void Renderer::ResetDrawFlags(DrawFlags flags)
-    {
-        switch (s_RenderingAPI)
-        {
-        case RenderingAPI::OpenGL:
-            GL_ResetDrawFlags(flags);
-            break;
-        case RenderingAPI::Vulkan:
-            MOTION_ASSERT(false, "Vulkan is not implemented yet!");
-            break;
-        case RenderingAPI::DirectX:
-            MOTION_ASSERT(false, "DirectX is not implemented yet!");
-            break;
-        default:
-            MOTION_ASSERT(false, "Unknown rendering API!");
-            break;
-        }
-    }
-
-    void Renderer::ResetDepthFunction()
-    {
-        switch (s_RenderingAPI)
-        {
-        case RenderingAPI::OpenGL:
-            GL_ResetDepthFunction();
-            break;
-        case RenderingAPI::Vulkan:
-            MOTION_ASSERT(false, "Vulkan is not implemented yet!");
-            break;
-        case RenderingAPI::DirectX:
-            MOTION_ASSERT(false, "DirectX is not implemented yet!");
-            break;
-        default:
-            MOTION_ASSERT(false, "Unknown rendering API!");
-            break;
-        }
-    }
-
-
-    void Renderer::ApplyDepthFunction(DepthFunction depthFunction)
-    {
-        switch (s_RenderingAPI)
-        {
-        case RenderingAPI::OpenGL:
-            GL_ApplyDepthFunction(depthFunction);
-            break;
-        case RenderingAPI::Vulkan:
-            MOTION_ASSERT(false, "Vulkan is not implemented yet!");
-            break;
-        case RenderingAPI::DirectX:
-            MOTION_ASSERT(false, "DirectX is not implemented yet!");
-            break;
-        default:
-            MOTION_ASSERT(false, "Unknown rendering API!");
-            break;
+            case RenderingAPI::OpenGL:      GL_DrawIndexed(indicesCount);break;
+            case RenderingAPI::Vulkan:      MOTION_ASSERT(false, "Vulkan is not implemented yet!");break;
+            case RenderingAPI::DirectX:     MOTION_ASSERT(false, "DirectX is not implemented yet!");break;
+            default:                        MOTION_ASSERT(false, "Unknown rendering API!");break;
         }
     }
 }

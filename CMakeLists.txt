@@ -47,7 +47,7 @@ set(
     ${MOTION_CORE_DIR}/Assets
     ${MOTION_CORE_DIR}/Layer
     ${MOTION_CORE_DIR}/Platform
-    ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL
+    ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL_46_Core
 )
 
 set(
@@ -84,23 +84,27 @@ set(
     ${MOTION_CORE_DIR}/Renderer/Thumbnail.hpp
     ${MOTION_CORE_DIR}/Renderer/PostProcessor.hpp
     ${MOTION_CORE_DIR}/Renderer/Environment.hpp
+    ${MOTION_CORE_DIR}/Renderer/RenderingStage.hpp
+    ${MOTION_CORE_DIR}/Renderer/RenderCommand.hpp
+    ${MOTION_CORE_DIR}/Renderer/CommandQueue.hpp
 
     ${MOTION_CORE_DIR}/Model/Model.hpp
     ${MOTION_CORE_DIR}/Model/Mesh.hpp
     ${MOTION_CORE_DIR}/Model/Importer.hpp
 
     ${MOTION_CORE_DIR}/Material/Material.hpp
-    ${MOTION_CORE_DIR}/Material/TextureComponents.hpp
+    ${MOTION_CORE_DIR}/Material/MaterialComponents.hpp
     ${MOTION_CORE_DIR}/Maths/Intersect.hpp
 
-    ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL/GL_Buffers.hpp
-    ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL/GL_Debug.hpp
-    ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL/GL_Shaders.hpp
-    ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL/GL_Renderer.hpp
-    ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL/GL_Texture.hpp
-    ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL/GL_Arrays.hpp
-    ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL/GL_Environment.hpp
-    ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL/GLFW_GL_Context.hpp
+    ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL_46_Core/GL_Buffers.hpp
+    ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL_46_Core/GL_Debug.hpp
+    ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL_46_Core/GL_Shaders.hpp
+    ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL_46_Core/GL_Renderer.hpp
+    ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL_46_Core/GL_Texture.hpp
+    ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL_46_Core/GL_Arrays.hpp
+    ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL_46_Core/GL_Environment.hpp
+    ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL_46_Core/GLFW_GL_Context.hpp
+    ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL_46_Core/GL_RenderingStage.hpp
 
     ${MOTION_CORE_DIR}/Window/Window.hpp
     ${MOTION_CORE_DIR}/Window/GLFW_Window.hpp
@@ -129,24 +133,28 @@ set(
     ${MOTION_CORE_DIR}/Renderer/Thumbnail.cpp
     ${MOTION_CORE_DIR}/Renderer/PostProcessor.cpp
     ${MOTION_CORE_DIR}/Renderer/Environment.cpp
+    ${MOTION_CORE_DIR}/Renderer/RenderingStage.cpp
+    ${MOTION_CORE_DIR}/Renderer/RenderCommand.cpp
 
     ${MOTION_CORE_DIR}/Model/Mesh.cpp
     ${MOTION_CORE_DIR}/Model/Importer.cpp
     ${MOTION_CORE_DIR}/Model/Model.cpp
 
     ${MOTION_CORE_DIR}/Material/Material.cpp
+    ${MOTION_CORE_DIR}/Material/MaterialComponents.cpp
 
     ${MOTION_CORE_DIR}/Event/InputsHandler.cpp
     ${MOTION_CORE_DIR}/Event/GLFW_InputsHandler.cpp
 
-    ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL/GL_Buffers.cpp
-    ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL/GL_Debug.cpp
-    ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL/GL_Shaders.cpp
-    ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL/GL_Renderer.cpp
-    ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL/GL_Texture.cpp
-    ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL/GL_Arrays.cpp
-    ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL/GL_Environment.cpp
-    ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL/GLFW_GL_Context.cpp
+    ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL_46_Core/GL_Buffers.cpp
+    ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL_46_Core/GL_Debug.cpp
+    ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL_46_Core/GL_Shaders.cpp
+    ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL_46_Core/GL_Renderer.cpp
+    ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL_46_Core/GL_Texture.cpp
+    ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL_46_Core/GL_Arrays.cpp
+    ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL_46_Core/GL_Environment.cpp
+    ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL_46_Core/GLFW_GL_Context.cpp
+    ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL_46_Core/GL_RenderingStage.cpp
 
     ${MOTION_CORE_DIR}/Window/Window.cpp
     ${MOTION_CORE_DIR}/Window/GLFW_Window.cpp

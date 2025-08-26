@@ -172,6 +172,9 @@ namespace Motion
         virtual void SetBufferData(std::int32_t offset, std::int32_t size, const glm::vec2& data) = 0;
         virtual void SetBufferData(std::int32_t offset, std::int32_t size, float data) = 0;
         virtual void SetRawBufferData(std::int32_t size, const void* data) = 0;
+        virtual void SetRawBufferData(std::int32_t offset, std::int32_t size, const void* data) = 0;
+        virtual void Resize(std::int32_t newSize) = 0;
+        virtual void Orphan(std::int32_t newSize = -1) = 0;
 
         static std::shared_ptr<IUniformBuffer> Create(std::int32_t size, BindingPoint binding);
     };

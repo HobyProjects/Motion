@@ -54,33 +54,33 @@ namespace Motion
     {
         switch (type)
         {
-        case TextureType::SpecularTexture:              return "Specular";
-        case TextureType::NormalTexture:                return "Normal";
-        case TextureType::EmissiveTexture:              return "Emissive";
-        case TextureType::OpacityTexture:               return "Opacity";
-        case TextureType::BaseColorTexture:             return "Base Color";
-        case TextureType::MetallicTexture:              return "Metallic";
-        case TextureType::RoughnessTexture:             return "Roughness";
-        case TextureType::AmbientOcclusionTexture:      return "Ambient Occlusion";
-        case TextureType::DisplacementTexture:          return "Displacement";
-        case TextureType::SheenTexture:                 return "Sheen";
-        case TextureType::TransmissionTexture:          return "Transmission";
-        case TextureType::ORMTexture:                   return "ORM (AO/R/M)";
-        case TextureType::ClearcoatTexture:             return "Clearcoat";
-        case TextureType::ClearcoatRoughnessTexture:    return "Clearcoat Roughness";
-        case TextureType::ClearcoatNormalTexture:       return "Clearcoat Normal";
-        case TextureType::SpecularColorTexture:         return "Specular Color";
-        case TextureType::SheenColorTexture:            return "Sheen Color";
-        case TextureType::SheenRoughnessTexture:        return "Sheen Roughness";
-        case TextureType::ThicknessTexture:             return "Thickness";
-        case TextureType::AnisotropyTexture:            return "Anisotropy";
-        case TextureType::IridescenceTexture:           return "Iridescence";
-        case TextureType::IridescenceThicknessTexture:  return "Iridescence Thickness";
-        case TextureType::CubeTexture:                  return "Cube";
-        case TextureType::IrradianceTexture:            return "Irradiance";
-        case TextureType::PrefilteredTexture:           return "Prefiltered";
-        case TextureType::BRDFTexture:                  return "BRDF";
-        default: return "Unknown";
+            case TextureType::SpecularTexture:              return "Specular";
+            case TextureType::NormalTexture:                return "Normal";
+            case TextureType::EmissiveTexture:              return "Emissive";
+            case TextureType::OpacityTexture:               return "Opacity";
+            case TextureType::BaseColorTexture:             return "Base Color";
+            case TextureType::MetallicTexture:              return "Metallic";
+            case TextureType::RoughnessTexture:             return "Roughness";
+            case TextureType::AmbientOcclusionTexture:      return "Ambient Occlusion";
+            case TextureType::DisplacementTexture:          return "Displacement";
+            case TextureType::SheenTexture:                 return "Sheen";
+            case TextureType::TransmissionTexture:          return "Transmission";
+            case TextureType::ORMTexture:                   return "ORM (AO/R/M)";
+            case TextureType::ClearcoatTexture:             return "Clearcoat";
+            case TextureType::ClearcoatRoughnessTexture:    return "Clearcoat Roughness";
+            case TextureType::ClearcoatNormalTexture:       return "Clearcoat Normal";
+            case TextureType::SpecularColorTexture:         return "Specular Color";
+            case TextureType::SheenColorTexture:            return "Sheen Color";
+            case TextureType::SheenRoughnessTexture:        return "Sheen Roughness";
+            case TextureType::ThicknessTexture:             return "Thickness";
+            case TextureType::AnisotropyTexture:            return "Anisotropy";
+            case TextureType::IridescenceTexture:           return "Iridescence";
+            case TextureType::IridescenceThicknessTexture:  return "Iridescence Thickness";
+            case TextureType::CubeTexture:                  return "Cube";
+            case TextureType::IrradianceTexture:            return "Irradiance";
+            case TextureType::PrefilteredTexture:           return "Prefiltered";
+            case TextureType::BRDFTexture:                  return "BRDF";
+            default:                                        return "Unknown";
         }
     }
 

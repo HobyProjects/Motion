@@ -167,12 +167,40 @@ namespace Motion
         if (features & SFM::USE_ALPHA_MODE_MASK)            ss << "#define USE_ALPHA_MODE_MASK 1\n";
         if (features & SFM::USE_ALPHA_MODE_BLEND)           ss << "#define USE_ALPHA_MODE_BLEND 1\n";
         if (features & SFM::USE_ALPHA_BLEND_PREMULTIPLIED)  ss << "#define USE_ALPHA_BLEND_PREMULTIPLIED 1\n";
+        if (features & SFM::USE_ALPHA_BLEND_ADDITIVE)       ss << "#define USE_ALPHA_BLEND_ADDITIVE 1\n";
+        if (features & SFM::USE_ALPHA_BLEND)                ss << "#define USE_ALPHA_BLEND 1\n";
 
-        ss << "#define CAMERA_UBO_BINDING "     << ShaderVariant::CAMERA_UBO_BINDING    << "\n";
-        ss << "#define OBJECT_UBO_BINDING "     << ShaderVariant::OBJECT_UBO_BINDING    << "\n";
-        ss << "#define LIGHT_UBO_BINDING "      << ShaderVariant::LIGHT_UBO_BINDING     << "\n";
-        ss << "#define MATERIAL_UBO_BINDING "   << ShaderVariant::MATERIAL_UBO_BINDING  << "\n";
-        ss << "#define SH9_UBO_BINDING "        << ShaderVariant::SH9_UBO_BINDING       << "\n";
+        ss << "#define CAMERA_UBO_BINDING "     << ShaderVariant::CameraUboBinding    << "\n";
+        ss << "#define OBJECT_UBO_BINDING "     << ShaderVariant::ObjectUboBinding    << "\n";
+        ss << "#define LIGHT_UBO_BINDING "      << ShaderVariant::LightUboBinding     << "\n";
+        ss << "#define MATERIAL_UBO_BINDING "   << ShaderVariant::MaterialUboBinding  << "\n";
+        ss << "#define SH9_UBO_BINDING "        << ShaderVariant::SH9UboBinding       << "\n";
+
+        ss << "#define TEX_SLOT_ENVIRONMENT_IRRADIANCE "    << TextureSlot::Irradiance              << "\n";
+        ss << "#define TEX_SLOT_ENVIRONMENT_PREFILTERED "   << TextureSlot::Prefilter               << "\n";
+        ss << "#define TEX_SLOT_ENVIRONMENT_BRDFLUT "       << TextureSlot::BRDFLUT                 << "\n";
+
+        ss << "#define TEX_SLOT_BASE_COLOR "                << TextureSlot::BaseColor               << "\n";
+        ss << "#define TEX_SLOT_METALLIC "                  << TextureSlot::Metallic                << "\n";
+        ss << "#define TEX_SLOT_ROUGHNESS "                 << TextureSlot::Roughness               << "\n";
+        ss << "#define TEX_SLOT_NORMAL "                    << TextureSlot::Normal                  << "\n";
+        ss << "#define TEX_SLOT_AO "                        << TextureSlot::AO                      << "\n";
+        ss << "#define TEX_SLOT_EMISSIVE "                  << TextureSlot::Emissive                << "\n";
+        ss << "#define TEX_SLOT_OPACITY "                   << TextureSlot::Opacity                 << "\n";
+        ss << "#define TEX_SLOT_ORM "                       << TextureSlot::ORM                     << "\n";
+        ss << "#define TEX_SLOT_CLEARCOAT "                 << TextureSlot::Clearcoat               << "\n";
+        ss << "#define TEX_SLOT_CLEARCOAT_R "               << TextureSlot::ClearcoatR              << "\n";
+        ss << "#define TEX_SLOT_SPECULAR_COLOR "            << TextureSlot::SpecularColor           << "\n";
+        ss << "#define TEX_SLOT_SPECULAR "                  << TextureSlot::Specular                << "\n";
+        ss << "#define TEX_SLOT_SHEEN_COLOR "               << TextureSlot::SheenColor              << "\n";
+        ss << "#define TEX_SLOT_SHEEN_R "                   << TextureSlot::SheenR                  << "\n";
+        ss << "#define TEX_SLOT_TRANSMISSION "              << TextureSlot::Transmission            << "\n";
+        ss << "#define TEX_SLOT_THICKNESS "                 << TextureSlot::Thickness               << "\n";
+        ss << "#define TEX_SLOT_CLEARCOAT_N "               << TextureSlot::ClearcoatN              << "\n";
+        ss << "#define TEX_SLOT_DISPLACEMENT "              << TextureSlot::Displacement            << "\n";
+        ss << "#define TEX_SLOT_ANISOTROPY "                << TextureSlot::Anisotropy              << "\n";
+        ss << "#define TEX_SLOT_IRIDESCENCE "               << TextureSlot::Iridescence             << "\n";
+        ss << "#define TEX_SLOT_IRIDESCENCE_THICKNESS "     << TextureSlot::IridescenceThickness    << "\n";
 
         return ss.str();
     }
@@ -224,8 +252,9 @@ namespace Motion
         return out;
     }
 
-    std::shared_ptr<IShader> ShaderVariant::GetVariant(UUID baseUUID, const std::string & baseName, const std::filesystem::path & sourceFile, ShaderFeatureMask features)
+    std::shared_ptr<IShader> ShaderVariant::GetVariant(const std::filesystem::path & sourceFile, ShaderFeatureMask features)
     {
+        static UUID baseUUID = UniqueIdentity::GetUniqueID();
         ShaderVariantKey key{ baseUUID, features, sourceFile };
         auto it = m_ShaderCache.find(key);
         if (it != m_ShaderCache.end())
@@ -249,7 +278,7 @@ namespace Motion
             src = InjectDefinitions(src, defineBlock);
 
         UUID vID        = UniqueIdentity::GetUniqueID();
-        auto name       = std::format("{}_{}", baseName, static_cast<std::uint32_t>(features));
+        auto name       = std::format("{}_{}", sourceFile.filename().stem().string(), static_cast<std::uint32_t>(features));
 
         std::shared_ptr<IShader> shader{ nullptr };
         switch(Renderer::GetAPI())

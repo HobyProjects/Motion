@@ -35,7 +35,7 @@ namespace Motion
 
             virtual void RenderSkyBox(const glm::mat4& proj, const glm::mat4& view, float yawnRadians = 0.0f) const = 0;
             virtual void BindIBL(const IBLTextureBinding& params)  = 0;
-            virtual void SetIntensity(float diffuse, float specular) = 0;
+            virtual EnvironmentSpecification& GetSpecification() = 0;
 
             [[nodiscard]] virtual SH9& GetDiffuseSH() = 0;
             [[nodiscard]] virtual bool IsUsingSH() = 0;

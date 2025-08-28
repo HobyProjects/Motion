@@ -2,10 +2,8 @@
 
 #include <cstdint>
 #include <csignal>
+#include <type_traits>
 
-// ============================================================================
-// 1) PLATFORM (one-hot)
-// ============================================================================
 #if defined(MOTION_PLATFORM_OVERRIDE_WINDOWS)
   #define MOTION_PLATFORM_WINDOWS 1
   #define MOTION_PLATFORM_LINUX   0
@@ -51,9 +49,6 @@
   #endif
 #endif
 
-// ============================================================================
-// 2) COMPILER (one-hot)
-// ============================================================================
 #if defined(MOTION_COMPILER_OVERRIDE_MSVC)
   #define MOTION_COMPILER_MSVC  1
   #define MOTION_COMPILER_CLANG 0
@@ -84,9 +79,6 @@
   #endif
 #endif
 
-// ============================================================================
-// 3) ARCHITECTURE (one-hot)
-// ============================================================================
 #if defined(MOTION_ARCH_OVERRIDE_X64)
   #define MOTION_ARCH_X64   1
   #define MOTION_ARCH_ARM64 0
@@ -144,9 +136,6 @@
   #endif
 #endif
 
-// ============================================================================
-// 4) SANITY CHECKS (compile-time)
-// ============================================================================
 namespace motion::detail {
   // Helper for constant-expression sum
   constexpr int _sum3(int a, int b, int c) { return a + b + c; }
@@ -157,9 +146,6 @@ static_assert(motion::detail::_sum4(MOTION_PLATFORM_WINDOWS, MOTION_PLATFORM_LIN
 static_assert(motion::detail::_sum3(MOTION_COMPILER_MSVC, MOTION_COMPILER_CLANG, MOTION_COMPILER_GCC) == 1, "Exactly one MOTION_COMPILER_* must be 1");
 static_assert(motion::detail::_sum4(MOTION_ARCH_X64, MOTION_ARCH_ARM64, MOTION_ARCH_X86, MOTION_ARCH_ARMV7) == 1, "Exactly one MOTION_ARCH_* must be 1");
 
-// ============================================================================
-// 5) BUILD CONFIG
-// ============================================================================
 #ifndef MOTION_BUILD_DEBUG
   #if defined(_DEBUG) || !defined(NDEBUG)
     #define MOTION_BUILD_DEBUG 1
@@ -172,9 +158,7 @@ static_assert(motion::detail::_sum4(MOTION_ARCH_X64, MOTION_ARCH_ARM64, MOTION_A
   #define MOTION_ASSERTS_ENABLED MOTION_BUILD_DEBUG
 #endif
 
-// ============================================================================
-// 6) Attributes & branch hints
-// ============================================================================
+
 #if MOTION_COMPILER_MSVC
   #define MOTION_FORCE_INLINE __forceinline
   #define MOTION_NO_INLINE    __declspec(noinline)
@@ -191,9 +175,6 @@ static_assert(motion::detail::_sum4(MOTION_ARCH_X64, MOTION_ARCH_ARM64, MOTION_A
 #define MOTION_STR(x)   #x
 #define MOTION_TOSTR(x)  MOTION_STR(x)
 
-// ============================================================================
-// 7) Debug break (portable)
-// ============================================================================
 #if MOTION_COMPILER_MSVC
   #define MOTION_DEBUGTRAP() __debugbreak()
 
@@ -222,9 +203,66 @@ static_assert(motion::detail::_sum4(MOTION_ARCH_X64, MOTION_ARCH_ARM64, MOTION_A
   #define MOTION_DEBUGBREAK() 
 #endif
 
-// ============================================================================
-// 8) Bit helpers
-// ============================================================================
-template <std::uint32_t Shift>
-struct Bits { static constexpr std::uint32_t value = (1u << Shift); };
-constexpr std::uint32_t MOTION_BIT(std::uint32_t shift) { return (1u << shift); }
+namespace Motion
+{
+  template <std::uint32_t Shift>
+  struct Bits { static constexpr std::uint32_t value = (1u << Shift); };
+  constexpr std::uint32_t MOTION_BIT(std::uint32_t shift) { return (1u << shift); }
+
+  // Opt-in switch
+  template <class E>
+  struct enable_bitmask_operations : std::false_type {};
+
+  // Helper
+  template <class E>
+  constexpr auto to_underlying(E e) noexcept -> std::underlying_type_t<E> {
+      static_assert(std::is_enum_v<E>, "bitmask ops require enum types");
+      return static_cast<std::underlying_type_t<E>>(e);
+  }
+
+  // Concept for enabled bitmask enums
+  template <class E>
+  concept bitmask_enum = std::is_enum_v<E> && enable_bitmask_operations<E>::value;
+
+  // ---- Operators ----
+  // Return the enum for OR so chaining stays typed
+  template <bitmask_enum E>
+  constexpr E operator|(E lhs, E rhs) noexcept {
+      return static_cast<E>(to_underlying(lhs) | to_underlying(rhs));
+  }
+
+  // Return the underlying integer for AND so `if (e & Flag)` works
+  template <bitmask_enum E>
+  constexpr std::underlying_type_t<E> operator&(E lhs, E rhs) noexcept {
+      return (to_underlying(lhs) & to_underlying(rhs));
+  }
+
+  // Same idea for XOR (often used as a boolean-ish test)
+  template <bitmask_enum E>
+  constexpr std::underlying_type_t<E> operator^(E lhs, E rhs) noexcept {
+      return (to_underlying(lhs) ^ to_underlying(rhs));
+  }
+
+  // Keep ~ returning the enum (useful for masking)
+  template <bitmask_enum E>
+  constexpr E operator~(E v) noexcept {
+      return static_cast<E>(~to_underlying(v));
+  }
+
+  // Compound ops on the enum
+  template <bitmask_enum E>
+  constexpr E& operator|=(E& lhs, E rhs) noexcept {
+      lhs = (lhs | rhs);
+      return lhs;
+  }
+  template <bitmask_enum E>
+  constexpr E& operator&=(E& lhs, E rhs) noexcept {
+      lhs = static_cast<E>(to_underlying(lhs) & to_underlying(rhs));
+      return lhs;
+  }
+  template <bitmask_enum E>
+  constexpr E& operator^=(E& lhs, E rhs) noexcept {
+      lhs = static_cast<E>(to_underlying(lhs) ^ to_underlying(rhs));
+      return lhs;
+  }
+}

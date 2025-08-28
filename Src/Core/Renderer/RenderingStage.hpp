@@ -78,24 +78,19 @@ namespace Motion
 
     struct StageStatus
     {
-        // Depth
         bool DepthTest { true };
         bool DepthWrite { true };
         DepthFunction DepthFunc { DepthFunction::Less };
 
-
-        // Rasterization
         bool CullEnabled { false };
         CullMode CullingMode { CullMode::Back };
         FrontFace FrontFace { FrontFace::CCW };
         bool Wireframe { false };
 
-
         bool PolygonOffsetEnabled { false };
         float PolygonOffsetFactor { 0.0f };
         float PolygonOffsetUnits { 0.0f };
 
-        // Blending
         bool BlendEnabled { false };
         BlendEquation BlendEqRGB { BlendEquation::Add };
         BlendEquation BlendEqA { BlendEquation::Add };
@@ -105,7 +100,6 @@ namespace Motion
         BlendFactor DstA { BlendFactor::OneMinusSrcAlpha };
         float BlendConst[4]{ 0.f, 0.f, 0.f, 0.f };
 
-        // Output masks / regions
         bool ColorMaskR { true }, ColorMaskG { true }, ColorMaskB { true }, ColorMaskA { true };
         bool ScissorEnabled { false };
         ScissorRect Scissor;

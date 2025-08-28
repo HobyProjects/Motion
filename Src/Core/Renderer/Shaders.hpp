@@ -77,7 +77,9 @@ namespace Motion
         USE_ALPHA_MODE_OPAQUE               = MOTION_BIT(3),
         USE_ALPHA_MODE_MASK                 = MOTION_BIT(4),
         USE_ALPHA_MODE_BLEND                = MOTION_BIT(5),
-        USE_ALPHA_BLEND_PREMULTIPLIED       = MOTION_BIT(6)
+        USE_ALPHA_BLEND_PREMULTIPLIED       = MOTION_BIT(6),
+        USE_ALPHA_BLEND_ADDITIVE            = MOTION_BIT(7),
+        USE_ALPHA_BLEND                     = MOTION_BIT(8)
     };
 
     inline std::uint32_t operator|(ShaderFeatureMask a, ShaderFeatureMask b) { return static_cast<std::uint32_t>(a) | static_cast<std::uint32_t>(b); }
@@ -120,11 +122,11 @@ namespace Motion
         ShaderVariant& operator=(ShaderVariant&&)       = delete;
 
     public:
-        inline static const std::int32_t CAMERA_UBO_BINDING       = 0;
-        inline static const std::int32_t OBJECT_UBO_BINDING       = 1;
-        inline static const std::int32_t LIGHT_UBO_BINDING        = 2;
-        inline static const std::int32_t MATERIAL_UBO_BINDING     = 3;
-        inline static const std::int32_t SH9_UBO_BINDING          = 4;
+        inline static const std::int32_t CameraUboBinding       = 0;
+        inline static const std::int32_t ObjectUboBinding       = 1;
+        inline static const std::int32_t LightUboBinding        = 2;
+        inline static const std::int32_t MaterialUboBinding     = 3;
+        inline static const std::int32_t SH9UboBinding          = 4;
 
     public:
         static ShaderVariant& GetInstance()
@@ -134,7 +136,7 @@ namespace Motion
         }
 
     public:
-        std::shared_ptr<IShader> GetVariant(UUID baseUUID, const std::string& baseName, const std::filesystem::path& sourceFile, ShaderFeatureMask features);
+        std::shared_ptr<IShader> GetVariant(const std::filesystem::path& sourceFile, ShaderFeatureMask features);
         void Invalidate(UUID baseUUID);
 
     private:

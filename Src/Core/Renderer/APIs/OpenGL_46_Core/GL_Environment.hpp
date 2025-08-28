@@ -16,8 +16,8 @@ namespace Motion
 
             virtual void RenderSkyBox(const glm::mat4& proj, const glm::mat4& view, float yawnRadians = 0.0f) const override;
             virtual void BindIBL(const IBLTextureBinding& params) override;
-            virtual void SetIntensity(float diffuse, float specular) override;
 
+            [[nodiscard]] virtual EnvironmentSpecification& GetSpecification() override { return m_Specification; }
             [[nodiscard]] virtual SH9& GetDiffuseSH() override { return m_SH9Diffuse; }
             [[nodiscard]] virtual bool IsUsingSH() override { return m_Specification.UseSHDiffuse; }
 

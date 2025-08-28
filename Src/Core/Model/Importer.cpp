@@ -344,14 +344,11 @@ namespace Motion
             {
                 if (!importedModel.Meshes.empty())
                 {
-                    auto& AM = AssetManager::GetInstance();
                     auto& MB = MaterialBuilder::GetInstance();
 
                     std::shared_ptr<StaticMesh> staticMesh = std::make_shared<StaticMesh>(UniqueIdentity::GetUniqueID(), modelName, finalOutputPath);
                     staticMesh->m_MaxBounds = importedModel.BoundsMax;
                     staticMesh->m_MinBounds = importedModel.BoundsMin;
-
-                    std::shared_ptr<BaseMaterial> baseMaterial = AM.Get<BaseMaterial>("MetalBaseMaterial");
 
                     for (auto& [meshID, mesh] : importedModel.Meshes)
                     {
@@ -367,7 +364,7 @@ namespace Motion
                         auto meshPtr = Mesh::Create(mesh.Vertices.data(), static_cast<std::uint32_t>(mesh.Vertices.size()), mesh.Indices.data(), static_cast<std::uint32_t>(mesh.Indices.size()), layout, staticMesh);
                         meshPtr->Index = meshID;
                         meshPtr->Name = mesh.Name;
-                        meshPtr->Materials = MB.Create(baseMaterial);
+                        meshPtr->Materials = MB.Create(nullptr);
                         staticMesh->m_Meshes.emplace_back(std::move(meshPtr));
                     }
 

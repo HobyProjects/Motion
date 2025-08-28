@@ -3,67 +3,60 @@
 
 namespace Motion
 {
-    void ApplyAlphaState(const AlphaProperties& a, StageStatus& rs)
-    {
-        switch (a.Mode) 
-        {
-            case AlphaMode::Opaque:
-                rs.BlendEnabled = false;
-                rs.DepthWrite   = true;
-                break;
-
-            case AlphaMode::Mask:
-                rs.BlendEnabled = false;   
-                rs.DepthWrite   = true;      
-                break;
-
-            case AlphaMode::Blend: 
-                rs.BlendEnabled = true;
-                rs.DepthWrite   = false;     
-                if (a.BlendMode == AlphaBlendMode::Premultiplied) 
-                {
-                    rs.SrcRGB = BlendFactor::One;
-                    rs.DstRGB = BlendFactor::OneMinusSrcAlpha;
-                    rs.SrcA   = BlendFactor::One;
-                    rs.DstA   = BlendFactor::OneMinusSrcAlpha;
-                } 
-                else 
-                { 
-                    rs.SrcRGB = BlendFactor::SrcAlpha;
-                    rs.DstRGB = BlendFactor::OneMinusSrcAlpha;
-                    rs.SrcA   = BlendFactor::One;
-                    rs.DstA   = BlendFactor::OneMinusSrcAlpha;
-                }
-                break;
-        }
-    }
-
-    ResolvedMaterials GetResolvedMaterials(const CorePBR& c, const PackedMaps& p, const AlphaProperties& a)
+    ResolvedMaterials GetResolvedMaterials(Material* material)
     {
         ResolvedMaterials rm;
+        if(!material) 
+            return rm;
 
         auto applyTexture = 
-        [&](ITexture* tex, ITexture* apply, TexturesBitMask mask) 
+        [&](ITexture* tex, ITexture* apply, TextureType type, TexturesBitMask mask) 
         {
             if (tex) 
             {
                 apply = tex;
                 rm.TMask |= mask;
-
-                if(mask == TexturesBitMask::HasORM)
-                    rm.UseORMTextures = true;
             }
+            else
+            {
+                if(material->GetBaseMaterial())
+                {
+                    std::shared_ptr<BaseMaterial> base = material->GetBaseMaterial();
+                    if(base->Textures.contains(type))
+                    {
+                        apply = base->Textures[type].get();
+                        rm.TMask |= mask;
+                    }
+                }
+            }
+
+            if(rm.TMask & TexturesBitMask::HasORM)             rm.UseORMTextures = true;
+            if(rm.TMask & TexturesBitMask::HasDisplacement)    rm.UseDisplacement = true;
         };
 
-        applyTexture(c.BaseColorTexture.get(), rm.BaseColor, TexturesBitMask::HasBaseColor);
-        applyTexture(c.NormalTexture.get(), rm.Normal, TexturesBitMask::HasNormal);
-        applyTexture(c.MetallicTexture.get(), rm.Metallic, TexturesBitMask::HasMetallic);
-        applyTexture(c.RoughnessTexture.get(), rm.Roughness, TexturesBitMask::HasRoughness);
-        applyTexture(c.OcclusionTexture.get(), rm.AO, TexturesBitMask::HasOcclusion);
-        applyTexture(c.EmissiveTexture.get(), rm.Emissive, TexturesBitMask::HasEmissive);
-        applyTexture(c.DisplacementTexture.get(), rm.Displacement, TexturesBitMask::HasDisplacement);
-        applyTexture(a.OpacityTexture.get(), rm.Opacity, TexturesBitMask::HasOpacity);
-        applyTexture(p.ORMTexture.get(), rm.ORM, TexturesBitMask::HasORM);
+        if(!material->HasTexture<CorePBR>() || !material->HasTexture<AlphaProperties>())
+        {
+            MOTION_ASSERT(false, "Material does not have required textures!");
+            return rm;
+        }
+
+        const auto& c = material->GetTexture<CorePBR>();
+        const auto& a = material->GetTexture<AlphaProperties>();
+
+        applyTexture(c.BaseColorTexture.get(),      rm.BaseColor,       TextureType::BaseColorTexture,          TexturesBitMask::HasBaseColor);
+        applyTexture(c.NormalTexture.get(),         rm.Normal,          TextureType::NormalTexture,             TexturesBitMask::HasNormal);
+        applyTexture(c.MetallicTexture.get(),       rm.Metallic,        TextureType::MetallicTexture,           TexturesBitMask::HasMetallic);
+        applyTexture(c.RoughnessTexture.get(),      rm.Roughness,       TextureType::RoughnessTexture,          TexturesBitMask::HasRoughness);
+        applyTexture(c.OcclusionTexture.get(),      rm.AO,              TextureType::AmbientOcclusionTexture,   TexturesBitMask::HasOcclusion);
+        applyTexture(c.EmissiveTexture.get(),       rm.Emissive,        TextureType::EmissiveTexture,           TexturesBitMask::HasEmissive);
+        applyTexture(c.DisplacementTexture.get(),   rm.Displacement,    TextureType::DisplacementTexture,       TexturesBitMask::HasDisplacement);
+        applyTexture(a.OpacityTexture.get(),        rm.Opacity,         TextureType::OpacityTexture,            TexturesBitMask::HasOpacity);
+
+        if(material->HasTexture<PackedMaps>())
+        {
+            const auto& p = material->GetTexture<PackedMaps>();
+            applyTexture(p.ORMTexture.get(), rm.ORM, TextureType::ORMTexture, TexturesBitMask::HasORM);
+        }
 
         rm.BaseColorFactor      = c.BaseColorFactor;
         rm.NormalScale          = c.NormalScale;
@@ -73,6 +66,7 @@ namespace Motion
         rm.EmissiveStrength     = c.EmissiveStrength;
         rm.EmissiveFactor       = c.EmissiveFactor;
         rm.OpacityFactor        = a.OpacityFactor;
+        rm.SpecularStrength     = c.SpecularStrength;
 
         rm.Mode                 = a.Mode;
         rm.BlendMode            = a.BlendMode;

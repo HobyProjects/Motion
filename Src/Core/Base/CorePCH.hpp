@@ -115,6 +115,8 @@
 #include "PostProcessor.hpp"
 #include "Environment.hpp"
 #include "RenderingStage.hpp"
+#include "RenderCommand.hpp"
+#include "CommandQueue.hpp"
 #include "Renderer.hpp"
 
 //Renderer - OpenGL

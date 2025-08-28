@@ -4,6 +4,37 @@
 
 namespace Motion
 {
+    struct TextureSlot
+    {
+        static constexpr std::int32_t Irradiance                 = 1;
+        static constexpr std::int32_t Prefilter                  = 2;
+        static constexpr std::int32_t BRDFLUT                    = 3;
+        static constexpr std::int32_t Skybox                     = 4;
+        
+        static constexpr std::int32_t Base                       = 8;
+        static constexpr std::int32_t BaseColor                  = Base + 0;
+        static constexpr std::int32_t Metallic                   = Base + 1;
+        static constexpr std::int32_t Roughness                  = Base + 2;
+        static constexpr std::int32_t Normal                     = Base + 3;
+        static constexpr std::int32_t AO                         = Base + 4;
+        static constexpr std::int32_t Emissive                   = Base + 5;
+        static constexpr std::int32_t Opacity                    = Base + 6;
+        static constexpr std::int32_t ORM                        = Base + 7;
+        static constexpr std::int32_t Clearcoat                  = Base + 8;
+        static constexpr std::int32_t ClearcoatR                 = Base + 9;
+        static constexpr std::int32_t SpecularColor              = Base + 10;
+        static constexpr std::int32_t Specular                   = Base + 11;
+        static constexpr std::int32_t SheenColor                 = Base + 12;
+        static constexpr std::int32_t SheenR                     = Base + 13;
+        static constexpr std::int32_t Transmission               = Base + 14;
+        static constexpr std::int32_t Thickness                  = Base + 15;
+        static constexpr std::int32_t ClearcoatN                 = Base + 16;
+        static constexpr std::int32_t Displacement               = Base + 17;
+        static constexpr std::int32_t Anisotropy                 = Base + 18;
+        static constexpr std::int32_t Iridescence                = Base + 19;
+        static constexpr std::int32_t IridescenceThickness       = Base + 20;
+    };
+
     enum class TexturesBitMask : std::uint32_t
     {
         HasBaseColor       = MOTION_BIT(0),
@@ -17,18 +48,16 @@ namespace Motion
         HasORM             = MOTION_BIT(8)
     };
 
-    inline TexturesBitMask operator|(TexturesBitMask a, TexturesBitMask b) { return static_cast<TexturesBitMask>(static_cast<std::uint32_t>(a) | static_cast<std::uint32_t>(b)); }
-    inline TexturesBitMask operator&(TexturesBitMask a, TexturesBitMask b)  { return static_cast<TexturesBitMask>(static_cast<std::uint32_t>(a) & static_cast<std::uint32_t>(b)); }
-    inline TexturesBitMask& operator|=(TexturesBitMask& a, TexturesBitMask b) { a = a | b; return a; }
-    inline TexturesBitMask& operator&=(TexturesBitMask& a, TexturesBitMask b) { a = a & b; return a; }
+    template <>
+    struct enable_bitmask_operations<TexturesBitMask> : std::true_type {};
 
-    enum class AlphaMode : std::uint32_t { Opaque, Mask, Blend };
-    enum class AlphaBlendMode : std::uint32_t { Premultiplied, Straight };
+    enum class AlphaMode        : std::uint32_t { Opaque, Mask, Blend };
+    enum class AlphaBlendMode   : std::uint32_t { Additive, AlphaBlend, Premultiplied };
 
     struct AlphaProperties
     {
         AlphaMode      Mode             { AlphaMode::Opaque };
-        AlphaBlendMode BlendMode        { AlphaBlendMode::Straight };
+        AlphaBlendMode BlendMode        { AlphaBlendMode::Additive };
 
         float   AlphaCutoff      { 0.5f };
         float   OpacityFactor    { 1.0f };
@@ -53,6 +82,7 @@ namespace Motion
         float OcclusionStrength{ 1.0f }; 
         glm::vec3 EmissiveFactor{ 1.0f, 1.0f, 1.0f };
         float EmissiveStrength{ 1.0f };
+        float SpecularStrength{ 1.0f };
         float DisplacementScale{ 0.05f };
         float DisplacementBias{ -0.025f };
 
@@ -86,7 +116,9 @@ namespace Motion
         ITexture* Displacement  = nullptr;
 
         TexturesBitMask  TMask;
+
         bool UseORMTextures{false};
+        bool UseDisplacement{false};
 
         glm::vec4 BaseColorFactor   {1.0f, 1.0f, 1.0f, 1.0f};
         float NormalScale           = 1.0f;
@@ -97,9 +129,10 @@ namespace Motion
         glm::vec3 EmissiveFactor    {1.0f, 1.0f, 1.0f};
         float EmissiveStrength      = 1.0f;
         float OpacityFactor         = 1.0f;
+        float SpecularStrength      = 1.0f;
 
         AlphaMode Mode              = AlphaMode::Opaque;
-        AlphaBlendMode BlendMode    = AlphaBlendMode::Straight;
+        AlphaBlendMode BlendMode    = AlphaBlendMode::Additive;
         float AlphaCutoff           = 0.5f;
 
         float DispScale             = 0.05f;
@@ -108,7 +141,7 @@ namespace Motion
         CorePBR::AdvancedDisplacement AdvDisplacement;
     };
 
-    ResolvedMaterials GetResolvedMaterials(const CorePBR& c, const PackedMaps& p, const AlphaProperties& a);
+    ResolvedMaterials GetResolvedMaterials(Material* material);
 
     #if 0
     struct ClearcoatExtension

@@ -26,15 +26,23 @@ namespace Motion
         AM.Create<IShader>("ENV_PRE", "Assets/Shaders/GLSL/Environment/EnvironmentPrefiltered.glsl");
         AM.Create<IShader>("ENV_CUB", "Assets/Shaders/GLSL/Environment/EnvironmentCubeConverter.glsl");
         AM.Create<IShader>("ENV_BRD", "Assets/Shaders/GLSL/Environment/EnvironmentBRDF.glsl");
-        AM.Create<IShader>("PBR", "Assets/Shaders/GLSL/ModularPBR.glsl");
-
+        
         BaseMaterial::Import("Assets/Materials/Metal/Base.yaml");
 
-        m_Viewport.FrameSpec.Name = "SceneEditorFrame";
-        m_Viewport.FrameSpec.Width = (uint32_t)m_CurrentViewportSize.x;
-        m_Viewport.FrameSpec.Height = (uint32_t)m_CurrentViewportSize.y;
-        m_Viewport.Size = m_CurrentViewportSize;
+        //------------------------------------------------------------------------------------
+
+        m_Viewport.Size                 = m_CurrentViewportSize;
+        m_Viewport.FrameSpec.Name       = "SceneEditorFrame";
+        m_Viewport.FrameSpec.Width      = (std::uint32_t)m_CurrentViewportSize.x;
+        m_Viewport.FrameSpec.Height     = (std::uint32_t)m_CurrentViewportSize.y;
         m_Framebuffer = IFrameBuffer::Create(m_Viewport.FrameSpec);
+
+        // Create a single-sample present FBO for ImGui
+        FrameBufferSpecification present{};
+        present.Name   = "SceneEditorPresent";
+        present.Width  = (std::uint32_t)m_CurrentViewportSize.x;
+        present.Height = (std::uint32_t)m_CurrentViewportSize.y;
+        m_PresentFramebuffer = IFrameBuffer::Create(present);
 
         EnvironmentSpecification specEnv;
         specEnv.UseSHDiffuse = false;
@@ -54,6 +62,9 @@ namespace Motion
         m_ActiveScene = m_Scenes[0];
         m_ActiveScene->Activate(true);
 
+         // Seed initial texture ID so first UI pass isn't null
+        m_SceneTextures[m_ActiveScene] = m_PresentFramebuffer->GetAttachment(FrameBufferColorAttachmentStandards::Standard).ID;
+
         //------------------------------------------------------------------------------------
 
         m_Panels->Emplace<SceneViewportPanel>();
@@ -72,26 +83,33 @@ namespace Motion
 
     void SceneEditorLayer::OnUpdate(WindowHandle handle, Timer deltaTime)
     {
-        // react to viewport size changes from the ImGui panel
-        if (m_ActiveScene->GetSpecification().Viewport.Size != m_CurrentViewportSize)
-        {
-            m_CurrentViewportSize = m_ActiveScene->GetSpecification().Viewport.Size;
-            m_Framebuffer->ResizeFrame((uint32_t)m_CurrentViewportSize.x, (uint32_t)m_CurrentViewportSize.y);
-            m_ActiveScene->OnViewportSizeChanges(m_CurrentViewportSize);
-        }
-
         m_ActiveScene->OnUpdate(handle, deltaTime);
 
         m_Framebuffer->Bind();
+        Renderer::SetViewport(0, 0, (int)m_CurrentViewportSize.x, (int)m_CurrentViewportSize.y);
         Renderer::ClearColor({ 0.243f, 0.243f, 0.243f, 1.0f });
         Renderer::Clear();
+
         SceneRenderer::BeginScene();
         SceneRenderer::Submit(m_ActiveScene.get());
         SceneRenderer::EndScene();
+
         m_Framebuffer->Unbind();
 
-        m_SceneTextures[m_ActiveScene] =
-            m_Framebuffer->GetAttachment(FrameBufferColorAttachmentStandards::Standard).ID;
+        FrameTextureID finalTex = 0;
+        if (m_Framebuffer->GetFrameSpecification().Samples > 1)
+        {
+            finalTex = m_Framebuffer->ResolveTo(m_PresentFramebuffer.get());
+        }
+        else
+        {
+            finalTex = m_Framebuffer->GetAttachment(FrameBufferColorAttachmentStandards::Standard).ID;
+            m_Framebuffer->BlitTo(m_PresentFramebuffer.get(), FrameBufferBlitMask::Color, FrameBufferBlitFilter::Linear);
+            finalTex = m_PresentFramebuffer->GetAttachment(FrameBufferColorAttachmentStandards::Standard).ID;
+        }
+
+        m_SceneTextures[m_ActiveScene] = finalTex;
+
     }
 
     void SceneEditorLayer::OnEvent(WindowHandle handle, IEvent& e)
@@ -108,9 +126,7 @@ namespace Motion
         ImVec2 contentMin = ImGui::GetWindowContentRegionMin();
         ImVec2 viewportMin = ImVec2(windowPos.x + contentMin.x, windowPos.y + contentMin.y);
         ImVec2 axisOrigin = ImVec2(viewportMin.x + size + 10.0f, viewportMin.y + ImGui::GetWindowSize().y - size - 10.0f);
-
-        // Camera basis (extract from view matrix)
-        glm::mat3 camBasis = glm::mat3(glm::transpose(view)); // Row-major, use transpose for camera orientation
+        glm::mat3 camBasis = glm::mat3(glm::transpose(view)); 
 
         struct Axis {
             glm::vec3 dir;
@@ -126,21 +142,18 @@ namespace Motion
 
         for (int i = 0; i < 3; ++i)
         {
-            glm::vec3 localDir = camBasis * axes[i].dir; // Camera space to world
+            glm::vec3 localDir = camBasis * axes[i].dir; 
             localDir = glm::normalize(localDir);
 
             float len = size;
             ImVec2 p0 = axisOrigin;
-            ImVec2 p1 = ImVec2((axisOrigin.x + localDir.x * len), (axisOrigin.y - localDir.y * len)); // ImGui Y is downward
+            ImVec2 p1 = ImVec2((axisOrigin.x + localDir.x * len), (axisOrigin.y - localDir.y * len)); 
 
             drawList->AddLine(p0, p1, axes[i].color, 3.0f);
-
-            // Draw label at the end
-            ImVec2 labelPos = ImVec2(p1.x + 5.0f, p1.y - 5.0f); // Offset for better visibility
+            ImVec2 labelPos = ImVec2(p1.x + 5.0f, p1.y - 5.0f); 
             drawList->AddText(labelPos, axes[i].color, axes[i].label);
         }
 
-        // Optional: Draw circle at axis origin
         drawList->AddCircleFilled(axisOrigin, 5.0f, IM_COL32(120, 120, 120, 255));
     }
 
@@ -196,6 +209,17 @@ namespace Motion
         }
 
         ImGui::End();
+    }
+
+    void SceneEditorLayer::SetViewportSize(const glm::vec2 & size)
+    {
+        if (size == m_CurrentViewportSize || size.x <= 1.0f || size.y <= 1.0f) return;
+
+        m_CurrentViewportSize = size;
+
+        if (m_Framebuffer)         m_Framebuffer->ResizeFrame((int)size.x, (int)size.y);
+        if (m_PresentFramebuffer)  m_PresentFramebuffer->ResizeFrame((int)size.x, (int)size.y);
+        if (m_ActiveScene)         m_ActiveScene->OnViewportSizeChanges(size);
     }
 
     void SceneEditorLayer::SetActiveScene(const std::shared_ptr<Scene>& scene)

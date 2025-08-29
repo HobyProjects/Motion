@@ -71,11 +71,15 @@ namespace Motion
 
         if (ImGui::TreeNodeEx((void*)3, appearanceFlags, "%s  %s", ICON_MD_STYLE, "Appearance"))
         {
-            if (UI::BeginPropertyGrid("appearance-grid"))
+            if(UI::BeginPropertyGrid("##skybox-properties"))
             {
-                UI::DragFloat(ICON_MD_EXPOSURE " Exposure", &env.Exposure, 0.0f, 8.0f, 0.01f);
-                UI::DragFloat(ICON_MD_CONTRAST " Gamma", &env.Gamma, 1.0f, 3.0f, 0.01f);
-                UI::ColorEdit3(ICON_MD_INVERT_COLORS " Ambient Tint", env.AmbientTint);
+                auto& skyBox = ibl->GetSpecification();
+                UI::SliderFloat(ICON_MD_BRIGHTNESS_6 " Intensity", &skyBox.Intensity, 0.0f, 5.0f);
+                UI::SliderFloat(ICON_MD_LIGHTBULB " Gamma", &skyBox.Gamma, 1.8f, 2.4f);
+                UI::SliderFloat(ICON_MD_EXPOSURE " Exposure", &skyBox.Exposure, -5.0f, 5.0f);
+                UI::SliderFloat(ICON_MD_EXPOSURE " Max Mip Level", &skyBox.MaxMipLevel, -1.0f, 0.0f);
+                UI::ComboBox(ICON_MD_FILTER_1 " Tone Mapping", { "None", "Reinhard", "ACES" }, skyBox.Tonemap, [&](std::int32_t index, const std::string& selected) { skyBox.Tonemap = index; });
+
                 UI::EndPropertyGrid();
             }
 

@@ -71,15 +71,14 @@ namespace Motion
 
     enum class ShaderFeatureMask : std::uint32_t
     {
-        USE_SH9                             = MOTION_BIT(0),
-        USE_ORM_MAP                         = MOTION_BIT(1),
-        USE_OPACITY_MAP                     = MOTION_BIT(2),
-        USE_ALPHA_MODE_OPAQUE               = MOTION_BIT(3),
-        USE_ALPHA_MODE_MASK                 = MOTION_BIT(4),
-        USE_ALPHA_MODE_BLEND                = MOTION_BIT(5),
-        USE_ALPHA_BLEND_PREMULTIPLIED       = MOTION_BIT(6),
-        USE_ALPHA_BLEND_ADDITIVE            = MOTION_BIT(7),
-        USE_ALPHA_BLEND                     = MOTION_BIT(8)
+        USE_NONE                            = 0,
+        USE_BASECOLOR_MAP                   = MOTION_BIT(0),
+        USE_NORMAL_MAP                      = MOTION_BIT(1),
+        USE_OCCLUSION_MAP                   = MOTION_BIT(2),
+        USE_ROUGHNESS_MAP                   = MOTION_BIT(3),
+        USE_METALLIC_MAP                    = MOTION_BIT(4),
+        USE_EMISSIVE_MAP                    = MOTION_BIT(5),
+        USE_ORM_MAP                         = MOTION_BIT(6),
     };
 
     inline std::uint32_t operator|(ShaderFeatureMask a, ShaderFeatureMask b) { return static_cast<std::uint32_t>(a) | static_cast<std::uint32_t>(b); }
@@ -92,11 +91,6 @@ namespace Motion
         UUID                    VariantID;
         ShaderFeatureMask       Features;
         std::filesystem::path   SourceFiles;
-
-        bool operator==(const ShaderVariantKey& other) const
-        {
-            return VariantID == other.VariantID && Features == other.Features && SourceFiles == other.SourceFiles;
-        }
     };
 
     struct ShaderVariantHashCode
@@ -122,13 +116,6 @@ namespace Motion
         ShaderVariant& operator=(ShaderVariant&&)       = delete;
 
     public:
-        inline static const std::int32_t CameraUboBinding       = 0;
-        inline static const std::int32_t ObjectUboBinding       = 1;
-        inline static const std::int32_t LightUboBinding        = 2;
-        inline static const std::int32_t MaterialUboBinding     = 3;
-        inline static const std::int32_t SH9UboBinding          = 4;
-
-    public:
         static ShaderVariant& GetInstance()
         {
             static ShaderVariant instance;
@@ -137,9 +124,9 @@ namespace Motion
 
     public:
         std::shared_ptr<IShader> GetVariant(const std::filesystem::path& sourceFile, ShaderFeatureMask features);
-        void Invalidate(UUID baseUUID);
+        void VariantWrite(const std::string& name, ShaderType type, const std::string& source, const std::filesystem::path& location);
 
     private:
-        std::unordered_map<ShaderVariantKey, std::weak_ptr<IShader>, ShaderVariantHashCode> m_ShaderCache;
+        std::unordered_map<std::size_t, std::shared_ptr<IShader>> m_ShaderCache;
     };
 }

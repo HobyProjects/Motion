@@ -11,5 +11,7 @@ namespace Motion
             case RenderingAPI::DirectX:         MOTION_ASSERT(false, "DirectX is not implemented yet!"); break;
             default:                            MOTION_ASSERT(false, "Unknown rendering API!");break;
         }
+
+        return nullptr;
     }
 }

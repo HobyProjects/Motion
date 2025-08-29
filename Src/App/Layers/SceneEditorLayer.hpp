@@ -22,6 +22,7 @@ namespace Motion
         virtual void OnEvent(WindowHandle handle, IEvent& e);
         virtual void OnUIRender(WindowHandle handle) override;
 
+        void SetViewportSize(const glm::vec2& size);
         void SetActiveScene(const std::shared_ptr<Scene>& scene);
         void RemoveScene(const std::shared_ptr<Scene>& scene);
         std::shared_ptr<Scene> AddNewScene(const std::string& name, bool makeActive = false);
@@ -37,16 +38,15 @@ namespace Motion
 
     private:
         glm::vec2 m_CurrentViewportSize{ 1280.0f, 720.0f };
+        std::shared_ptr<IFrameBuffer> m_PresentFramebuffer{ nullptr };
         std::shared_ptr<IFrameBuffer> m_Framebuffer{ nullptr };
         std::shared_ptr<IEnvironment> m_Environment{ nullptr };
 
-        //SCENE
         SceneViewport m_Viewport{};
         std::shared_ptr<Scene> m_ActiveScene{ nullptr };
         std::vector<std::shared_ptr<Scene>> m_Scenes{};
         std::unordered_map<std::shared_ptr<Scene>, FrameTextureID> m_SceneTextures{};
 
-        // Panel Management
         std::shared_ptr<ScenePanelManager> m_Panels{ nullptr };
     };
 }

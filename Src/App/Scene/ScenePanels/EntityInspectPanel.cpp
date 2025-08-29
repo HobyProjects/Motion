@@ -36,10 +36,15 @@ namespace Motion
                 {
                     if (auto mesh = Importer::ImportModel(path))
                     {
-                        auto& fac = EntityFactory::GetInstance();
-                        auto e = fac.CreateEntity(mesh->GetName());
+                        auto& fac   = EntityFactory::GetInstance();
+                        auto e      = fac.CreateEntity(mesh->GetName());
+
                         e->AddComponent<StaticMeshComponent>(mesh->GetName(), mesh);
-                        e->AddComponent<TransformComponent>();
+                        auto& transform = e->AddComponent<TransformComponent>();
+
+                        Bounds b{ .Min = mesh->GetMinBounds(), .Max = mesh->GetMaxBounds() };
+                        FitTransformToWorldBox(transform, b, FitMode::NonUniformToBox, glm::vec3(1.8f), glm::vec3(5.0f, 0.0f, -2.0f), true, true, 0.0f);
+
                         ctx.ActiveScene->EmplaceEntity(e);
                     }
                 }

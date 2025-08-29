@@ -37,6 +37,7 @@ namespace Motion
 
     enum class TexturesBitMask : std::uint32_t
     {
+        None               = 0,
         HasBaseColor       = MOTION_BIT(0),
         HasNormal          = MOTION_BIT(1),
         HasMetallic        = MOTION_BIT(2),
@@ -51,20 +52,6 @@ namespace Motion
     template <>
     struct enable_bitmask_operations<TexturesBitMask> : std::true_type {};
 
-    enum class AlphaMode        : std::uint32_t { Opaque, Mask, Blend };
-    enum class AlphaBlendMode   : std::uint32_t { Additive, AlphaBlend, Premultiplied };
-
-    struct AlphaProperties
-    {
-        AlphaMode      Mode             { AlphaMode::Opaque };
-        AlphaBlendMode BlendMode        { AlphaBlendMode::Additive };
-
-        float   AlphaCutoff      { 0.5f };
-        float   OpacityFactor    { 1.0f };
-
-        std::shared_ptr<ITexture> OpacityTexture{ nullptr };
-    };
-
     struct CorePBR
     {
         std::shared_ptr<ITexture> BaseColorTexture{ nullptr };
@@ -76,26 +63,14 @@ namespace Motion
         std::shared_ptr<ITexture> DisplacementTexture{ nullptr };
 
         glm::vec4 BaseColorFactor{ 1.0f, 1.0f, 1.0f, 1.0f };
+        glm::vec3 EmissiveFactor{ 0.0f, 0.0f, 0.0f };
+
         float NormalScale{ 1.0f };
         float MetallicFactor{ 0.0f };
         float RoughnessFactor{ 0.5f };
         float OcclusionStrength{ 1.0f }; 
-        glm::vec3 EmissiveFactor{ 1.0f, 1.0f, 1.0f };
         float EmissiveStrength{ 1.0f };
-        float SpecularStrength{ 1.0f };
-        float DisplacementScale{ 0.05f };
-        float DisplacementBias{ -0.025f };
-
-        struct AdvancedDisplacement
-        {
-            float TessellationMin{2.0f};
-            float TessellationMax{8.0f};
-            float PixelsPerEdge{20.0f};
-            float LODNear{5.0f};   
-            float LODFar{50.0f};
-        };
-
-        AdvancedDisplacement AdvDisplacement;
+        float OpacityFactor{ 1.0f };
     };
 
     struct PackedMaps
@@ -105,40 +80,26 @@ namespace Motion
 
     struct ResolvedMaterials 
     {
-        ITexture* BaseColor     = nullptr;
-        ITexture* Normal        = nullptr;
-        ITexture* ORM           = nullptr;
-        ITexture* Metallic      = nullptr;
-        ITexture* Roughness     = nullptr;
-        ITexture* AO            = nullptr;
-        ITexture* Emissive      = nullptr;
-        ITexture* Opacity       = nullptr;
-        ITexture* Displacement  = nullptr;
+        std::weak_ptr<ITexture> BaseColor;
+        std::weak_ptr<ITexture> Normal;
+        std::weak_ptr<ITexture> ORM;
+        std::weak_ptr<ITexture> Metallic;
+        std::weak_ptr<ITexture> Roughness;
+        std::weak_ptr<ITexture> AO;
+        std::weak_ptr<ITexture> Emissive;
+        std::weak_ptr<ITexture> Opacity;
 
-        TexturesBitMask  TMask;
+        glm::vec4 BaseColorFactor   { 1.0f, 1.0f, 1.0f, 1.0f };
+        glm::vec3 EmissiveFactor    { 0.0f, 0.0f, 0.0f };
 
-        bool UseORMTextures{false};
-        bool UseDisplacement{false};
-
-        glm::vec4 BaseColorFactor   {1.0f, 1.0f, 1.0f, 1.0f};
         float NormalScale           = 1.0f;
         float MetallicFactor        = 0.0f;   
         float RoughnessFactor       = 0.5f;  
         float AOStrength            = 1.0f;
-
-        glm::vec3 EmissiveFactor    {1.0f, 1.0f, 1.0f};
-        float EmissiveStrength      = 1.0f;
         float OpacityFactor         = 1.0f;
-        float SpecularStrength      = 1.0f;
+        float EmissiveStrength      = 1.0f;
 
-        AlphaMode Mode              = AlphaMode::Opaque;
-        AlphaBlendMode BlendMode    = AlphaBlendMode::Additive;
-        float AlphaCutoff           = 0.5f;
-
-        float DispScale             = 0.05f;
-        float DispBias              = -0.025f;
-
-        CorePBR::AdvancedDisplacement AdvDisplacement;
+        TexturesBitMask TMask{ TexturesBitMask::None };
     };
 
     ResolvedMaterials GetResolvedMaterials(Material* material);

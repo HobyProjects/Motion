@@ -172,8 +172,7 @@ static_assert(motion::detail::_sum4(MOTION_ARCH_X64, MOTION_ARCH_ARM64, MOTION_A
 #endif
 
 #define MOTION_UNUSED(x) (void)(x)
-#define MOTION_STR(x)   #x
-#define MOTION_TOSTR(x)  MOTION_STR(x)
+#define MOTION_TOSTR(x) #x
 
 #if MOTION_COMPILER_MSVC
   #define MOTION_DEBUGTRAP() __debugbreak()

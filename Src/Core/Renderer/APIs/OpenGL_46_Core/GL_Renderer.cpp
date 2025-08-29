@@ -25,20 +25,40 @@ namespace Motion
 
     void GL_Init()
     {
-        // sane defaults
         glDepthMask(GL_TRUE);
+        glDepthFunc(GL_LESS);               
+        glEnable(GL_DEPTH_TEST);
+        glDisable(GL_CULL_FACE);           
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
         glEnable(GL_BLEND);
-        glEnable(GL_DEPTH_TEST);
         glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
 
 #ifdef MOTION_BUILD_DEBUG
-        if (GLAD_GL_KHR_debug) {
+        if (GLAD_GL_KHR_debug) 
+        {
             glEnable(GL_DEBUG_OUTPUT);
             glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
             glDebugMessageCallback(GL_MessageCallBack, nullptr);
+
+            glDebugMessageControl(
+                GL_DONT_CARE,                // source
+                GL_DONT_CARE,                // type
+                GL_DONT_CARE,                // severity (we'll filter below)
+                0, nullptr,                  // IDs
+                GL_TRUE                      // enable all first
+            );
+            
+            glDebugMessageControl(
+                GL_DONT_CARE, GL_DONT_CARE, GL_DEBUG_SEVERITY_NOTIFICATION,
+                0, nullptr, GL_FALSE         // turn off notifications
+            );
+
+            glDebugMessageControl(
+                GL_DONT_CARE, GL_DONT_CARE, GL_DEBUG_SEVERITY_LOW,
+                0, nullptr, GL_FALSE         // turn off low severity
+            );
+
         }
 #endif
     }
@@ -155,7 +175,7 @@ namespace Motion
 #endif
     }
 
-    void GL_QueryCaps(GpuCaps& outCaps)
+    void GL_QueryCaps(GPUCaptures& outCaps)
     {
         glGetIntegerv(GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS, &outCaps.maxCombinedTextureUnits);
         glGetIntegerv(GL_MAJOR_VERSION, &outCaps.glMajor);

@@ -21,5 +21,5 @@ namespace Motion
     void GL_PushDebugGroup(const char* label);
     void GL_PopDebugGroup();
 
-    void GL_QueryCaps(GpuCaps& outCaps);
+    void GL_QueryCaps(GPUCaptures& outCaps);
 } 

@@ -49,15 +49,6 @@ namespace Motion
 
         ~TransformComponent() = default;
 
-        /**
-         * @brief Computes and returns the transformation matrix for the entity.
-         *
-         * This function constructs the transformation matrix (TRS) by combining translation,
-         * rotation, and scale components. Additionally, if the entity has a MeshCollectionComponent,
-         * it synchronizes the transformation data with all associated MeshNodeComponents.
-         *
-         * @return glm::mat4 The combined transformation matrix (TRS).
-         */
         glm::mat4 GetTransform() const
         {
             glm::mat4 T = glm::translate(glm::mat4(1.0f), Translation);

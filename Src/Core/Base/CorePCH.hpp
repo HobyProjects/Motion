@@ -91,6 +91,7 @@
 
 //Maths
 #include "Intersect.hpp"
+#include "MeshFit.hpp"
 
 //Events
 #include "Event.hpp"

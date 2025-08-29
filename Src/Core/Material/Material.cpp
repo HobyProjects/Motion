@@ -75,7 +75,6 @@ namespace Motion
     std::shared_ptr<Material> MaterialBuilder::Create(const std::shared_ptr<BaseMaterial>& baseMaterial)
     {
         std::shared_ptr<Material> material = std::make_shared<Material>(_Registry.create(), baseMaterial);
-        material->AddTexture<AlphaProperties>();
         material->AddTexture<CorePBR>();
         return material;
     }

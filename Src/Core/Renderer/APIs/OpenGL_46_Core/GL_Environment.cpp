@@ -3,354 +3,494 @@
 
 namespace Motion
 {
-    static constexpr std::int32_t ENVIRONMENT_CUBE_SIZE            = 2048;
-    static constexpr std::int32_t ENVIRONMENT_IRRADIANCE_SIZE      = 32;
-    static constexpr std::int32_t ENVIRONMENT_PREFILTERED_SIZE     = 128;
-    static constexpr std::int32_t ENVIRONMENT_BRDF_LUT_SIZE        = 512;
+    static constexpr std::int32_t ENVIRONMENT_CUBE_SIZE        = 2048;
+    static constexpr std::int32_t ENVIRONMENT_IRRADIANCE_SIZE  = 32;
+    static constexpr std::int32_t ENVIRONMENT_PREFILTERED_SIZE = 128;
+    static constexpr std::int32_t ENVIRONMENT_BRDF_LUT_SIZE    = 512;
 
-    // ------------------------------ helpers: fullscreen quad & cube ------------------------------
-    static std::uint32_t s_QuadVAO = 0, s_QuadVBO = 0;
-    static std::uint32_t s_CubeVAO = 0, s_CubeVBO = 0;
-
-    static void EnsureQuad()
+    struct ScopedFBOAndViewport 
     {
-        if (!s_QuadVAO)
+        GLint prevDraw{}, prevRead{}, vp[4]{};
+
+        ScopedFBOAndViewport(GLuint fbo, int w, int h) 
         {
-            const float quad[] = { -1,1,0, 0,1,  -1,-1,0, 0,0,  1,1,0, 1,1,  1,-1,0, 1,0 };
-            glGenVertexArrays(1, &s_QuadVAO);
-            glGenBuffers(1, &s_QuadVBO);
-            glBindVertexArray(s_QuadVAO);
-            glBindBuffer(GL_ARRAY_BUFFER, s_QuadVBO);
-            glBufferData(GL_ARRAY_BUFFER, sizeof(quad), quad, GL_STATIC_DRAW);
-            glEnableVertexAttribArray(0); glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
-            glEnableVertexAttribArray(1); glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+            glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &prevDraw);
+            glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &prevRead);
+            glGetIntegerv(GL_VIEWPORT, vp);
+            glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fbo);
+            glViewport(0, 0, w, h);
         }
+
+        ~ScopedFBOAndViewport() 
+        {
+            glBindFramebuffer(GL_DRAW_FRAMEBUFFER, prevDraw);
+            glBindFramebuffer(GL_READ_FRAMEBUFFER, prevRead);
+            glViewport(vp[0], vp[1], vp[2], vp[3]);
+        }
+    };
+
+
+    GeometryCache& GeometryCache::Get()
+    { 
+        static GeometryCache g; 
+        return g; 
     }
 
-    static void EnsureCube()
+    GeometryCache::GeometryCache()
     {
-        if (!s_CubeVAO)
+        {
+            const float quad[] = 
+            { 
+                // Triangle 1
+                -1.0f, -1.0f, 0.0f,   0.0f, 0.0f,  // bottom-left
+                 1.0f, -1.0f, 0.0f,   1.0f, 0.0f,  // bottom-right
+                 1.0f,  1.0f, 0.0f,   1.0f, 1.0f,  // top-right
+
+                // Triangle 2
+                 1.0f,  1.0f, 0.0f,   1.0f, 1.0f,  // top-right
+                -1.0f,  1.0f, 0.0f,   0.0f, 1.0f,  // top-left
+                -1.0f, -1.0f, 0.0f,   0.0f, 0.0f   // bottom-left
+            };
+
+            glGenVertexArrays(1, &m_quadVAO.id); glGenBuffers(1, &m_quadVBO);
+            glBindVertexArray(m_quadVAO.id);
+            glBindBuffer(GL_ARRAY_BUFFER, m_quadVBO);
+            glBufferData(GL_ARRAY_BUFFER, sizeof(quad), quad, GL_STATIC_DRAW);
+            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+            glEnableVertexAttribArray(0); 
+            glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+            glEnableVertexAttribArray(1); 
+        }
         {
             float v[] = 
             {
-                -1, -1, -1,  0,  0, -1, 0, 0,  1,  1, -1,  0,  0, -1,  1,  1,  1, -1, -1,  0,  0, -1,  1,  0,
-                 1,  1, -1,  0,  0, -1, 1, 1, -1, -1, -1,  0,  0, -1,  0,  0, -1,  1, -1,  0,  0, -1,  0,  1,
-                -1, -1,  1,  0,  0,  1, 0, 0,  1, -1,  1,  0,  0,  1,  1,  0,  1,  1,  1,  0,  0,  1,  1,  1,
-                 1,  1,  1,  0,  0,  1, 1, 1, -1,  1,  1,  0,  0,  1,  0,  1, -1, -1,  1,  0,  0,  1,  0,  0,
-                -1,  1,  1, -1,  0,  0, 1, 0, -1,  1, -1, -1,  0,  0,  1,  1, -1, -1, -1, -1,  0,  0,  0,  1,
-                -1, -1, -1, -1,  0,  0, 0, 1, -1, -1,  1, -1,  0,  0,  0,  0, -1,  1,  1, -1,  0,  0,  1,  0,
-                 1,  1,  1,  1,  0,  0, 1, 0,  1, -1, -1,  1,  0,  0,  0,  1,  1,  1, -1,  1,  0,  0,  1,  1,
-                 1, -1, -1,  1,  0,  0, 0, 1,  1,  1,  1,  1,  0,  0,  1,  0,  1, -1,  1,  1,  0,  0,  0,  0,
-                -1, -1, -1,  0, -1,  0, 0, 1,  1, -1, -1,  0, -1,  0,  1,  1,  1, -1,  1,  0, -1,  0,  1,  0,
-                 1, -1,  1,  0, -1,  0, 1, 0, -1, -1,  1,  0, -1,  0,  0,  0, -1, -1, -1,  0, -1,  0,  0,  1,
-                -1,  1, -1,  0,  1,  0, 0, 1,  1,  1,  1,  0,  1,  0,  1,  0,  1,  1, -1,  0,  1,  0,  1,  1,
-                 1,  1,  1,  0,  1,  0, 1, 0, -1,  1, -1,  0,  1,  0,  0,  1, -1,  1,  1,  0,  1,  0,  0,  0
+                // --- Front face ---
+                -1.0f, -1.0f,  1.0f,   0.0f, 0.0f, // bottom-left
+                 1.0f, -1.0f,  1.0f,   1.0f, 0.0f, // bottom-right
+                 1.0f,  1.0f,  1.0f,   1.0f, 1.0f, // top-right
+                 1.0f,  1.0f,  1.0f,   1.0f, 1.0f, // top-right
+                -1.0f,  1.0f,  1.0f,   0.0f, 1.0f, // top-left
+                -1.0f, -1.0f,  1.0f,   0.0f, 0.0f, // bottom-left
+
+                // --- Back face ---
+                -1.0f, -1.0f, -1.0f,   1.0f, 0.0f, 
+                -1.0f,  1.0f, -1.0f,   1.0f, 1.0f, 
+                 1.0f,  1.0f, -1.0f,   0.0f, 1.0f, 
+                 1.0f,  1.0f, -1.0f,   0.0f, 1.0f, 
+                 1.0f, -1.0f, -1.0f,   0.0f, 0.0f, 
+                -1.0f, -1.0f, -1.0f,   1.0f, 0.0f, 
+
+                // --- Left face ---
+                -1.0f,  1.0f,  1.0f,   1.0f, 1.0f, 
+                -1.0f,  1.0f, -1.0f,   0.0f, 1.0f, 
+                -1.0f, -1.0f, -1.0f,   0.0f, 0.0f, 
+                -1.0f, -1.0f, -1.0f,   0.0f, 0.0f, 
+                -1.0f, -1.0f,  1.0f,   1.0f, 0.0f, 
+                -1.0f,  1.0f,  1.0f,   1.0f, 1.0f, 
+
+                // --- Right face ---
+                 1.0f,  1.0f,  1.0f,   0.0f, 1.0f, 
+                 1.0f, -1.0f, -1.0f,   1.0f, 0.0f, 
+                 1.0f,  1.0f, -1.0f,   1.0f, 1.0f, 
+                 1.0f, -1.0f, -1.0f,   1.0f, 0.0f, 
+                 1.0f,  1.0f,  1.0f,   0.0f, 1.0f, 
+                 1.0f, -1.0f,  1.0f,   0.0f, 0.0f, 
+
+                // --- Bottom face ---
+                -1.0f, -1.0f, -1.0f,   0.0f, 1.0f, 
+                 1.0f, -1.0f, -1.0f,   1.0f, 1.0f, 
+                 1.0f, -1.0f,  1.0f,   1.0f, 0.0f, 
+                 1.0f, -1.0f,  1.0f,   1.0f, 0.0f, 
+                -1.0f, -1.0f,  1.0f,   0.0f, 0.0f, 
+                -1.0f, -1.0f, -1.0f,   0.0f, 1.0f, 
+
+                // --- Top face ---
+                -1.0f,  1.0f, -1.0f,   0.0f, 1.0f, 
+                -1.0f,  1.0f,  1.0f,   0.0f, 0.0f, 
+                 1.0f,  1.0f,  1.0f,   1.0f, 0.0f, 
+                 1.0f,  1.0f,  1.0f,   1.0f, 0.0f, 
+                 1.0f,  1.0f, -1.0f,   1.0f, 1.0f, 
+                -1.0f,  1.0f, -1.0f,   0.0f, 1.0f  
             };
-            glGenVertexArrays(1, &s_CubeVAO);
-            glGenBuffers(1, &s_CubeVBO);
-            glBindVertexArray(s_CubeVAO);
-            glBindBuffer(GL_ARRAY_BUFFER, s_CubeVBO);
+
+            glGenVertexArrays(1, &m_cubeVAO.id); glGenBuffers(1, &m_cubeVBO);
+            glBindVertexArray(m_cubeVAO.id);
+            glBindBuffer(GL_ARRAY_BUFFER, m_cubeVBO);
             glBufferData(GL_ARRAY_BUFFER, sizeof(v), v, GL_STATIC_DRAW);
-            glEnableVertexAttribArray(0); glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
-            glEnableVertexAttribArray(1); glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
-            glEnableVertexAttribArray(2); glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
+            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+            glEnableVertexAttribArray(0); 
+            glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+            glEnableVertexAttribArray(1); 
         }
     }
 
     GL_Environment::GL_Environment(const EnvironmentSpecification& spec)
     {
         glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
-        m_Specification = spec;
+        m_Spec = spec;
 
-        glCreateFramebuffers(1, &m_FrameBuffer);
-        glCreateRenderbuffers(1, &m_RenderBuffer);
-
-        EnsureQuad();
-        EnsureCube();
+        glCreateFramebuffers(1, &m_fbo.id);
+        glCreateRenderbuffers(1, &m_rbo.id);
 
         auto& AM = AssetManager::GetInstance();
-        m_SH_SkyBox             = AM.Get<GL_Shader>("ENV_SKY");
-        m_SH_Irradiance         = AM.Get<GL_Shader>("ENV_IRR");
-        m_SH_Prefilter          = AM.Get<GL_Shader>("ENV_PRE");
-        m_SH_BRDFLUT            = AM.Get<GL_Shader>("ENV_BRD");
-        m_SH_EquirectToCube     = AM.Get<GL_Shader>("ENV_CUB");
+        m_shSky        = AM.Get<GL_Shader>("ENV_SKY");
+        m_shIrradiance = AM.Get<GL_Shader>("ENV_IRR");
+        m_shPrefilter  = AM.Get<GL_Shader>("ENV_PRE");
+        m_shBRDF       = AM.Get<GL_Shader>("ENV_BRD");
+        m_shEquiToCube = AM.Get<GL_Shader>("ENV_CUB");
 
         BakeHDR();
     }
 
     GL_Environment::~GL_Environment()
     {
-        glDeleteTextures(1, &m_EnvironmentCube);
-        glDeleteTextures(1, &m_PrefilterdCube);
-        glDeleteTextures(1, &m_IrradianceCube);
-        glDeleteTextures(1, &m_BRDFLUT);
-        glDeleteTextures(1, &m_HDR);
+        DestroyGPU();
+    }
 
-        glDeleteFramebuffers(1, &m_FrameBuffer);
-        glDeleteRenderbuffers(1, &m_RenderBuffer);
-        if (m_SHUBO) glDeleteBuffers(1, &m_SHUBO);
+    void GL_Environment::DestroyGPU()
+    {
+        if (m_shUBO.id)
+            glBindBufferBase(GL_UNIFORM_BUFFER, IEnvironment::SH_BUFFER_BINDING_POINT, 0);
 
-        if (s_QuadVAO) { glDeleteVertexArrays(1, &s_QuadVAO); s_QuadVAO = 0; }
-        if (s_QuadVBO) { glDeleteBuffers(1, &s_QuadVBO); s_QuadVBO = 0; }
-        if (s_CubeVAO) { glDeleteVertexArrays(1, &s_CubeVAO); s_CubeVAO = 0; }
-        if (s_CubeVBO) { glDeleteBuffers(1, &s_CubeVBO); s_CubeVBO = 0; }
+        m_shUBO.reset();
+        m_texEnvironmentCube.reset();
+        m_texPrefiltered.reset();
+        m_texIrradiance.reset();
+        m_texBRDFLUT.reset();
+        m_texHDR.reset();
+        
+        m_shReady = false;
+    }
+
+    void GL_Environment::UpdateSpecification(const EnvironmentSpecification& spec)
+    {
+        m_Spec = spec;
+        BakeHDR();
     }
 
     void GL_Environment::RenderSkyBox(const glm::mat4& proj, const glm::mat4& view, float yawnRadians) const
     {
-        // ── Save current GL state we touch
-        glEnable(GL_DEPTH_TEST);
+        if (!m_texEnvironmentCube.id || !m_shSky) return;
 
-        GLint prevDepthFunc;    
-        glGetIntegerv(GL_DEPTH_FUNC, &prevDepthFunc);
-
-        GLboolean prevDepthMask;    
-        glGetBooleanv(GL_DEPTH_WRITEMASK, &prevDepthMask);
-
-        GLboolean prevCullEnabled = glIsEnabled(GL_CULL_FACE);
-        
-        GLint prevCullFace;     
-        glGetIntegerv(GL_CULL_FACE_MODE, &prevCullFace);
-
-        // ── Configure for skybox
-        glDepthFunc(GL_LEQUAL);   // GL_GEQUAL if you run reversed-Z
-        glDepthMask(GL_FALSE);    // never write depth
-
-        // Cull front faces so the inside of the unit cube renders
+        glDisable(GL_BLEND);
         glEnable(GL_CULL_FACE);
-        glCullFace(GL_FRONT);
+        glCullFace(GL_FRONT);           
+        glEnable(GL_DEPTH_TEST);
+        glDepthMask(GL_FALSE);          
+        glDepthFunc(GL_LEQUAL);         
 
-        m_SH_SkyBox->Bind();
-
+        m_shSky->Bind();
         const glm::mat4 viewNoTrans = glm::mat4(glm::mat3(view));
-        const glm::mat4 R           = glm::rotate(glm::mat4(1), yawnRadians, glm::vec3(0,1,0));
+        const glm::mat4 R = glm::rotate(glm::mat4(1.0f), yawnRadians, glm::vec3(0, 1, 0));
+        m_shSky->SetUniform("u_Proj", proj);
+        m_shSky->SetUniform("u_View", R * viewNoTrans);
 
-        m_SH_SkyBox->SetUniform("u_Proj", proj);
-        m_SH_SkyBox->SetUniform("u_View", R * viewNoTrans); 
+        m_shSky->SetUniform("u_SkyIntensity",   m_Spec.Intensity);
+        m_shSky->SetUniform("u_SkyExposure",    m_Spec.Exposure);
+        m_shSky->SetUniform("u_SkyGamma",       m_Spec.Gamma);
+        m_shSky->SetUniform("u_SkyMipLevel",    m_Spec.MaxMipLevel);
+        m_shSky->SetUniform("u_Tonemap",        m_Spec.Tonemap);
 
-        static constexpr std::int32_t ENV_TEX_SLOT = 5;
-        m_SH_SkyBox->SetUniform("u_EnvironmentTexture", ENV_TEX_SLOT);
-        glBindTextureUnit(ENV_TEX_SLOT, m_EnvironmentCube);
+        m_shSky->SetUniform("u_EnvironmentTexture", TextureSlot::Skybox);
+        glBindTextureUnit(TextureSlot::Skybox, m_texEnvironmentCube.id);
 
-        glBindVertexArray(s_CubeVAO);
+        glBindVertexArray(GeometryCache::Get().CubeVAO());
         glDrawArrays(GL_TRIANGLES, 0, 36);
 
-        // ── Restore state
-        if (!prevCullEnabled) glDisable(GL_CULL_FACE);
-        glCullFace(prevCullFace);
-
-        glDepthMask(prevDepthMask);
-        glDepthFunc(prevDepthFunc);
+        glDepthMask(GL_TRUE);
+        glDepthFunc(GL_LESS);
+        glCullFace(GL_BACK);
     }
 
     void GL_Environment::BindIBL(const IBLTextureBinding & params)
     {
-        glBindTextureUnit(params.SlotPrefiltered, m_PrefilterdCube);
-        glBindTextureUnit(params.SlotBRDFLUT,     m_BRDFLUT);
+        glBindTextureUnit(params.SlotPrefiltered, m_texPrefiltered.id);
+        glBindTextureUnit(params.SlotBRDFLUT,     m_texBRDFLUT.id);
 
-        if (m_Specification.UseSHDiffuse && m_SHReady) 
-        {
-            if (m_SHReady && m_SHUBO)
-                glBindBufferBase(GL_UNIFORM_BUFFER, IEnvironment::SH_BUFFER_BINDING_POINT, m_SHUBO);
-        } 
-        else 
-        {
-            glBindTextureUnit(params.SlotIrradiance, m_IrradianceCube);
+        if (m_Spec.UseSHDiffuse && m_shReady) {
+            if (m_shUBO.id)
+                glBindBufferBase(GL_UNIFORM_BUFFER, IEnvironment::SH_BUFFER_BINDING_POINT, m_shUBO.id);
+        } else {
+            glBindTextureUnit(params.SlotIrradiance, m_texIrradiance.id);
         }
-    }
-
-    void GL_Environment::SetIntensity(float diffuse, float specular)
-    {
-        m_Specification.SpecularIntensity = specular;
-        m_Specification.DiffuseIntensity  = diffuse;
     }
 
     void GL_Environment::BakeHDR()
     {
-        if(m_Specification.HDRfile.empty() || !std::filesystem::exists(m_Specification.HDRfile))
+        DestroyGPU();
+        if (!LoadHDR()) return;           
+        BuildEnvironmentCube();    
+        if (m_Spec.BuildBRDFLUT) BuildBRDFLUT();
+        if (!m_Spec.UseSHDiffuse) BuildIrradiance();
+        BuildPrefiltered();
+        if (m_Spec.UseSHDiffuse) BuildSH();
+    }
+
+    bool GL_Environment::LoadHDR()
+    {
+        if(m_Spec.HDRfile.empty() || !std::filesystem::exists(m_Spec.HDRfile))
         {
-            MOTION_ASSERT(false, "Can not find the HDR file for environment creation");
-            return;
+            MOTION_ASSERT(false, "Cannot find HDR file for environment");
+            return false;
         }
 
-        std::int32_t w{0}, h{0}, ch{0};
-        stbi_set_flip_vertically_on_load(true);
-        std::string hdrFile = m_Specification.HDRfile.string();
-        float* data = stbi_loadf(hdrFile.c_str(), &w, &h, &ch, 4);
-        if(!data || w <= 0 || h <= 0)
+        stbi_set_flip_vertically_on_load(false);
+        std::int32_t ch{0};
+        float* data = stbi_loadf(m_Spec.HDRfile.string().c_str(), &m_hdrW, &m_hdrH, &ch, 4);
+        if(!data || m_hdrW <= 0 || m_hdrH <= 0)
         {
-            MOTION_ASSERT(false, "Faild to read HDR file");
-            return;
+            MOTION_ASSERT(false, "Failed to read HDR file");
+            return false;
         }
-
-        GLenum format = GL_RGBA;
-        glCreateTextures(GL_TEXTURE_2D, 1, &m_HDR);
-        glTextureStorage2D(m_HDR, 1, GL_RGBA16F, w, h);
-        glTextureSubImage2D(m_HDR, 0, 0, 0, w, h, format, GL_FLOAT, data);
-        glTextureParameteri(m_HDR, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTextureParameteri(m_HDR, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        glTextureParameteri(m_HDR, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTextureParameteri(m_HDR, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glCreateTextures(GL_TEXTURE_2D, 1, &m_texHDR.id);
+        glTextureStorage2D(m_texHDR.id, 1, GL_RGBA16F, m_hdrW, m_hdrH);
+        glTextureSubImage2D(m_texHDR.id, 0, 0, 0, m_hdrW, m_hdrH, GL_RGBA, GL_FLOAT, data);
+        glTextureParameteri(m_texHDR.id, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTextureParameteri(m_texHDR.id, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTextureParameteri(m_texHDR.id, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTextureParameteri(m_texHDR.id, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         stbi_image_free(data);
+        return true;
+    }
 
-        if(m_Specification.UseSHDiffuse)
-        {
-            m_SH9Diffuse = SH9::ProjectEquirectHDR(m_Specification.HDRfile); // fills coeff[9]
-            for (int i = 0; i < 9; ++i)
-                m_SHPacked[i] = glm::vec4(m_SH9Diffuse.coeff[i], 0.0f);
-        }
+    void GL_Environment::BuildEnvironmentCube()
+    {
+        const int size = ENVIRONMENT_CUBE_SIZE;
+        const int levels = 1 + (int)std::floor(std::log2((double)size));
 
+        glCreateTextures(GL_TEXTURE_CUBE_MAP, 1, &m_texEnvironmentCube.id);
+        glTextureStorage2D(m_texEnvironmentCube.id, levels, GL_RGBA16F, size, size);
 
-        //01) Creating Environment Cube and Rendering Equirect Cube
-        glCreateTextures(GL_TEXTURE_CUBE_MAP, 1, &m_EnvironmentCube);
-        glTextureStorage2D(m_EnvironmentCube, 1, GL_RGBA16F, ENVIRONMENT_CUBE_SIZE, ENVIRONMENT_CUBE_SIZE);
-        glTextureParameteri(m_EnvironmentCube, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTextureParameteri(m_EnvironmentCube, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glTextureParameteri(m_EnvironmentCube, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTextureParameteri(m_EnvironmentCube, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        glTextureParameteri(m_EnvironmentCube, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+        glTextureParameteri(m_texEnvironmentCube.id, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+        glTextureParameteri(m_texEnvironmentCube.id, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTextureParameteri(m_texEnvironmentCube.id, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTextureParameteri(m_texEnvironmentCube.id, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTextureParameteri(m_texEnvironmentCube.id, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+        glTextureParameteri(m_texEnvironmentCube.id, GL_TEXTURE_BASE_LEVEL, 0);
+        glTextureParameteri(m_texEnvironmentCube.id, GL_TEXTURE_MAX_LEVEL, levels - 1);
 
-        glNamedRenderbufferStorage(m_RenderBuffer, GL_DEPTH_COMPONENT24, ENVIRONMENT_CUBE_SIZE, ENVIRONMENT_CUBE_SIZE);
+        // Depth RBO sized for this pass (ensure m_rbo was created in ctor)
+        glNamedRenderbufferStorage(m_rbo.id, GL_DEPTH_COMPONENT24, size, size);
 
         const glm::mat4 proj = glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 10.0f);
         const glm::mat4 views[6] = {
-            glm::lookAt(glm::vec3(0), glm::vec3( 1, 0, 0), glm::vec3(0,-1, 0)),
-            glm::lookAt(glm::vec3(0), glm::vec3(-1, 0, 0), glm::vec3(0,-1, 0)),
-            glm::lookAt(glm::vec3(0), glm::vec3( 0, 1, 0), glm::vec3(0, 0, 1)),
-            glm::lookAt(glm::vec3(0), glm::vec3( 0,-1, 0), glm::vec3(0, 0,-1)),
-            glm::lookAt(glm::vec3(0), glm::vec3( 0, 0, 1), glm::vec3(0,-1, 0)),
-            glm::lookAt(glm::vec3(0), glm::vec3( 0, 0,-1), glm::vec3(0,-1, 0))
+            glm::lookAt(glm::vec3(0), glm::vec3( 1,0,0), glm::vec3(0,-1, 0)),
+            glm::lookAt(glm::vec3(0), glm::vec3(-1,0,0), glm::vec3(0,-1,0)),
+            glm::lookAt(glm::vec3(0), glm::vec3( 0,1,0), glm::vec3(0, 0,1)),
+            glm::lookAt(glm::vec3(0), glm::vec3( 0,-1,0),glm::vec3(0, 0,-1)),
+            glm::lookAt(glm::vec3(0), glm::vec3( 0,0,1), glm::vec3(0,-1,0)),
+            glm::lookAt(glm::vec3(0), glm::vec3( 0,0,-1),glm::vec3(0,-1,0))
         };
 
-        m_SH_EquirectToCube->Bind();
-        m_SH_EquirectToCube->SetUniform("u_EquiRectangular", 0);
-        glBindTextureUnit(0, m_HDR);
+        m_shEquiToCube->Bind();
+        m_shEquiToCube->SetUniform("u_EquiRectangular", 0);
+        glBindTextureUnit(0, m_texHDR.id);
 
-        for(std::int32_t face = 0; face < 6; ++face)
+        ScopedFBOAndViewport bind(m_fbo.id, size, size);
+
+        // Minimal state for inside-cube capture
+        GLboolean wasDepth, wasCull;
+        glGetBooleanv(GL_DEPTH_TEST, &wasDepth);
+        glGetBooleanv(GL_CULL_FACE,  &wasCull);
+        glDisable(GL_DEPTH_TEST);
+        glDisable(GL_CULL_FACE); // (or glEnable(GL_CULL_FACE); glCullFace(GL_FRONT);)
+
+        glBindVertexArray(GeometryCache::Get().CubeVAO());
+
+        for (int face = 0; face < 6; ++face)
         {
-            glNamedFramebufferRenderbuffer(m_FrameBuffer, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, m_RenderBuffer);
-            glNamedFramebufferTextureLayer(m_FrameBuffer, GL_COLOR_ATTACHMENT0, m_EnvironmentCube, 0, face);
-            
-            const GLenum drawBuff = GL_COLOR_ATTACHMENT0;
-            glNamedFramebufferDrawBuffers(m_FrameBuffer, 1, &drawBuff); 
-            MOTION_ASSERT(glCheckNamedFramebufferStatus(m_FrameBuffer, GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE);
-            glViewport(0, 0, ENVIRONMENT_CUBE_SIZE, ENVIRONMENT_CUBE_SIZE);
+            glNamedFramebufferRenderbuffer(m_fbo.id, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, m_rbo.id);
+            glNamedFramebufferTextureLayer(m_fbo.id, GL_COLOR_ATTACHMENT0, m_texEnvironmentCube.id, 0, face);
+            const GLenum db = GL_COLOR_ATTACHMENT0;
+            glNamedFramebufferDrawBuffers(m_fbo.id, 1, &db);
 
-            m_SH_EquirectToCube->SetUniform("u_Proj", proj);
-            m_SH_EquirectToCube->SetUniform("u_View", views[face]);
+            MOTION_ASSERT(glCheckNamedFramebufferStatus(m_fbo.id, GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE);
 
-            glBindVertexArray(s_CubeVAO);
-            glDisable(GL_DEPTH_TEST);
+            m_shEquiToCube->SetUniform("u_Proj", proj);
+            m_shEquiToCube->SetUniform("u_View", views[face]);
+
             glDrawArrays(GL_TRIANGLES, 0, 36);
         }
 
-        glGenerateTextureMipmap(m_EnvironmentCube);
+        // Restore state
+        if (wasCull)  glEnable(GL_CULL_FACE);  else glDisable(GL_CULL_FACE);
+        if (wasDepth) glEnable(GL_DEPTH_TEST); else glDisable(GL_DEPTH_TEST);
 
+        // Build the mip chain used by sky/IBL LOD sampling
+        glGenerateTextureMipmap(m_texEnvironmentCube.id);
+    }
 
-        //02) BRDF LUT
-        if(m_Specification.BuildBRDFLUT)
+    void GL_Environment::BuildBRDFLUT()
+    {
+        const int W = ENVIRONMENT_BRDF_LUT_SIZE;
+        const int H = ENVIRONMENT_BRDF_LUT_SIZE;
+
+        glCreateTextures(GL_TEXTURE_2D, 1, &m_texBRDFLUT.id);
+        glTextureStorage2D(m_texBRDFLUT.id, 1, GL_RG16F, W, H);
+        glTextureParameteri(m_texBRDFLUT.id, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTextureParameteri(m_texBRDFLUT.id, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTextureParameteri(m_texBRDFLUT.id, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTextureParameteri(m_texBRDFLUT.id, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+        glNamedRenderbufferStorage(m_rbo.id, GL_DEPTH_COMPONENT24, W, H);
+        glNamedFramebufferRenderbuffer(m_fbo.id, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, m_rbo.id);
+        glNamedFramebufferTexture(m_fbo.id, GL_COLOR_ATTACHMENT0, m_texBRDFLUT.id, 0);
+        const GLenum db = GL_COLOR_ATTACHMENT0;
+        glNamedFramebufferDrawBuffers(m_fbo.id, 1, &db);
+
+        MOTION_ASSERT(glCheckNamedFramebufferStatus(m_fbo.id, GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE);
+
+        ScopedFBOAndViewport bind(m_fbo.id, W, H);
+
+        GLboolean wasDepth, wasCull;
+        glGetBooleanv(GL_DEPTH_TEST, &wasDepth);
+        glGetBooleanv(GL_CULL_FACE,  &wasCull);
+        glDisable(GL_DEPTH_TEST);
+        glDisable(GL_CULL_FACE);
+
+        m_shBRDF->Bind();
+        glBindVertexArray(GeometryCache::Get().QuadVAO());
+        glDrawArrays(GL_TRIANGLES, 0, 6);
+
+        if (wasCull)  glEnable(GL_CULL_FACE);  else glDisable(GL_CULL_FACE);
+        if (wasDepth) glEnable(GL_DEPTH_TEST); else glDisable(GL_DEPTH_TEST);
+    }
+
+    void GL_Environment::BuildIrradiance()
+    {
+        const int S = ENVIRONMENT_IRRADIANCE_SIZE;
+
+        glCreateTextures(GL_TEXTURE_CUBE_MAP, 1, &m_texIrradiance.id);
+        glTextureStorage2D(m_texIrradiance.id, 1, GL_RGBA16F, S, S);
+        glTextureParameteri(m_texIrradiance.id, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTextureParameteri(m_texIrradiance.id, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTextureParameteri(m_texIrradiance.id, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTextureParameteri(m_texIrradiance.id, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTextureParameteri(m_texIrradiance.id, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+
+        glNamedRenderbufferStorage(m_rbo.id, GL_DEPTH_COMPONENT24, S, S);
+        ScopedFBOAndViewport bind(m_fbo.id, S, S);
+
+        GLboolean wasDepth, wasCull;
+        glGetBooleanv(GL_DEPTH_TEST, &wasDepth);
+        glGetBooleanv(GL_CULL_FACE,  &wasCull);
+        glDisable(GL_DEPTH_TEST);
+        glDisable(GL_CULL_FACE);
+
+        const glm::mat4 proj = glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 10.0f);
+        const glm::mat4 views[6] = {
+            glm::lookAt(glm::vec3(0), glm::vec3( 1,0,0), glm::vec3(0,-1,0)),
+            glm::lookAt(glm::vec3(0), glm::vec3(-1,0,0), glm::vec3(0,-1,0)),
+            glm::lookAt(glm::vec3(0), glm::vec3( 0,1,0), glm::vec3(0, 0,1)),
+            glm::lookAt(glm::vec3(0), glm::vec3( 0,-1,0),glm::vec3(0, 0,-1)),
+            glm::lookAt(glm::vec3(0), glm::vec3( 0,0,1), glm::vec3(0,-1,0)),
+            glm::lookAt(glm::vec3(0), glm::vec3( 0,0,-1),glm::vec3(0,-1,0))
+        };
+
+        m_shIrradiance->Bind();
+        m_shIrradiance->SetUniform("u_EnvironmentTexture", 0);
+        glBindTextureUnit(0, m_texEnvironmentCube.id);
+
+        glBindVertexArray(GeometryCache::Get().CubeVAO());
+
+        for (int face = 0; face < 6; ++face)
         {
-            glCreateTextures(GL_TEXTURE_2D, 1, &m_BRDFLUT);
-            glTextureStorage2D(m_BRDFLUT, 1, GL_RG16F, ENVIRONMENT_BRDF_LUT_SIZE, ENVIRONMENT_BRDF_LUT_SIZE);
-            glTextureParameteri(m_BRDFLUT, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-            glTextureParameteri(m_BRDFLUT, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-            glTextureParameteri(m_BRDFLUT, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-            glTextureParameteri(m_BRDFLUT, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+            glNamedFramebufferRenderbuffer(m_fbo.id, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, m_rbo.id);
+            glNamedFramebufferTextureLayer(m_fbo.id, GL_COLOR_ATTACHMENT0, m_texIrradiance.id, 0, face);
+            const GLenum db = GL_COLOR_ATTACHMENT0;
+            glNamedFramebufferDrawBuffers(m_fbo.id, 1, &db);
 
-            glNamedRenderbufferStorage(m_RenderBuffer, GL_DEPTH_COMPONENT24, ENVIRONMENT_BRDF_LUT_SIZE, ENVIRONMENT_BRDF_LUT_SIZE);
-            glNamedFramebufferRenderbuffer(m_FrameBuffer, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, m_RenderBuffer);
-            glNamedFramebufferTexture(m_FrameBuffer, GL_COLOR_ATTACHMENT0, m_BRDFLUT, 0);
-            const GLenum db = GL_COLOR_ATTACHMENT0; 
-            glNamedFramebufferDrawBuffers(m_FrameBuffer, 1, &db);
-            MOTION_ASSERT(glCheckNamedFramebufferStatus(m_FrameBuffer, GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE);
-            glViewport(0, 0, ENVIRONMENT_BRDF_LUT_SIZE, ENVIRONMENT_BRDF_LUT_SIZE);
+            MOTION_ASSERT(glCheckNamedFramebufferStatus(m_fbo.id, GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE);
 
-            m_SH_BRDFLUT->Bind();
-            glBindVertexArray(s_QuadVAO);
-            glDisable(GL_DEPTH_TEST);
-            glDrawArrays(GL_TRIANGLES, 0, 6);
+            m_shIrradiance->SetUniform("u_Proj", proj);
+            m_shIrradiance->SetUniform("u_View", views[face]);
+
+            glDrawArrays(GL_TRIANGLES, 0, 36);
         }
 
-        //03) Irradiance (if not using SH9)
-        if(!m_Specification.UseSHDiffuse)
+        if (wasCull)  glEnable(GL_CULL_FACE);  else glDisable(GL_CULL_FACE);
+        if (wasDepth) glEnable(GL_DEPTH_TEST); else glDisable(GL_DEPTH_TEST);
+    }
+
+    void GL_Environment::BuildPrefiltered()
+    {
+        const int BASE = ENVIRONMENT_PREFILTERED_SIZE;
+        const int mipCount = 1 + (int)std::floor(std::log2((double)BASE));
+
+        glCreateTextures(GL_TEXTURE_CUBE_MAP, 1, &m_texPrefiltered.id);
+        glTextureStorage2D(m_texPrefiltered.id, mipCount, GL_RGBA16F, BASE, BASE);
+        glTextureParameteri(m_texPrefiltered.id, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+        glTextureParameteri(m_texPrefiltered.id, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTextureParameteri(m_texPrefiltered.id, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTextureParameteri(m_texPrefiltered.id, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTextureParameteri(m_texPrefiltered.id, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+        glTextureParameteri(m_texPrefiltered.id, GL_TEXTURE_BASE_LEVEL, 0);
+        glTextureParameteri(m_texPrefiltered.id, GL_TEXTURE_MAX_LEVEL,  mipCount - 1);
+
+        m_shPrefilter->Bind();
+        m_shPrefilter->SetUniform("u_EnvironmentTexture", 0);
+        glBindTextureUnit(0, m_texEnvironmentCube.id);
+
+        GLboolean wasDepth, wasCull;
+        glGetBooleanv(GL_DEPTH_TEST, &wasDepth);
+        glGetBooleanv(GL_CULL_FACE,  &wasCull);
+        glDisable(GL_DEPTH_TEST);
+        glDisable(GL_CULL_FACE);
+
+        glBindVertexArray(GeometryCache::Get().CubeVAO());
+
+        int size = BASE;
+        for (int mip = 0; mip < mipCount; ++mip)
         {
-            glCreateTextures(GL_TEXTURE_CUBE_MAP, 1, &m_IrradianceCube);
-            glTextureStorage2D(m_IrradianceCube, 1, GL_RGBA16F, ENVIRONMENT_IRRADIANCE_SIZE, ENVIRONMENT_IRRADIANCE_SIZE);
-            glTextureParameteri(m_IrradianceCube, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-            glTextureParameteri(m_IrradianceCube, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-            glTextureParameteri(m_IrradianceCube, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-            glTextureParameteri(m_IrradianceCube, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-            glTextureParameteri(m_IrradianceCube, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+            const float rough = (mipCount > 1) ? float(mip) / float(mipCount - 1) : 0.0f;
+            m_shPrefilter->SetUniform("u_PrefilteredRoughness", rough);
 
-            m_SH_Irradiance->Bind();
-            m_SH_Irradiance->SetUniform("u_EnvironmentTexture", 0);
-            glBindTextureUnit(0, m_EnvironmentCube);
-            for (int face=0; face<6; ++face) 
+            glNamedRenderbufferStorage(m_rbo.id, GL_DEPTH_COMPONENT24, size, size);
+
+            ScopedFBOAndViewport bind(m_fbo.id, size, size);
+
+            const glm::mat4 proj = glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 10.0f);
+            const glm::mat4 views[6] = {
+                glm::lookAt(glm::vec3(0), glm::vec3( 1,0,0), glm::vec3(0,-1,0)),
+                glm::lookAt(glm::vec3(0), glm::vec3(-1,0,0), glm::vec3(0,-1,0)),
+                glm::lookAt(glm::vec3(0), glm::vec3( 0,1,0), glm::vec3(0, 0,1)),
+                glm::lookAt(glm::vec3(0), glm::vec3( 0,-1,0),glm::vec3(0, 0,-1)),
+                glm::lookAt(glm::vec3(0), glm::vec3( 0,0,1), glm::vec3(0,-1,0)),
+                glm::lookAt(glm::vec3(0), glm::vec3( 0,0,-1),glm::vec3(0,-1,0))
+            };
+
+            for (int face = 0; face < 6; ++face)
             {
-                glNamedFramebufferRenderbuffer(m_FrameBuffer, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, m_RenderBuffer);
-                glNamedFramebufferTextureLayer(m_FrameBuffer, GL_COLOR_ATTACHMENT0, m_IrradianceCube, 0, face);
-                const GLenum db = GL_COLOR_ATTACHMENT0; glNamedFramebufferDrawBuffers(m_FrameBuffer, 1, &db);
-                MOTION_ASSERT(glCheckNamedFramebufferStatus(m_FrameBuffer, GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE);
-                glViewport(0,0, ENVIRONMENT_IRRADIANCE_SIZE, ENVIRONMENT_IRRADIANCE_SIZE);
-                
-                m_SH_Irradiance->SetUniform("u_Proj", proj);
-                m_SH_Irradiance->SetUniform("u_View", views[face]);
+                glNamedFramebufferRenderbuffer(m_fbo.id, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, m_rbo.id);
+                glNamedFramebufferTextureLayer(m_fbo.id, GL_COLOR_ATTACHMENT0, m_texPrefiltered.id, mip, face);
+                const GLenum db = GL_COLOR_ATTACHMENT0;
+                glNamedFramebufferDrawBuffers(m_fbo.id, 1, &db);
 
-                glBindVertexArray(s_CubeVAO);
-                glDisable(GL_DEPTH_TEST);
-                glDrawArrays(GL_TRIANGLES, 0, 36);
-            }
-        }
+                MOTION_ASSERT(glCheckNamedFramebufferStatus(m_fbo.id, GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE);
 
-        //04) Prefiltered Specular
-        glCreateTextures(GL_TEXTURE_CUBE_MAP, 1, &m_PrefilterdCube);
-        const std::int32_t mipCount = 1 + (std::int32_t)std::floor(std::log2((float)ENVIRONMENT_PREFILTERED_SIZE));
-        glTextureStorage2D(m_PrefilterdCube, mipCount, GL_RGBA16F, ENVIRONMENT_PREFILTERED_SIZE, ENVIRONMENT_PREFILTERED_SIZE);
-        glTextureParameteri(m_PrefilterdCube, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-        glTextureParameteri(m_PrefilterdCube, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glTextureParameteri(m_PrefilterdCube, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTextureParameteri(m_PrefilterdCube, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        glTextureParameteri(m_PrefilterdCube, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+                m_shPrefilter->SetUniform("u_Proj", proj);
+                m_shPrefilter->SetUniform("u_View", views[face]);
 
-        m_SH_Prefilter->Bind();
-        m_SH_Prefilter->SetUniform("u_EnvironmentTexture", 0);
-        glBindTextureUnit(0, m_EnvironmentCube);
-
-        int size = ENVIRONMENT_PREFILTERED_SIZE;
-        for (int mip = 0; mip < mipCount; ++mip) 
-        {
-            const float rough = (float)mip / (float)(mipCount-1);
-            m_SH_Prefilter->SetUniform("u_PrefilteredRoughness", rough);
-            glNamedRenderbufferStorage(m_RenderBuffer, GL_DEPTH_COMPONENT24, size, size);
-            
-            for (int face=0; face<6; ++face) 
-            {
-                glNamedFramebufferRenderbuffer(m_FrameBuffer, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, m_RenderBuffer);
-                glNamedFramebufferTextureLayer(m_FrameBuffer, GL_COLOR_ATTACHMENT0, m_PrefilterdCube, mip, face);
-                const GLenum db = GL_COLOR_ATTACHMENT0; glNamedFramebufferDrawBuffers(m_FrameBuffer, 1, &db);
-                MOTION_ASSERT(glCheckNamedFramebufferStatus(m_FrameBuffer, GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE);
-                glViewport(0, 0, size, size);
-
-                m_SH_Prefilter->SetUniform("u_Proj", proj);
-                m_SH_Prefilter->SetUniform("u_View", views[face]);
-
-                glBindVertexArray(s_CubeVAO);
-                glDisable(GL_DEPTH_TEST);
                 glDrawArrays(GL_TRIANGLES, 0, 36);
             }
 
             size = std::max(1, size / 2);
         }
 
-        //06) Creating SH9
-        if (m_Specification.UseSHDiffuse) 
-        {
-            glGenBuffers(1, &m_SHUBO);
-            glBindBuffer(GL_UNIFORM_BUFFER, m_SHUBO);
-            glBufferData(GL_UNIFORM_BUFFER, m_SHPacked.size() * sizeof(glm::vec4), m_SHPacked.data(), GL_STATIC_DRAW);
-            glBindBufferBase(GL_UNIFORM_BUFFER, IEnvironment::SH_BUFFER_BINDING_POINT, m_SHUBO);
-            glBindBuffer(GL_UNIFORM_BUFFER, 0);
-            m_SHReady = true;
-        }
+        if (wasCull)  glEnable(GL_CULL_FACE);  else glDisable(GL_CULL_FACE);
+        if (wasDepth) glEnable(GL_DEPTH_TEST); else glDisable(GL_DEPTH_TEST);
+    }
+
+    void GL_Environment::BuildSH()
+    {
+        m_SH9Diffuse = SH9::ProjectEquirectHDR(m_Spec.HDRfile);
+        for (int i = 0; i < 9; ++i) m_shPacked[i] = glm::vec4(m_SH9Diffuse.coeff[i], 0.0f);
+
+        glGenBuffers(1, &m_shUBO.id);
+        glBindBuffer(GL_UNIFORM_BUFFER, m_shUBO.id);
+        glBufferData(GL_UNIFORM_BUFFER, m_shPacked.size() * sizeof(glm::vec4), m_shPacked.data(), GL_STATIC_DRAW);
+        glBindBufferBase(GL_UNIFORM_BUFFER, IEnvironment::SH_BUFFER_BINDING_POINT, m_shUBO.id);
+        glBindBuffer(GL_UNIFORM_BUFFER, 0);
+        m_shReady = true;
     }
 }

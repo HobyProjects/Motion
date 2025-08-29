@@ -1,4 +1,5 @@
 #include "CorePCH.hpp"
+#include "Shaders.hpp"
 
 namespace Motion
 {
@@ -160,48 +161,14 @@ namespace Motion
         using SFM = ShaderFeatureMask;
         std::ostringstream ss;
 
-        if (features & SFM::USE_SH9)                        ss << "#define USE_SH9 1\n";
+        if (features & SFM::USE_BASECOLOR_MAP)              ss << "#define USE_BASECOLOR_MAP 1\n";
+        if (features & SFM::USE_NORMAL_MAP)                 ss << "#define USE_NORMAL_MAP 1\n";
+        if (features & SFM::USE_OCCLUSION_MAP)              ss << "#define USE_OCCLUSION_MAP 1\n";
+        if (features & SFM::USE_ROUGHNESS_MAP)              ss << "#define USE_ROUGHNESS_MAP 1\n";
+        if (features & SFM::USE_METALLIC_MAP)               ss << "#define USE_METALLIC_MAP 1\n";
+        if (features & SFM::USE_EMISSIVE_MAP)               ss << "#define USE_EMISSIVE_MAP 1\n";
         if (features & SFM::USE_ORM_MAP)                    ss << "#define USE_ORM_MAP 1\n";
-        if (features & SFM::USE_OPACITY_MAP)                ss << "#define USE_OPACITY_MAP 1\n";
-        if (features & SFM::USE_ALPHA_MODE_OPAQUE)          ss << "#define USE_ALPHA_MODE_OPAQUE 1\n";
-        if (features & SFM::USE_ALPHA_MODE_MASK)            ss << "#define USE_ALPHA_MODE_MASK 1\n";
-        if (features & SFM::USE_ALPHA_MODE_BLEND)           ss << "#define USE_ALPHA_MODE_BLEND 1\n";
-        if (features & SFM::USE_ALPHA_BLEND_PREMULTIPLIED)  ss << "#define USE_ALPHA_BLEND_PREMULTIPLIED 1\n";
-        if (features & SFM::USE_ALPHA_BLEND_ADDITIVE)       ss << "#define USE_ALPHA_BLEND_ADDITIVE 1\n";
-        if (features & SFM::USE_ALPHA_BLEND)                ss << "#define USE_ALPHA_BLEND 1\n";
-
-        ss << "#define CAMERA_UBO_BINDING "     << ShaderVariant::CameraUboBinding    << "\n";
-        ss << "#define OBJECT_UBO_BINDING "     << ShaderVariant::ObjectUboBinding    << "\n";
-        ss << "#define LIGHT_UBO_BINDING "      << ShaderVariant::LightUboBinding     << "\n";
-        ss << "#define MATERIAL_UBO_BINDING "   << ShaderVariant::MaterialUboBinding  << "\n";
-        ss << "#define SH9_UBO_BINDING "        << ShaderVariant::SH9UboBinding       << "\n";
-
-        ss << "#define TEX_SLOT_ENVIRONMENT_IRRADIANCE "    << TextureSlot::Irradiance              << "\n";
-        ss << "#define TEX_SLOT_ENVIRONMENT_PREFILTERED "   << TextureSlot::Prefilter               << "\n";
-        ss << "#define TEX_SLOT_ENVIRONMENT_BRDFLUT "       << TextureSlot::BRDFLUT                 << "\n";
-
-        ss << "#define TEX_SLOT_BASE_COLOR "                << TextureSlot::BaseColor               << "\n";
-        ss << "#define TEX_SLOT_METALLIC "                  << TextureSlot::Metallic                << "\n";
-        ss << "#define TEX_SLOT_ROUGHNESS "                 << TextureSlot::Roughness               << "\n";
-        ss << "#define TEX_SLOT_NORMAL "                    << TextureSlot::Normal                  << "\n";
-        ss << "#define TEX_SLOT_AO "                        << TextureSlot::AO                      << "\n";
-        ss << "#define TEX_SLOT_EMISSIVE "                  << TextureSlot::Emissive                << "\n";
-        ss << "#define TEX_SLOT_OPACITY "                   << TextureSlot::Opacity                 << "\n";
-        ss << "#define TEX_SLOT_ORM "                       << TextureSlot::ORM                     << "\n";
-        ss << "#define TEX_SLOT_CLEARCOAT "                 << TextureSlot::Clearcoat               << "\n";
-        ss << "#define TEX_SLOT_CLEARCOAT_R "               << TextureSlot::ClearcoatR              << "\n";
-        ss << "#define TEX_SLOT_SPECULAR_COLOR "            << TextureSlot::SpecularColor           << "\n";
-        ss << "#define TEX_SLOT_SPECULAR "                  << TextureSlot::Specular                << "\n";
-        ss << "#define TEX_SLOT_SHEEN_COLOR "               << TextureSlot::SheenColor              << "\n";
-        ss << "#define TEX_SLOT_SHEEN_R "                   << TextureSlot::SheenR                  << "\n";
-        ss << "#define TEX_SLOT_TRANSMISSION "              << TextureSlot::Transmission            << "\n";
-        ss << "#define TEX_SLOT_THICKNESS "                 << TextureSlot::Thickness               << "\n";
-        ss << "#define TEX_SLOT_CLEARCOAT_N "               << TextureSlot::ClearcoatN              << "\n";
-        ss << "#define TEX_SLOT_DISPLACEMENT "              << TextureSlot::Displacement            << "\n";
-        ss << "#define TEX_SLOT_ANISOTROPY "                << TextureSlot::Anisotropy              << "\n";
-        ss << "#define TEX_SLOT_IRIDESCENCE "               << TextureSlot::Iridescence             << "\n";
-        ss << "#define TEX_SLOT_IRIDESCENCE_THICKNESS "     << TextureSlot::IridescenceThickness    << "\n";
-
+        
         return ss.str();
     }
 
@@ -252,19 +219,21 @@ namespace Motion
         return out;
     }
 
+    static std::size_t GetShaderVariantKey(const ShaderVariantKey& key)
+    {
+        std::size_t hash    = std::hash<UUID>()(key.VariantID);
+        hash               ^= std::hash<ShaderFeatureMask>()(key.Features);
+        hash               ^= std::hash<std::filesystem::path>()(key.SourceFiles);
+        return hash;
+    }
+
     std::shared_ptr<IShader> ShaderVariant::GetVariant(const std::filesystem::path & sourceFile, ShaderFeatureMask features)
     {
         static UUID baseUUID = UniqueIdentity::GetUniqueID();
-        ShaderVariantKey key{ baseUUID, features, sourceFile };
-        auto it = m_ShaderCache.find(key);
-        if (it != m_ShaderCache.end())
-        {
-            if(!it->second.expired())
-            {
-                auto spit = it->second.lock();
-                return spit;
-            }
-        }
+        ShaderVariantKey key{ .VariantID = baseUUID, .Features = features, .SourceFiles = sourceFile };
+        std::size_t hash = GetShaderVariantKey(key);
+        if (m_ShaderCache.contains(hash))
+            return m_ShaderCache[hash];
 
         std::string                                 defineBlock     = CreateDefinitions(features);
         std::unordered_map<ShaderType, std::string> shaderSources   = IShader::ReadFullShaderFile(sourceFile);
@@ -274,11 +243,16 @@ namespace Motion
             return nullptr;
         }
 
-        for (auto& [type, src] : shaderSources)
-            src = InjectDefinitions(src, defineBlock);
 
         UUID vID        = UniqueIdentity::GetUniqueID();
         auto name       = std::format("{}_{}", sourceFile.filename().stem().string(), static_cast<std::uint32_t>(features));
+
+        for (auto& [type, src] : shaderSources)
+        {
+            src = InjectDefinitions(src, defineBlock);
+            //VariantWrite(name, type, src, "Assets/Shaders/Variants");
+        }
+
 
         std::shared_ptr<IShader> shader{ nullptr };
         switch(Renderer::GetAPI())
@@ -289,16 +263,52 @@ namespace Motion
             default:                        MOTION_ASSERT(false, "Unknown rendering API!");                                 break;
         }
 
-        m_ShaderCache[key] = shader;
+        m_ShaderCache[hash] = shader;
         return shader;
     }
 
-    void ShaderVariant::Invalidate(UUID baseUUID)
+   
+    void ShaderVariant::VariantWrite(const std::string& name, ShaderType type, const std::string& source, const std::filesystem::path& location)
     {
-        for (auto it = m_ShaderCache.begin(); it != m_ShaderCache.end(); )
+        const char* typeStr = "";
+        switch (type)
         {
-            if (it->first.VariantID == baseUUID) it = m_ShaderCache.erase(it);
-            else ++it;
+            case ShaderType::Vertex:                 typeStr = "vertex";          break;
+            case ShaderType::Fragment:               typeStr = "fragment";        break;
+            case ShaderType::Geometry:               typeStr = "geometry";        break;
+            case ShaderType::Compute:                typeStr = "compute";         break;
+            case ShaderType::TessellationControl:    typeStr = "tess_control";    break;
+            case ShaderType::TessellationEvaluation: typeStr = "tess_evaluation"; break;
+            default:
+                MOTION_CORE_ERROR("Unknown ShaderType provided.");
+                return;
         }
+
+        const std::filesystem::path outPath = location / std::filesystem::path{name + "." + typeStr + ".glsl"};
+
+        std::error_code ec;
+        std::filesystem::create_directories(outPath.parent_path(), ec);
+        if (ec)
+        {
+            MOTION_CORE_ERROR("Failed to create directories for: {0} ({1})", outPath.parent_path().string(), ec.message());
+            return;
+        }
+
+        std::ofstream outFile(outPath, std::ios::binary | std::ios::trunc);
+        if (!outFile)
+        {
+            MOTION_CORE_ERROR("Failed to open shader variant file for write: {0}", outPath.string());
+            return;
+        }
+
+        outFile.write(source.data(), static_cast<std::streamsize>(source.size()));
+        if (!outFile)
+        {
+            MOTION_CORE_ERROR("Failed while writing to: {0}", outPath.string());
+            return;
+        }
+
+        outFile.close();
+        MOTION_CORE_INFO("Shader variant written: {0}", outPath.string());
     }
 }

@@ -2,7 +2,8 @@
 #include "Renderer.hpp"
 #include "GL_Renderer.hpp"
 
-namespace Motion {
+namespace Motion 
+{
 
 #ifdef MOTION_PLATFORM_WINDOWS
     static RenderingAPI s_RenderingAPI = RenderingAPI::OpenGL;
@@ -12,7 +13,8 @@ namespace Motion {
 #   error "Unknown platform!"
 #endif
 
-    static GpuCaps s_Caps{};
+    static GPUCaptures s_Caps{};
+    static CommandQueue s_CommandQueue{};
 
     void Renderer::Init()
     {
@@ -103,6 +105,27 @@ namespace Motion {
         }
     }
 
+    void Renderer::Begin()
+    {
+        s_CommandQueue.Clear();
+    }
+
+    void Renderer::End()
+    {
+        s_CommandQueue.Sort();
+        s_CommandQueue.Execute();
+    }
+
+    void Renderer::Submit(const RenderCommand & command)
+    {
+        s_CommandQueue.Submit(command);
+    }
+
+    void Renderer::Flush()
+    {
+        s_CommandQueue.Execute();
+    }   
+
     std::int32_t Renderer::GetMaxTextureSlots() noexcept
     {
         switch (s_RenderingAPI)
@@ -154,7 +177,7 @@ namespace Motion {
         }
     }
 
-    const GpuCaps& Renderer::Caps() { return s_Caps; }
+    const GPUCaptures& Renderer::Caps() { return s_Caps; }
 
     void Renderer::QueryCaps_()
     {

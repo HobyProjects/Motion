@@ -72,7 +72,8 @@ namespace Motion
             // Build world-space AABB by transforming all 8 corners
             const glm::mat4 model = transComp.GetTransform();
 
-            const glm::vec3 corners[8] = {
+            const glm::vec3 corners[8] =
+            {
                 {localMin.x, localMin.y, localMin.z},
                 {localMax.x, localMin.y, localMin.z},
                 {localMin.x, localMax.y, localMin.z},
@@ -105,9 +106,5 @@ namespace Motion
         }
 
         return pickedEntity;
-    }
-
-    void Scene::RenderEnvironment() const
-    {
     }
 }

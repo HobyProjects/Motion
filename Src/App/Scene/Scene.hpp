@@ -85,7 +85,6 @@ namespace Motion
         [[nodiscard]] bool IsActive() const { return m_Specification.IsActive; }
 
         void Activate(bool active) { m_Specification.IsActive = active; }
-        void RenderEnvironment() const;
 
     private:
         std::vector<std::shared_ptr<Entity>> m_Entities{};

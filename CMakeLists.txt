@@ -94,7 +94,9 @@ set(
 
     ${MOTION_CORE_DIR}/Material/Material.hpp
     ${MOTION_CORE_DIR}/Material/MaterialComponents.hpp
+
     ${MOTION_CORE_DIR}/Maths/Intersect.hpp
+    ${MOTION_CORE_DIR}/Maths/MeshFit.hpp
 
     ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL_46_Core/GL_Buffers.hpp
     ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL_46_Core/GL_Debug.hpp

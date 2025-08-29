@@ -189,61 +189,20 @@ namespace Motion
 
     void MaterialEditorPanel::DrawAttributes(std::shared_ptr<Material>& mat)
     {
-        if(mat->HasTexture<AlphaProperties>())
-        {
-            auto& A = mat->GetTexture<AlphaProperties>();
-            if(UI::BeginPropertyGrid("##alpha-prop"))
-            {                
-                std::int32_t mode = static_cast<std::int32_t>(A.Mode);
-                UI::ComboBox("Alpha Mode", { "Opaque", "Mask", "Blend"}, mode, [&](std::int32_t newMode, const std::string&) { A.Mode = static_cast<AlphaMode>(newMode); });
-                
-                ImGui::BeginDisabled(mode != static_cast<std::int32_t>(AlphaMode::Mask));
-                UI::SliderFloat("Alpha Cutoff", &A.AlphaCutoff, 0.0f, 1.0f, "%.3f");
-                ImGui::EndDisabled();
-                
-                UI::SliderFloat("Opacity Factor", &A.OpacityFactor, 0.0f, 1.0f, "%.3f");
-                
-                UI::EndPropertyGrid();
-            }
-        }
-
-        ImGui::SeparatorEx(ImGuiSeparatorFlags_Horizontal, 3.0f);
-
         if(mat->HasTexture<CorePBR>())
         {
             auto& C = mat->GetTexture<CorePBR>();
 
             if(UI::BeginPropertyGrid("##core-pbr"))
             {
-                ImGui::BeginDisabled(!C.BaseColorTexture);
                 UI::ColorEdit4("Base Color", C.BaseColorFactor);
-                ImGui::EndDisabled();
-
-                ImGui::BeginDisabled(!C.MetallicTexture);
                 UI::SliderFloat("Metallic Factor", &C.MetallicFactor, 0.0f, 1.0f, "%.3f");
-                ImGui::EndDisabled();
-
-                ImGui::BeginDisabled(!C.RoughnessTexture);
                 UI::SliderFloat("Roughness Factor", &C.RoughnessFactor, 0.0f, 1.0f, "%.3f");
-                ImGui::EndDisabled();
-
-                ImGui::BeginDisabled(!C.NormalTexture);
                 UI::SliderFloat("Normal Scaling", &C.NormalScale, 0.0f, 1.0f, "%.3f");
-                ImGui::EndDisabled();
-
-                ImGui::BeginDisabled(!C.OcclusionTexture);
                 UI::SliderFloat("Occlusion Strength", &C.OcclusionStrength, 0.0f, 1.0f, "%.3f");
-                ImGui::EndDisabled();
-
-                ImGui::BeginDisabled(!C.EmissiveTexture);
                 UI::ColorEdit3("Emissive Factor", C.EmissiveFactor);
                 UI::SliderFloat("Emissive Strength", &C.EmissiveStrength, 0.0f, 1.0f, "%.3f");
-                ImGui::EndDisabled();
-
-                ImGui::BeginDisabled(!C.DisplacementTexture);
-                UI::SliderFloat("Displacement Scale", &C.DisplacementScale, 0.0f, 1.0f, "%.3f");
-                UI::SliderFloat("Displacement Bias", &C.DisplacementBias, -1.0f, 1.0f, "%.3f");
-                ImGui::EndDisabled();   
+                UI::SliderFloat("Opacity Factor", &C.OpacityFactor, 0.0f, 1.0f, "%.3f");
 
                 UI::EndPropertyGrid();
             }
@@ -254,14 +213,6 @@ namespace Motion
 
     void MaterialEditorPanel::DrawTexturesSlots(std::shared_ptr<Material>& mat)
     {
-        if(mat->HasTexture<AlphaProperties>())
-        {
-            auto& A = mat->GetTexture<AlphaProperties>();
-            UI::TextureSlot("Opacity Texture", A.OpacityTexture, TextureType::OpacityTexture, nullptr, true);
-        }
-
-        ImGui::SeparatorEx(ImGuiSeparatorFlags_Horizontal, 3.0f);
-
         if(mat->HasTexture<CorePBR>())
         {
             auto& C = mat->GetTexture<CorePBR>();
@@ -269,13 +220,12 @@ namespace Motion
             struct TextureEntry { const char* Label; std::shared_ptr<ITexture>& Tex; TextureType Type; };
             std::vector<TextureEntry> textures = 
             {
-                {"Base Color", C.BaseColorTexture, TextureType::BaseColorTexture},
-                {"Metallic", C.MetallicTexture, TextureType::MetallicTexture},
-                {"Roughness", C.RoughnessTexture, TextureType::RoughnessTexture},
-                {"Normal", C.NormalTexture, TextureType::NormalTexture},
-                {"Occlusion", C.OcclusionTexture, TextureType::AmbientOcclusionTexture},
-                {"Emissive", C.EmissiveTexture, TextureType::EmissiveTexture},
-                {"Displacement", C.DisplacementTexture, TextureType::DisplacementTexture},
+                {"Base Color",  C.BaseColorTexture, TextureType::BaseColorTexture},
+                {"Metallic",    C.MetallicTexture,  TextureType::MetallicTexture},
+                {"Roughness",   C.RoughnessTexture, TextureType::RoughnessTexture},
+                {"Normal",      C.NormalTexture,    TextureType::NormalTexture},
+                {"Occlusion",   C.OcclusionTexture, TextureType::AmbientOcclusionTexture},
+                {"Emissive",    C.EmissiveTexture,  TextureType::EmissiveTexture},
             };
 
             const int columns = 4;                     // number of cards per row

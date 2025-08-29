@@ -6,6 +6,7 @@
 #include "Base.hpp"
 #include "Window.hpp"
 #include "Texture.hpp"
+#include "RenderCommand.hpp"
 
 namespace Motion {
 
@@ -15,6 +16,9 @@ namespace Motion {
         Vulkan  = MOTION_BIT(2),
         DirectX = MOTION_BIT(3)
     };
+
+    template<>
+    struct enable_bitmask_operations<RenderingAPI> : std::true_type {};
 
     enum class PrimitiveTopology : std::uint8_t 
     {
@@ -53,7 +57,7 @@ namespace Motion {
         float       depthValue      = 1.0f;
         std::int32_t stencilValue   = 0;
     };
-    struct GpuCaps 
+    struct GPUCaptures 
     {
         int  maxCombinedTextureUnits = 0;
         int  maxPatchVertices        = 0;
@@ -75,7 +79,12 @@ namespace Motion {
             static void SetViewport(std::int32_t x, std::int32_t y, std::int32_t width, std::int32_t height);
 
             static void DrawIndexed(std::int32_t indicesCount);   
-            static void DrawIndexed(const DrawIndexedArgs& args);  
+            static void DrawIndexed(const DrawIndexedArgs& args);
+
+            static void Begin();
+            static void End();
+            static void Submit(const RenderCommand& command); 
+            static void Flush();
 
             static std::int32_t GetMaxTextureSlots() noexcept;
             static void BindTextureUnit(std::int32_t slot, std::uint32_t textureID);
@@ -84,7 +93,7 @@ namespace Motion {
             static void PushDebugGroup(const char* label);
             static void PopDebugGroup();
 
-            static const GpuCaps& Caps();
+            static const GPUCaptures& Caps();
             [[nodiscard]] static RenderingAPI GetAPI() noexcept;
 
         private:

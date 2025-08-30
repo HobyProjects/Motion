@@ -115,6 +115,11 @@ namespace Motion
             return _BaseMaterial;
         }
 
+        void SetBaseMaterial(const std::shared_ptr<BaseMaterial>& baseMaterial)
+        {
+            _BaseMaterial = baseMaterial;
+        }
+
         template<typename T>
         void RemoveTexture()
         {

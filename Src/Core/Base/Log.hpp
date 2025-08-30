@@ -27,15 +27,12 @@ namespace Motion
 
     public:
         void Initialize();
-
         [[nodiscard]] std::shared_ptr<spdlog::logger> CoreLogger() const;
         [[nodiscard]] std::shared_ptr<spdlog::logger> AppLogger() const;
-        [[nodiscard]] std::shared_ptr<ImGuiConsoleSink> ImGuiSink() const { return m_ImGuiSink; }
 
     private:
         std::shared_ptr<spdlog::logger> m_CoreLogger{ nullptr };
         std::shared_ptr<spdlog::logger> m_AppLogger{ nullptr };
-        std::shared_ptr<ImGuiConsoleSink> m_ImGuiSink{ nullptr };
         std::once_flag m_InitializeLoggers{};
     };
 }

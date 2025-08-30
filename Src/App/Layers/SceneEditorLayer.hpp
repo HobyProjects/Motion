@@ -38,7 +38,6 @@ namespace Motion
 
     private:
         glm::vec2 m_CurrentViewportSize{ 1280.0f, 720.0f };
-        std::shared_ptr<IFrameBuffer> m_PresentFramebuffer{ nullptr };
         std::shared_ptr<IFrameBuffer> m_Framebuffer{ nullptr };
         std::shared_ptr<IEnvironment> m_Environment{ nullptr };
 

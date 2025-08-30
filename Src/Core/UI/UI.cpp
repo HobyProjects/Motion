@@ -147,6 +147,61 @@ namespace Motion
         return ImVec4(r / 255.f, g / 255.f, b / 255.f, a);
     }
 
+    void SetImGuizmoStyleForEditor(const ImVec4& accent, float dpiScale = 1.0f)
+    {
+        // Match your editor neutrals
+        const ImVec4 N00 = ImVec4(14/255.f, 14/255.f, 15/255.f, 1.0f);
+        const ImVec4 N01 = ImVec4(18/255.f, 18/255.f, 19/255.f, 1.0f);
+        const ImVec4 N02 = ImVec4(25/255.f, 26/255.f, 27/255.f, 1.0f);
+        const ImVec4 N03 = ImVec4(32/255.f, 33/255.f, 35/255.f, 1.0f);
+        const ImVec4 N04 = ImVec4(42/255.f, 44/255.f, 47/255.f, 1.0f);
+        const ImVec4 BRD = ImVec4(0.30f, 0.30f, 0.32f, 0.60f);
+        const ImVec4 TXT =  ImVec4(235/255.f, 235/255.f, 235/255.f, 1.0f);
+
+        // Axis base colors (muted to fit your palette)
+        const ImVec4 AX_X = Mix(ImVec4(0.92f, 0.26f, 0.26f, 1.0f), N03, 0.10f);
+        const ImVec4 AX_Y = Mix(ImVec4(0.30f, 0.86f, 0.36f, 1.0f), N03, 0.10f);
+        const ImVec4 AX_Z = Mix(ImVec4(0.27f, 0.60f, 0.98f, 1.0f), N03, 0.10f);
+
+        ImGuizmo::Style& s = ImGuizmo::GetStyle();
+
+        // Geometry / thickness tuned for your flat theme + HiDPI scaling
+        s.TranslationLineThickness   = 3.0f * dpiScale;
+        s.TranslationLineArrowSize   = 12.0f * dpiScale;
+        s.RotationLineThickness      = 3.0f * dpiScale;
+        s.RotationOuterLineThickness = 3.5f * dpiScale;
+        s.ScaleLineThickness         = 3.0f * dpiScale;
+        s.ScaleLineCircleSize        = 8.0f * dpiScale;
+        s.HatchedAxisLineThickness   = 2.0f * dpiScale;
+        s.CenterCircleSize           = 5.0f * dpiScale; // present in recent upstream
+
+        // Colors — only using slots that exist in upstream ImGuizmo
+        s.Colors[ImGuizmo::DIRECTION_X]           = AX_X;
+        s.Colors[ImGuizmo::DIRECTION_Y]           = AX_Y;
+        s.Colors[ImGuizmo::DIRECTION_Z]           = AX_Z;
+
+        s.Colors[ImGuizmo::PLANE_X]               = ImVec4(AX_X.x, AX_X.y, AX_X.z, 0.35f);
+        s.Colors[ImGuizmo::PLANE_Y]               = ImVec4(AX_Y.x, AX_Y.y, AX_Y.z, 0.35f);
+        s.Colors[ImGuizmo::PLANE_Z]               = ImVec4(AX_Z.x, AX_Z.y, AX_Z.z, 0.35f);
+
+        s.Colors[ImGuizmo::SELECTION]             = ImVec4(accent.x, accent.y, accent.z, 0.90f);
+        s.Colors[ImGuizmo::INACTIVE]              = ImVec4(Mix(N03, N04, 0.5f).x, Mix(N03, N04, 0.5f).y, Mix(N03, N04, 0.5f).z, 0.70f);
+
+        s.Colors[ImGuizmo::TRANSLATION_LINE]      = ImVec4(Mix(N03, N04, 0.20f).x, Mix(N03, N04, 0.20f).y, Mix(N03, N04, 0.20f).z, 0.75f);
+        s.Colors[ImGuizmo::SCALE_LINE]            = ImVec4(Mix(N03, ImVec4(1,1,1,1), 0.25f).x,
+                                                        Mix(N03, ImVec4(1,1,1,1), 0.25f).y,
+                                                        Mix(N03, ImVec4(1,1,1,1), 0.25f).z, 0.80f);
+
+        s.Colors[ImGuizmo::ROTATION_USING_BORDER] = ImVec4(0.95f, 0.95f, 0.95f, 0.85f);
+        s.Colors[ImGuizmo::ROTATION_USING_FILL]   = ImVec4(0.95f, 0.95f, 0.95f, 0.18f);
+
+        s.Colors[ImGuizmo::HATCHED_AXIS_LINES]    = ImVec4(BRD.x, BRD.y, BRD.z, 0.90f);
+
+        // Labels over dark viewports
+        s.Colors[ImGuizmo::TEXT]                  = TXT;
+        s.Colors[ImGuizmo::TEXT_SHADOW]           = ImVec4(0.00f, 0.00f, 0.00f, 0.60f);
+    }
+
     void UserInterfaceInitializer::UseColorDarkImpl(const ImVec4& accent) noexcept
     {
         ImGuiStyle& style = ImGui::GetStyle();
@@ -257,6 +312,8 @@ namespace Motion
         c[ImGuiCol_PlotLinesHovered]     = accHover;
         c[ImGuiCol_PlotHistogram]        = Mix(acc, ImVec4(1,1,1,1), 0.05f);
         c[ImGuiCol_PlotHistogramHovered] = accHover;
+
+        SetImGuizmoStyleForEditor(accent);
     }
 
     void UserInterfaceInitializer::UseColorLightImpl(const ImVec4& accent) noexcept

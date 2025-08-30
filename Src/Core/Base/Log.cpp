@@ -8,15 +8,8 @@ namespace Motion
         std::vector<spdlog::sink_ptr> log_skin{};
         log_skin.emplace_back(std::make_shared<spdlog::sinks::stdout_color_sink_mt>());
         log_skin.emplace_back(std::make_shared<spdlog::sinks::basic_file_sink_mt>("MotionLogging.log", true));
-
-        // --- ImGui sink ---
-        m_ImGuiSink = std::make_shared<ImGuiConsoleSink>();
-        log_skin.emplace_back(m_ImGuiSink);
-
-        // Patterns
-        log_skin[0]->set_pattern("%^[%T] %n: %v%$"); // terminal, colored
-        log_skin[1]->set_pattern("[%T][%l] %n: %v");  // file
-        log_skin[2]->set_pattern("[%T][%l] %n: %v");  // imgui (color handled in Draw)
+		log_skin [0]->set_pattern("%^[%T] %n: %v%$");
+		log_skin [1]->set_pattern("[%T][%l] %n: %v");
         
         m_CoreLogger = std::make_shared<spdlog::logger>("[Motion]", std::begin(log_skin), std::end(log_skin));
         spdlog::register_logger(m_CoreLogger);

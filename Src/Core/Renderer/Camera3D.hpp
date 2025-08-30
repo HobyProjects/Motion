@@ -13,7 +13,7 @@ namespace Motion
         float PerspectiveNear{ 0.1f };       // Very close near plane (prevents clipping artifacts at close range)
         float PerspectiveFar{ 50000.0f };    // Very far, covers most scene sizes
         float Rotation{ 0.0f };        // No rotation by default
-        float TranslationSpeed{ 1.0f };        // Standard move speed (can be tuned for your needs)
+        float TranslationSpeed{ 0.005f };        // Standard move speed (can be tuned for your needs)
         float Sensitivity{ 0.2f };        // Mouse or input sensitivity (tunable)
         float ViewportWidth{ 0.0f };        // To be set when viewport is resized or set
         float ViewportHeight{ 0.0f };        // To be set when viewport is resized or set

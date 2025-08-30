@@ -15,9 +15,9 @@ namespace Motion
 
     void SceneCamera::SetAspectRatio(float width, float height)
     {
-        Camera.AspectRatio = width / height;
-        Camera.ViewportWidth = width;
-        Camera.ViewportHeight = height;
+        Camera.AspectRatio      = width / height;
+        Camera.ViewportWidth    = width;
+        Camera.ViewportHeight   = height;
         Camera.RefreshCameraMatrix();
     }
 

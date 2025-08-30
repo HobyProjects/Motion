@@ -28,6 +28,7 @@
 #include <limits>
 #include <cassert>
 #include <tuple>
+#include <ranges>
 
 //external
 #define GLFW_INCLUDE_NONE

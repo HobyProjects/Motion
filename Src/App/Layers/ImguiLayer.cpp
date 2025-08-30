@@ -23,14 +23,8 @@ namespace Motion
         if (m_AllowEvents)
         {
             ImGuiIO& io = ImGui::GetIO();
-            if (e.Equals(EventCategory::Keyboard) && !io.WantCaptureKeyboard)
-            {
-                io.WantCaptureKeyboard = true;
-            }
-            if (e.Equals(EventCategory::Mouse) && !io.WantCaptureMouse)
-            {
-                io.WantCaptureMouse = true;
-            }
+            if (e.Equals(EventCategory::Keyboard) & !io.WantCaptureKeyboard) { io.WantCaptureKeyboard = true; }
+            if (e.Equals(EventCategory::Mouse) & !io.WantCaptureMouse) { io.WantCaptureMouse = true; }
         }
     }
 

@@ -4,21 +4,29 @@
 
 namespace Motion
 {
-    // Blend state configured once per pass (no reason to repeat per draw)
-    static inline void ConfigureBlendRegular(IRenderingStage& rs)
+    static void ConfigureRegular(IRenderingStage& rs)
     {
-        StageStatus s   = rs.Snapshot();
-        s.DepthTest     = true;
-        s.DepthWrite    = false;
-        s.DepthFunc     = DepthFunction::Less;
-        s.BlendEnabled  = true;
-        s.SrcRGB        = BlendFactor::SrcAlpha;
-        s.DstRGB        = BlendFactor::OneMinusSrcAlpha;
-        s.SrcA          = BlendFactor::One;
-        s.DstA          = BlendFactor::OneMinusSrcAlpha;
-        s.BlendEqRGB    = BlendEquation::Add;
-        s.BlendEqA      = BlendEquation::Add;
-        rs.Apply(s);
+        StageStatus state   = rs.Snapshot();
+
+        state.DepthTest         = true;
+        state.DepthWrite        = false;
+        state.DepthFunc         = DepthFunction::LessEqual;
+
+        state.CullEnabled       = false;
+        state.Wireframe         = false;
+
+        state.BlendEnabled      = true;
+        state.SrcRGB            = BlendFactor::SrcAlpha;
+        state.DstRGB            = BlendFactor::OneMinusSrcAlpha;
+        state.SrcA              = BlendFactor::One;
+        state.DstA              = BlendFactor::OneMinusSrcAlpha;
+        state.BlendEqRGB        = BlendEquation::Add;
+        state.BlendEqA          = BlendEquation::Add;
+
+        state.ColorMaskR        = state.ColorMaskG = state.ColorMaskB = state.ColorMaskA = true;
+        state.ScissorEnabled    = false;
+        
+        rs.Apply(state);
     }
 
     void CommandQueue::Sort()
@@ -68,8 +76,6 @@ namespace Motion
                 tex->Bind(slot);
             else
             {
-                // Spam control: bind fallback silently; warn only in dev if desired.
-                // MOTION_CORE_WARN("{} Texture is missing or expired", uniformName);
                 GetFallbackTexture(type)->Bind(slot);
             }
             shader->SetUniform(uniformName, slot);
@@ -162,7 +168,6 @@ namespace Motion
 
 
         Sort(); 
-        ConfigureBlendRegular(*m_RenderingStage);
 
         Material*     lastMaterial              = nullptr;
         IEnvironment* lastEnv                   = nullptr;

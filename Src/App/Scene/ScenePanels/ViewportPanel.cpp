@@ -4,22 +4,15 @@
 
 namespace Motion
 {
-
     void SceneViewportPanel::RenderUI(ScenePanelContext& context)
     {
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, { 0,0 });
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {0,0});
         ImGui::Begin(std::format("{}##SceneViewport", context.ActiveScene->GetName()).c_str());
-        context.UILayerInstance->AcceptEvents(ImGui::IsWindowFocused() || ImGui::IsWindowHovered());
 
-        // Keep the gizmo op accessible to the overlay
-        static ImGuizmo::OPERATION op = ImGuizmo::TRANSLATE;
+        const bool focused_or_hovered = ImGui::IsWindowFocused() || ImGui::IsWindowHovered();
+        if (context.UILayerInstance) context.UILayerInstance->AcceptEvents(focused_or_hovered);
 
-        ImVec2 vp = ImGui::GetContentRegionAvail();
-        if (context.EditorLayerInstance && context.ActiveScene)
-        {
-            context.EditorLayerInstance->SetViewportSize({ vp.x, vp.y });
-        }
-
+        const ImVec2 vp = ImGui::GetContentRegionAvail();
         FrameTextureID tex = context.ActiveViewportTexture;
         if (tex != 0)
         {
@@ -58,34 +51,96 @@ namespace Motion
                 context.ActiveScene->SelectedEntity(picked);
         }
 
+        ImGuizmo::Enable(true);
         ImGuizmo::SetOrthographic(false);
-        ImGuizmo::SetDrawlist();
-        ImGuizmo::SetRect(vpMin.x, vpMin.y, vp.x, vp.y);
+        ImGuizmo::SetDrawlist(ImGui::GetWindowDrawList());
+        ImGuizmo::SetRect(ImGui::GetWindowPos().x, ImGui::GetWindowPos().y, ImGui::GetWindowWidth(), ImGui::GetWindowHeight());
 
-        glm::mat4 view = context.ActiveScene->GetCameraView();
-        glm::mat4 proj = context.ActiveScene->GetCameraProjection();
-        if (ImGui::IsKeyDown(ImGuiKey_LeftCtrl) && ImGui::IsKeyPressed(ImGuiKey_E))
+
+        static ImGuizmo::OPERATION gizmoOp   = ImGuizmo::TRANSLATE;
+        static ImGuizmo::MODE      gizmoMode = ImGuizmo::LOCAL;
+
+        if (ImGui::IsKeyDown(ImGuiKey_LeftCtrl) && ImGui::IsKeyPressed(ImGuiKey_E, false))
         {
-            op = (op == ImGuizmo::TRANSLATE) ? ImGuizmo::ROTATE :
-                (op == ImGuizmo::ROTATE)    ? ImGuizmo::SCALE  :
-                                            ImGuizmo::TRANSLATE;
+            switch (gizmoOp)
+            {
+                case ImGuizmo::TRANSLATE: gizmoOp = ImGuizmo::ROTATE; break;
+                case ImGuizmo::ROTATE:    gizmoOp = ImGuizmo::SCALE;  break;
+                case ImGuizmo::SCALE:     gizmoOp = ImGuizmo::TRANSLATE; break;
+                default: break;
+            }
         }
+
+        if (ImGui::IsKeyDown(ImGuiKey_LeftCtrl) && ImGui::IsKeyPressed(ImGuiKey_Q, false))
+        {
+            gizmoMode = (gizmoMode == ImGuizmo::WORLD) ? ImGuizmo::LOCAL : ImGuizmo::WORLD;
+        }
+
+        const bool snapToggle = ImGui::IsKeyDown(ImGuiKey_LeftCtrl) && ImGui::IsKeyDown(ImGuiKey_Space);
+        float snap[3] = { 0.f, 0.f, 0.f };
+        if (snapToggle)
+        {
+            switch (gizmoOp)
+            {
+                case ImGuizmo::TRANSLATE: snap[0] = snap[1] = snap[2] = 0.1f; break;
+                case ImGuizmo::ROTATE:    snap[0] = snap[1] = snap[2] = 5.0f;  break; // degrees
+                case ImGuizmo::SCALE:     snap[0] = snap[1] = snap[2] = 0.05f; break;
+                default: break;
+            }
+        }
+
+        glm::mat4 view       = context.ActiveScene->GetCameraView();
+        glm::mat4 projection = context.ActiveScene->GetCameraProjection();
 
         if (auto sel = context.ActiveScene->GetSelectedEntity();
             sel && sel != EntityFactory::EMPTYENTITY && sel->HasComponent<TransformComponent>())
         {
-            auto& tc = sel->GetComponent<TransformComponent>();
-            glm::mat4 model = tc.GetTransform();
-            float m[16]; memcpy(m, glm::value_ptr(model), sizeof(m));
+            auto& TRS = sel->GetComponent<TransformComponent>();
+            glm::mat4 transform = TRS.GetTransform();
 
-            if (ImGuizmo::Manipulate(glm::value_ptr(view), glm::value_ptr(proj), op, ImGuizmo::LOCAL, m))
+            ImGuizmo::AllowAxisFlip(false);
+            ImGuizmo::Manipulate(glm::value_ptr(view),
+                                glm::value_ptr(projection),
+                                gizmoOp,
+                                gizmoMode,
+                                glm::value_ptr(transform),
+                                nullptr,
+                                snapToggle ? snap : nullptr);
+
+            if (ImGuizmo::IsUsing())
             {
-                glm::vec3 t, s; glm::quat r;
-                glm::vec3 euler = glm::degrees(glm::eulerAngles(r));
-                ImGuizmo::DecomposeMatrixToComponents(m, &t.x, &euler.x, &s.x);
-                r = glm::quat(glm::radians(euler));
-                tc.Translation = t; tc.Rotation = r; tc.Scale = s;
+                float T[3], Rdeg[3], S[3];
+                ImGuizmo::DecomposeMatrixToComponents(glm::value_ptr(transform), T, Rdeg, S);
+                TRS.Translation = { T[0], T[1], T[2] };
+                TRS.Scale       = { S[0], S[1], S[2] };
+                TRS.Rotation    = glm::quat(glm::radians(glm::vec3{ Rdeg[0], Rdeg[1], Rdeg[2] }));
             }
+        }
+
+        if (focused_or_hovered)
+        {
+            ImGui::SetCursorPos({8.f, 8.f});
+            ImGui::BeginGroup();
+            const ImGuiIO& io = ImGui::GetIO();
+            ImGui::Text("Mouse: (%.1f, %.1f) Down:%d%d%d  Capt:%d",
+                        io.MousePos.x, io.MousePos.y,
+                        io.MouseDown[0], io.MouseDown[1], io.MouseDown[2],
+                        io.WantCaptureMouse ? 1 : 0);
+            ImGui::Text("Gizmo Over:%d Using:%d  Op:%s  Mode:%s",
+                        ImGuizmo::IsOver() ? 1 : 0,
+                        ImGuizmo::IsUsing() ? 1 : 0,
+                        gizmoOp == ImGuizmo::TRANSLATE ? "Translate" :
+                        gizmoOp == ImGuizmo::ROTATE    ? "Rotate"    : "Scale",
+                        gizmoMode == ImGuizmo::WORLD ? "World" : "Local");
+            ImGui::TextUnformatted("Ctrl+E: Cycle | Ctrl+Q: World/Local | Ctrl+Shift: Snap");
+            ImGui::EndGroup();
+        }
+
+        if (context.EditorLayerInstance && context.ActiveScene)
+        {
+            auto& viewport = context.ActiveSceneSpecification.Viewport;
+            if(viewport.Size.x != vp.x || viewport.Size.y != vp.y)
+                context.EditorLayerInstance->SetViewportSize({ vp.x, vp.y });
         }
 
         ImGui::End();

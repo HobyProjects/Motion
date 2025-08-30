@@ -13,42 +13,42 @@ namespace Motion
 {
     enum class EventCategory : uint32_t
     {
-        Window = Bits<0>::value,
-        Keyboard = Bits<1>::value,
-        Mouse = Bits<2>::value,
-        GamePad = Bits<3>::value,
-        Unknown = Bits<4>::value
+        Window      = MOTION_BIT(0),
+        Keyboard    = MOTION_BIT(1),
+        Mouse       = MOTION_BIT(2),
+        GamePad     = MOTION_BIT(3),
+        Unknown     = MOTION_BIT(4)
     };
 
-    inline uint32_t operator|(EventCategory a, EventCategory b) { return static_cast<uint32_t>(a) | static_cast<uint32_t>(b); }
-    inline uint32_t operator&(EventCategory a, EventCategory b) { return static_cast<uint32_t>(a) & static_cast<uint32_t>(b); }
+    template<>
+    struct enable_bitmask_operations<EventCategory> : std::true_type {};
 
     enum class EventType : uint32_t
     {
-        WindowClose = Bits<0>::value,
-        WindowResize = Bits<1>::value,
-        WindowPosChange = Bits<2>::value,
-        WindowFocusGain = Bits<3>::value,
-        WindowFocusLost = Bits<4>::value,
-        WindowFrameBufferSizeChange = Bits<5>::value,
-        WindowMaximize = Bits<6>::value,
-        WindowMinimize = Bits<7>::value,
+        WindowClose                         = MOTION_BIT(0),
+        WindowResize                        = MOTION_BIT(1),
+        WindowPosChange                     = MOTION_BIT(2),
+        WindowFocusGain                     = MOTION_BIT(3),
+        WindowFocusLost                     = MOTION_BIT(4),
+        WindowFrameBufferSizeChange         = MOTION_BIT(5),
+        WindowMaximize                      = MOTION_BIT(6),
+        WindowMinimize                      = MOTION_BIT(7),
 
-        KeyboardKeyPress = Bits<8>::value,
-        KeyboardKeyRelease = Bits<9>::value,
-        KeyboardKeyRepeat = Bits<10>::value,
-        KeyboardKeyChar = Bits<11>::value,
+        KeyboardKeyPress                    = MOTION_BIT(8),
+        KeyboardKeyRelease                  = MOTION_BIT(9),
+        KeyboardKeyRepeat                   = MOTION_BIT(10),
+        KeyboardKeyChar                     = MOTION_BIT(11),
 
-        MouseButtonDown = Bits<12>::value,
-        MouseButtonUp = Bits<13>::value,
-        MouseWheelScroll = Bits<14>::value,
-        MouseCursorPosChange = Bits<15>::value,
-        MouseCursorWindowEnter = Bits<16>::value,
-        MouseCursorWindowLeave = Bits<17>::value
+        MouseButtonDown                     = MOTION_BIT(12),
+        MouseButtonUp                       = MOTION_BIT(13),
+        MouseWheelScroll                    = MOTION_BIT(14),
+        MouseCursorPosChange                = MOTION_BIT(15),
+        MouseCursorWindowEnter              = MOTION_BIT(16),
+        MouseCursorWindowLeave              = MOTION_BIT(17)
     };
 
-    inline uint32_t operator|(EventType a, EventType b) { return static_cast<uint32_t>(a) | static_cast<uint32_t>(b); }
-    inline uint32_t operator&(EventType a, EventType b) { return static_cast<uint32_t>(a) & static_cast<uint32_t>(b); }
+    template<>
+    struct enable_bitmask_operations<EventType> : std::true_type {};
 
 #define EVENT_CLASS_TYPE(EVENT_TYPE) static EventType StaticType() { return EVENT_TYPE; }\
         virtual EventType Type() const override { return StaticType(); }\

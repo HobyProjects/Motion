@@ -28,6 +28,10 @@ namespace Motion
         AM.Create<IShader>("ENV_BRD", "Assets/Shaders/GLSL/Environment/EnvironmentBRDF.glsl");
         
         BaseMaterial::Import("Assets/Materials/Metal/Base.yaml");
+        BaseMaterial::Import("Assets/Materials/Marble/Base.yaml");
+        BaseMaterial::Import("Assets/Materials/Plastic/Base.yaml");
+        BaseMaterial::Import("Assets/Materials/Rubber/Base.yaml");
+        BaseMaterial::Import("Assets/Materials/Stone/Base.yaml");
 
         //------------------------------------------------------------------------------------
 
@@ -35,14 +39,8 @@ namespace Motion
         m_Viewport.FrameSpec.Name       = "SceneEditorFrame";
         m_Viewport.FrameSpec.Width      = (std::uint32_t)m_CurrentViewportSize.x;
         m_Viewport.FrameSpec.Height     = (std::uint32_t)m_CurrentViewportSize.y;
-        m_Framebuffer = IFrameBuffer::Create(m_Viewport.FrameSpec);
-
-        // Create a single-sample present FBO for ImGui
-        FrameBufferSpecification present{};
-        present.Name   = "SceneEditorPresent";
-        present.Width  = (std::uint32_t)m_CurrentViewportSize.x;
-        present.Height = (std::uint32_t)m_CurrentViewportSize.y;
-        m_PresentFramebuffer = IFrameBuffer::Create(present);
+        m_Viewport.FrameSpec.Samples    = 1;
+        m_Framebuffer                   = IFrameBuffer::Create(m_Viewport.FrameSpec);
 
         EnvironmentSpecification specEnv;
         specEnv.UseSHDiffuse = false;
@@ -62,8 +60,7 @@ namespace Motion
         m_ActiveScene = m_Scenes[0];
         m_ActiveScene->Activate(true);
 
-         // Seed initial texture ID so first UI pass isn't null
-        m_SceneTextures[m_ActiveScene] = m_PresentFramebuffer->GetAttachment(FrameBufferColorAttachmentStandards::Standard).ID;
+        m_SceneTextures[m_ActiveScene] = m_Framebuffer->GetAttachment(FrameBufferColorAttachmentStandards::Standard).ID;
 
         //------------------------------------------------------------------------------------
 
@@ -72,7 +69,6 @@ namespace Motion
         m_Panels->Emplace<SceneEntityPropertiesPanel>();
         m_Panels->Emplace<SceneSettingsPanel>();
         m_Panels->Emplace<SceneViewPanel>();
-        m_Panels->Emplace<MaterialEditorPanel>();
     }
 
     void SceneEditorLayer::OnDetach()
@@ -95,21 +91,7 @@ namespace Motion
         SceneRenderer::EndScene();
 
         m_Framebuffer->Unbind();
-
-        FrameTextureID finalTex = 0;
-        if (m_Framebuffer->GetFrameSpecification().Samples > 1)
-        {
-            finalTex = m_Framebuffer->ResolveTo(m_PresentFramebuffer.get());
-        }
-        else
-        {
-            finalTex = m_Framebuffer->GetAttachment(FrameBufferColorAttachmentStandards::Standard).ID;
-            m_Framebuffer->BlitTo(m_PresentFramebuffer.get(), FrameBufferBlitMask::Color, FrameBufferBlitFilter::Linear);
-            finalTex = m_PresentFramebuffer->GetAttachment(FrameBufferColorAttachmentStandards::Standard).ID;
-        }
-
-        m_SceneTextures[m_ActiveScene] = finalTex;
-
+        m_SceneTextures[m_ActiveScene] = m_Framebuffer->GetAttachment(FrameBufferColorAttachmentStandards::Standard).ID;
     }
 
     void SceneEditorLayer::OnEvent(WindowHandle handle, IEvent& e)
@@ -117,60 +99,15 @@ namespace Motion
         m_ActiveScene->OnEvent(handle, e);
     }
 
-    static void DrawViewportAxisWidget(const glm::mat4& view, float size = 60.0f)
-    {
-        ImDrawList* drawList = ImGui::GetWindowDrawList();
-
-        // Find bottom-left of viewport
-        ImVec2 windowPos = ImGui::GetWindowPos();
-        ImVec2 contentMin = ImGui::GetWindowContentRegionMin();
-        ImVec2 viewportMin = ImVec2(windowPos.x + contentMin.x, windowPos.y + contentMin.y);
-        ImVec2 axisOrigin = ImVec2(viewportMin.x + size + 10.0f, viewportMin.y + ImGui::GetWindowSize().y - size - 10.0f);
-        glm::mat3 camBasis = glm::mat3(glm::transpose(view)); 
-
-        struct Axis {
-            glm::vec3 dir;
-            ImU32 color;
-            const char* label;
-        };
-
-        Axis axes[3] = {
-            { glm::vec3(1,0,0), IM_COL32(200,60,60,255), "X" },
-            { glm::vec3(0,1,0), IM_COL32(60,200,60,255), "Y" },
-            { glm::vec3(0,0,1), IM_COL32(80,150,255,255), "Z" }
-        };
-
-        for (int i = 0; i < 3; ++i)
-        {
-            glm::vec3 localDir = camBasis * axes[i].dir; 
-            localDir = glm::normalize(localDir);
-
-            float len = size;
-            ImVec2 p0 = axisOrigin;
-            ImVec2 p1 = ImVec2((axisOrigin.x + localDir.x * len), (axisOrigin.y - localDir.y * len)); 
-
-            drawList->AddLine(p0, p1, axes[i].color, 3.0f);
-            ImVec2 labelPos = ImVec2(p1.x + 5.0f, p1.y - 5.0f); 
-            drawList->AddText(labelPos, axes[i].color, axes[i].label);
-        }
-
-        drawList->AddCircleFilled(axisOrigin, 5.0f, IM_COL32(120, 120, 120, 255));
-    }
-
     void SceneEditorLayer::OnUIRender(WindowHandle handle)
     {
         BuildDockspace();
-
-        if(auto sink = Loggers::GetInstance().ImGuiSink())
-        {
-            sink->Draw(ICON_MD_TERMINAL " Console");
-        }
 
         ScenePanelContext panelContext;
         panelContext.ActiveScene                    = m_ActiveScene;
         panelContext.ActiveCamera                   = m_ActiveScene->GetCamera();
         panelContext.ActiveSceneSpecification       = m_ActiveScene->GetSpecification();
-        panelContext.ActiveViewportTexture          = m_SceneTextures[m_ActiveScene];
+        panelContext.ActiveViewportTexture          = m_SceneTextures[m_ActiveScene]; 
         panelContext.UILayerInstance                = s_ImGuiLayer.get();
         panelContext.EditorLayerInstance            = this;
 
@@ -185,7 +122,7 @@ namespace Motion
             ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize |
             ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBringToFrontOnFocus |
             ImGuiWindowFlags_NoNavFocus | ImGuiWindowFlags_NoScrollbar |
-            ImGuiWindowFlags_NoScrollWithMouse;
+            ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_MenuBar;
 
         ImGuiDockNodeFlags dock = ImGuiDockNodeFlags_PassthruCentralNode | ImGuiDockNodeFlags_AutoHideTabBar;
 
@@ -197,7 +134,103 @@ namespace Motion
         ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, { 0,0 });
-        ImGui::Begin("##DockHost", nullptr, host);
+        if(ImGui::Begin("##DockHost", nullptr, host))
+        {
+            if (ImGui::BeginMenuBar())
+            {
+                ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, { 5, 10 });
+                if (ImGui::BeginMenu(ICON_MD_FOLDER " Files"))
+                {
+                    if (ImGui::MenuItem("New Scene")) 
+                    { 
+                    }
+
+                    if (ImGui::MenuItem("Open...")) 
+                    { 
+                    }
+
+                    if (ImGui::MenuItem("Save")) 
+                    { 
+                    }
+
+                    ImGui::EndMenu();
+                }
+                if (ImGui::BeginMenu(ICON_MD_EDIT " Edit"))
+                {
+                    if (ImGui::MenuItem("Undo", "Ctrl+Z")) {}
+                    if (ImGui::MenuItem("Redo", "Ctrl+Y")) {}
+
+                    ImGui::Separator();
+                    if (ImGui::MenuItem("Preferences...")) {}
+                    ImGui::EndMenu();
+                }
+                if (ImGui::BeginMenu(ICON_MD_VIEW_COMFY " View"))
+                {
+                    if (ImGui::MenuItem("Reset Layout")) {}
+                    ImGui::EndMenu();
+                }
+                if (ImGui::BeginMenu(ICON_MD_HELP " Help"))
+                {
+                    if (ImGui::MenuItem("About")) {}
+                    ImGui::EndMenu();
+                }
+
+                ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
+
+                ImGui::TextUnformatted("Active Scene");
+                ImGui::SameLine();
+                ImGui::PushItemWidth(220.0f);
+                
+                std::int32_t selectedIndex = -1;
+                std::vector<const char*> sceneNames;
+                for (const auto& scene : m_Scenes)
+                {
+                    sceneNames.push_back(scene->GetName().c_str());
+                    if (scene == m_ActiveScene) selectedIndex = (std::int32_t)(sceneNames.size() - 1);
+                }
+
+                ImGui::Combo("##scene-list", &selectedIndex, sceneNames.data(), sceneNames.size());
+                ImGui::PopItemWidth();
+
+                ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
+
+                ImGui::TextUnformatted("Simulation Controls");
+
+                ImGui::SameLine();
+                if (ImGui::Button(ICON_MD_PLAY_ARROW, ImVec2(30, 30)))
+                {
+                }
+
+                ImGui::SameLine(0, 6);
+                if (ImGui::Button(ICON_MD_STOP, ImVec2(30, 30)))
+                {
+                }
+
+                ImGui::SameLine(0, 6);
+                if (ImGui::Button(ICON_MD_PAUSE, ImVec2(30, 30)))
+                {
+                }
+
+                ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
+
+                ImGui::TextUnformatted("Camera Speed");
+                ImGui::SameLine();
+                ImGui::PushItemWidth(70.0f);
+                ImGui::DragFloat("##camspeed", &m_ActiveScene->GetCamera().Camera.TranslationSpeed, 0.001f);
+                ImGui::PopItemWidth();
+
+                ImGui::SameLine();
+                ImGui::TextUnformatted("Camera Sensitivity");
+                ImGui::SameLine();
+                ImGui::PushItemWidth(70.0f);
+                ImGui::DragFloat("##camsens", &m_ActiveScene->GetCamera().Camera.Sensitivity, 0.001f);
+                ImGui::PopItemWidth();
+
+                ImGui::PopStyleVar();
+                ImGui::EndMenuBar();
+            }
+
+        }
         ImGui::PopStyleVar(3);
 
         ImGuiID dockspace_id = ImGui::GetID("MainDockspace");
@@ -214,11 +247,9 @@ namespace Motion
     void SceneEditorLayer::SetViewportSize(const glm::vec2 & size)
     {
         if (size == m_CurrentViewportSize || size.x <= 1.0f || size.y <= 1.0f) return;
-
         m_CurrentViewportSize = size;
 
         if (m_Framebuffer)         m_Framebuffer->ResizeFrame((int)size.x, (int)size.y);
-        if (m_PresentFramebuffer)  m_PresentFramebuffer->ResizeFrame((int)size.x, (int)size.y);
         if (m_ActiveScene)         m_ActiveScene->OnViewportSizeChanges(size);
     }
 

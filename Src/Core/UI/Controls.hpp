@@ -64,7 +64,8 @@ namespace Motion::UI
     {
         ImGuiTableFlags flags = ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_BordersInnerV;
         if (!ImGui::BeginTable(id, spec.twoColumns ? 2 : 1, flags)) return false;
-        if (spec.twoColumns) {
+        if (spec.twoColumns) 
+        {
             ImGui::TableSetupColumn("label", ImGuiTableColumnFlags_WidthFixed, spec.labelWidth);
             ImGui::TableSetupColumn("controls", ImGuiTableColumnFlags_WidthStretch);
         }
@@ -86,15 +87,14 @@ namespace Motion::UI
         ImGui::SetNextItemWidth(-FLT_MIN);
     }
 
-    using ActionFn = std::function<void()>;
-    using ComboChangedFn = std::function<void(std::int32_t, const std::string&)>;
-
     bool DragFloat(const char* label, float* v, float speed = 0.1f, float minV = -FLT_MAX, float maxV = FLT_MAX, const char* fmt = "%.3f");
     bool DragFloat2(const char* label, float v[2], float speed = 0.1f, float minV = -FLT_MAX, float maxV = FLT_MAX, const char* fmt = "%.3f");
     bool DragFloat2(const char* label, glm::vec2& v, float speed = 0.1f, float minV = -FLT_MAX, float maxV = FLT_MAX, const char* fmt = "%.3f");
+
     bool DragFloat3(const char* label, float v[3], float speed = 0.1f, float minV = -FLT_MAX, float maxV = FLT_MAX, const char* fmt = "%.3f");
     bool DragFloat3(const char* label, glm::vec3& v, float speed = 0.1f, float minV = -FLT_MAX, float maxV = FLT_MAX, const char* fmt = "%.3f");
     bool DragFloat3(const char* label, glm::quat& v, float speed = 0.1f, float minV = -FLT_MAX, float maxV = FLT_MAX, const char* fmt = "%.3f");
+
     bool DragFloat3WithReset(const char* label, float v[3], float resetValue = 0.0f, float speed = 0.1f, float minV = -FLT_MAX, float maxV = FLT_MAX);
     bool DragFloat3WithReset(const char* label, glm::vec3& v, float resetValue = 0.0f, float speed = 0.1f, float minV = -FLT_MAX, float maxV = FLT_MAX);
     bool DragFloat3WithReset(const char* label, glm::quat& v, float resetValue = 0.0f, float speed = 0.1f, float minV = -FLT_MAX, float maxV = FLT_MAX);
@@ -106,218 +106,12 @@ namespace Motion::UI
     bool ColorEdit3(const char* label, glm::vec3& color);
 
     bool TextBox(const char* label, std::string& value, bool readOnly = false, size_t maxLen = 1024);
-
     bool ToggleSwitch(const char* label, bool& value);
     bool SearchBox(const char* id, std::string& query, const char* hint = "Search...");
-    bool ComboBox(const char* label, const std::vector<std::string>& options, int& index, ComboChangedFn onChanged = nullptr);
-
+    bool ComboBox(const char* label, const std::vector<std::string>& options, int& index, std::function<void(std::int32_t, const std::string&)> onChanged = nullptr);
     bool CollapsibleSection(const char* label, bool defaultOpen = true);
 
-    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    struct Tag
-    {
-        std::string text{};
-        bool selected{ false };
-    };
-    bool TagChips(const char* label, std::vector<Tag>& tags, ActionFn onAdd = nullptr, ActionFn onRemove = nullptr);
-
-    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-    void ToolbarBegin(const char* id);
-    bool ToolbarButton(const char* id, const char* iconText, const char* tooltip = nullptr);
-    void ToolbarEnd();
-
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-    inline void SmallHelp(const char* text)
-    {
-        ImGui::SameLine();
-        ImGui::TextDisabled("(?)");
-        if (ImGui::IsItemHovered()) {
-            ImGui::BeginTooltip(); ImGui::PushTextWrapPos(ImGui::GetFontSize() * 40.0f);
-            ImGui::TextUnformatted(text);
-            ImGui::PopTextWrapPos(); ImGui::EndTooltip();
-        }
-    }
-
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-    enum class TextureSlotResult
-    {
-        None,
-        LoadedNew,
-        Reloaded,
-        Cleared
-    };
-
     enum class TextureSlotAction : int { Upload = 0, Reload, Clear, None };
-    using TextureSlotActionCallback = std::function<void(TextureSlotAction, std::shared_ptr<ITexture>&)>;
-
-    TextureSlotAction TextureSlot(const char* label, std::shared_ptr<ITexture>& tex, TextureType type, TextureSlotActionCallback onAction = nullptr, bool showLabelAbove = false, int previewSize = 150);
+    TextureSlotAction TextureSlot(const char* label, std::shared_ptr<ITexture>& tex, TextureType type, std::function<void(TextureSlotAction, std::shared_ptr<ITexture>&)> onAction = nullptr, bool showLabelAbove = false, int previewSize = 150);
     void EmptyTextureSlot(ImDrawList* dl, const ImRect& r, float cell = 10.0f);
-
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-    struct GridTableOptions
-    {
-        ImVec2 cellPadding{ 8, 6 };   // inside each cell
-        bool   drawCellBg = false;
-        ImU32  cellBgColor = IM_COL32(40, 40, 40, 40);
-        float  rounding = 6.0f;
-        ImGuiTableFlags tableFlags = ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_NoPadOuterX | ImGuiTableFlags_NoHostExtendX | ImGuiTableFlags_BordersInner | ImGuiTableFlags_RowBg;
-    };
-
-    struct GridTableState
-    {
-        int cols = 0;
-        int cellIndex = 0;
-        ImVec2 cellSize;
-        ImVec2 pad;
-        bool drawBg = false;
-        ImU32 bgCol = 0;
-        float rounding = 0.0f;
-        ImGuiID id = 0;
-        bool began = false;
-    };
-
-    bool GridBegin(const char* id, int cols, ImVec2 cellSize = ImVec2(120, 120), const GridTableOptions& opt = {});
-    void GridEnd();
-    bool GridCellBegin();
-    void GridCellEnd();
-
-    struct Grid
-    {
-        bool  ok = false;
-        int   cols = 1;
-
-        Grid(const char* id, int columns, ImVec2 cellSize, const GridTableOptions& opts = {}) : cols(columns)
-        {
-            ok = UI::GridBegin(id, columns, cellSize, opts);
-        }
-
-        ~Grid()
-        {
-            if (ok) UI::GridEnd();
-        }
-
-        template <class Fn>
-        Grid& cell(Fn&& fn)
-        {
-            if (!ok) return *this;
-            if (UI::GridCellBegin())
-            {
-                std::forward<Fn>(fn)();
-                UI::GridCellEnd();
-            }
-
-            return *this;
-        }
-
-        template <class Fn>
-        Grid& times(int n, Fn&& fn)
-        {
-            for (int i = 0; i < n; ++i)
-                cell([&] { std::forward<Fn>(fn)(i); });
-
-            return *this;
-        }
-
-        Grid& newline();
-    };
-}
-
-namespace Motion
-{
-    class ImGuiConsoleSink : public spdlog::sinks::base_sink<std::mutex>
-    {
-    public:
-        struct Item {
-            spdlog::level::level_enum level;
-            std::string text;
-        };
-
-        void Clear()
-        {
-            std::scoped_lock lock(mutex_);
-            items_.clear();
-        }
-
-        // Call this from your ImGui frame
-        void Draw(const char* title = "Console", bool* p_open = nullptr)
-        {
-            if (!ImGui::Begin(title, p_open)) { ImGui::End(); return; }
-
-            if (ImGui::Button("Clear")) Clear();
-            ImGui::SameLine();
-            bool do_copy = ImGui::Button("Copy");
-            ImGui::SameLine();
-            filter_.Draw("Filter", 220.0f);
-            ImGui::Separator();
-
-            ImGui::BeginChild("ScrollingRegion", ImVec2(0,0), false, ImGuiWindowFlags_HorizontalScrollbar);
-            if (do_copy) ImGui::LogToClipboard();
-
-            {
-                std::scoped_lock lock(mutex_);
-                for (const auto& it : items_)
-                {
-                    const char* msg = it.text.c_str();
-                    if (filter_.IsActive() && !filter_.PassFilter(msg))
-                        continue;
-
-                    ImVec4 col = ColorForLevel(it.level);
-                    ImGui::PushStyleColor(ImGuiCol_Text, col);
-                    ImGui::TextUnformatted(msg);
-                    ImGui::PopStyleColor();
-                }
-            }
-
-            if (auto_scroll_ && ImGui::GetScrollY() >= ImGui::GetScrollMaxY())
-                ImGui::SetScrollHereY(1.0f);
-
-            if (do_copy) ImGui::LogFinish();
-            ImGui::EndChild();
-            ImGui::End();
-        }
-
-        // Optional runtime toggles
-        bool& AutoScroll() { return auto_scroll_; }
-        ImGuiTextFilter& Filter() { return filter_; }
-
-    protected:
-        // spdlog sink implementation
-        void sink_it_(const spdlog::details::log_msg& msg) override
-        {
-            spdlog::memory_buf_t formatted;
-            base_sink<std::mutex>::formatter_->format(msg, formatted);
-
-            std::scoped_lock lock(mutex_);
-            items_.push_back(Item{
-                msg.level,
-                std::string(formatted.data(), formatted.size())
-            });
-        }
-
-        void flush_() override {}
-
-    private:
-        static ImVec4 ColorForLevel(spdlog::level::level_enum lvl)
-        {
-            switch (lvl) {
-                case spdlog::level::trace:    return ImVec4(0.75f, 0.75f, 0.75f, 1.0f);
-                case spdlog::level::debug:    return ImVec4(0.60f, 0.80f, 1.00f, 1.0f);
-                case spdlog::level::info:     return ImVec4(1.00f, 1.00f, 1.00f, 1.0f);
-                case spdlog::level::warn:     return ImVec4(1.00f, 0.85f, 0.45f, 1.0f);
-                case spdlog::level::err:      return ImVec4(1.00f, 0.45f, 0.45f, 1.0f);
-                case spdlog::level::critical: return ImVec4(1.00f, 0.20f, 0.20f, 1.0f);
-                default:                      return ImVec4(1.00f, 1.00f, 1.00f, 1.0f);
-            }
-        }
-
-        std::mutex mutex_;
-        std::vector<Item> items_;
-        ImGuiTextFilter filter_;
-        bool auto_scroll_ = true;
-    };
-
 }

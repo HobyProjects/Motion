@@ -189,7 +189,6 @@ namespace Motion::UI
         return !readOnly && changed;
     }
 
-    // -------------------- High-level widgets --------------------
     bool ToggleSwitch(const char* label, bool& value)
     {
         ScopeID idScope(label);
@@ -227,7 +226,7 @@ namespace Motion::UI
         return changed;
     }
 
-    bool ComboBox(const char* label, const std::vector<std::string>& options, int& index, ComboChangedFn onChanged)
+    bool ComboBox(const char* label, const std::vector<std::string>& options, int& index, std::function<void(std::int32_t, const std::string&)> onChanged)
     {
         ScopeID idScope(label);
         BeginRow(label);
@@ -252,46 +251,6 @@ namespace Motion::UI
                 if (isSel) ImGui::SetItemDefaultFocus();
             }
             ImGui::EndCombo();
-        }
-        return changed;
-    }
-
-    bool TagChips(const char* label, std::vector<Tag>& tags, ActionFn onAdd, ActionFn onRemove)
-    {
-        ScopeID idScope(label);
-        BeginRow(label);
-        bool changed = false;
-        float avail = ImGui::GetContentRegionAvail().x;
-        float x = 0.0f;
-        for (size_t i = 0; i < tags.size(); ++i)
-        {
-            ImGui::PushID(static_cast<int>(i));
-            std::string text = tags[i].text;
-            ImVec2 sz = ImGui::CalcTextSize(text.c_str());
-            ImVec2 pad(10, 4);
-            ImVec2 chip(sz.x + pad.x * 2 + 16, sz.y + pad.y * 2); // +close button width
-            if (x + chip.x > avail) { x = 0; ImGui::NewLine(); }
-
-            ImGui::BeginGroup();
-            ImGui::Selectable((" " + text + "  x").c_str(), &tags[i].selected, 0, chip);
-            bool hovered = ImGui::IsItemHovered();
-            if (hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
-            {
-                tags[i].selected = !tags[i].selected; changed = true;
-            }
-            if (hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Right) && onRemove)
-            {
-                onRemove(); changed = true;
-            }
-            ImGui::EndGroup();
-            ImGui::SameLine(0, 6);
-            x += chip.x + 6;
-            ImGui::PopID();
-        }
-
-        if (onAdd)
-        {
-            if (ImGui::Button("+ Add Tag")) { onAdd(); changed = true; }
         }
         return changed;
     }
@@ -363,7 +322,7 @@ namespace Motion::UI
         dl->AddRect(r.Min, r.Max, IM_COL32(50, 50, 50, 255), 6.0f, 0, 1.0f);
     }
 
-    TextureSlotAction TextureSlot(const char* label, std::shared_ptr<ITexture>& tex, TextureType type, TextureSlotActionCallback onAction, bool showLabelAbove, int previewSize)
+    TextureSlotAction TextureSlot(const char* label, std::shared_ptr<ITexture>& tex, TextureType type, std::function<void(TextureSlotAction, std::shared_ptr<ITexture>&)> onAction, bool showLabelAbove, int previewSize)
     {
         TextureSlotAction result = TextureSlotAction::None;
         ImGui::PushID(label);
@@ -499,136 +458,12 @@ namespace Motion::UI
         // Draw texture name below preview
         ImGui::SetCursorScreenPos(ImVec2(p0.x + padding, texRect.Max.y + 4));
         ImGui::PushTextWrapPos(texRect.Max.x);
-        ImGui::TextUnformatted(NiceFilename(tex).c_str());
+        ImGui::TextUnformatted(GetTextureTypeString(type).c_str());
         ImGui::PopTextWrapPos();
 
         ImGui::Dummy(ImVec2(0, 12));
         ImGui::PopID();
         return result;
-    }
-
-    void TextureSlotGridDynamic(std::vector<std::shared_ptr<ITexture>>& textures, TextureSlotActionCallback onAction, int previewSize, float padding, bool showLabelAbove)
-    {
-        if (textures.empty())
-            return;
-
-        ImGui::BeginChild("##TextureGridChild", ImVec2(0, 0), false, ImGuiWindowFlags_AlwaysUseWindowPadding);
-
-        float availWidth = ImGui::GetContentRegionAvail().x;
-        float itemSize = (float)previewSize + padding;
-        int columns = std::max(1, (int)(availWidth / itemSize));
-
-        int currentColumn = 0;
-        for (size_t i = 0; i < textures.size(); i++)
-        {
-            TextureSlot(("##tex" + std::to_string(i)).c_str(), textures[i], textures[i]->GetSpecification().Type, onAction, showLabelAbove, previewSize);
-
-            currentColumn++;
-            if (currentColumn < columns)
-            {
-                ImGui::SameLine(); // continue on the same row
-            }
-            else
-            {
-                currentColumn = 0; // move to next row
-            }
-        }
-
-        ImGui::EndChild();
-    }
-
-    static GridTableState& _grid()
-    {
-        static GridTableState s;
-        return s;
-    }
-
-    bool GridBegin(const char* id, int cols, ImVec2 cellSize, const GridTableOptions& opt)
-    {
-        if (cols <= 0) cols = 1;
-        auto& st = _grid();
-        st.cols = cols;
-        st.cellIndex = 0;
-        st.cellSize = cellSize;
-        st.pad = opt.cellPadding;
-        st.drawBg = opt.drawCellBg;
-        st.bgCol = opt.cellBgColor;
-        st.rounding = opt.rounding;
-        st.id = ImGui::GetID(id);
-
-        if (!ImGui::BeginTable(id, cols, opt.tableFlags))
-            return false;
-
-        // fixed column widths
-        for (int c = 0; c < cols; ++c)
-            ImGui::TableSetupColumn(nullptr, ImGuiTableColumnFlags_WidthFixed, cellSize.x + st.pad.x * 2.0f);
-
-        ImGui::TableNextRow(ImGuiTableRowFlags_None, cellSize.y + st.pad.y * 2.0f);
-        st.began = true;
-        return true;
-    }
-
-    void GridEnd()
-    {
-        auto& st = _grid();
-        if (st.began) {
-            ImGui::EndTable();
-            st = GridTableState{}; // reset
-        }
-    }
-
-    bool GridCellBegin()
-    {
-        auto& st = _grid();
-        IM_ASSERT(st.began && "GridCellBegin() without GridTableBegin()");
-        const int col = st.cellIndex % st.cols;
-        if (col == 0 && st.cellIndex != 0) {
-            // next row with the requested height
-            ImGui::TableNextRow(ImGuiTableRowFlags_None, st.cellSize.y + st.pad.y * 2.0f);
-        }
-        ImGui::TableSetColumnIndex(col);
-
-        // Reserve the cell area with an InvisibleButton so hover/clicks are scoped to the cell.
-        ImVec2 reserve = ImVec2(st.cellSize.x + st.pad.x * 2.0f, st.cellSize.y + st.pad.y * 2.0f);
-        ImGui::PushID(st.cellIndex);
-        ImVec2 p0 = ImGui::GetCursorScreenPos();
-        ImGui::InvisibleButton("##cell", reserve);
-
-        ImDrawList* dl = ImGui::GetWindowDrawList();
-        ImRect cellRect(p0, ImVec2(p0.x + reserve.x, p0.y + reserve.y));
-
-        if (st.drawBg)
-            dl->AddRectFilled(cellRect.Min, cellRect.Max, st.bgCol, st.rounding);
-
-        // Clip and move cursor to content area
-        ImRect content(ImVec2(cellRect.Min.x + st.pad.x, cellRect.Min.y + st.pad.y), ImVec2(cellRect.Max.x - st.pad.x, cellRect.Max.y - st.pad.y));
-        ImGui::PushClipRect(content.Min, content.Max, true);
-        ImGui::SetCursorScreenPos(content.Min);
-        ImGui::BeginGroup();
-
-        return true;
-    }
-
-    void GridCellEnd()
-    {
-        ImGui::EndGroup();
-        ImGui::PopClipRect();
-        ImGui::PopID();
-        _grid().cellIndex++;
-    }
-
-    Grid& Grid::newline()
-    {
-        if (!ok) return *this;
-        auto& st = _grid();
-        int col = st.cellIndex % st.cols;
-        if (col != 0)
-        {
-            for (int i = 0, pad = st.cols - col; i < pad; ++i)
-                cell([] {});
-        }
-
-        return *this;
     }
 
 }

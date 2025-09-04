@@ -35,25 +35,26 @@ namespace Motion
     struct TransformComponent
     {
         UUID ID{ 0 };
+        
         glm::vec3 Translation{ 0.0f };
-        glm::quat Rotation{ 1.0f, 0.0f, 0.0f, 0.0f }; // Identity quaternion
-        glm::vec3 Scale{ 10.0f };
+        glm::quat Rotation{ 0.0f, 0.0f, 0.0f, 0.0f }; 
+        glm::vec3 Scale{ 0.01f };
 
         TransformComponent()
-            : ID(UniqueIdentity::GetUniqueID()) {
-        }
+            : ID(UniqueIdentity::GetUniqueID()) {}
 
-        TransformComponent(const glm::vec3& translation, const glm::quat& rotation, const glm::vec3& scale)
-            : Translation(translation), Rotation(rotation), Scale(scale), ID(UniqueIdentity::GetUniqueID()) {
-        }
+        TransformComponent(const glm::vec3& translation, const glm::vec3& rotation, const glm::vec3& scale)
+            : Translation(translation), Rotation(rotation), Scale(scale), ID(UniqueIdentity::GetUniqueID()) {}
 
         ~TransformComponent() = default;
 
-        glm::mat4 GetTransform() const
+        glm::mat4 GetTransform(bool degree = false) const
         {
             glm::mat4 T = glm::translate(glm::mat4(1.0f), Translation);
             glm::mat4 R = glm::toMat4(Rotation);
             glm::mat4 S = glm::scale(glm::mat4(1.0f), Scale);
+
+            
             glm::mat4 TRS = T * R * S;
             return TRS;
         }
@@ -63,11 +64,11 @@ namespace Motion
     {
         enum class BodyType { Static, Dynamic };
 
-        float Mass = 1.0f;
-        BodyType Type = BodyType::Dynamic;
+        float Mass      = 1.0f;
+        BodyType Type   = BodyType::Dynamic;
 
-        glm::vec3 Velocity = glm::vec3(0.0f);
-        glm::vec3 ForceAccum = glm::vec3(0.0f);
+        glm::vec3 Velocity      = glm::vec3(0.0f);
+        glm::vec3 ForceAccum    = glm::vec3(0.0f);
         bool Active = false;
 
         PhysicsBodyComponent(float mass = 1.0f) : Mass(mass)

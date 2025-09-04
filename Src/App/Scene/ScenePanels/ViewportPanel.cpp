@@ -91,50 +91,38 @@ namespace Motion
 
         glm::mat4 view       = context.ActiveScene->GetCameraView();
         glm::mat4 projection = context.ActiveScene->GetCameraProjection();
-
-        if (auto sel = context.ActiveScene->GetSelectedEntity();
+        if (auto sel = context.ActiveScene->GetSelectedEntity(); 
             sel && sel != EntityFactory::EMPTYENTITY && sel->HasComponent<TransformComponent>())
         {
             auto& TRS = sel->GetComponent<TransformComponent>();
-            glm::mat4 transform = TRS.GetTransform();
+            glm::vec3 T = TRS.Translation;
+            glm::vec3 S = TRS.Scale;
+            glm::vec3 Rdeg = glm::degrees(glm::eulerAngles(TRS.Rotation)); 
+
+            glm::mat4 transform{1.0f};
+            ImGuizmo::RecomposeMatrixFromComponents(&T.x, &Rdeg.x, &S.x, glm::value_ptr(transform));
 
             ImGuizmo::AllowAxisFlip(false);
             ImGuizmo::Manipulate(glm::value_ptr(view),
                                 glm::value_ptr(projection),
-                                gizmoOp,
-                                gizmoMode,
+                                gizmoOp, gizmoMode,
                                 glm::value_ptr(transform),
                                 nullptr,
                                 snapToggle ? snap : nullptr);
 
             if (ImGuizmo::IsUsing())
             {
-                float T[3], Rdeg[3], S[3];
-                ImGuizmo::DecomposeMatrixToComponents(glm::value_ptr(transform), T, Rdeg, S);
-                TRS.Translation = { T[0], T[1], T[2] };
-                TRS.Scale       = { S[0], S[1], S[2] };
-                TRS.Rotation    = glm::quat(glm::radians(glm::vec3{ Rdeg[0], Rdeg[1], Rdeg[2] }));
+                float Td[3], RdDeg[3], Sd[3];
+                ImGuizmo::DecomposeMatrixToComponents(glm::value_ptr(transform), Td, RdDeg, Sd);
+
+                TRS.Translation = { Td[0], Td[1], Td[2] };
+                TRS.Scale       = { Sd[0], Sd[1], Sd[2] };
+
+                glm::vec3 RdRad = glm::radians(glm::vec3(RdDeg[0], RdDeg[1], RdDeg[2]));
+                TRS.Rotation    = glm::quat(RdRad);
             }
         }
 
-        if (focused_or_hovered)
-        {
-            ImGui::SetCursorPos({8.f, 8.f});
-            ImGui::BeginGroup();
-            const ImGuiIO& io = ImGui::GetIO();
-            ImGui::Text("Mouse: (%.1f, %.1f) Down:%d%d%d  Capt:%d",
-                        io.MousePos.x, io.MousePos.y,
-                        io.MouseDown[0], io.MouseDown[1], io.MouseDown[2],
-                        io.WantCaptureMouse ? 1 : 0);
-            ImGui::Text("Gizmo Over:%d Using:%d  Op:%s  Mode:%s",
-                        ImGuizmo::IsOver() ? 1 : 0,
-                        ImGuizmo::IsUsing() ? 1 : 0,
-                        gizmoOp == ImGuizmo::TRANSLATE ? "Translate" :
-                        gizmoOp == ImGuizmo::ROTATE    ? "Rotate"    : "Scale",
-                        gizmoMode == ImGuizmo::WORLD ? "World" : "Local");
-            ImGui::TextUnformatted("Ctrl+E: Cycle | Ctrl+Q: World/Local | Ctrl+Shift: Snap");
-            ImGui::EndGroup();
-        }
 
         if (context.EditorLayerInstance && context.ActiveScene)
         {

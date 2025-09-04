@@ -208,59 +208,60 @@ namespace Motion
   struct Bits { static constexpr std::uint32_t value = (1u << Shift); };
   constexpr std::uint32_t MOTION_BIT(std::uint32_t shift) { return (1u << shift); }
 
-  // Opt-in switch
   template <class E>
   struct enable_bitmask_operations : std::false_type {};
 
-  // Helper
   template <class E>
-  constexpr auto to_underlying(E e) noexcept -> std::underlying_type_t<E> {
+  constexpr auto to_underlying(E e) noexcept -> std::underlying_type_t<E> 
+  {
       static_assert(std::is_enum_v<E>, "bitmask ops require enum types");
       return static_cast<std::underlying_type_t<E>>(e);
   }
 
-  // Concept for enabled bitmask enums
   template <class E>
   concept bitmask_enum = std::is_enum_v<E> && enable_bitmask_operations<E>::value;
 
-  // ---- Operators ----
-  // Return the enum for OR so chaining stays typed
   template <bitmask_enum E>
-  constexpr E operator|(E lhs, E rhs) noexcept {
+  constexpr E operator|(E lhs, E rhs) noexcept 
+  {
       return static_cast<E>(to_underlying(lhs) | to_underlying(rhs));
   }
 
-  // Return the underlying integer for AND so `if (e & Flag)` works
   template <bitmask_enum E>
-  constexpr std::underlying_type_t<E> operator&(E lhs, E rhs) noexcept {
+  constexpr std::underlying_type_t<E> operator&(E lhs, E rhs) noexcept 
+  {
       return (to_underlying(lhs) & to_underlying(rhs));
   }
 
-  // Same idea for XOR (often used as a boolean-ish test)
   template <bitmask_enum E>
-  constexpr std::underlying_type_t<E> operator^(E lhs, E rhs) noexcept {
+  constexpr std::underlying_type_t<E> operator^(E lhs, E rhs) noexcept 
+  {
       return (to_underlying(lhs) ^ to_underlying(rhs));
   }
 
-  // Keep ~ returning the enum (useful for masking)
   template <bitmask_enum E>
-  constexpr E operator~(E v) noexcept {
+  constexpr E operator~(E v) noexcept 
+  {
       return static_cast<E>(~to_underlying(v));
   }
 
-  // Compound ops on the enum
   template <bitmask_enum E>
-  constexpr E& operator|=(E& lhs, E rhs) noexcept {
+  constexpr E& operator|=(E& lhs, E rhs) noexcept 
+  {
       lhs = (lhs | rhs);
       return lhs;
   }
+  
   template <bitmask_enum E>
-  constexpr E& operator&=(E& lhs, E rhs) noexcept {
+  constexpr E& operator&=(E& lhs, E rhs) noexcept 
+  {
       lhs = static_cast<E>(to_underlying(lhs) & to_underlying(rhs));
       return lhs;
   }
+
   template <bitmask_enum E>
-  constexpr E& operator^=(E& lhs, E rhs) noexcept {
+  constexpr E& operator^=(E& lhs, E rhs) noexcept 
+  {
       lhs = static_cast<E>(to_underlying(lhs) ^ to_underlying(rhs));
       return lhs;
   }

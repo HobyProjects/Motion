@@ -11,7 +11,6 @@ namespace Motion
 
         Renderer::Init();
         UserInterfaceInitializer::Init(m_Window->GetHandle());
-        Threads::Init(4);
 
         m_ImGuiLayer = std::make_shared<ImGuiLayer>(m_Window->GetHandle(), ImGuiColorScheme::Dark);
         m_EditorLayer = std::make_shared<SceneEditorLayer>(m_Window->GetHandle(), m_ImGuiLayer);
@@ -22,7 +21,7 @@ namespace Motion
 
     Application::~Application()
     {
-        Threads::Shutdown();
+        TaskManager::Instance().Shutdown();
         UserInterfaceInitializer::Quit();
         Renderer::Quit();
 
@@ -51,7 +50,7 @@ namespace Motion
                 }
             }
 
-            Threads::PumpMain();
+            MainThreadDispatcher::Instance().Dispatch();
 
             m_ImGuiLayer->Begin();
 

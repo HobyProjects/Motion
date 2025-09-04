@@ -14,7 +14,7 @@
 #include "Texture.hpp"
 
 #define MOTION_UI_TEXTURESLOT_CALLBACK(CALLBACK_FUNC) [this](auto&&... args) -> decltype(auto) { return this->CALLBACK_FUNC(std::forward<decltype(args)>(args)...); }
-namespace Motion::UI
+namespace Motion
 {
     inline std::uint32_t GetUID()
     {
@@ -87,22 +87,12 @@ namespace Motion::UI
         ImGui::SetNextItemWidth(-FLT_MIN);
     }
 
-    bool DragFloat(const char* label, float* v, float speed = 0.1f, float minV = -FLT_MAX, float maxV = FLT_MAX, const char* fmt = "%.3f");
-    bool DragFloat2(const char* label, float v[2], float speed = 0.1f, float minV = -FLT_MAX, float maxV = FLT_MAX, const char* fmt = "%.3f");
-    bool DragFloat2(const char* label, glm::vec2& v, float speed = 0.1f, float minV = -FLT_MAX, float maxV = FLT_MAX, const char* fmt = "%.3f");
-
-    bool DragFloat3(const char* label, float v[3], float speed = 0.1f, float minV = -FLT_MAX, float maxV = FLT_MAX, const char* fmt = "%.3f");
-    bool DragFloat3(const char* label, glm::vec3& v, float speed = 0.1f, float minV = -FLT_MAX, float maxV = FLT_MAX, const char* fmt = "%.3f");
-    bool DragFloat3(const char* label, glm::quat& v, float speed = 0.1f, float minV = -FLT_MAX, float maxV = FLT_MAX, const char* fmt = "%.3f");
-
-    bool DragFloat3WithReset(const char* label, float v[3], float resetValue = 0.0f, float speed = 0.1f, float minV = -FLT_MAX, float maxV = FLT_MAX);
-    bool DragFloat3WithReset(const char* label, glm::vec3& v, float resetValue = 0.0f, float speed = 0.1f, float minV = -FLT_MAX, float maxV = FLT_MAX);
-    bool DragFloat3WithReset(const char* label, glm::quat& v, float resetValue = 0.0f, float speed = 0.1f, float minV = -FLT_MAX, float maxV = FLT_MAX);
+    bool DragFloat(const char* label,  float* v, float speed = 0.1f, float minV = -FLT_MAX, float maxV = FLT_MAX, const char* fmt = "%.3f");
+    bool DragFloat2(const char* label, glm::vec2&  v, float speed = 0.1f, float minV = -FLT_MAX, float maxV = FLT_MAX, const char* fmt = "%.3f");
+    bool DragFloat3(const char* label, glm::vec3&  v, float speed = 0.1f, float minV = -FLT_MAX, float maxV = FLT_MAX, const char* fmt = "%.3f");
 
     bool SliderFloat(const char* label, float* v, float minV, float maxV, const char* fmt = "%.3f");
-    bool ColorEdit4(const char* label, float color[4], bool withAlpha = true);
     bool ColorEdit4(const char* label, glm::vec4& color, bool withAlpha = true);
-    bool ColorEdit3(const char* label, float color[3]);
     bool ColorEdit3(const char* label, glm::vec3& color);
 
     bool TextBox(const char* label, std::string& value, bool readOnly = false, size_t maxLen = 1024);

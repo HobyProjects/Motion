@@ -34,19 +34,40 @@ namespace Motion
             {
                 if (auto path = DialogBoxes::OpenFileDialog(); !path.empty())
                 {
-                    if (auto mesh = Importer::ImportModel(path))
-                    {
-                        auto& fac   = EntityFactory::GetInstance();
-                        auto e      = fac.CreateEntity(mesh->GetName());
+                    auto ID = Importer::ImportModelAsync(path, false, "default",
+                        [ctx, path](std::shared_ptr<StaticMesh> mesh)
+                        {
+                            if (!mesh) 
+                            {
+                                MOTION_ERROR("Fail to import model in {}", path);
+                                return;
+                            }
 
-                        e->AddComponent<StaticMeshComponent>(mesh->GetName(), mesh);
-                        auto& transform = e->AddComponent<TransformComponent>();
+                            // Snapshot the scene pointer *now* and validate.
+                            auto scene = ctx.ActiveScene;
+                            if (!scene) 
+                            {
+                                MOTION_ERROR("No active scene when importing '{}'", path);
+                                return;
+                            }
 
-                        Bounds b{ .Min = mesh->GetMinBounds(), .Max = mesh->GetMaxBounds() };
-                        FitTransformToWorldBox(transform, b, FitMode::NonUniformToBox, glm::vec3(1.8f), glm::vec3(5.0f, 0.0f, -2.0f), true, true, 0.0f);
-
-                        ctx.ActiveScene->EmplaceEntity(e);
-                    }
+                            auto& fac   = EntityFactory::GetInstance();
+                            auto entity = fac.CreateEntity(mesh->GetName());
+                            if (!entity) 
+                            {
+                                MOTION_ERROR("EntityFactory::CreateEntity('{}') returned null", mesh->GetName());
+                                return;
+                            }
+                            
+                            entity->AddComponent<StaticMeshComponent>(mesh->GetName(), mesh);
+                            entity->AddComponent<TransformComponent>();
+                            scene->EmplaceEntity(entity);
+                        },
+                        [&](std::int32_t progress)
+                        {
+                            (void)progress;
+                        }
+                    );
                 }
             }
             ImGui::EndPopup();
@@ -62,7 +83,6 @@ namespace Motion
             const char* iconEntity = ICON_MD_LABEL_OUTLINE;    
             if (ent->HasComponent<StaticMeshComponent>()) iconEntity = ICON_MD_VIEW_IN_AR;
 
-            // Tree row flags
             ImGuiTreeNodeFlags flags =
                 ((ctx.ActiveScene->GetSelectedEntity() == ent) ? ImGuiTreeNodeFlags_Selected : 0) |
                 ImGuiTreeNodeFlags_OpenOnArrow |
@@ -97,14 +117,13 @@ namespace Motion
                             std::string maxBounds = glm::to_string(model->GetMaxBounds());
                             std::string filePath = model->GetSource();
 
-                            if (UI::BeginPropertyGrid("##entity-details"))
+                            if (BeginPropertyGrid("##entity-details"))
                             {
-                                UI::TextBox("Mesh Count", meshCount, true);
-                                UI::TextBox("Min Bounds", minBounds, true);
-                                UI::TextBox("Max Bounds", maxBounds, true);
-                                UI::TextBox("File Path", filePath, true);
-
-                                UI::EndPropertyGrid();
+                                TextBox("Mesh Count", meshCount, true);
+                                TextBox("Min Bounds", minBounds, true);
+                                TextBox("Max Bounds", maxBounds, true);
+                                TextBox("File Path", filePath, true);
+                                EndPropertyGrid();
                             }
                         }
                     }

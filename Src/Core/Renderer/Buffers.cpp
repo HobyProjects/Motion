@@ -13,7 +13,7 @@ namespace Motion
         };
     }
 
-    std::shared_ptr<IVertexBuffer> IVertexBuffer::Create(Vertex* data, std::uint32_t size)
+    std::shared_ptr<IVertexBuffer> IVertexBuffer::Create(const Vertex* data, std::uint32_t size)
     {
         switch (Renderer::GetAPI())
         {
@@ -24,7 +24,7 @@ namespace Motion
         };
     }
 
-    std::shared_ptr<IVertexBuffer> IVertexBuffer::Create(float* data, std::uint32_t size)
+    std::shared_ptr<IVertexBuffer> IVertexBuffer::Create(const float* data, std::uint32_t size)
     {
         switch (Renderer::GetAPI())
         {
@@ -35,7 +35,7 @@ namespace Motion
         };
     }
 
-    std::shared_ptr<IElementBuffer> IElementBuffer::Create(std::uint32_t* data, std::uint32_t size)
+    std::shared_ptr<IElementBuffer> IElementBuffer::Create(const std::uint32_t* data, std::uint32_t size)
     {
         switch (Renderer::GetAPI())
         {

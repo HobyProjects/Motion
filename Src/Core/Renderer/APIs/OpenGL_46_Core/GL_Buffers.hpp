@@ -10,8 +10,8 @@ namespace Motion
     public:
         GL_VertexBuffer() = default;
         GL_VertexBuffer(std::int32_t allocatorSize);
-        GL_VertexBuffer(Vertex* data, std::uint32_t dataSize);
-        GL_VertexBuffer(float* data, std::uint32_t dataSize);
+        GL_VertexBuffer(const Vertex* data, std::uint32_t dataSize);
+        GL_VertexBuffer(const float* data, std::uint32_t dataSize);
         virtual ~GL_VertexBuffer();
 
         virtual void Bind() const override;
@@ -22,8 +22,8 @@ namespace Motion
         virtual const BufferLayout& GetLayout() const override { return m_Layout; }
 
         static std::shared_ptr<GL_VertexBuffer> Create(std::int32_t allocatorSize);
-        static std::shared_ptr<GL_VertexBuffer> Create(Vertex* data, std::uint32_t dataSize);
-        static std::shared_ptr<GL_VertexBuffer> Create(float* data, std::uint32_t dataSize);
+        static std::shared_ptr<GL_VertexBuffer> Create(const Vertex* data, std::uint32_t dataSize);
+        static std::shared_ptr<GL_VertexBuffer> Create(const float* data, std::uint32_t dataSize);
 
     private:
 
@@ -35,7 +35,7 @@ namespace Motion
     {
     public:
         GL_ElementBuffer() = default;
-        GL_ElementBuffer(std::uint32_t* data, std::uint32_t indicesCount);
+        GL_ElementBuffer(const std::uint32_t* data, std::uint32_t indicesCount);
         virtual ~GL_ElementBuffer();
 
         virtual void Bind() const override;
@@ -43,7 +43,7 @@ namespace Motion
         virtual BufferID GetID() const override { return m_ElementBufferID; }
         virtual std::int32_t GetElementCount() const override { return m_Count; }
 
-        static std::shared_ptr<GL_ElementBuffer> Create(std::uint32_t* data, std::uint32_t indicesCount);
+        static std::shared_ptr<GL_ElementBuffer> Create(const std::uint32_t* data, std::uint32_t indicesCount);
 
     private:
         BufferID m_ElementBufferID{ 0 };

@@ -112,8 +112,8 @@ namespace Motion
         virtual const BufferLayout& GetLayout() const = 0;
 
         static std::shared_ptr<IVertexBuffer> Create(std::int32_t allocatorSize);
-        static std::shared_ptr<IVertexBuffer> Create(Vertex* data, std::uint32_t dataSize);
-        static std::shared_ptr<IVertexBuffer> Create(float* data, std::uint32_t dataSize);
+        static std::shared_ptr<IVertexBuffer> Create(const Vertex* data, std::uint32_t dataSize);
+        static std::shared_ptr<IVertexBuffer> Create(const float* data, std::uint32_t dataSize);
     };
 
     class IElementBuffer
@@ -127,7 +127,7 @@ namespace Motion
         virtual BufferID        GetID() const   = 0;
         virtual std::int32_t    GetElementCount() const = 0;
 
-        static std::shared_ptr<IElementBuffer> Create(std::uint32_t* data, std::uint32_t indicesCount);
+        static std::shared_ptr<IElementBuffer> Create(const std::uint32_t* data, std::uint32_t indicesCount);
     };
 
     class IShaderBuffer

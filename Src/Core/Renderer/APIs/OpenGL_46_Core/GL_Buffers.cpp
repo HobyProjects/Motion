@@ -4,9 +4,6 @@
 
 namespace Motion
 {
-    /******************************************************************************************
-     *                         GL_VertexBuffer Implementation                                 *
-     ******************************************************************************************/
 
     GL_VertexBuffer::GL_VertexBuffer(std::int32_t allocatorSize)
     {
@@ -14,13 +11,13 @@ namespace Motion
         glNamedBufferData(m_VertexBufferID, allocatorSize, nullptr, GL_DYNAMIC_DRAW);
     }
 
-    GL_VertexBuffer::GL_VertexBuffer(Vertex* data, std::uint32_t dataSize)
+    GL_VertexBuffer::GL_VertexBuffer(const Vertex* data, std::uint32_t dataSize)
     {
         glCreateBuffers(1, &m_VertexBufferID);
         glNamedBufferData(m_VertexBufferID, sizeof(Vertex) * dataSize, data, GL_STATIC_DRAW);
     }
 
-    GL_VertexBuffer::GL_VertexBuffer(float* data, std::uint32_t dataSize)
+    GL_VertexBuffer::GL_VertexBuffer(const float* data, std::uint32_t dataSize)
     {
         glCreateBuffers(1, &m_VertexBufferID);
         glNamedBufferData(m_VertexBufferID, sizeof(float) * dataSize, data, GL_STATIC_DRAW);
@@ -56,22 +53,17 @@ namespace Motion
         return std::make_shared<GL_VertexBuffer>(allocatorSize);
     }
 
-    std::shared_ptr<GL_VertexBuffer> GL_VertexBuffer::Create(Vertex* data, std::uint32_t dataSize)
+    std::shared_ptr<GL_VertexBuffer> GL_VertexBuffer::Create(const Vertex* data, std::uint32_t dataSize)
     {
         return std::make_shared<GL_VertexBuffer>(data, dataSize);
     }
 
-    std::shared_ptr<GL_VertexBuffer> GL_VertexBuffer::Create(float* data, std::uint32_t dataSize)
+    std::shared_ptr<GL_VertexBuffer> GL_VertexBuffer::Create(const float* data, std::uint32_t dataSize)
     {
         return std::make_shared<GL_VertexBuffer>(data, dataSize);
     }
 
-
-    /******************************************************************************************
-     *                         GL_ElementBuffer Implementation                                *
-     ******************************************************************************************/
-
-    GL_ElementBuffer::GL_ElementBuffer(std::uint32_t* data, std::uint32_t indicesCount) : m_Count(indicesCount)
+    GL_ElementBuffer::GL_ElementBuffer(const std::uint32_t* data, std::uint32_t indicesCount) : m_Count(indicesCount)
     {
         glCreateBuffers(1, &m_ElementBufferID);
         glNamedBufferData(m_ElementBufferID, indicesCount * sizeof(std::uint32_t), data, GL_STATIC_DRAW);
@@ -93,14 +85,10 @@ namespace Motion
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
     }
 
-    std::shared_ptr<GL_ElementBuffer> GL_ElementBuffer::Create(std::uint32_t* data, std::uint32_t indicesCount)
+    std::shared_ptr<GL_ElementBuffer> GL_ElementBuffer::Create(const std::uint32_t* data, std::uint32_t indicesCount)
     {
         return std::make_shared<GL_ElementBuffer>(data, indicesCount);
     }
-
-    /******************************************************************************************
-     *                         GL_ShaderBuffer Implementation                                 *
-     ******************************************************************************************/
 
     GL_ShaderBuffer::GL_ShaderBuffer(std::int32_t size, BindingPoint binding)
     {
@@ -275,10 +263,6 @@ namespace Motion
     {
         return std::make_shared<GL_UniformBuffer>(size, binding);
     }
-
-    /******************************************************************************************
-     *                         GL_FrameBuffer Implementation                                  *
-     ******************************************************************************************/
 
     GL_FrameBuffer::GL_FrameBuffer(const FrameBufferSpecification& specification) : m_Specification(specification)
     {
@@ -621,10 +605,6 @@ namespace Motion
         MOTION_ASSERT(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE, "Framebuffer is not complete!");
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
     }
-
-    /******************************************************************************************
-     *                         GL_CaptureFrameBuffer Implementation                            *
-     *******************************************************************************************/
 
     GL_CaptureFrameBuffer::GL_CaptureFrameBuffer(std::int32_t width, std::int32_t height)
     {

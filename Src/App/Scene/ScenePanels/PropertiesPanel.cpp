@@ -32,7 +32,7 @@ namespace Motion
 
     void SceneEntityPropertiesPanel::DrawAttributes(std::shared_ptr<Material>& mat)
     {
-        if(UI::BeginPropertyGrid("##base-material"))
+        if(BeginPropertyGrid("##base-material"))
         {
             auto base = mat->GetBaseMaterial();
             std::vector<std::string> materialNames;
@@ -49,7 +49,7 @@ namespace Motion
                     index = static_cast<std::int32_t>(std::distance(materialNames.begin(), it));
             }
 
-            UI::ComboBox("Base Material", materialNames, index, [&](std::int32_t selectedIndex, const std::string& selectedName)
+            ComboBox("Base Material", materialNames, index, [&](std::int32_t selectedIndex, const std::string& selectedName)
             {
                 if (selectedName == "None")
                 {
@@ -66,7 +66,7 @@ namespace Motion
                     mat->SetBaseMaterial(*it);
             });
 
-            UI::EndPropertyGrid();
+            EndPropertyGrid();
         }
 
         ImGui::SeparatorEx(ImGuiSeparatorFlags_Horizontal);
@@ -75,18 +75,17 @@ namespace Motion
         {
             auto& C = mat->GetTexture<CorePBR>();
 
-            if(UI::BeginPropertyGrid("##core-pbr"))
+            if(BeginPropertyGrid("##core-pbr"))
             {
-                UI::ColorEdit4("Base Color",            C.BaseColorFactor);
-                UI::SliderFloat("Metallic Factor",      &C.MetallicFactor, 0.0f, 1.0f, "%.3f");
-                UI::SliderFloat("Roughness Factor",     &C.RoughnessFactor, 0.0f, 1.0f, "%.3f");
-                UI::SliderFloat("Normal Scaling",       &C.NormalScale,     0.0f, 1.0f, "%.3f");
-                UI::SliderFloat("Occlusion Strength",   &C.OcclusionStrength, 0.0f, 1.0f, "%.3f");
-                UI::ColorEdit3("Emissive Factor",       C.EmissiveFactor);
-                UI::SliderFloat("Emissive Strength",    &C.EmissiveStrength, 0.0f, 1.0f, "%.3f");
-                UI::SliderFloat("Opacity Factor",       &C.OpacityFactor, 0.0f, 1.0f, "%.3f");
-
-                UI::EndPropertyGrid();
+                ColorEdit4("Base Color",            C.BaseColorFactor);
+                SliderFloat("Metallic Factor",      &C.MetallicFactor, 0.0f, 1.0f, "%.3f");
+                SliderFloat("Roughness Factor",     &C.RoughnessFactor, 0.0f, 1.0f, "%.3f");
+                SliderFloat("Normal Scaling",       &C.NormalScale,     0.0f, 1.0f, "%.3f");
+                SliderFloat("Occlusion Strength",   &C.OcclusionStrength, 0.0f, 1.0f, "%.3f");
+                ColorEdit3("Emissive Factor",       C.EmissiveFactor);
+                SliderFloat("Emissive Strength",    &C.EmissiveStrength, 0.0f, 1.0f, "%.3f");
+                SliderFloat("Opacity Factor",       &C.OpacityFactor, 0.0f, 1.0f, "%.3f");
+                EndPropertyGrid();
             }
         }
         else
@@ -123,7 +122,7 @@ namespace Motion
                     ImGui::TableNextRow();
 
                 ImGui::TableNextColumn();
-                UI::TextureSlot(textures[i].Label, textures[i].Tex, textures[i].Type);
+                TextureSlot(textures[i].Label, textures[i].Tex, textures[i].Type);
             }
 
             ImGui::EndTable();
@@ -155,10 +154,10 @@ namespace Motion
 
         if (selectedEntity->HasComponent<TagComponent>())
         {
-            UI::BeginPropertyGrid("##tag-grid");
+            BeginPropertyGrid("##tag-grid");
             auto& tag = selectedEntity->GetComponent<TagComponent>();
-            UI::TextBox(ICON_MD_LABEL" Name Tag", tag.Tag, false, 256);
-            UI::EndPropertyGrid();
+            TextBox(ICON_MD_LABEL" Name Tag", tag.Tag, false, 256);
+            EndPropertyGrid();
         }
 
         
@@ -167,11 +166,18 @@ namespace Motion
             auto& component = selectedEntity->GetComponent<TransformComponent>();
             if (ImGui::TreeNodeEx((void*)component.ID, treeNodeFlags, ICON_MD_OPEN_WITH " Transform"))
             {
-                UI::BeginPropertyGrid("##transform-grid");
-                UI::DragFloat3(ICON_MD_DIRECTIONS " Translation",          component.Translation, 0.1f);
-                UI::DragFloat3(ICON_MD_ROTATE_90_DEGREES_CW " Rotation",   component.Rotation, 0.1f, -glm::pi<float>(), glm::pi<float>());
-                UI::DragFloat3(ICON_MD_ZOOM_OUT_MAP " Scale",              component.Scale, 0.1f);
-                UI::EndPropertyGrid();
+                BeginPropertyGrid("##transform-grid");
+                DragFloat3(ICON_MD_DIRECTIONS " Translation", component.Translation, 0.1f);
+
+                glm::vec3 rotationDgree = glm::degrees(glm::eulerAngles(component.Rotation));
+                if(DragFloat3(ICON_MD_ROTATE_90_DEGREES_CW " Rotation", rotationDgree, 0.1f))
+                {
+                    glm::vec3 RdRad       = glm::radians(rotationDgree);
+                    component.Rotation    = glm::quat(RdRad);
+                }
+                
+                DragFloat3(ICON_MD_ZOOM_OUT_MAP " Scale", component.Scale, 0.1f);
+                EndPropertyGrid();
                 ImGui::TreePop();
             }
         }
@@ -241,9 +247,7 @@ namespace Motion
                                             for (uint32_t i = 0; i < count; ++i)
                                             {
                                                 const bool isSelected = (m_SelectedMesh == (int)i);
-                                                if (ImGui::Selectable(
-                                                        fmt::format("[{}] - {}", model[i]->Index, model[i]->Name).c_str(),
-                                                        isSelected))
+                                                if (ImGui::Selectable(fmt::format("[{}] - {}", model[i]->Index, model[i]->Name).c_str(), isSelected))
                                                 {
                                                     m_SelectedMesh = (int)i;
                                                 }
@@ -254,10 +258,10 @@ namespace Motion
                                             ImGui::TextDisabled(ICON_MD_INFO " Model has no meshes.");
                                         }
                                     }
+                                    
                                     ImGui::EndChild();
-
-                                    // Inspector
                                     ImGui::TableSetColumnIndex(1);
+
                                     if (ImGui::BeginChild("##inspector-area", ImVec2(0.0f, 0.0f), true))
                                     {
                                         if (mat)
@@ -272,7 +276,7 @@ namespace Motion
                             }
                         }
                     }
-                    ImGui::End(); // Always pair with Begin
+                    ImGui::End();
                 }
 
                 ImGui::TreePop();

@@ -1,7 +1,6 @@
 #include "CorePCH.hpp"
-#include "Controls.hpp"
 
-namespace Motion::UI
+namespace Motion
 {
     static void BeginRow(const char* label)
     {
@@ -18,25 +17,11 @@ namespace Motion::UI
         return ImGui::DragFloat("##v", v, speed, minV, maxV, fmt, ImGuiSliderFlags_AlwaysClamp);
     }
 
-    bool DragFloat2(const char* label, float v[2], float speed, float minV, float maxV, const char* fmt)
-    {
-        ScopeID idScope(label);
-        BeginRow(label);
-        return ImGui::DragFloat2("##v", v, speed, minV, maxV, fmt, ImGuiSliderFlags_AlwaysClamp);
-    }
-
     bool DragFloat2(const char* label, glm::vec2& v, float speed, float minV, float maxV, const char* fmt)
     {
         ScopeID idScope(label);
         BeginRow(label);
         return ImGui::DragFloat2("##v", glm::value_ptr(v), speed, minV, maxV, fmt, ImGuiSliderFlags_AlwaysClamp);
-    }
-
-    bool DragFloat3(const char* label, float v[3], float speed, float minV, float maxV, const char* fmt)
-    {
-        ScopeID idScope(label);
-        BeginRow(label);
-        return ImGui::DragFloat3("##v", v, speed, minV, maxV, fmt, ImGuiSliderFlags_AlwaysClamp);
     }
 
     bool DragFloat3(const char* label, glm::vec3& v, float speed, float minV, float maxV, const char* fmt)
@@ -46,94 +31,11 @@ namespace Motion::UI
         return ImGui::DragFloat3("##v", glm::value_ptr(v), speed, minV, maxV, fmt, ImGuiSliderFlags_AlwaysClamp);
     }
 
-    bool DragFloat3(const char* label, glm::quat& v, float speed, float minV, float maxV, const char* fmt)
-    {
-        glm::vec3 euler = glm::eulerAngles(v);
-        bool changed = DragFloat3(label, euler, speed, minV, maxV, fmt);
-        if (changed) v = glm::quat(euler);
-        return changed;
-    }
-
-    bool DragFloat3WithReset(const char* label, float v[3], float resetValue, float speed, float minV, float maxV)
-    {
-        ScopeID idScope(label);
-        BeginRow(label);
-        bool changed = false;
-        const float btnW = ImGui::GetFrameHeight(); // square
-        ImGui::PushID(label);
-        const char* buttonLabels[3] = { "X", "Y", "Z" };
-        for (int i = 0; i < 3; ++i) {
-            ImGui::PushID(i);
-            if (ImGui::Button(buttonLabels[i], ImVec2(btnW, 0))) { v[i] = resetValue; changed = true; }
-            ImGui::SameLine(0.0f, 6.0f);
-            ImGui::SetNextItemWidth((ImGui::GetContentRegionAvail().x - 12.0f) / 3.0f - btnW);
-            changed |= ImGui::DragFloat("##ax", &v[i], speed, minV, maxV, "%.3f", ImGuiSliderFlags_AlwaysClamp);
-            if (i != 2) ImGui::SameLine();
-            ImGui::PopID();
-        }
-        ImGui::PopID();
-        return changed;
-    }
-
-    bool DragFloat3WithReset(const char* label, glm::vec3& v, float resetValue, float speed, float minV, float maxV)
-    {
-        ScopeID idScope(label);
-        BeginRow(label);
-        bool changed = false;
-        const float btnW = ImGui::GetFrameHeight(); // square
-        ImGui::PushID(label);
-        const char* buttonLabels[3] = { "X", "Y", "Z" };
-        for (int i = 0; i < 3; ++i) {
-            ImGui::PushID(i);
-            if (ImGui::Button(buttonLabels[i], ImVec2(btnW, 0))) { v[i] = resetValue; changed = true; }
-            ImGui::SameLine(0.0f, 6.0f);
-            ImGui::SetNextItemWidth((ImGui::GetContentRegionAvail().x - 12.0f) / 3.0f - btnW);
-            changed |= ImGui::DragFloat("##ax", &v[i], speed, minV, maxV, "%.3f", ImGuiSliderFlags_AlwaysClamp);
-            if (i != 2) ImGui::SameLine();
-            ImGui::PopID();
-        }
-
-        ImGui::PopID();
-        return changed;
-    }
-
-    bool DragFloat3WithReset(const char* label, glm::quat& v, float resetValue, float speed, float minV, float maxV)
-    {
-        ScopeID idScope(label);
-        BeginRow(label);
-        glm::vec3 euler = glm::eulerAngles(v);
-        bool changed = false;
-        const float btnW = ImGui::GetFrameHeight(); // square
-        ImGui::PushID(label);
-        const char* buttonLabels[3] = { "X", "Y", "Z" };
-        for (int i = 0; i < 3; ++i) {
-            ImGui::PushID(i);
-            if (ImGui::Button(buttonLabels[i], ImVec2(btnW, 0))) { v[i] = resetValue; changed = true; }
-            ImGui::SameLine(0.0f, 6.0f);
-            ImGui::SetNextItemWidth((ImGui::GetContentRegionAvail().x - 12.0f) / 3.0f - btnW);
-            changed |= ImGui::DragFloat("##ax", &euler[i], speed, minV, maxV, "%.3f", ImGuiSliderFlags_AlwaysClamp);
-            if (i != 2) ImGui::SameLine();
-            ImGui::PopID();
-        }
-        ImGui::PopID();
-        if (changed) v = glm::quat(euler);
-        return changed;
-    }
-
     bool SliderFloat(const char* label, float* v, float minV, float maxV, const char* fmt)
     {
         ScopeID idScope(label);
         BeginRow(label);
         return ImGui::SliderFloat("##v", v, minV, maxV, fmt);
-    }
-
-    bool ColorEdit4(const char* label, float color[4], bool withAlpha)
-    {
-        ScopeID idScope(label);
-        BeginRow(label);
-        ImGuiColorEditFlags flags = ImGuiColorEditFlags_Float | ImGuiColorEditFlags_DisplayRGB;
-        if (!withAlpha) flags |= ImGuiColorEditFlags_NoAlpha;
-        return ImGui::ColorEdit4("##c", color, flags);
     }
 
     bool ColorEdit4(const char* label, glm::vec4& color, bool withAlpha)
@@ -145,14 +47,6 @@ namespace Motion::UI
         return ImGui::ColorEdit4("##c", glm::value_ptr(color), flags);
     }
 
-    bool ColorEdit3(const char* label, float color[3])
-    {
-        ScopeID idScope(label);
-        BeginRow(label);
-        ImGuiColorEditFlags flags = ImGuiColorEditFlags_Float | ImGuiColorEditFlags_DisplayRGB;
-        return ImGui::ColorEdit3("##c", color, flags);
-    }
-
     bool ColorEdit3(const char* label, glm::vec3& color)
     {
         ScopeID idScope(label);
@@ -161,7 +55,6 @@ namespace Motion::UI
         return ImGui::ColorEdit3("##c", glm::value_ptr(color), flags);
     }
 
-    // String editing with automatic capacity growth (no shared statics)
     static int ResizeCallback(ImGuiInputTextCallbackData* data)
     {
         if (data->EventFlag == ImGuiInputTextFlags_CallbackResize)
@@ -181,7 +74,6 @@ namespace Motion::UI
         ImGuiInputTextFlags flags = ImGuiInputTextFlags_CallbackResize;
         if (readOnly) flags |= ImGuiInputTextFlags_ReadOnly;
 
-        // Ensure capacity (soft cap)
         if (value.capacity() < maxLen) value.reserve(maxLen);
 
         changed = ImGui::InputText("##txt", value.data(), value.capacity() + 1, flags, ResizeCallback, &value);
@@ -326,8 +218,7 @@ namespace Motion::UI
     {
         TextureSlotAction result = TextureSlotAction::None;
         ImGui::PushID(label);
-
-        // Card styling
+        
         float padding = 8.0f;
         float cornerRadius = 8.0f;
         ImVec2 size((float)previewSize, (float)previewSize);
@@ -336,7 +227,6 @@ namespace Motion::UI
         ImVec2 p1 = ImVec2(p0.x + size.x + padding * 2, p0.y + size.y + padding * 2 + ImGui::GetTextLineHeight() * 1.5f);
         ImRect cardRect(p0, p1);
 
-        // Draw card background
         auto* dl = ImGui::GetWindowDrawList();
         ImU32 colBg = ImGui::GetColorU32(ImGuiCol_FrameBg);
         ImU32 colHover = ImGui::GetColorU32(ImGuiCol_HeaderHovered);
@@ -344,7 +234,6 @@ namespace Motion::UI
 
         dl->AddRectFilled(cardRect.Min, cardRect.Max, hovered ? colHover : colBg, cornerRadius);
 
-        // Draw texture preview
         ImVec2 texPos = ImVec2(p0.x + padding, p0.y + padding);
         ImRect texRect(texPos, ImVec2(texPos.x + size.x, texPos.y + size.y));
 
@@ -352,13 +241,11 @@ namespace Motion::UI
             dl->AddImage(AsImTextureID(tex), texRect.Min, texRect.Max, ImVec2(0, 1), ImVec2(1, 0));
         else
         {
-            // empty slot placeholder
             dl->AddRect(texRect.Min, texRect.Max, ImGui::GetColorU32(ImGuiCol_Border), cornerRadius);
             ImGui::SetCursorScreenPos(ImVec2(texRect.Min.x + 4, texRect.Min.y + size.y * 0.5f - ImGui::GetTextLineHeight() * 0.5f));
             ImGui::TextDisabled("Click to load");
         }
 
-        // Invisible button to handle interactions
         ImGui::SetCursorScreenPos(texRect.Min);
         ImGui::InvisibleButton("tex_card_btn", ImVec2(size.x, size.y));
 
@@ -393,7 +280,6 @@ namespace Motion::UI
             }
         }
 
-        // Context menu
         if (ImGui::BeginPopupContextItem("tex_card_ctx"))
         {
             if (ImGui::MenuItem("Load Texture"))
@@ -438,7 +324,6 @@ namespace Motion::UI
             ImGui::EndPopup();
         }
 
-        // Drag & drop
         if (ImGui::BeginDragDropTarget())
         {
             if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("ASSET_PATH"))
@@ -455,7 +340,6 @@ namespace Motion::UI
             ImGui::EndDragDropTarget();
         }
 
-        // Draw texture name below preview
         ImGui::SetCursorScreenPos(ImVec2(p0.x + padding, texRect.Max.y + 4));
         ImGui::PushTextWrapPos(texRect.Max.x);
         ImGui::TextUnformatted(GetTextureTypeString(type).c_str());

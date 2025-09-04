@@ -1,8 +1,10 @@
 #pragma once
 
 #include <glm/glm.hpp>
+#include <glm/common.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <algorithm>
+#include <cmath>
 
 #include "Components.hpp"
 
@@ -21,59 +23,56 @@ namespace Motion
         NonUniformToBox      // scale each axis to match targetSize (no proportions)
     };
 
-    inline glm::vec3 safeDiv(const glm::vec3& a, const glm::vec3& b, float eps = 1e-6f) 
+    struct FitResult
     {
-        return glm::vec3(
-            b.x > eps ? a.x / b.x : 1.0f,
-            b.y > eps ? a.y / b.y : 1.0f,
-            b.z > eps ? a.z / b.z : 1.0f
-        );
-    }
+        glm::vec3 Translation{0.0f}; // world translation
+        glm::vec3 Rotation{0.0f};    // euler XYZ (radians). Kept zero here (no re-orient)
+        glm::vec3 Scale{1.0f};       // per-axis scale
+    };
 
-    inline void FitTransformToWorldBox(TransformComponent& tr,  const Bounds& b, FitMode mode, const glm::vec3& target, const glm::vec3& worldPos, bool pivotAtCenter = true, bool sitOnGround = false, float groundY = 0.0f) 
+    inline FitResult FitToWorldBox(const Bounds& b, FitMode mode, const glm::vec3& targetSize = glm::vec3(0.1f), const glm::vec3& targetCenter = glm::vec3(0.0f))
     {
-        const glm::vec3 size   = b.Max - b.Min;
-        const glm::vec3 center = 0.5f * (b.Min + b.Max);
-        const glm::vec3 pivot  = pivotAtCenter ? center : b.Min;
+        constexpr float kEps = 1e-6f;
 
-        glm::vec3 newScale(1.0f);
-        switch (mode) 
+        const glm::vec3 srcSize   = b.Max - b.Min;
+        const glm::vec3 srcCenter = (b.Max + b.Min) * 0.5f;
+
+        // Guard against degenerate bounds
+        glm::vec3 safeSrcSize = glm::max(srcSize, glm::vec3(kEps));
+
+        glm::vec3 scale(1.0f);
+
+        switch (mode)
         {
-            case FitMode::UniformLongestSide: 
+            case FitMode::UniformLongestSide:
             {
-                float maxDim = std::max({size.x, size.y, size.z});
-                float s = (maxDim > 1e-6f) ? (target.x / maxDim) : 1.0f;
-                newScale = glm::vec3(s);
-
+                float srcMax = glm::compMax(safeSrcSize);
+                float dstMax = glm::compMax(glm::max(targetSize, glm::vec3(kEps)));
+                float s = dstMax / srcMax;
+                scale = glm::vec3(s);
             } break;
-            case FitMode::UniformHeight: 
-            {
-                float h = size.y;
-                float s = (h > 1e-6f) ? (target.x / h) : 1.0f;
-                newScale = glm::vec3(s);
 
-            } break;
-            case FitMode::NonUniformToBox: 
+            case FitMode::UniformHeight:
             {
-                newScale = safeDiv(target, size);
-                
+                float s = glm::max(targetSize.y, kEps) / safeSrcSize.y;
+                scale = glm::vec3(s);
+            } break;
+
+            case FitMode::NonUniformToBox:
+            {
+                scale.x = glm::max(targetSize.x, kEps) / safeSrcSize.x;
+                scale.y = glm::max(targetSize.y, kEps) / safeSrcSize.y;
+                scale.z = glm::max(targetSize.z, kEps) / safeSrcSize.z;
             } break;
         }
 
-        const glm::mat3 R = glm::mat3_cast(tr.Rotation);
-        const glm::mat3 S = glm::mat3(glm::vec3(newScale.x, 0, 0), glm::vec3(0, newScale.y, 0), glm::vec3(0, 0, newScale.z));
-        const glm::mat3 RS = R * S;
 
-        glm::vec3 translation = worldPos - RS * pivot;
-        if (sitOnGround) 
-        {
-            const glm::vec3 minRel = b.Min - pivot;
-            const float minYAfter = (RS * minRel).y + translation.y;
-            const float dy = groundY - minYAfter;
-            translation.y += dy;
-        }
-
-        tr.Scale = newScale;
-        tr.Translation = translation;
+        FitResult out;
+        out.Scale       = scale;
+        out.Rotation    = glm::vec3(0.0f);
+        out.Translation = targetCenter - (srcCenter * scale);
+        return out;
     }
+
+
 }

@@ -61,6 +61,8 @@ namespace Motion
                             
                             entity->AddComponent<StaticMeshComponent>(mesh->GetName(), mesh);
                             entity->AddComponent<TransformComponent>();
+                            entity->AddComponent<RigidBodyComponent>();
+                            entity->AddComponent<ColliderComponent>();
                             scene->EmplaceEntity(entity);
                         },
                         [&](std::int32_t progress)

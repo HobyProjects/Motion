@@ -211,7 +211,7 @@ namespace Motion
         style.AntiAliasedLinesUseTex = true;
 
         style.WindowPadding      = ImVec2(10, 10);
-        style.FramePadding       = ImVec2(8, 6);
+        style.FramePadding       = ImVec2(8, 9);
         style.ItemSpacing        = ImVec2(8, 6);
         style.ItemInnerSpacing   = ImVec2(6, 5);
 

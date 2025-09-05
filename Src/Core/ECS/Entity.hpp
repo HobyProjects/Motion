@@ -28,6 +28,7 @@ namespace Motion
     public:
         [[nodiscard]] std::shared_ptr<Entity> CreateEntity(const std::string& name) noexcept;
         [[nodiscard]] std::shared_ptr<Entity> Nullify() const noexcept;
+        [[nodiscard]] const entt::registry& GetRegistry() const { return Registry; }
 
         void DestroyEntity(const std::shared_ptr<Entity>& entity) noexcept;
 

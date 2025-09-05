@@ -102,6 +102,7 @@ namespace Motion
     void SceneEditorLayer::OnUIRender(WindowHandle handle)
     {
         BuildDockspace();
+        ImGui::ShowDemoWindow();
 
         ScenePanelContext panelContext;
         panelContext.ActiveScene                    = m_ActiveScene;

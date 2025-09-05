@@ -60,20 +60,112 @@ namespace Motion
         }
     };
 
-    struct PhysicsBodyComponent
+    struct RigidBodyComponent
     {
-        enum class BodyType { Static, Dynamic };
+        UUID ID{ 0 };
 
-        float Mass      = 1.0f;
-        BodyType Type   = BodyType::Dynamic;
+        float       Mass{1.0f};                // kg (0 => static/immovable)
+        float       InvMass{1.0f};             // computed from mass
+        glm::vec3   Velocity{0.0f};             // m/s
+        glm::vec3   ForceAccum{0.0f};           // N (cleared each step)
+        float       LinearDamping{0.02f};      // simple drag; unitless
 
-        glm::vec3 Velocity      = glm::vec3(0.0f);
-        glm::vec3 ForceAccum    = glm::vec3(0.0f);
-        bool Active = false;
+        bool    Sleeping{false};
+        float   SleepTimer{0.0f};
 
-        PhysicsBodyComponent(float mass = 1.0f) : Mass(mass)
+        glm::vec3 AngularVelocity{0.0f};
+        glm::vec3 TorqueAccum{0.0f};
+        float AngularDamping{0.05f};
+
+        glm::vec3 InertiaDiag{1.0f};
+        glm::vec3 InvInertiaDiag{1.0f};
+
+        void SetMass(float m) 
         {
-            Type = (Mass <= 0.0f) ? BodyType::Static : BodyType::Dynamic;
+            Mass = m;
+            InvMass = (m > 0.0f) ? 1.0f / m : 0.0f;
         }
+
+        void SetBoxInertia(const glm::vec3& halfExtents) 
+        {
+            // box dimensions (full extents)
+            const glm::vec3 s   = 2.0f * halfExtents;
+            const float x2      = s.x * s.x, y2 = s.y * s.y, z2 = s.z * s.z;
+
+            // I_box = (1/12) m * diag(y^2+z^2, x^2+z^2, x^2+y^2)
+            glm::vec3 I     = (Mass * (1.0f/12.0f)) * glm::vec3(y2+z2, x2+z2, x2+y2);
+            InertiaDiag     = I;
+            InvInertiaDiag  = glm::vec3(
+                I.x > 0 ? 1.0f/I.x : 0.0f,
+                I.y > 0 ? 1.0f/I.y : 0.0f,
+                I.z > 0 ? 1.0f/I.z : 0.0f
+            );
+        }
+
+        void SetSphereInertia(float radius) 
+        {
+            // solid sphere: I = (2/5) m r^2
+            const float I   = (2.0f/5.0f) * Mass * radius * radius;
+            InertiaDiag     = glm::vec3(I);
+            InvInertiaDiag  = glm::vec3(I > 0 ? 1.0f/I : 0.0f);
+        }
+
+        RigidBodyComponent()
+            : ID(UniqueIdentity::GetUniqueID()) {}
+
+        ~RigidBodyComponent() = default;
+    };
+
+    enum class CombineMode : std::uint8_t
+    {
+        Average, Minimum, Maximum, Multiply
+    };
+
+    struct PhysicalMaterial
+    {
+        float Restitution{0.20f};
+        float FrictionStatic{0.60f};
+        float FrictionDynamic{0.45f};
+        // (Optional later: rollingFriction, anisotropic, etc.)
+
+        CombineMode FrictionCombine{CombineMode::Average};
+        CombineMode RestitutionCombine{CombineMode::Maximum};
+    };
+
+    enum class ColliderType { None, Sphere, Box, Capsule };
+
+    struct SphereCollider 
+    { 
+        float Radius{0.5f}; 
+    };
+
+    struct BoxCollider 
+    { 
+        glm::vec3 HalfExtents{0.5f}; 
+    };
+
+    struct CapsuleCollider 
+    {
+        float Radius{0.4f};     
+        float HalfHeight{0.9f}; 
+    };
+
+
+    struct AABB
+    {
+        glm::vec3 MIN{0.0f};
+        glm::vec3 MAX{0.0f};
+    };
+
+    struct ColliderComponent
+    {
+        ColliderType    Type{ColliderType::None};
+        
+        SphereCollider  Sphere{};
+        BoxCollider     Box{};
+        CapsuleCollider Capsule{};
+
+        AABB WorldAABB{};
+        PhysicalMaterial MaterialBase{};
     };
 }

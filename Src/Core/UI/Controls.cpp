@@ -349,5 +349,4 @@ namespace Motion
         ImGui::PopID();
         return result;
     }
-
 }

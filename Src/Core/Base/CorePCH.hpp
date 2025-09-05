@@ -60,6 +60,7 @@
 #include <glm/gtx/vector_angle.hpp>
 #include <glm/gtx/string_cast.hpp>
 #include <glm/gtx/intersect.hpp>
+#include <glm/gtx/norm.hpp>
 
 #include <imgui/imgui.h>
 #include <imgui/imgui_impl_opengl3.h>
@@ -95,6 +96,12 @@
 //Maths
 #include "Intersect.hpp"
 #include "MeshFit.hpp"
+
+//Physics
+#include "Contacts.hpp"
+#include "PhysicsUtil.hpp"
+#include "Queries.hpp"
+#include "Physics.hpp"
 
 //Events
 #include "Event.hpp"

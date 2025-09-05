@@ -12,6 +12,24 @@ namespace Motion
     void Scene::OnUpdate(WindowHandle handle, Timer deltaTime) noexcept
     {
         m_Camera.OnUpdate(handle, deltaTime);
+
+        const float dtSeconds = deltaTime.GetDeltaTimeSeconds();
+
+        static double accumulator                   = 0.0;
+        static constexpr double dtPhysics           = 1.0 / 120.0;
+        static constexpr std::int32_t maxSteps      = 8;
+
+        accumulator += static_cast<double>(dtSeconds);
+
+        std::int32_t steps{0};
+        PhyX& phy = PhyX::GetInstance();
+
+        while(accumulator >= dtPhysics && steps < maxSteps)
+        {
+            phy.Setp(m_Entities, static_cast<float>(dtPhysics));
+            accumulator -= dtPhysics;
+            ++steps;
+        }
     }
 
     void Scene::OnEvent(WindowHandle handle, IEvent& e) noexcept
@@ -106,5 +124,19 @@ namespace Motion
         }
 
         return pickedEntity;
+    }
+
+    std::shared_ptr<Entity> Scene::PickEntityRay(const glm::vec3& origin, const glm::vec3& dir, float maxDist)
+    {
+        Ray ray; 
+        ray.Origin      = origin; 
+        ray.Direction   = glm::normalize(dir); 
+        ray.MaxDistance = maxDist;
+
+        // If you might be calling this outside your physics Step, ensure AABBs are fresh
+        // (optional) recompute worldAABB for dirty transforms here similar to Broadphase()
+
+        auto hit = RayCast(m_Entities, ray);
+        return hit.Hit ? hit.EnTT : nullptr;
     }
 }

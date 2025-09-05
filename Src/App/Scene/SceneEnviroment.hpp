@@ -13,6 +13,9 @@ namespace Motion
         glm::vec3 Color{ 1.0f,  1.0f,  1.0f };
         float Intensity{ 1.0f };
 
+        bool CastShadow{false};
+        bool ShowLightDirectionGuizmo{false};
+
         void SetFromPosition(const glm::vec3& position, const glm::vec3& target = glm::vec3(0.0f))
         {
             Direction = glm::normalize(target - position);

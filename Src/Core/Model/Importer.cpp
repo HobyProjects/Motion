@@ -361,12 +361,10 @@ namespace Motion
                 outResults.BoundsMax = newMax;
             }
 
-            MOTION_CORE_INFO("Model imported successfully.");
             return true;
         }
         catch (const std::exception& e)
         {
-            MOTION_CORE_ERROR("Failed to import model: {}", e.what());
             return false;
         }
     }
@@ -398,7 +396,6 @@ namespace Motion
 
         spec.DoWork = [args](BackgroundWorker& w, const std::any&, std::atomic_bool& cancel) -> std::any 
         {
-            MOTION_CORE_INFO("Importing Job started");
             if (cancel.load()) return std::any{};
 
             auto imported = std::make_shared<ImportedResults>(); 
@@ -411,7 +408,6 @@ namespace Motion
                 throw std::runtime_error("Import failed");
             }
 
-            MOTION_CORE_INFO("Importer done importing");
             w.ReportProgress(60);
             return imported;
         };
@@ -420,7 +416,6 @@ namespace Motion
         {
             spec.OnProgress = [onProgress](BackgroundWorker&, int percent, const std::any&) 
             {
-                MOTION_CORE_INFO("Importer progrss repoting...");
                 onProgress(percent);
             };
         }
@@ -429,7 +424,6 @@ namespace Motion
 
         spec.OnCompleted = [onCompleted, path, exportPath](BackgroundWorker&, const std::any& result, bool cancelled, std::exception_ptr error)
         {
-            MOTION_CORE_INFO("Importing after done importing...");
             if (error) {
                 try { std::rethrow_exception(error); } 
                 catch (const std::exception& ex) 
@@ -442,7 +436,6 @@ namespace Motion
             }
             if (cancelled) 
             {
-                MOTION_CORE_INFO("Import cancelled");
                 if (onCompleted) onCompleted(nullptr);
                 return;
             }
@@ -450,7 +443,6 @@ namespace Motion
             auto imported = std::any_cast<std::shared_ptr<ImportedResults>>(result);;
             if (!imported) 
             {
-                MOTION_CORE_ERROR("Importer: bad result payload.");
                 if (onCompleted) onCompleted(nullptr);
                 return;
             }
@@ -489,7 +481,6 @@ namespace Motion
                 staticMesh->m_Meshes.emplace_back(std::move(meshPtr));
             }
 
-            MOTION_CORE_INFO("All done, importing job task complete");
             if (onCompleted) onCompleted(std::move(staticMesh));
         };
 

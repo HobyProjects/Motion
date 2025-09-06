@@ -13,7 +13,7 @@ namespace Motion
     {
         UUID ID{ 0 };
         std::string Tag{ "unamed" };
-        bool IsActive{ false };
+        bool IsActive{ true };
 
         TagComponent() = default;
         TagComponent(const std::string& tag) : Tag(tag) { ID = UniqueIdentity::GetUniqueID(); }
@@ -159,6 +159,7 @@ namespace Motion
 
     struct ColliderComponent
     {
+        UUID            ID;
         ColliderType    Type{ColliderType::None};
         
         SphereCollider  Sphere{};
@@ -167,5 +168,10 @@ namespace Motion
 
         AABB WorldAABB{};
         PhysicalMaterial MaterialBase{};
+
+        ColliderComponent()
+            : ID(UniqueIdentity::GetUniqueID()) {}
+
+        ~ColliderComponent() = default;
     };
 }

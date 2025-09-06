@@ -13,6 +13,7 @@ namespace Motion
     {
         m_Camera.OnUpdate(handle, deltaTime);
 
+#if 0
         const float dtSeconds = deltaTime.GetDeltaTimeSeconds();
 
         static double accumulator                   = 0.0;
@@ -30,6 +31,9 @@ namespace Motion
             accumulator -= dtPhysics;
             ++steps;
         }
+
+#endif
+
     }
 
     void Scene::OnEvent(WindowHandle handle, IEvent& e) noexcept

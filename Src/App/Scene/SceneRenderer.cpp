@@ -19,9 +19,11 @@ namespace Motion
 
         for (const auto& entity : scene->m_Entities)
         {
-            if (!entity || !entity->HasComponent<StaticMeshComponent>()) continue;
+            if (!entity || !entity->HasComponent<StaticMeshComponent>() || !entity->HasComponent<TagComponent>()) continue;
 
-            const auto& sm = entity->GetComponent<StaticMeshComponent>();
+            const bool active   = entity->GetComponent<TagComponent>().IsActive;
+            const auto& sm  = entity->GetComponent<StaticMeshComponent>();
+            if (!active) continue;
             if (!sm.Model || sm.Model->GetMeshesCount() <= 0) continue;
 
             auto    modelMatrix     = entity->HasComponent<TransformComponent>() ? entity->GetComponent<TransformComponent>().GetTransform() : glm::mat4(1.0f);

@@ -94,7 +94,8 @@ namespace Motion
             base = io.Fonts->AddFontFromFileTTF(GetFullPath(fontPath).c_str(), sizePx, &textCfg);
         if (!base) base = io.Fonts->AddFontDefault();
 
-        static const ImWchar icon_ranges[] = { (ImWchar)ICON_MIN_MD, (ImWchar)ICON_MAX_MD, 0 };
+        static const ImWchar icon_md_ranges[] = { (ImWchar)ICON_MIN_MD, (ImWchar)ICON_MAX_MD, 0 };
+        static const ImWchar icon_fa_ranges[] = { (ImWchar)ICON_MIN_FA, (ImWchar)ICON_MAX_FA, 0 };
 
         const float iconScale   = 1.0f;       
         const float iconSizePx  = sizePx * iconScale;
@@ -108,7 +109,8 @@ namespace Motion
         iconCfg.GlyphMinAdvanceX = iconSizePx;     
         iconCfg.GlyphOffset    = ImVec2(0.1f, iconYOffset);
 
-        io.Fonts->AddFontFromFileTTF("Assets/Fonts/MaterialIconFonts/MaterialIcons-Regular.ttf", iconSizePx, &iconCfg, icon_ranges);
+        io.Fonts->AddFontFromFileTTF("Assets/Fonts/IconFonts/MaterialIcons-Regular.ttf", iconSizePx, &iconCfg, icon_md_ranges);
+        io.Fonts->AddFontFromFileTTF("Assets/Fonts/IconFonts/fa-regular-400.ttf", iconSizePx, &iconCfg, icon_fa_ranges);
         (void)io.Fonts->Build();
     }
 

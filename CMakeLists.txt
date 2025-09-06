@@ -121,7 +121,8 @@ set(
 
     ${MOTION_CORE_DIR}/UI/UI.hpp
     ${MOTION_CORE_DIR}/UI/Controls.hpp
-    ${MOTION_CORE_DIR}/UI/MaterialFonts/IconsMaterialDesign.h
+    ${MOTION_CORE_DIR}/UI/IconFonts/IconsMaterialDesign.h
+    ${MOTION_CORE_DIR}/UI/IconFonts/IconsFontAwesome6.h
     ${MOTION_CORE_DIR}/Platform/DialogBoxes.hpp
 
     ${MOTION_CORE_DIR}/ECS/Entity.hpp

@@ -36,21 +36,16 @@ namespace Motion
         worldFar  /= worldFar.w;
 
         EditorRay ray{};
-        if (perspective) 
-        {
+        if (perspective) {
             ray.origin = camPos;
             ray.dir    = glm::normalize(glm::vec3(worldFar - worldNear));
-        } 
-        else 
-        {
+        } else {
             // Orthographic: origin is the unprojected near point; direction is -camera forward
             ray.origin = glm::vec3(worldNear);
-
             // Forward = -Z in view space -> transform by inverse view (or take from your camera)
             glm::vec3 camForward = glm::normalize(glm::vec3(glm::transpose(glm::mat3(view))[2]) * -1.0f);
             ray.dir = camForward; // already normalized if your camera sets it
         }
-
         return ray;
     }
 
@@ -85,7 +80,7 @@ namespace Motion
         return cam.Position + camFwd * distance;
     }
 
-    static bool DrawDirectionalLightGizmo(DirectLight& light, const Camera3D& camera, const ImVec2 viewportMin, const ImVec2 viewportMax, float iconScale = 1.0f)
+    static bool DrawDirectionalLight(DirectLight& light, const Camera3D& camera, const ImVec2 viewportMin, const ImVec2 viewportMax, float iconScale = 1.0f)
     {
         ImGuizmo::SetDrawlist(ImGui::GetForegroundDrawList());
         ImGuizmo::SetOrthographic(false);
@@ -187,35 +182,25 @@ namespace Motion
         ImVec2 mouse  = ImGui::GetMousePos();
 
         if (ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem) 
-            && ImGui::IsWindowFocused()
-            && ImGui::IsMouseClicked(ImGuiMouseButton_Left)
-            && !ImGuizmo::IsUsing())
+            && ImGui::IsWindowFocused() && ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !ImGuizmo::IsUsing())
         {
             glm::vec2 local = { mouse.x - vpMin.x, mouse.y - vpMin.y };
-            local.y = vp.y - local.y; // already doing the flip inside the viewport
+            local.y = vp.y - local.y;
 
-            glm::vec2 fbSize =
+            glm::vec2 fbSize = 
             {
                 (float)context.ActiveSceneSpecification.Viewport.FrameSpec.Width,
                 (float)context.ActiveSceneSpecification.Viewport.FrameSpec.Height
             };
-            glm::vec2 mouseInFB =
+            glm::vec2 mouseInFB = 
             {
                 local.x * (fbSize.x / vp.x),
                 local.y * (fbSize.y / vp.y)
             };
 
-            // Build camera ray
-            const auto& cam = context.ActiveScene->GetCamera(); // or however you access it
-            const glm::mat4 P  = cam.Camera.Projection;
-            const glm::mat4 V  = cam.Camera.View;
-            const glm::vec3 C  = cam.Camera.Position;
-            const EditorRay pickRay = BuildPickingRayFromFramebufferPixel(mouseInFB, fbSize, P, V, C);
-
-            if (auto picked = context.ActiveScene->PickEntityRay(pickRay.origin, pickRay.dir))
+            if (auto picked = context.ActiveScene->PickEntity(mouseInFB, fbSize))
                 context.ActiveScene->SelectedEntity(picked);
         }
-
 
         ImGuizmo::Enable(true);
         ImGuizmo::SetOrthographic(false);
@@ -257,8 +242,8 @@ namespace Motion
 
         glm::mat4 view       = context.ActiveScene->GetCameraView();
         glm::mat4 projection = context.ActiveScene->GetCameraProjection();
-        if (auto sel = context.ActiveScene->GetSelectedEntity(); 
-            sel && sel != EntityFactory::EMPTYENTITY && sel->HasComponent<TransformComponent>())
+        if (auto sel = context.ActiveScene->GetSelectedEntity(); sel && sel != EntityFactory::EMPTYENTITY 
+            && sel->HasComponent<TransformComponent>() && sel->GetComponent<TagComponent>().IsActive)
         {
             ImGuizmo::PushID(1);
             auto& TRS = sel->GetComponent<TransformComponent>();
@@ -295,7 +280,7 @@ namespace Motion
         if(context.ActiveSceneSpecification.Environment.Sun.ShowLightDirectionGuizmo)
         {
             ImGuizmo::PushID(2);
-            DrawDirectionalLightGizmo(context.ActiveScene->GetEnvironment().Sun, context.ActiveCamera.Camera, vpMin, vpMax);
+            DrawDirectionalLight(context.ActiveScene->GetEnvironment().Sun, context.ActiveCamera.Camera, vpMin, vpMax);
             ImGuizmo::PopID();
         }
 

@@ -19,10 +19,10 @@ namespace Motion
 
         for (const auto& entity : scene->m_Entities)
         {
-            if (!entity || !entity->HasComponent<StaticMeshComponent>() || !entity->HasComponent<TagComponent>()) continue;
+            if (!entity || !entity->HasComponent<MeshComponent>() || !entity->HasComponent<TagComponent>()) continue;
 
             const bool active   = entity->GetComponent<TagComponent>().IsActive;
-            const auto& sm  = entity->GetComponent<StaticMeshComponent>();
+            const auto& sm  = entity->GetComponent<MeshComponent>();
             if (!active) continue;
             if (!sm.Model || sm.Model->GetMeshesCount() <= 0) continue;
 

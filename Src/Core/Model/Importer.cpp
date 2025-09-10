@@ -80,7 +80,7 @@ namespace Motion
             v.Normal = glm::normalize(v.Normal);
     }
 
-    static std::pair<glm::vec3, glm::vec3> ComputeGlobalBounds(const aiScene* scene)
+    static std::pair<glm::vec3, glm::vec3> ModelBounds(const aiScene* scene)
     {
         glm::vec3 min = glm::vec3(std::numeric_limits<float>::max());
         glm::vec3 max = glm::vec3(std::numeric_limits<float>::lowest());
@@ -138,10 +138,10 @@ namespace Motion
 
         static void GetTexCoord(const SMikkTSpaceContext* context, float uv[2], std::int32_t face, std::int32_t vert)
         {
-            auto* adapter = static_cast<MeshMikkTSpaceAdapter*>(context->m_pUserData);
-            std::int32_t idx = adapter->Indices[face * 3 + vert];
-            const glm::vec2& t = adapter->Vertices[idx].TexCoord;
-            uv[0] = t.x; uv[1] = t.y;
+            auto* adapter       = static_cast<MeshMikkTSpaceAdapter*>(context->m_pUserData);
+            std::int32_t idx    = adapter->Indices[face * 3 + vert];
+            const glm::vec2& t  = adapter->Vertices[idx].TexCoord;
+            uv[0] = t.x; uv[1]  = t.y;
         }
 
         static void SetTSpaceBasic(const SMikkTSpaceContext* context, const float tangent[4], float sign, std::int32_t face, std::int32_t vert)
@@ -149,8 +149,11 @@ namespace Motion
             auto* adapter = static_cast<MeshMikkTSpaceAdapter*>(context->m_pUserData);
             std::int32_t idx = adapter->Indices[face * 3 + vert];
 
-            adapter->Vertices[idx].Tangent   = glm::vec4(tangent[0], tangent[1], tangent[2], tangent[3]);
+            adapter->Vertices[idx].Tangent.x = tangent[0];
+            adapter->Vertices[idx].Tangent.y = tangent[1];
+            adapter->Vertices[idx].Tangent.z = tangent[2];
             adapter->Vertices[idx].Tangent.w = sign;
+
         }
 
         inline void GenerateTangents(std::vector<Vertex>& vertices, const std::vector<std::uint32_t>& indices)
@@ -177,17 +180,19 @@ namespace Motion
 
     struct MeshAsset
     {
-        MeshAssetID              ID{ 0 };
-        std::string              Name{ "" };
-        std::vector<Vertex>      Vertices{};
-        std::vector<std::uint32_t> Indices{};
+        MeshAssetID                 ID{ 0 };
+        std::string                 Name{ "" };
+        std::vector<Vertex>         Vertices{};
+        std::vector<std::uint32_t>  Indices{};
+        glm::vec3                   MIN{0.0f};
+        glm::vec3                   MAX{0.0f};
     };
 
     struct ImportedResults
     {
         uint32_t                                         MeshCount = 0;
-        glm::vec3                                        BoundsMin = {};
-        glm::vec3                                        BoundsMax = {};
+        glm::vec3                                        MIN = {};
+        glm::vec3                                        MAX = {};
         std::unordered_map<MeshAssetID, MeshAsset>       Meshes{};
     };
 
@@ -237,9 +242,9 @@ namespace Motion
                 return false;
             }
 
-            auto [minBounds, maxBounds] = ComputeGlobalBounds(scene);            
-            outResults.BoundsMin = minBounds;
-            outResults.BoundsMax = maxBounds;
+            auto [minBounds, maxBounds] = ModelBounds(scene);            
+            outResults.MIN = minBounds;
+            outResults.MAX = maxBounds;
             outResults.MeshCount = scene->mNumMeshes;                    
 
             const glm::vec3 modelCenter = 0.5f * (minBounds + maxBounds);
@@ -315,51 +320,64 @@ namespace Motion
             };
 
             traverse(scene->mRootNode);
+
+           glm::vec3 modelMin( std::numeric_limits<float>::max());
+            glm::vec3 modelMax(-std::numeric_limits<float>::max());
+
             if (sCenterWholeModel)
             {
-                glm::vec3 newMin( std::numeric_limits<float>::max());
-                glm::vec3 newMax(-std::numeric_limits<float>::lowest());
-
                 for (auto& kv : outResults.Meshes)
                 {
                     auto& verts = kv.second.Vertices;
                     for (auto& v : verts)
-                    {
-                        v.Position -= modelCenter;             
-                        newMin = glm::min(newMin, v.Position);  
-                        newMax = glm::max(newMax, v.Position);
-                    }
+                        v.Position -= modelCenter;
+                }
+            }
+
+            for (auto& kv : outResults.Meshes)
+            {
+                auto& mesh  = kv.second;
+                auto& verts = mesh.Vertices;
+                if (verts.empty())
+                    continue;
+
+                glm::vec3 mn( std::numeric_limits<float>::max());
+                glm::vec3 mx(-std::numeric_limits<float>::max());
+                for (auto& v : verts)
+                {
+                    mn = glm::min(mn, v.Position);
+                    mx = glm::max(mx, v.Position);
                 }
 
-                outResults.BoundsMin = newMin;               
-                outResults.BoundsMax = newMax;
-            }
-            else if (sCenterEachMesh)
-            {
-                glm::vec3 newMin( std::numeric_limits<float>::max());
-                glm::vec3 newMax(-std::numeric_limits<float>::lowest());
-
-                for (auto& kv : outResults.Meshes)
+                if (sCenterEachMesh)
                 {
-                    auto& verts = kv.second.Vertices;
-                    if (verts.empty()) continue;
-
-                    glm::vec3 mn( std::numeric_limits<float>::max());
-                    glm::vec3 mx(-std::numeric_limits<float>::lowest());
-                    for (auto& v : verts) { mn = glm::min(mn, v.Position); mx = glm::max(mx, v.Position); }
-
                     const glm::vec3 meshCenter = 0.5f * (mn + mx);
                     for (auto& v : verts)
-                    {
                         v.Position -= meshCenter;
-                        newMin = glm::min(newMin, v.Position);
-                        newMax = glm::max(newMax, v.Position);
+
+                    const glm::vec3 half = 0.5f * (mx - mn);
+                    mesh.MIN = -half;
+                    mesh.MAX =  half;
+
+                    for (auto& v : verts)
+                    {
+                        modelMin = glm::min(modelMin, v.Position);
+                        modelMax = glm::max(modelMax, v.Position);
                     }
                 }
+                else
+                {
+                    mesh.MIN = mn;
+                    mesh.MAX = mx;
 
-                outResults.BoundsMin = newMin;
-                outResults.BoundsMax = newMax;
+                    modelMin = glm::min(modelMin, mn);
+                    modelMax = glm::max(modelMax, mx);
+                }
             }
+
+            outResults.MIN = modelMin;
+            outResults.MAX = modelMax;
+            outResults.MeshCount = static_cast<std::uint32_t>(outResults.Meshes.size());
 
             return true;
         }
@@ -378,7 +396,7 @@ namespace Motion
         return std::filesystem::path(exportPath);
     }
 
-    TaskManager::TaskId Motion::Importer::ImportModelAsync(const std::filesystem::path & path, bool shouldExport, const std::string & exportPath, std::function<void(std::shared_ptr<StaticMesh>)> onCompleted, std::function<void(std::int32_t)> onProgress)
+    TaskManager::TaskId Motion::Importer::ImportModelAsync(const std::filesystem::path & path, bool shouldExport, const std::string & exportPath, std::function<void(std::shared_ptr<Model>)> onCompleted, std::function<void(std::int32_t)> onProgress)
     {
         using TM = TaskManager;
 
@@ -452,15 +470,9 @@ namespace Motion
 
             auto& MB = MaterialBuilder::GetInstance();
 
-            std::shared_ptr<StaticMesh> staticMesh =
-                std::make_shared<StaticMesh>(UniqueIdentity::GetUniqueID(), modelName, finalOutputPath);
-
-            staticMesh->m_MaxBounds[0] = imported->BoundsMax[0];
-            staticMesh->m_MaxBounds[1] = imported->BoundsMax[1];
-            staticMesh->m_MaxBounds[2] = imported->BoundsMax[2];
-            staticMesh->m_MinBounds[0] = imported->BoundsMin[0];
-            staticMesh->m_MinBounds[1] = imported->BoundsMin[1];
-            staticMesh->m_MinBounds[2] = imported->BoundsMin[2];
+            std::shared_ptr<Model> model = std::make_shared<Model>(UniqueIdentity::GetUniqueID(), modelName, finalOutputPath);
+            model->m_MIN = imported->MIN;
+            model->m_MAX = imported->MAX;
 
             const BufferLayout layout
             {
@@ -473,15 +485,22 @@ namespace Motion
 
             for (const auto& [meshID, mesh] : imported->Meshes)
             {
-                auto meshPtr        = Mesh::Create(mesh.Vertices.data(), static_cast<std::uint32_t>(mesh.Vertices.size()), mesh.Indices.data(),  static_cast<std::uint32_t>(mesh.Indices.size()), layout, staticMesh);
+                auto meshPtr        = Mesh::Create(mesh.Vertices.data(), static_cast<std::uint32_t>(mesh.Vertices.size()), mesh.Indices.data(),  static_cast<std::uint32_t>(mesh.Indices.size()), layout, model);
                 meshPtr->Index      = meshID;
                 meshPtr->Name       = mesh.Name;
                 meshPtr->Materials  = MB.Create(nullptr);
+                meshPtr->MIN        = mesh.MIN;
+                meshPtr->MAX        = mesh.MAX;
 
-                staticMesh->m_Meshes.emplace_back(std::move(meshPtr));
+                std::vector<glm::vec3> colVerts;
+                colVerts.reserve(mesh.Vertices.size());
+                for (const auto& v : mesh.Vertices) colVerts.emplace_back(v.Position);
+
+                meshPtr->SetCollisionData(std::move(colVerts), mesh.Indices);
+                model->m_Meshes.emplace_back(std::move(meshPtr));
             }
 
-            if (onCompleted) onCompleted(std::move(staticMesh));
+            if (onCompleted) onCompleted(std::move(model));
         };
 
         auto& tm = TaskManager::Instance();

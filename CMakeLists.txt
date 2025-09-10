@@ -101,10 +101,8 @@ set(
     ${MOTION_CORE_DIR}/Maths/Intersect.hpp
     ${MOTION_CORE_DIR}/Maths/MeshFit.hpp
 
+    ${MOTION_CORE_DIR}/Physics/Colliders.hpp
     ${MOTION_CORE_DIR}/Physics/Physics.hpp
-    ${MOTION_CORE_DIR}/Physics/PhysicsUtil.hpp
-    ${MOTION_CORE_DIR}/Physics/Contacts.hpp
-    ${MOTION_CORE_DIR}/Physics/Queries.hpp
 
     ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL_46_Core/GL_Buffers.hpp
     ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL_46_Core/GL_Debug.hpp
@@ -152,7 +150,6 @@ set(
     ${MOTION_CORE_DIR}/Model/Model.cpp
 
     ${MOTION_CORE_DIR}/Physics/Physics.cpp
-    ${MOTION_CORE_DIR}/Physics/Queries.cpp
 
     ${MOTION_CORE_DIR}/Material/Material.cpp
     ${MOTION_CORE_DIR}/Material/MaterialComponents.cpp

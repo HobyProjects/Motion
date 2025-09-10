@@ -91,11 +91,11 @@ namespace Motion
     };
 
     template<>
-    struct AssetBackendsBuilder<StaticMesh>
+    struct AssetBackendsBuilder<Model>
     {
-        static std::shared_ptr<StaticMesh> Create(UUID uuid, const std::string& name, const std::filesystem::path& modelFile)
+        static std::shared_ptr<Model> Create(UUID uuid, const std::string& name, const std::filesystem::path& modelFile)
         {
-            return std::make_shared<StaticMesh>(uuid, name, modelFile);
+            return std::make_shared<Model>(uuid, name, modelFile);
         }
     };
 

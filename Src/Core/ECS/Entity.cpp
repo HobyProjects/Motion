@@ -14,8 +14,6 @@ namespace Motion
 
     void EntityFactory::DestroyEntity(const std::shared_ptr<Entity>& entity) noexcept
     {
-        auto handle = entity->GetHandle();
-        Registry.destroy(handle);
         entity->Destroy();
     }
 

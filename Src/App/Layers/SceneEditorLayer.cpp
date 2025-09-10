@@ -82,7 +82,8 @@ namespace Motion
         m_ActiveScene->OnUpdate(handle, deltaTime);
 
         m_Framebuffer->Bind();
-        Renderer::SetViewport(0, 0, (int)m_CurrentViewportSize.x, (int)m_CurrentViewportSize.y);
+
+        Renderer::SetViewport(0, 0,  (std::int32_t)m_CurrentViewportSize.x, (std::int32_t)m_CurrentViewportSize.y);
         Renderer::ClearColor({ 0.243f, 0.243f, 0.243f, 1.0f });
         Renderer::Clear();
 
@@ -140,6 +141,7 @@ namespace Motion
             if (ImGui::BeginMenuBar())
             {
                 ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, { 5, 10 });
+                
                 if (ImGui::BeginMenu(ICON_MD_FOLDER " Files"))
                 {
                     if (ImGui::MenuItem("New Scene")) 
@@ -198,18 +200,54 @@ namespace Motion
                 ImGui::TextUnformatted("Simulation Controls");
 
                 ImGui::SameLine();
+
+                ImGui::BeginDisabled(m_SimulationState == SimulationState::Running);
                 if (ImGui::Button(ICON_MD_PLAY_ARROW, ImVec2(30, 30)))
                 {
+                    m_SimulationState   = SimulationState::Running;
+                    m_ActiveScene->GotoSimulation(m_SimulationState);
                 }
+                ImGui::EndDisabled();
 
                 ImGui::SameLine(0, 6);
+
+                ImGui::BeginDisabled(m_SimulationState != SimulationState::Running);
                 if (ImGui::Button(ICON_MD_STOP, ImVec2(30, 30)))
                 {
+                    m_SimulationState   = SimulationState::Stop;
+                    m_ActiveScene->GotoSimulation(m_SimulationState);
                 }
+                ImGui::EndDisabled();
 
                 ImGui::SameLine(0, 6);
+
+                ImGui::BeginDisabled(m_SimulationState != SimulationState::Running);
                 if (ImGui::Button(ICON_MD_PAUSE, ImVec2(30, 30)))
                 {
+                    m_SimulationState = SimulationState::Paused;
+                    m_ActiveScene->GotoSimulation(m_SimulationState);
+                }
+                ImGui::EndDisabled();
+
+                ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
+
+                ImGui::TextUnformatted("Simulation State: ");
+                ImGui::SameLine();
+                switch(m_SimulationState)
+                {
+                    case SimulationState::Stop:
+                        ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "IDLE");
+                        break;
+
+                    case SimulationState::Paused:
+                        ImGui::TextColored(ImVec4(1.0f, 0.65f, 0.0f, 1.0f), "PAUSED");
+                        break;
+
+                    case SimulationState::Running:
+                        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "RUNNING");
+                        break;
+                    
+                    default: break;
                 }
 
                 ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
@@ -217,7 +255,7 @@ namespace Motion
                 ImGui::TextUnformatted("Camera Speed");
                 ImGui::SameLine();
                 ImGui::PushItemWidth(70.0f);
-                ImGui::DragFloat("##camspeed", &m_ActiveScene->GetCamera().Camera.TranslationSpeed, 0.001f);
+                ImGui::DragFloat("##camspeed", &m_ActiveScene->GetCamera().Camera.TranslationSpeed, 0.001f, 0.0f);
                 ImGui::PopItemWidth();
 
                 ImGui::SameLine();
@@ -250,7 +288,7 @@ namespace Motion
         if (size == m_CurrentViewportSize || size.x <= 1.0f || size.y <= 1.0f) return;
         m_CurrentViewportSize = size;
 
-        if (m_Framebuffer)         m_Framebuffer->ResizeFrame((int)size.x, (int)size.y);
+        if (m_Framebuffer)         m_Framebuffer->ResizeFrame((std::int32_t)size.x, (std::int32_t)size.y);
         if (m_ActiveScene)         m_ActiveScene->OnViewportSizeChanges(size);
     }
 
@@ -276,16 +314,17 @@ namespace Motion
         auto it = std::find(m_Scenes.begin(), m_Scenes.end(), scene);
         if (it != m_Scenes.end()) m_Scenes.erase(it);
 
-        if (m_Scenes.empty()) {
-            // ensure at least one scene exists
+        if (m_Scenes.empty()) 
+        {
             SceneSpecification spec{};
-            spec.Name = "New Scene";
-            spec.IsActive = true;
-            spec.Viewport = m_Viewport;
-            spec.Environment = SceneEnvironment();
+
+            spec.Name           = "New Scene";
+            spec.IsActive       = true;
+            spec.Viewport       = m_Viewport;
+            spec.Environment    = SceneEnvironment();
+
             m_Scenes.push_back(std::make_shared<Scene>(spec));
         }
-
         if (deletingActive)
         {
             SetActiveScene(m_Scenes.front());
@@ -295,10 +334,11 @@ namespace Motion
     std::shared_ptr<Scene> SceneEditorLayer::AddNewScene(const std::string& name, bool makeActive)
     {
         SceneSpecification spec{};
-        spec.Name = name.empty() ? "Untitled Scene" : name;
-        spec.IsActive = false;              // will be set via SetActiveScene if makeActive
-        spec.Viewport = m_Viewport;         // copy current viewport config
-        spec.Environment = SceneEnvironment(); // fresh env
+
+        spec.Name           = name.empty() ? "Untitled Scene" : name;
+        spec.IsActive       = false;              // will be set via SetActiveScene if makeActive
+        spec.Viewport       = m_Viewport;         // copy current viewport config
+        spec.Environment    = SceneEnvironment(); // fresh env
 
         auto s = std::make_shared<Scene>(spec);
         m_Scenes.push_back(s);

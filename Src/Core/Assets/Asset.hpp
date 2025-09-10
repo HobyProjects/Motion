@@ -12,7 +12,7 @@ namespace Motion
         CubeTexture,
         Material,
         Mesh,
-        StaticMesh,
+        Model,
     };
 
     struct AssetProperties

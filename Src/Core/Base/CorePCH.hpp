@@ -99,9 +99,7 @@
 #include "MeshFit.hpp"
 
 //Physics
-#include "Contacts.hpp"
-#include "PhysicsUtil.hpp"
-#include "Queries.hpp"
+#include "Colliders.hpp"
 #include "Physics.hpp"
 
 //Events

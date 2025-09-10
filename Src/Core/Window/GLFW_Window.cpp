@@ -389,7 +389,7 @@ namespace Motion
 
     void GLFW_Window::PollEvents() noexcept
     {
-        glfwWaitEvents();
+        glfwPollEvents();
     }
 
     void GLFW_Window::SwapBuffers() noexcept

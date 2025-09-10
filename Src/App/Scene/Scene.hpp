@@ -11,6 +11,7 @@
 
 namespace Motion
 {
+    enum class SimulationState { Running, Stop, Paused };
     struct SceneViewport
     {
         FrameBufferSpecification FrameSpec{};
@@ -52,11 +53,11 @@ namespace Motion
             void SelectEntityIf();
             void SelectedEntity(const std::shared_ptr<Entity>& entity) { m_SelectedEntity = entity; }
             void EmplaceEntity(const std::shared_ptr<Entity>& entity) { m_Entities.emplace_back(std::move(entity)); }
+            void RemoveEntity(const std::shared_ptr<Entity>& entity);
 
             [[nodiscard]] std::shared_ptr<Entity> GetSelectedEntity() const { return m_SelectedEntity; }
             [[nodiscard]] std::shared_ptr<Entity> PickEntity(const glm::vec2& mousePos, const glm::vec2& viewportSize);
-            [[nodiscard]] std::shared_ptr<Entity> PickEntityRay(const glm::vec3& origin, const glm::vec3& dir, float maxDist = 1e6f);;
-
+            
             [[nodiscard]] SceneCamera& GetCamera() { return m_Camera; }
             [[nodiscard]] glm::mat4 GetCameraProjection() const { return m_Camera.Camera.Projection; }
             [[nodiscard]] glm::mat4 GetCameraView() const { return m_Camera.Camera.View; }
@@ -75,13 +76,24 @@ namespace Motion
 
             void Activate(bool active) { m_Specification.IsActive = active; }
             const std::vector<std::shared_ptr<Entity>>& GetEntities() { return m_Entities; }
+            
+            bool InSimulationMode() const { return m_InSimulation; }
+            SimulationState GetSimualtionState() { return m_SimState; }
+            void GotoSimulation(SimulationState state);
 
         private:
-            std::vector<std::shared_ptr<Entity>> m_Entities{};
-            std::shared_ptr<Entity> m_SelectedEntity{ EntityFactory::EMPTYENTITY };
+            std::vector<std::shared_ptr<Entity>>    m_Entities{};
+            std::shared_ptr<Entity>                 m_SelectedEntity{ EntityFactory::EMPTYENTITY };
 
-            SceneSpecification m_Specification;
-            SceneCamera m_Camera;
+            SceneSpecification  m_Specification;
+            SceneCamera         m_Camera;
+            SimulationState     m_SimState{SimulationState::Stop};
+            bool                m_InSimulation{false};
+
+            double  m_PhysicsAcc   = 0.0;           // accumulated time
+            double  m_PhysicsStep  = 1.0 / 120.0;   // 120 Hz fixed physics
+            double  m_MaxCatchUp   = 0.25;          // clamp to 250 ms to avoid death spiral
+            int     m_MaxSteps     = 8;             // max substeps per frame
 
             friend class SceneRenderer;
     };

@@ -19,6 +19,6 @@ namespace Motion
             Importer& operator=(Importer&&) = delete;
 
         public:
-            static TaskManager::TaskId ImportModelAsync(const std::filesystem::path& path, bool shouldExport, const std::string& exportPath, std::function<void(std::shared_ptr<StaticMesh>)> onCompleted, std::function<void(std::int32_t)> onProgress);
+            static TaskManager::TaskId ImportModelAsync(const std::filesystem::path& path, bool shouldExport, const std::string& exportPath, std::function<void(std::shared_ptr<Model>)> onCompleted, std::function<void(std::int32_t)> onProgress);
     };
 }

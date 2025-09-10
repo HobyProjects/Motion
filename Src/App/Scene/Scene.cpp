@@ -13,27 +13,14 @@ namespace Motion
     {
         m_Camera.OnUpdate(handle, deltaTime);
 
-#if 0
-        const float dtSeconds = deltaTime.GetDeltaTimeSeconds();
-
-        static double accumulator                   = 0.0;
-        static constexpr double dtPhysics           = 1.0 / 120.0;
-        static constexpr std::int32_t maxSteps      = 8;
-
-        accumulator += static_cast<double>(dtSeconds);
-
-        std::int32_t steps{0};
-        PhyX& phy = PhyX::GetInstance();
-
-        while(accumulator >= dtPhysics && steps < maxSteps)
+        if (m_SimState == SimulationState::Running)
         {
-            phy.Setp(m_Entities, static_cast<float>(dtPhysics));
-            accumulator -= dtPhysics;
-            ++steps;
+            const float  dtSeconds  = deltaTime.GetDeltaTimeSeconds();
+            std::int32_t steps      = 0;
+            PhyX& phy               = PhyX::GetInstance();
+            
+            phy.StepFixed(m_Entities, dtSeconds);
         }
-
-#endif
-
     }
 
     void Scene::OnEvent(WindowHandle handle, IEvent& e) noexcept
@@ -54,10 +41,32 @@ namespace Motion
             m_SelectedEntity = EntityFactory::EMPTYENTITY;
     }
 
+    void Scene::RemoveEntity(const std::shared_ptr<Entity>& entity)
+    {
+        if (!entity) return;
+
+        auto it = std::find(m_Entities.begin(), m_Entities.end(), entity);
+        if (it == m_Entities.end())
+            return;
+
+        const bool wasSelected = (m_SelectedEntity == *it);
+        auto& EF = EntityFactory::GetInstance();
+        EF.DestroyEntity(*it);       
+        m_Entities.erase(it);       
+
+        if (wasSelected)
+        {
+            if (!m_Entities.empty())
+                m_SelectedEntity = m_Entities.front();
+            else
+                m_SelectedEntity = EntityFactory::EMPTYENTITY;
+        }
+    }
+
     std::shared_ptr<Entity> Scene::PickEntity(const glm::vec2& mousePos, const glm::vec2& viewportSize)
     {
         const glm::mat4& projection = m_Camera.Camera.Projection;
-        const glm::mat4& view = m_Camera.Camera.View;
+        const glm::mat4& view       = m_Camera.Camera.View;
 
         // 1) Screen -> NDC
         float x = (2.0f * mousePos.x) / viewportSize.x - 1.0f;
@@ -67,12 +76,12 @@ namespace Motion
         glm::vec4 rayStartNDC(x, y, -1.0f, 1.0f);
         glm::vec4 rayEndNDC(x, y, 1.0f, 1.0f);
 
-        glm::mat4 invVP = glm::inverse(projection * view);
-        glm::vec4 rayStartWorld = invVP * rayStartNDC; rayStartWorld /= rayStartWorld.w;
-        glm::vec4 rayEndWorld = invVP * rayEndNDC;   rayEndWorld /= rayEndWorld.w;
+        glm::mat4 invVP             = glm::inverse(projection * view);
+        glm::vec4 rayStartWorld     = invVP * rayStartNDC; rayStartWorld /= rayStartWorld.w;
+        glm::vec4 rayEndWorld       = invVP * rayEndNDC;   rayEndWorld /= rayEndWorld.w;
 
-        glm::vec3 rayOrigin = glm::vec3(rayStartWorld);
-        glm::vec3 rayDir = glm::normalize(glm::vec3(rayEndWorld - rayStartWorld));
+        glm::vec3 rayOrigin     = glm::vec3(rayStartWorld);
+        glm::vec3 rayDir        = glm::normalize(glm::vec3(rayEndWorld - rayStartWorld));
 
         // 3) Find closest entity hit by ray
         float closestT = std::numeric_limits<float>::infinity();
@@ -80,10 +89,10 @@ namespace Motion
 
         for (const auto& entity : m_Entities)
         {
-            if (!entity->HasComponent<StaticMeshComponent>() || !entity->HasComponent<TransformComponent>())
+            if (!entity->HasComponent<MeshComponent>() || !entity->HasComponent<TransformComponent>())
                 continue;
 
-            auto& meshComp = entity->GetComponent<StaticMeshComponent>();
+            auto& meshComp = entity->GetComponent<MeshComponent>();
             auto& transComp = entity->GetComponent<TransformComponent>();
             if (!meshComp.Model) continue;
 
@@ -130,17 +139,27 @@ namespace Motion
         return pickedEntity;
     }
 
-    std::shared_ptr<Entity> Scene::PickEntityRay(const glm::vec3& origin, const glm::vec3& dir, float maxDist)
+    void Scene::GotoSimulation(SimulationState state)
     {
-        Ray ray; 
-        ray.Origin      = origin; 
-        ray.Direction   = glm::normalize(dir); 
-        ray.MaxDistance = maxDist;
+        switch(state)
+        {
+            case SimulationState::Running:
+                m_InSimulation = true;
+                m_SimState     = state;
+                break;
 
-        // If you might be calling this outside your physics Step, ensure AABBs are fresh
-        // (optional) recompute worldAABB for dirty transforms here similar to Broadphase()
+            case SimulationState::Paused:
+                m_InSimulation = false;   // don't tick while paused
+                m_SimState     = state;
+                m_PhysicsAcc   = 0.0;     // optional: freeze accumulation when pausing
+                break;
 
-        auto hit = RayCast(m_Entities, ray);
-        return hit.Hit ? hit.EnTT : nullptr;
+            case SimulationState::Stop:
+                m_InSimulation = false;
+                m_SimState     = state;
+                m_PhysicsAcc   = 0.0;     // ensure a clean restart
+                break;
+        }
     }
+
 }

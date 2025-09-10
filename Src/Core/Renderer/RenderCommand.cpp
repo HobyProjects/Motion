@@ -214,6 +214,7 @@ namespace Motion
             if (cmd.MeshPointer != lastMesh)
                 lastMesh = cmd.MeshPointer;
 
+            ConfigureRegular(*m_RenderingStage);
             IssueDrawIndexed(cmd);
         }
     }

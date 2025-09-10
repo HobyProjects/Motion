@@ -31,35 +31,36 @@ namespace Motion
 
     void Application::Start()
     {
-        while (m_Window->IsActive())
+        using clock     = std::chrono::steady_clock;
+        using secondsf  = std::chrono::duration<float>;
+        auto lastFrame  = clock::now();
+
+        auto& LM = LayersManager::GetInstance();
+
+        while (m_Window->IsActive() && m_Window->IsFocused() && m_Window->GetProperties().State != WindowState::Minimized)
         {
             m_Window->PollEvents();
-            auto& layersManager = LayersManager::GetInstance();
 
-            if (m_Window->GetProperties().State != WindowState::Minimized)
+            auto now    = clock::now();
+            float dt    = std::chrono::duration_cast<secondsf>(now - lastFrame).count();
+            lastFrame   = now;
+
+            for (auto& layer : LM)
             {
-                float currentTime{ 0.0f };
-                currentTime = SystemTimer<float>::GetSystemTicks();
-
-                Timer deltaTime = currentTime - m_LastFrameTime;
-                m_LastFrameTime = currentTime;
-
-                for (auto& layer : layersManager)
-                {
-                    layer->OnUpdate(m_Window->GetHandle(), deltaTime);
-                }
+                layer->OnUpdate(m_Window->GetHandle(), dt);
             }
 
             MainThreadDispatcher::Instance().Dispatch();
 
             m_ImGuiLayer->Begin();
 
-            for (auto& layer : layersManager)
+            for (auto& layer : LM)
             {
                 layer->OnUIRender(m_Window->GetHandle());
             }
 
             m_ImGuiLayer->End();
+
             m_Window->SwapBuffers();
         }
     }
@@ -82,8 +83,8 @@ namespace Motion
         handler.Dispatch<EventWindowClose>(EVENT_CALLBACK(OnWindowClose));
         handler.Dispatch<EventWindowResize>(EVENT_CALLBACK(OnWindowResize));
 
-        auto& layersManager = LayersManager::GetInstance();
-        for (std::vector<std::shared_ptr<Layer>>::reverse_iterator it = layersManager.rbegin(); it != layersManager.rend(); ++it)
+        auto& LM = LayersManager::GetInstance();
+        for (std::vector<std::shared_ptr<Layer>>::reverse_iterator it = LM.rbegin(); it != LM.rend(); ++it)
         {
             (*it)->OnEvent(handle, e);
         }
@@ -95,7 +96,6 @@ namespace Motion
             m_Window->GetProperties().IsActive = false;
 
         return false;
-
     }
 
     bool Application::OnWindowResize(WindowHandle handle, EventWindowResize& e)

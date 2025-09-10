@@ -13,11 +13,11 @@ namespace Motion
 {
     enum class EventCategory : uint32_t
     {
-        Window      = MOTION_BIT(0),
-        Keyboard    = MOTION_BIT(1),
-        Mouse       = MOTION_BIT(2),
-        GamePad     = MOTION_BIT(3),
-        Unknown     = MOTION_BIT(4)
+        Window      = BIT(0),
+        Keyboard    = BIT(1),
+        Mouse       = BIT(2),
+        GamePad     = BIT(3),
+        Unknown     = BIT(4)
     };
 
     template<>
@@ -25,26 +25,26 @@ namespace Motion
 
     enum class EventType : uint32_t
     {
-        WindowClose                         = MOTION_BIT(0),
-        WindowResize                        = MOTION_BIT(1),
-        WindowPosChange                     = MOTION_BIT(2),
-        WindowFocusGain                     = MOTION_BIT(3),
-        WindowFocusLost                     = MOTION_BIT(4),
-        WindowFrameBufferSizeChange         = MOTION_BIT(5),
-        WindowMaximize                      = MOTION_BIT(6),
-        WindowMinimize                      = MOTION_BIT(7),
+        WindowClose                         = BIT(0),
+        WindowResize                        = BIT(1),
+        WindowPosChange                     = BIT(2),
+        WindowFocusGain                     = BIT(3),
+        WindowFocusLost                     = BIT(4),
+        WindowFrameBufferSizeChange         = BIT(5),
+        WindowMaximize                      = BIT(6),
+        WindowMinimize                      = BIT(7),
 
-        KeyboardKeyPress                    = MOTION_BIT(8),
-        KeyboardKeyRelease                  = MOTION_BIT(9),
-        KeyboardKeyRepeat                   = MOTION_BIT(10),
-        KeyboardKeyChar                     = MOTION_BIT(11),
+        KeyboardKeyPress                    = BIT(8),
+        KeyboardKeyRelease                  = BIT(9),
+        KeyboardKeyRepeat                   = BIT(10),
+        KeyboardKeyChar                     = BIT(11),
 
-        MouseButtonDown                     = MOTION_BIT(12),
-        MouseButtonUp                       = MOTION_BIT(13),
-        MouseWheelScroll                    = MOTION_BIT(14),
-        MouseCursorPosChange                = MOTION_BIT(15),
-        MouseCursorWindowEnter              = MOTION_BIT(16),
-        MouseCursorWindowLeave              = MOTION_BIT(17)
+        MouseButtonDown                     = BIT(12),
+        MouseButtonUp                       = BIT(13),
+        MouseWheelScroll                    = BIT(14),
+        MouseCursorPosChange                = BIT(15),
+        MouseCursorWindowEnter              = BIT(16),
+        MouseCursorWindowLeave              = BIT(17)
     };
 
     template<>

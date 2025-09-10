@@ -3,7 +3,7 @@
 
 namespace Motion
 {
-    Mesh::Mesh(const Vertex* vertices, std::uint32_t verticesSize, const std::uint32_t* indices, std::uint32_t indicesCount, const BufferLayout& layout, const std::shared_ptr<StaticMesh>& parentModel)
+    Mesh::Mesh(const Vertex* vertices, std::uint32_t verticesSize, const std::uint32_t* indices, std::uint32_t indicesCount, const BufferLayout& layout, const std::shared_ptr<Model>& parentModel)
     {
         m_VertexBuffer = IVertexBuffer::Create(vertices, verticesSize);
         m_ElementBuffer = IElementBuffer::Create(indices, indicesCount);
@@ -17,7 +17,7 @@ namespace Motion
         m_IndicesCount = indicesCount;
     }
 
-    Mesh::Mesh(const float* vertices, std::uint32_t verticesSize, const std::uint32_t* indices, std::uint32_t indicesCount, const BufferLayout& layout, const std::shared_ptr<StaticMesh>& parentModel)
+    Mesh::Mesh(const float* vertices, std::uint32_t verticesSize, const std::uint32_t* indices, std::uint32_t indicesCount, const BufferLayout& layout, const std::shared_ptr<Model>& parentModel)
     {
         m_VertexBuffer = IVertexBuffer::Create(vertices, verticesSize);
         m_ElementBuffer = IElementBuffer::Create(indices, indicesCount);
@@ -53,17 +53,23 @@ namespace Motion
         return m_IndicesCount;
     }
 
-    std::shared_ptr<StaticMesh> Mesh::GetParentModel() const noexcept
+    std::shared_ptr<Model> Mesh::GetParentModel() const noexcept
     {
         return m_ParentModel;
     }
 
-    std::shared_ptr<Mesh> Mesh::Create(const Vertex* vertices, std::uint32_t verticesSize, const std::uint32_t* indices, std::uint32_t indicesCount, const BufferLayout& layout, const std::shared_ptr<StaticMesh>& parentModel)
+    void Mesh::SetCollisionData(std::vector<glm::vec3> v, std::vector<uint32_t> i)
+    {
+        m_Collider.Vertices = std::move(v);
+        m_Collider.Indices  = std::move(i);
+    }
+
+    std::shared_ptr<Mesh> Mesh::Create(const Vertex* vertices, std::uint32_t verticesSize, const std::uint32_t* indices, std::uint32_t indicesCount, const BufferLayout& layout, const std::shared_ptr<Model>& parentModel)
     {
         return std::make_shared<Mesh>(vertices, verticesSize, indices, indicesCount, layout, parentModel);
     }
 
-    std::shared_ptr<Mesh> Mesh::Create(const float* vertices, std::uint32_t verticesSize, const std::uint32_t* indices, std::uint32_t indicesCount, const BufferLayout& layout, const std::shared_ptr<StaticMesh>& parentModel)
+    std::shared_ptr<Mesh> Mesh::Create(const float* vertices, std::uint32_t verticesSize, const std::uint32_t* indices, std::uint32_t indicesCount, const BufferLayout& layout, const std::shared_ptr<Model>& parentModel)
     {
         return std::make_shared<Mesh>(vertices, verticesSize, indices, indicesCount, layout, parentModel);
     }

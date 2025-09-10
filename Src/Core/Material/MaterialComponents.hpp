@@ -38,15 +38,15 @@ namespace Motion
     enum class TexturesBitMask : std::uint32_t
     {
         None               = 0,
-        HasBaseColor       = MOTION_BIT(0),
-        HasNormal          = MOTION_BIT(1),
-        HasMetallic        = MOTION_BIT(2),
-        HasRoughness       = MOTION_BIT(3),
-        HasOcclusion       = MOTION_BIT(4),
-        HasEmissive        = MOTION_BIT(5),
-        HasDisplacement    = MOTION_BIT(6),
-        HasOpacity         = MOTION_BIT(7),
-        HasORM             = MOTION_BIT(8)
+        HasBaseColor       = BIT(0),
+        HasNormal          = BIT(1),
+        HasMetallic        = BIT(2),
+        HasRoughness       = BIT(3),
+        HasOcclusion       = BIT(4),
+        HasEmissive        = BIT(5),
+        HasDisplacement    = BIT(6),
+        HasOpacity         = BIT(7),
+        HasORM             = BIT(8)
     };
 
     template <>

@@ -3,14 +3,14 @@
 
 namespace Motion
 {
-    StaticMesh::StaticMesh(UUID uuid, const std::string& name, const std::filesystem::path& modelFile) :
-        AssetBase<IAsset>(uuid, name, AssetType::StaticMesh, modelFile.string())
+    Model::Model(UUID uuid, const std::string& name, const std::filesystem::path& modelFile) :
+        AssetBase<IAsset>(uuid, name, AssetType::Model, modelFile.string())
     {
         AssetInfo.AssetSource = modelFile.string();
         AssetInfo.IsInitialized = false;
     }
 
-    void StaticMesh::Render() const
+    void Model::Render() const
     {
         for (const auto& mesh : m_Meshes)
         {

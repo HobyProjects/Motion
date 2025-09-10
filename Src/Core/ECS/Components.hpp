@@ -1,19 +1,33 @@
 #pragma once
 
+#include <limits>
 #include <entt/entt.hpp>
 #include <glm/glm.hpp>
+#include <glm/gtx/quaternion.hpp> // for glm::toMat4
 
 #include "UUID.hpp"
 #include "Model.hpp"
 #include "Entity.hpp"
 
+#include "Colliders.hpp"
+
 namespace Motion
 {
+    struct Units 
+    {
+        static constexpr float METERS_PER_UNIT = 1.0f;
+        static constexpr float g_mps2 = 9.80665f;
+
+        static inline float     ToMeters(float u)             { return u * METERS_PER_UNIT; }
+        static inline glm::vec3 ToMeters(const glm::vec3& u)  { return u * METERS_PER_UNIT; }
+        static inline float     FromMeters(float m)           { return m / METERS_PER_UNIT; }
+        static inline glm::vec3 FromMeters(const glm::vec3& m){ return m / METERS_PER_UNIT; }
+    };
     struct TagComponent
     {
-        UUID ID{ 0 };
+        UUID        ID{ 0 };
         std::string Tag{ "unamed" };
-        bool IsActive{ true };
+        bool        IsActive{ true };
 
         TagComponent() = default;
         TagComponent(const std::string& tag) : Tag(tag) { ID = UniqueIdentity::GetUniqueID(); }
@@ -21,104 +35,114 @@ namespace Motion
         ~TagComponent() = default;
     };
 
-    struct StaticMeshComponent
+    struct MeshComponent
     {
-        UUID ID{ 0 };
-        std::string Name{ "unamed" };
-        std::shared_ptr<StaticMesh> Model{ nullptr };
+        UUID                        ID{ 0 };
+        std::string                 Name{ "unamed" };
+        std::shared_ptr<Model>      Model{ nullptr };
 
-        StaticMeshComponent() : ID(UniqueIdentity::GetUniqueID()) {};
-        StaticMeshComponent(const std::string& name, const std::shared_ptr<StaticMesh>& model) : Name(name), Model(model), ID(UniqueIdentity::GetUniqueID()) {}
-        ~StaticMeshComponent() = default;
+        MeshComponent() : ID(UniqueIdentity::GetUniqueID()) {}
+        MeshComponent(const std::string& name, const std::shared_ptr<Motion::Model>& model) : Name(name), Model(model), ID(UniqueIdentity::GetUniqueID()) {}
+        ~MeshComponent() = default;
     };
 
-    struct TransformComponent
+    struct TransformComponent 
     {
-        UUID ID{ 0 };
-        
-        glm::vec3 Translation{ 0.0f };
-        glm::quat Rotation{ 0.0f, 0.0f, 0.0f, 0.0f }; 
-        glm::vec3 Scale{ 0.01f };
+        UUID        ID{0};
+        glm::vec3   Translation{0.0f};
+        glm::quat   Rotation{1.0f, 0.0f, 0.0f, 0.0f}; 
+        glm::vec3   Scale{1.0f};                     
 
-        TransformComponent()
-            : ID(UniqueIdentity::GetUniqueID()) {}
+        TransformComponent() : ID(UniqueIdentity::GetUniqueID()) {}
+        TransformComponent(const glm::vec3& t, const glm::quat& r, const glm::vec3& s)
+            : Translation(t), Rotation(glm::normalize(r)), Scale(s), ID(UniqueIdentity::GetUniqueID()) {}
 
-        TransformComponent(const glm::vec3& translation, const glm::vec3& rotation, const glm::vec3& scale)
-            : Translation(translation), Rotation(rotation), Scale(scale), ID(UniqueIdentity::GetUniqueID()) {}
-
-        ~TransformComponent() = default;
-
-        glm::mat4 GetTransform(bool degree = false) const
+        glm::mat4 GetTransform() const 
         {
-            glm::mat4 T = glm::translate(glm::mat4(1.0f), Translation);
-            glm::mat4 R = glm::toMat4(Rotation);
-            glm::mat4 S = glm::scale(glm::mat4(1.0f), Scale);
-
-            
-            glm::mat4 TRS = T * R * S;
-            return TRS;
+            return  glm::translate(glm::mat4(1.0f), Translation) *
+                    glm::toMat4(glm::normalize(Rotation)) *
+                    glm::scale(glm::mat4(1.0f), Scale);
         }
+
+        glm::mat3 GetR() const { return glm::mat3_cast(glm::normalize(Rotation)); }
     };
+
+    struct TransformHistoryComponent
+    {
+        glm::vec3 PrevTranslation{0.0f};
+        glm::quat PrevRotation{1,0,0,0};
+        glm::vec3 PrevScale{1.0f};
+    };
+
 
     struct RigidBodyComponent
     {
-        UUID ID{ 0 };
+        enum class PhysicsBody { Static, Kinematic, Dynamic };
 
-        float       Mass{1.0f};                // kg (0 => static/immovable)
-        float       InvMass{1.0f};             // computed from mass
-        glm::vec3   Velocity{0.0f};             // m/s
-        glm::vec3   ForceAccum{0.0f};           // N (cleared each step)
-        float       LinearDamping{0.02f};      // simple drag; unitless
+        UUID      ID{ 0 };
+        bool      IsEnabled{false};
 
-        bool    Sleeping{false};
-        float   SleepTimer{0.0f};
+        PhysicsBody Type{PhysicsBody::Dynamic};
+        bool        UseGravity{true};
+        float       GravityScale{1.0f};
 
+        glm::vec3 LinearVelocity{0.0f};
         glm::vec3 AngularVelocity{0.0f};
+
+        glm::vec3 ForceAccum{0.0f};
         glm::vec3 TorqueAccum{0.0f};
-        float AngularDamping{0.05f};
 
-        glm::vec3 InertiaDiag{1.0f};
-        glm::vec3 InvInertiaDiag{1.0f};
+        float Mass{1.0f};
+        float InvMass{1.0f};
+        float Density{1.0f};
 
-        void SetMass(float m) 
+        glm::mat3 IBodyInv{1.0f};
+        glm::mat3 IWorldInv{1.0f};
+
+        glm::bvec3 LockLinear{false,false,false};
+        glm::bvec3 LockAngular{false,false,false};
+        float MaxLinearSpeed{std::numeric_limits<float>::infinity()};
+        float MaxAngularSpeed{std::numeric_limits<float>::infinity()};
+
+        bool  IsSleeping{false};
+        float SleepTimer{0.0f};
+        float SleepThresholdLin{0.01f};
+        float SleepThresholdAng{0.01f};
+
+        glm::vec3 KinematicTargetPos{0.0f};
+        glm::quat KinematicTargetRot{1,0,0,0};
+
+        bool  CCDEnabled{false};
+        float CCDMotionThreshold{0.01f};
+        float SweptSphereRadius{0.0f};
+
+        RigidBodyComponent(): ID(UniqueIdentity::GetUniqueID()){}
+        ~RigidBodyComponent() = default;
+
+        inline bool Static() const 
+        { 
+            return InvMass == 0.0f; 
+        }
+
+        inline void SetMass(float m)
         {
-            Mass = m;
+            Mass    = m;
             InvMass = (m > 0.0f) ? 1.0f / m : 0.0f;
         }
 
-        void SetBoxInertia(const glm::vec3& halfExtents) 
+        inline void SyncInertia(const TransformComponent& tc)
         {
-            // box dimensions (full extents)
-            const glm::vec3 s   = 2.0f * halfExtents;
-            const float x2      = s.x * s.x, y2 = s.y * s.y, z2 = s.z * s.z;
-
-            // I_box = (1/12) m * diag(y^2+z^2, x^2+z^2, x^2+y^2)
-            glm::vec3 I     = (Mass * (1.0f/12.0f)) * glm::vec3(y2+z2, x2+z2, x2+y2);
-            InertiaDiag     = I;
-            InvInertiaDiag  = glm::vec3(
-                I.x > 0 ? 1.0f/I.x : 0.0f,
-                I.y > 0 ? 1.0f/I.y : 0.0f,
-                I.z > 0 ? 1.0f/I.z : 0.0f
-            );
+            glm::mat3 R = tc.GetR();
+            IWorldInv   = R * IBodyInv * glm::transpose(R);
         }
-
-        void SetSphereInertia(float radius) 
-        {
-            // solid sphere: I = (2/5) m r^2
-            const float I   = (2.0f/5.0f) * Mass * radius * radius;
-            InertiaDiag     = glm::vec3(I);
-            InvInertiaDiag  = glm::vec3(I > 0 ? 1.0f/I : 0.0f);
-        }
-
-        RigidBodyComponent()
-            : ID(UniqueIdentity::GetUniqueID()) {}
-
-        ~RigidBodyComponent() = default;
     };
 
-    enum class CombineMode : std::uint8_t
-    {
-        Average, Minimum, Maximum, Multiply
+    enum class CombineMode : std::uint8_t 
+    { 
+        Average, 
+        Minimum, 
+        Maximum, 
+        Multiply 
     };
 
     struct PhysicalMaterial
@@ -126,52 +150,41 @@ namespace Motion
         float Restitution{0.20f};
         float FrictionStatic{0.60f};
         float FrictionDynamic{0.45f};
-        // (Optional later: rollingFriction, anisotropic, etc.)
 
         CombineMode FrictionCombine{CombineMode::Average};
         CombineMode RestitutionCombine{CombineMode::Maximum};
     };
 
-    enum class ColliderType { None, Sphere, Box, Capsule };
-
-    struct SphereCollider 
-    { 
-        float Radius{0.5f}; 
-    };
-
-    struct BoxCollider 
-    { 
-        glm::vec3 HalfExtents{0.5f}; 
-    };
-
-    struct CapsuleCollider 
-    {
-        float Radius{0.4f};     
-        float HalfHeight{0.9f}; 
-    };
-
-
-    struct AABB
-    {
-        glm::vec3 MIN{0.0f};
-        glm::vec3 MAX{0.0f};
-    };
-
     struct ColliderComponent
     {
-        UUID            ID;
-        ColliderType    Type{ColliderType::None};
-        
-        SphereCollider  Sphere{};
-        BoxCollider     Box{};
-        CapsuleCollider Capsule{};
+        UUID                ID{0};
+        bool                IsEnabled{true};
+        bool                ShowCollider{false};
 
-        AABB WorldAABB{};
-        PhysicalMaterial MaterialBase{};
+        ColliderType        Type{ColliderType::AABB};   
+        uint32_t            Layer{0x00000001};
+        uint32_t            Mask {0xFFFFFFFF};
+        bool                IsTrigger{false};
 
-        ColliderComponent()
-            : ID(UniqueIdentity::GetUniqueID()) {}
+        glm::vec3           LocalOffset{0.0f};
+        glm::quat           LocalRotation{1,0,0,0};
 
-        ~ColliderComponent() = default;
+        Collider            Shape{};
+
+        AABB                WorldAABB{};
+        AABB                SweptAABB{};               
+        bool                DirtyAABB{true};
+
+        PhysicalMaterial    MaterialBase{};
+    };
+
+    struct DampingComponent
+    {
+        UUID  ID{0};
+        float Linear{0.02f}; 
+        float Angular{0.02f}; 
+
+        DampingComponent(): ID(UniqueIdentity::GetUniqueID()){}
+        ~DampingComponent() = default;
     };
 }

@@ -158,6 +158,15 @@ static_assert(motion::detail::_sum4(MOTION_ARCH_X64, MOTION_ARCH_ARM64, MOTION_A
   #define MOTION_ASSERTS_ENABLED MOTION_BUILD_DEBUG
 #endif
 
+#if defined(__has_cpp_attribute)
+  #if __has_cpp_attribute(nodiscard)
+    #define NODISCARD [[nodiscard]]
+  #else
+    #define NODISCARD
+  #endif
+#else
+  #define NODISCARD
+#endif
 
 #if MOTION_COMPILER_MSVC
   #define MOTION_FORCE_INLINE __forceinline
@@ -206,7 +215,7 @@ namespace Motion
 {
   template <std::uint32_t Shift>
   struct Bits { static constexpr std::uint32_t value = (1u << Shift); };
-  constexpr std::uint32_t MOTION_BIT(std::uint32_t shift) { return (1u << shift); }
+  constexpr std::uint32_t BIT(std::uint32_t shift) { return (1u << shift); }
 
   template <class E>
   struct enable_bitmask_operations : std::false_type {};

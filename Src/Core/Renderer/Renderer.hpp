@@ -12,9 +12,9 @@ namespace Motion {
 
     enum class RenderingAPI : std::uint32_t 
     {
-        OpenGL  = MOTION_BIT(1),
-        Vulkan  = MOTION_BIT(2),
-        DirectX = MOTION_BIT(3)
+        OpenGL  = BIT(1),
+        Vulkan  = BIT(2),
+        DirectX = BIT(3)
     };
 
     template<>

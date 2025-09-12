@@ -15,11 +15,19 @@ namespace Motion
 
         if (m_SimState == SimulationState::Running)
         {
-            const float  dtSeconds  = deltaTime.GetDeltaTimeSeconds();
-            std::int32_t steps      = 0;
-            PhyX& phy               = PhyX::GetInstance();
-            
-            phy.StepFixed(m_Entities, dtSeconds);
+            MOTION_INFO("Simulation Running (DT:{}ms)", deltaTime.GetDeltaTimeMilliseconds());
+            KinetiX& phy = KinetiX::GetInstance();
+
+            // clamp accumulation to avoid death spiral on hitches
+            m_PhysicsAcc += std::min<double>(deltaTime.GetDeltaTimeSeconds(), m_MaxCatchUp);
+
+            int steps = 0;
+            while (m_PhysicsAcc >= m_PhysicsStep && steps < m_MaxSteps) 
+            {
+                phy.Step((float)m_PhysicsStep, m_Entities);
+                m_PhysicsAcc -= m_PhysicsStep;
+                ++steps;
+            }
         }
     }
 

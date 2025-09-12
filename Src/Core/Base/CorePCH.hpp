@@ -61,6 +61,7 @@
 #include <glm/gtx/string_cast.hpp>
 #include <glm/gtx/intersect.hpp>
 #include <glm/gtx/norm.hpp>
+#include <glm/gtx/compatibility.hpp>
 
 #include <imgui/imgui.h>
 #include <imgui/imgui_impl_opengl3.h>
@@ -99,8 +100,15 @@
 #include "MeshFit.hpp"
 
 //Physics
-#include "Colliders.hpp"
-#include "Physics.hpp"
+#include "Types.hpp"
+#include "AABB.hpp"
+#include "IBroadphase.hpp"
+#include "Contact.hpp"
+#include "Pairwise.hpp"
+#include "GJK.hpp"
+#include "BoxShape.hpp"
+#include "SphereShape.hpp"
+#include "CapsuleShape.hpp"
 
 //Events
 #include "Event.hpp"

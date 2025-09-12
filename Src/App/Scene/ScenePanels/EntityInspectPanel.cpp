@@ -107,7 +107,7 @@ namespace Motion
                             const auto& m = entity->AddComponent<MeshComponent>(mesh->GetName(), mesh);
                             const auto& t = entity->AddComponent<TransformComponent>();
                             auto& r = entity->AddComponent<RigidBodyComponent>();
-                            entity->AddComponent<ColliderComponent>(t, m, r);
+                            entity->AddComponent<ColliderComponent>(m);
                             entity->AddComponent<DampingComponent>();
                             scene->EmplaceEntity(entity);
                         },

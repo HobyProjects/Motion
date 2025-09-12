@@ -228,16 +228,6 @@ namespace Motion
                             ImGui::SetTooltip("Dimensionless. Multiplies mesh size (in meters). Example: (2,1,1) doubles width only.");
                     }
 
-                    if(selectedEntity->HasComponent<ColliderComponent>() && selectedEntity->HasComponent<RigidBodyComponent>())
-                    {
-                        auto& col   = selectedEntity->GetComponent<ColliderComponent>();
-                        auto& rb    = selectedEntity->GetComponent<RigidBodyComponent>();
-                        
-                        col.CalcMassFromColliders(rb, rb.Density);
-                        col.UpdateWorldAABB(tr);
-                        rb.SyncInertia(tr);
-                    }
-
                     EndPropertyGrid();
                     ImGui::TreePop();
                 }
@@ -246,143 +236,89 @@ namespace Motion
 
             if (selectedEntity->HasComponent<MeshComponent>())
             {
-                auto& component = selectedEntity->GetComponent<MeshComponent>();
-                if (ImGui::TreeNodeEx((void*)component.ID, treeNodeFlags, ICON_MD_IMAGE " Materials"))
+                if (ImGui::Begin(ICON_MD_IMAGE " Material Editor"))
                 {
-                    if(selectedEntity->HasComponent<ColliderComponent>())
+                    auto selected = ctx.ActiveScene->GetSelectedEntity();
+                    if (!selected || selected == EntityFactory::EMPTYENTITY)
                     {
-                        auto& col    = selectedEntity->GetComponent<ColliderComponent>();
-                        ImGui::BeginDisabled(!col.IsEnabled);
-
-                        auto& phyMat = selectedEntity->GetComponent<ColliderComponent>().MaterialBase;
-                        BeginPropertyGrid("##phycalmat-grid");
-
-                        DragFloat("Restitution", &phyMat.Restitution, 0.001f, 0.0f, 1.0f);
-                        if(ImGui::IsItemHovered()) ImGui::SetTooltip("Bounciness. 0 = no bounce, 1 = perfectly elastic (like a super ball).");
-
-                        DragFloat("Friction Static", &phyMat.FrictionStatic, 0.001f, 0.0f, 2.0f);
-                        if(ImGui::IsItemHovered()) ImGui::SetTooltip("How hard it is to start moving when at rest (grip)");
-
-                        DragFloat("Friction Dynamic", &phyMat.FrictionDynamic, 0.001f, 0.0f, 2.0f);
-                        if(ImGui::IsItemHovered()) ImGui::SetTooltip("How much resistance occurs while sliding.");
-
-                        std::int32_t rCombine{static_cast<std::int32_t>(phyMat.RestitutionCombine)};
-                        ComboBox("Restitution Combine", { "Average", "Minimum", "Maximum", "Multiply" }, rCombine, [&](std::int32_t selectedIndex, const std::string& selectedItem)
-                        {
-                            if(selectedIndex == 0) phyMat.RestitutionCombine = CombineMode::Average;
-                            if(selectedIndex == 1) phyMat.RestitutionCombine = CombineMode::Minimum;
-                            if(selectedIndex == 2) phyMat.RestitutionCombine = CombineMode::Maximum;
-                            if(selectedIndex == 3) phyMat.RestitutionCombine = CombineMode::Multiply;
-                        });
-                        if(ImGui::IsItemHovered()) ImGui::SetTooltip("How bounciness is calculated between two colliding objects");
-
-                        std::int32_t fCombine{static_cast<std::int32_t>(phyMat.FrictionCombine)};
-                        ComboBox("Friction Combine", { "Average", "Minimum", "Maximum", "Multiply" }, fCombine, [&](std::int32_t selectedIndex, const std::string& selectedItem)
-                        {
-                            if(selectedIndex == 0) phyMat.RestitutionCombine = CombineMode::Average;
-                            if(selectedIndex == 1) phyMat.RestitutionCombine = CombineMode::Minimum;
-                            if(selectedIndex == 2) phyMat.RestitutionCombine = CombineMode::Maximum;
-                            if(selectedIndex == 3) phyMat.RestitutionCombine = CombineMode::Multiply;
-                        });
-                        if(ImGui::IsItemHovered()) ImGui::SetTooltip("How friction is calculated when two objects touch (average, min, max, multiply).");
-
-                        ImGui::EndDisabled();
-
-                        EndPropertyGrid();
+                        ImGui::TextDisabled(ICON_MD_INFO " No entity selected.");
                     }
-
-                    static bool s_ShowMaterialEditor = false;
-                    if (ImGui::Button(ICON_MD_EDIT " Open Advanced Material Editor"))
-                        s_ShowMaterialEditor = true;
-
-                    if (s_ShowMaterialEditor)
+                    else if (!selected->HasComponent<MeshComponent>())
                     {
-                        if (ImGui::Begin(ICON_MD_IMAGE " Material Editor", &s_ShowMaterialEditor))
+                        ImGui::TextDisabled(ICON_MD_INFO " Selected entity has no Static Mesh Component.");
+                    }
+                    else
+                    {
+                        auto& smc = selected->GetComponent<MeshComponent>();
+                        if (!smc.Model)
                         {
-                            auto selected = ctx.ActiveScene->GetSelectedEntity();
-                            if (!selected || selected == EntityFactory::EMPTYENTITY)
+                            ImGui::TextDisabled(ICON_MD_INFO " Entity has no model.");
+                        }
+                        else
+                        {
+                            // Resolve material for selected mesh (create if missing)
+                            std::shared_ptr<Material> mat = nullptr;
+                            if (m_SelectedMesh >= 0 && m_SelectedMesh < (int)smc.Model->GetMeshesCount())
                             {
-                                ImGui::TextDisabled(ICON_MD_INFO " No entity selected.");
-                            }
-                            else if (!selected->HasComponent<MeshComponent>())
-                            {
-                                ImGui::TextDisabled(ICON_MD_INFO " Selected entity has no Static Mesh Component.");
-                            }
-                            else
-                            {
-                                auto& smc = selected->GetComponent<MeshComponent>();
-                                if (!smc.Model)
+                                auto& model = *smc.Model;
+                                auto mesh = model[m_SelectedMesh];
+                                if (mesh && !mesh->Materials)
                                 {
-                                    ImGui::TextDisabled(ICON_MD_INFO " Entity has no model.");
+                                    auto& factory = MaterialBuilder::GetInstance();
+                                    mesh->Materials = factory.Create(nullptr);
                                 }
-                                else
+                                if (mesh) mat = mesh->Materials;
+                            }
+
+                            if (ImGui::BeginTable("##content-splitted", 2,
+                                    ImGuiTableFlags_Resizable | ImGuiTableFlags_NoBordersInBody))
+                            {
+                                ImGui::TableSetupColumn("##side-bar", ImGuiTableColumnFlags_WidthFixed, 260.0f);
+                                ImGui::TableSetupColumn("##inspector-panel", ImGuiTableColumnFlags_WidthStretch);
+                                ImGui::TableNextRow();
+
+                                // Sidebar
+                                ImGui::TableSetColumnIndex(0);
+                                if (ImGui::BeginChild("##side-bar-list", ImVec2(0.0f, 0.0f), true))
                                 {
-                                    // Resolve material for selected mesh (create if missing)
-                                    std::shared_ptr<Material> mat = nullptr;
-                                    if (m_SelectedMesh >= 0 && m_SelectedMesh < (int)smc.Model->GetMeshesCount())
+                                    auto& model = *smc.Model;
+                                    const uint32_t count = model.GetMeshesCount();
+                                    if (count > 0)
                                     {
-                                        auto& model = *smc.Model;
-                                        auto mesh = model[m_SelectedMesh];
-                                        if (mesh && !mesh->Materials)
+                                        for (uint32_t i = 0; i < count; ++i)
                                         {
-                                            auto& factory = MaterialBuilder::GetInstance();
-                                            mesh->Materials = factory.Create(nullptr);
-                                        }
-                                        if (mesh) mat = mesh->Materials;
-                                    }
-
-                                    if (ImGui::BeginTable("##content-splitted", 2,
-                                            ImGuiTableFlags_Resizable | ImGuiTableFlags_NoBordersInBody))
-                                    {
-                                        ImGui::TableSetupColumn("##side-bar", ImGuiTableColumnFlags_WidthFixed, 260.0f);
-                                        ImGui::TableSetupColumn("##inspector-panel", ImGuiTableColumnFlags_WidthStretch);
-                                        ImGui::TableNextRow();
-
-                                        // Sidebar
-                                        ImGui::TableSetColumnIndex(0);
-                                        if (ImGui::BeginChild("##side-bar-list", ImVec2(0.0f, 0.0f), true))
-                                        {
-                                            auto& model = *smc.Model;
-                                            const uint32_t count = model.GetMeshesCount();
-                                            if (count > 0)
+                                            const bool isSelected = (m_SelectedMesh == (int)i);
+                                            if (ImGui::Selectable(fmt::format("[{}] - {}", model[i]->Index, model[i]->Name).c_str(), isSelected))
                                             {
-                                                for (uint32_t i = 0; i < count; ++i)
-                                                {
-                                                    const bool isSelected = (m_SelectedMesh == (int)i);
-                                                    if (ImGui::Selectable(fmt::format("[{}] - {}", model[i]->Index, model[i]->Name).c_str(), isSelected))
-                                                    {
-                                                        m_SelectedMesh = (int)i;
-                                                    }
-                                                }
-                                            }
-                                            else
-                                            {
-                                                ImGui::TextDisabled(ICON_MD_INFO " Model has no meshes.");
+                                                m_SelectedMesh = (int)i;
                                             }
                                         }
-                                        
-                                        ImGui::EndChild();
-                                        ImGui::TableSetColumnIndex(1);
-
-                                        if (ImGui::BeginChild("##inspector-area", ImVec2(0.0f, 0.0f), true))
-                                        {
-                                            if (mat)
-                                                DrawMaterialUI(ctx, mat);
-                                            else
-                                                ImGui::TextDisabled(ICON_MD_INFO " Select a mesh from the list.");
-                                        }
-                                        ImGui::EndChild();
-
-                                        ImGui::EndTable();
+                                    }
+                                    else
+                                    {
+                                        ImGui::TextDisabled(ICON_MD_INFO " Model has no meshes.");
                                     }
                                 }
+                                
+                                ImGui::EndChild();
+                                ImGui::TableSetColumnIndex(1);
+
+                                if (ImGui::BeginChild("##inspector-area", ImVec2(0.0f, 0.0f), true))
+                                {
+                                    if (mat)
+                                        DrawMaterialUI(ctx, mat);
+                                    else
+                                        ImGui::TextDisabled(ICON_MD_INFO " Select a mesh from the list.");
+                                }
+                                ImGui::EndChild();
+
+                                ImGui::EndTable();
                             }
                         }
-                        ImGui::End();
                     }
-
-                    ImGui::TreePop();
                 }
+                
+                ImGui::End();
             }
 
             if (selectedEntity->HasComponent<RigidBodyComponent>())
@@ -390,43 +326,81 @@ namespace Motion
                 auto& rb = selectedEntity->GetComponent<RigidBodyComponent>();
                 if (ImGui::TreeNodeEx((void*)rb.ID, treeNodeFlags, ICON_MD_3D_ROTATION " Rigid Body"))
                 {
-                    ToggleSwitch("Enabled", rb.IsEnabled);
-
-                    ImGui::SeparatorEx(ImGuiSeparatorFlags_Horizontal, 2.0f);
-
-                    ImGui::Text("Computed Mass   : %.3f (kg)", rb.Mass);
-                    if (ImGui::IsItemHovered()) ImGui::SetTooltip("Mass is derived from density × collider volume. Set density to 0 to make the body static.");
-                    ImGui::Text("Linear Velocity : (%.3f, %.3f, %.3f) m/s",  rb.LinearVelocity.x, rb.LinearVelocity.y, rb.LinearVelocity.z);
-                    ImGui::Text("Angular Velocity: (%.3f, %.3f, %.3f) rad/s", rb.AngularVelocity.x, rb.AngularVelocity.y, rb.AngularVelocity.z);
-
-
-                    BeginPropertyGrid("##rigid-body-grid");
+                    ToggleSwitch("Enabled Physics", rb.IsEnabled);
                     ImGui::BeginDisabled(!rb.IsEnabled);
+                    BeginPropertyGrid("##rigid-body-grid1");
 
-                    float densityMin = 0.0f;   
-                    float densityMax = 100000.0f;
-                    if (DragFloat("Density (kg/m^3)", &rb.Density, 0.01f, densityMin, densityMax))
-                    {
-                        if (selectedEntity->HasComponent<ColliderComponent>())
-                        {
-                            auto& col = selectedEntity->GetComponent<ColliderComponent>();
-                            col.CalcMassFromColliders(rb, rb.Density);
-
-                            // Keep IWorldInv in sync NOW (nice for editor; otherwise it waits a frame)
-                            if (selectedEntity->HasComponent<TransformComponent>())
-                            {
-                                const auto& tf = selectedEntity->GetComponent<TransformComponent>();
-                                rb.SyncInertia(tf);
-                            }
-                        }
-                    }
-
-                    ImGui::EndDisabled();
+                    float mass = rb.Mass;
+                    if(SliderFloat("Mass (Kg)", &mass, 0.0f, 10000000.0f)){ rb.SetMass(mass); }
+                    
                     EndPropertyGrid();
+                    ImGui::SeparatorEx(ImGuiSeparatorFlags_Horizontal, 2.0f);
+                    BeginPropertyGrid("##rigid-body-grid2");
+
+                    std::int32_t phyBody = static_cast<std::int32_t>(rb.Type);
+                    if(ComboBox("Physics Body", { "Static", "Kinematic", "Dynamic"}, phyBody, [&](std::int32_t selectedIndex, const std::string& selectedItem)
+                    {
+                        if(selectedIndex == 0) rb.Type = RigidBodyComponent::PhysicsBody::Static;
+                        if(selectedIndex == 1) rb.Type = RigidBodyComponent::PhysicsBody::Kinematic;
+                        if(selectedIndex == 2) rb.Type = RigidBodyComponent::PhysicsBody::Dynamic;
+                    }));
+
+                    EndPropertyGrid();
+                    ImGui::EndDisabled();
                     ImGui::TreePop();
                 }
             }
 
+            if(selectedEntity->HasComponent<ColliderComponent>())
+            {
+                auto& cc = selectedEntity->GetComponent<ColliderComponent>();
+                if (ImGui::TreeNodeEx((void*)cc.ID, treeNodeFlags, ICON_FA_BOX " Collision"))
+                {
+                    BeginPropertyGrid("##collider-grid1");
+                    ToggleSwitch("Enable Collider", cc.IsEnabled);
+                    EndPropertyGrid();
+
+                    BeginPropertyGrid("##collider-grid2");
+                    ImGui::BeginDisabled(!cc.IsEnabled);
+
+                    ToggleSwitch("Show Collider", cc.ShowCollider);
+
+                    auto& phyMat = cc.MaterialBase;
+                    DragFloat("Restitution", &phyMat.Restitution, 0.001f, 0.0f, 1.0f);
+                    if(ImGui::IsItemHovered()) ImGui::SetTooltip("Bounciness. 0 = no bounce, 1 = perfectly elastic (like a super ball).");
+
+                    DragFloat("Friction Static", &phyMat.FrictionStatic, 0.001f, 0.0f, 2.0f);
+                    if(ImGui::IsItemHovered()) ImGui::SetTooltip("How hard it is to start moving when at rest (grip)");
+
+                    DragFloat("Friction Dynamic", &phyMat.FrictionDynamic, 0.001f, 0.0f, 2.0f);
+                    if(ImGui::IsItemHovered()) ImGui::SetTooltip("How much resistance occurs while sliding.");
+
+                    std::int32_t rCombine{static_cast<std::int32_t>(phyMat.RestitutionCombine)};
+                    ComboBox("Restitution Combine", { "Average", "Minimum", "Maximum", "Multiply" }, rCombine, [&](std::int32_t selectedIndex, const std::string& selectedItem)
+                    {
+                        if(selectedIndex == 0) phyMat.RestitutionCombine = CombineMode::Average;
+                        if(selectedIndex == 1) phyMat.RestitutionCombine = CombineMode::Minimum;
+                        if(selectedIndex == 2) phyMat.RestitutionCombine = CombineMode::Maximum;
+                        if(selectedIndex == 3) phyMat.RestitutionCombine = CombineMode::Multiply;
+                    });
+                    if(ImGui::IsItemHovered()) ImGui::SetTooltip("How bounciness is calculated between two colliding objects");
+
+                    std::int32_t fCombine{static_cast<std::int32_t>(phyMat.FrictionCombine)};
+                    ComboBox("Friction Combine", { "Average", "Minimum", "Maximum", "Multiply" }, fCombine, [&](std::int32_t selectedIndex, const std::string& selectedItem)
+                    {
+                        if(selectedIndex == 0) phyMat.RestitutionCombine = CombineMode::Average;
+                        if(selectedIndex == 1) phyMat.RestitutionCombine = CombineMode::Minimum;
+                        if(selectedIndex == 2) phyMat.RestitutionCombine = CombineMode::Maximum;
+                        if(selectedIndex == 3) phyMat.RestitutionCombine = CombineMode::Multiply;
+                    });
+                    if(ImGui::IsItemHovered()) ImGui::SetTooltip("How friction is calculated when two objects touch (average, min, max, multiply).");
+
+
+                    EndPropertyGrid();
+                    ImGui::EndDisabled();
+                    ImGui::TreePop();
+                }
+            }
 
             if(selectedEntity->HasComponent<DampingComponent>() && selectedEntity->HasComponent<RigidBodyComponent>())
             {
@@ -438,11 +412,11 @@ namespace Motion
 
                     ImGui::BeginDisabled(!rb.IsEnabled);
 
-                    DragFloat("Linear Damping",  &dc.Linear,  0.001f, 0.0f, 1.0f);
+                    SliderFloat("Linear Damping",  &dc.Linear,  0.0f, 1.0f);
                     if (ImGui::IsItemHovered())
                         ImGui::SetTooltip("Linear drag (unitless). Higher = slows down faster.");
 
-                    DragFloat("Angular Damping", &dc.Angular, 0.001f, 0.0f, 1.0f);
+                    SliderFloat("Angular Damping", &dc.Angular, 0.0f, 1.0f);
                     if (ImGui::IsItemHovered())
                         ImGui::SetTooltip("Rotational drag (unitless). Higher = stops spinning sooner.");
 

@@ -9,12 +9,11 @@
 
 namespace Motion
 {
-    class Model; // Forward declaration
-
+    class Model; 
     struct ColliderData
     {
-        std::vector<glm::vec3> Vertices;   // positions only
-        std::vector<uint32_t>  Indices;    // triangle list
+        std::vector<glm::vec3> Vertices; 
+        std::vector<uint32_t>  Indices;    
         bool IsValid() const { return !Vertices.empty() && Indices.size() % 3 == 0; }
     };
 

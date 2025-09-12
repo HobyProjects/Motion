@@ -45,6 +45,10 @@ set(
     ${MOTION_CORE_DIR}/Model
     ${MOTION_CORE_DIR}/Maths
     ${MOTION_CORE_DIR}/Physics
+    ${MOTION_CORE_DIR}/Physics/Broadphase
+    ${MOTION_CORE_DIR}/Physics/Collision
+    ${MOTION_CORE_DIR}/Physics/PhyCore
+    ${MOTION_CORE_DIR}/Physics/Primitives
     ${MOTION_CORE_DIR}/Assets
     ${MOTION_CORE_DIR}/Layer
     ${MOTION_CORE_DIR}/Platform
@@ -101,9 +105,22 @@ set(
     ${MOTION_CORE_DIR}/Maths/Intersect.hpp
     ${MOTION_CORE_DIR}/Maths/MeshFit.hpp
 
-    ${MOTION_CORE_DIR}/Physics/Colliders.hpp
-    ${MOTION_CORE_DIR}/Physics/Physics.hpp
+    ${MOTION_CORE_DIR}/Physics/Broadphase/AABB.hpp
+    ${MOTION_CORE_DIR}/Physics/Broadphase/IBroadphase.hpp
+    ${MOTION_CORE_DIR}/Physics/Broadphase/NaiveBroadphase.hpp
+    ${MOTION_CORE_DIR}/Physics/Broadphase/SweepAndPrune.hpp
 
+    ${MOTION_CORE_DIR}/Physics/Collision/Contact.hpp
+    ${MOTION_CORE_DIR}/Physics/Collision/GJK.hpp
+    ${MOTION_CORE_DIR}/Physics/Collision/Pairwise.hpp
+
+    ${MOTION_CORE_DIR}/Physics/PhyCore/Types.hpp
+    ${MOTION_CORE_DIR}/Physics/PhyCore/PhysicsWorld.hpp
+
+    ${MOTION_CORE_DIR}/Physics/Primitives/BoxShape.hpp
+    ${MOTION_CORE_DIR}/Physics/Primitives/CapsuleShape.hpp
+    ${MOTION_CORE_DIR}/Physics/Primitives/BoxShape.hpp
+    
     ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL_46_Core/GL_Buffers.hpp
     ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL_46_Core/GL_Debug.hpp
     ${MOTION_CORE_DIR}/Renderer/APIs/OpenGL_46_Core/GL_Shaders.hpp
@@ -148,8 +165,6 @@ set(
     ${MOTION_CORE_DIR}/Model/Mesh.cpp
     ${MOTION_CORE_DIR}/Model/Importer.cpp
     ${MOTION_CORE_DIR}/Model/Model.cpp
-
-    ${MOTION_CORE_DIR}/Physics/Physics.cpp
 
     ${MOTION_CORE_DIR}/Material/Material.cpp
     ${MOTION_CORE_DIR}/Material/MaterialComponents.cpp

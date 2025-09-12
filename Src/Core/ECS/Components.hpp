@@ -3,13 +3,11 @@
 #include <limits>
 #include <entt/entt.hpp>
 #include <glm/glm.hpp>
-#include <glm/gtx/quaternion.hpp> // for glm::toMat4
+#include <glm/gtx/quaternion.hpp> 
 
 #include "UUID.hpp"
 #include "Model.hpp"
 #include "Entity.hpp"
-
-#include "Colliders.hpp"
 
 namespace Motion
 {
@@ -23,6 +21,7 @@ namespace Motion
         static inline float     FromMeters(float m)           { return m / METERS_PER_UNIT; }
         static inline glm::vec3 FromMeters(const glm::vec3& m){ return m / METERS_PER_UNIT; }
     };
+    
     struct TagComponent
     {
         UUID        ID{ 0 };
@@ -33,6 +32,7 @@ namespace Motion
         TagComponent(const std::string& tag) : Tag(tag) { ID = UniqueIdentity::GetUniqueID(); }
         TagComponent(const std::string& tag, bool isActive) : Tag(tag), IsActive(isActive) { ID = UniqueIdentity::GetUniqueID(); }
         ~TagComponent() = default;
+        
     };
 
     struct MeshComponent
@@ -57,14 +57,25 @@ namespace Motion
         TransformComponent(const glm::vec3& t, const glm::quat& r, const glm::vec3& s)
             : Translation(t), Rotation(glm::normalize(r)), Scale(s), ID(UniqueIdentity::GetUniqueID()) {}
 
-        glm::mat4 GetTransform() const 
+        inline glm::mat4 GetTransform() const 
         {
             return  glm::translate(glm::mat4(1.0f), Translation) *
                     glm::toMat4(glm::normalize(Rotation)) *
                     glm::scale(glm::mat4(1.0f), Scale);
         }
 
-        glm::mat3 GetR() const { return glm::mat3_cast(glm::normalize(Rotation)); }
+        inline glm::mat3 GetR() const { return glm::mat3_cast(glm::normalize(Rotation)); }
+
+        inline static glm::vec3 GetTransformPoint(const TransformComponent& t, const glm::vec3& p) 
+        {
+            return t.Translation + (t.Rotation * (t.Scale * p));
+        }
+
+        inline static glm::vec3 GetTransformVector(const TransformComponent& t, const glm::vec3& v) 
+        {
+            return t.Rotation * (t.Scale * v);
+        }
+
     };
 
     struct TransformHistoryComponent
@@ -80,7 +91,7 @@ namespace Motion
         enum class PhysicsBody { Static, Kinematic, Dynamic };
 
         UUID      ID{ 0 };
-        bool      IsEnabled{false};
+        bool      IsEnabled{true};
 
         PhysicsBody Type{PhysicsBody::Dynamic};
         bool        UseGravity{true};
@@ -92,15 +103,15 @@ namespace Motion
         glm::vec3 ForceAccum{0.0f};
         glm::vec3 TorqueAccum{0.0f};
 
-        float Mass{1.0f};
-        float InvMass{1.0f};
-        float Density{1.0f};
+        float Mass = 1.0f;
+        float InvMass = 1.0f;
 
         glm::mat3 IBodyInv{1.0f};
         glm::mat3 IWorldInv{1.0f};
 
         glm::bvec3 LockLinear{false,false,false};
         glm::bvec3 LockAngular{false,false,false};
+        
         float MaxLinearSpeed{std::numeric_limits<float>::infinity()};
         float MaxAngularSpeed{std::numeric_limits<float>::infinity()};
 
@@ -121,7 +132,7 @@ namespace Motion
 
         inline bool Static() const 
         { 
-            return InvMass == 0.0f; 
+            return InvMass == 0.0f || Type == PhysicsBody::Static; 
         }
 
         inline void SetMass(float m)
@@ -161,21 +172,12 @@ namespace Motion
         bool                IsEnabled{true};
         bool                ShowCollider{false};
 
-        ColliderType        Type{ColliderType::AABB};   
-        uint32_t            Layer{0x00000001};
-        uint32_t            Mask {0xFFFFFFFF};
-        bool                IsTrigger{false};
-
         glm::vec3           LocalOffset{0.0f};
         glm::quat           LocalRotation{1,0,0,0};
 
-        Collider            Shape{};
-
-        AABB                WorldAABB{};
-        AABB                SweptAABB{};               
-        bool                DirtyAABB{true};
-
         PhysicalMaterial    MaterialBase{};
+
+        ~ColliderComponent() = default;
     };
 
     struct DampingComponent

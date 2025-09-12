@@ -62,6 +62,65 @@ namespace Motion
             dl->AddLine(pa, pb, col, thickness);
     }
 
+    // ---------- Convex hull helpers (2D monotone chain) ----------
+    static float Cross2D(const ImVec2& O, const ImVec2& A, const ImVec2& B)
+    {
+        return (A.x - O.x) * (B.y - O.y) - (A.y - O.y) * (B.x - O.x);
+    }
+
+    static std::vector<ImVec2> ConvexHull2D(std::vector<ImVec2> pts)
+    {
+        std::vector<ImVec2> H;
+        if (pts.size() < 3) return pts;
+
+        std::sort(pts.begin(), pts.end(), [](const ImVec2& a, const ImVec2& b){
+            if (a.x != b.x) return a.x < b.x;
+            return a.y < b.y;
+        });
+
+        // Lower hull
+        for (const auto& p : pts)
+        {
+            while (H.size() >= 2 && Cross2D(H[H.size()-2], H.back(), p) <= 0) H.pop_back();
+            H.push_back(p);
+        }
+
+        // Upper hull
+        size_t t = H.size() + 1;
+        for (int i = (int)pts.size() - 2; i >= 0; --i)
+        {
+            const auto& p = pts[i];
+            while (H.size() >= t && Cross2D(H[H.size()-2], H.back(), p) <= 0) H.pop_back();
+            H.push_back(p);
+        }
+
+        if (!H.empty()) H.pop_back(); // last equals first
+        return H;
+    }
+
+    // Project 3D points -> build 2D convex outline -> draw a closed polyline in the viewport.
+    static void DrawProjectedConvexHullOutline(const std::vector<glm::vec3>& worldVerts, const glm::mat4& VP, const ViewportRect& rect, ImDrawList* drawlist, ImU32 color = IM_COL32(255, 128, 0, 255), float thickness = 2.0f)
+    {
+        if (worldVerts.size() < 2 || rect.width() <= 0.0f || rect.height() <= 0.0f) return;
+
+        std::vector<ImVec2> screenPts;
+        screenPts.reserve(worldVerts.size());
+        for (const auto& v : worldVerts)
+        {
+            ImVec2 sp;
+            if (Motion::WorldToScreen(v, VP, rect, sp))
+                screenPts.push_back(sp);
+        }
+
+        if (screenPts.size() < 2) return;
+
+        // Ensure a clean, non-self-intersecting outline
+        std::vector<ImVec2> outline = ConvexHull2D(std::move(screenPts));
+        if (outline.size() < 2) return;
+
+        drawlist->AddPolyline(outline.data(), (int)outline.size(), color, ImDrawFlags_Closed, thickness);
+    }
+
     static bool DrawDirectionalLight(DirectLight& light, const Camera3D& camera, const ViewportRect& rect, ImDrawList* dl, int gizmoId = 2, float iconScale = 1.0f)
     {
         // ImGuizmo setup (use the same window drawlist & exact rect)
@@ -151,6 +210,47 @@ namespace Motion
         context.ActiveSceneSpecification.Viewport.MIN = { vpMin.x, vpMin.y };
         context.ActiveSceneSpecification.Viewport.MAX = { vpMax.x, vpMax.y };
 
+        {
+            glm::mat4 VP = context.ActiveCamera.Camera.Projection * context.ActiveCamera.Camera.View;
+
+            auto GatherHullWorldVertices = [&](Entity e, std::vector<glm::vec3>& out) -> bool
+            {
+                if(std::shared_ptr<Entity> sel = context.ActiveScene->GetSelectedEntity())
+                {
+                    if(!sel->GetComponent<ColliderComponent>().IsEnabled) return false;
+                    const auto& hull        = sel->GetComponent<ColliderComponent>().Shape;
+                    const auto& transform   = sel->GetComponent<TransformComponent>();
+                    glm::mat4 M             = transform.GetTransform();
+                    out.clear();
+                    out.reserve(hull.LocalVerts.size());
+                    for(const glm::vec3& pLocal : hull.LocalVerts)
+                        out.push_back(glm::vec3(M * glm::vec4(pLocal, 1.0f)));
+
+                    return !out.empty();
+                }
+
+                return false;
+            };
+
+            if (auto sel = context.ActiveScene->GetSelectedEntity(); sel && sel != EntityFactory::EMPTYENTITY &&
+                sel->HasComponent<TransformComponent>() && sel->GetComponent<TagComponent>().IsActive)
+            {
+                std::vector<glm::vec3> hullWorldVerts;
+                if (GatherHullWorldVertices(*sel, hullWorldVerts))
+                {
+                    // Draw a bold outline on top of the viewport image
+                    DrawProjectedConvexHullOutline(hullWorldVerts, VP, rect, windowDL, IM_COL32(255, 180, 50, 255), 2.0f);
+                    // Optional: tiny points so you can sanity-check vertex order/coverage
+                    for (const auto& w : hullWorldVerts)
+                    {
+                        ImVec2 sp;
+                        if (WorldToScreen(w, VP, rect, sp))
+                            windowDL->AddCircleFilled(sp, 2.0f, IM_COL32(255, 255, 255, 200));
+                    }
+                }
+            }
+        }
+
         ImVec2 mouse = ImGui::GetMousePos();
         if (!context.ActiveScene->InSimulationMode())
         {
@@ -214,7 +314,7 @@ namespace Motion
                 sel->HasComponent<TransformComponent>() &&
                 sel->GetComponent<TagComponent>().IsActive)
             {
-                ImGuizmo::PushID(1); // IMPORTANT: give entity gizmo its own ID
+                ImGuizmo::PushID(1); 
 
                 auto& TRS = sel->GetComponent<TransformComponent>();
                 glm::vec3 T = TRS.Translation;
@@ -222,7 +322,6 @@ namespace Motion
                 glm::vec3 eulerDeg = glm::degrees(glm::eulerAngles(TRS.Rotation));
                 auto wrap180 = [](float a)
                 {
-                    // Wrap to (-180, 180]
                     a = std::fmod(a + 180.0f, 360.0f);
                     if (a < 0) a += 360.0f;
                     return a - 180.0f;
@@ -247,16 +346,6 @@ namespace Motion
                     glm::vec3 RdRad     = glm::radians(glm::vec3(RdDeg[0], RdDeg[1], RdDeg[2]));
                     glm::quat q         = glm::normalize(glm::quat(RdRad));
                     if (glm::any(glm::epsilonNotEqual(q, TRS.Rotation, 1e-6f))) TRS.Rotation = q;
-
-                    if(sel->HasComponent<ColliderComponent>() && sel->HasComponent<RigidBodyComponent>())
-                    {
-                        auto& col   = sel->GetComponent<ColliderComponent>();
-                        auto& rb    = sel->GetComponent<RigidBodyComponent>();
-                        
-                        col.CalcMassFromColliders(rb, rb.Density);
-                        col.UpdateWorldAABB(TRS);
-                        rb.SyncInertia(TRS);
-                    }
                 }
 
                 ImGuizmo::PopID();

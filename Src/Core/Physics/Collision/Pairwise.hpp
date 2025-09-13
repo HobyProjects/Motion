@@ -4,227 +4,54 @@
 
 #include "PhyCore.hpp"
 #include "Contact.hpp"
+#include "GJK.hpp"
+#include "ManifoldClip.hpp"
+
 #include "SphereShape.hpp"
 #include "BoxShape.hpp"
 #include "CapsuleShape.hpp"
+#include "ConvexHullShape.hpp"
 
 namespace Motion
 {
-    struct Segment
-    {
-        glm::vec3 P{0.0f}, Q{0.0f};
-    };
-
-    inline void ClosestPtsSegmentSegment(const Segment& s1, const Segment& s2, float& s, float& t, glm::vec3& c1, glm::vec3& c2)
-    {
-        const glm::vec3 d1 = s1.Q - s1.P;
-        const glm::vec3 d2 = s2.Q - s2.P;
-        const glm::vec3 r  = s1.P - s2.P;
-
-        float a = glm::dot(d1,d1);
-        float e = glm::dot(d2,d2);
-        float f = glm::dot(d2,r);
-
-        if (a <= 1e-12f && e <= 1e-12f) 
-        { 
-            s   = t = 0; 
-            c1  = s1.P; 
-            c2  = s2.P; 
-
-            return; 
-        }
-        
-        float c     = glm::dot(d1,r);
-        float b     = glm::dot(d1,d2);
-
-        float denom = a*e - b*b;
-
-        if (denom > 1e-12f) s = glm::clamp((b*f - c*e)/denom, 0.0f, 1.0f);
-        else                s = 0.0f;
-
-        float tnom = b*s + f;
-        if (tnom < 0)      { t = 0; s = glm::clamp(-c/a, 0.0f, 1.0f); }
-        else if (tnom > e) { t = 1; s = glm::clamp((b - c)/a, 0.0f, 1.0f); }
-        else               { t = tnom / e; }
-
-        c1 = s1.P + d1*s;
-        c2 = s2.P + d2*t;
-    }
-
-    inline float LengthSq(const glm::vec3& v) 
-    { 
-        return glm::dot(v,v); 
-    }
-
-    inline glm::vec3 ClosestPointOnOBB(const glm::vec3& p, const glm::vec3& c, const glm::vec3 axes[3], const glm::vec3& e) 
-    {
-        glm::vec3 d = p - c;    
-        glm::vec3 q = c;
-
-        for (int i = 0; i < 3; ++i) 
-        {
-            float dist  = glm::dot(d, axes[i]);
-            dist        = glm::clamp(dist, -e[i], e[i]);
-
-            q += dist * axes[i];
-        }
-
-        return q;
-    }
-
-    inline glm::vec3 BoxPushOutNormal(const glm::vec3& localP, const glm::vec3& e, const glm::vec3 axes[3]) 
-    {
-        const glm::vec3 slack = e - glm::abs(localP);
-        int axis = 0;
-
-        if (slack.y < slack[axis]) axis = 1;
-        if (slack.z < slack[axis]) axis = 2;
-
-        float sign = (localP[axis] >= 0.0f) ? 1.0f : -1.0f;
-        return axes[axis] * sign;
-    }
-
-    inline glm::vec3 ToLocalOBB(const glm::vec3& pWS, const glm::vec3& cB, const glm::vec3 axes[3]) 
-    {
-        return glm::vec3(
-            glm::dot(pWS - cB, axes[0]),
-            glm::dot(pWS - cB, axes[1]),
-            glm::dot(pWS - cB, axes[2])
-        );
-    }
-
-    inline glm::vec3 FromLocalOBB(const glm::vec3& pLocal, const glm::vec3& cB, const glm::vec3 axes[3]) 
-    {
-        return cB + pLocal.x * axes[0] + pLocal.y * axes[1] + pLocal.z * axes[2];
-    }
-
-    inline glm::vec3 ClampVec(const glm::vec3& v, const glm::vec3& mn, const glm::vec3& mx) 
-    {
-        return glm::clamp(v, mn, mx);
-    }
-
-    inline float EvalCapsuleOBBAtT(const glm::vec3& p0L, const glm::vec3& p1L, float t, const glm::vec3& eWorld, const glm::vec3& cB, const glm::vec3 axes[3], glm::vec3& outS_ws, glm::vec3& outQ_ws)
-    {
-        const glm::vec3 sL = glm::mix(p0L, p1L, t);                         // point on segment in box-local coords
-        const glm::vec3 qL = ClampVec(sL, -eWorld, eWorld);
-
-        outS_ws = FromLocalOBB(sL, cB, axes);
-        outQ_ws = FromLocalOBB(qL, cB, axes);
-
-        return glm::length2(outQ_ws - outS_ws);
-    }
-
-    struct Plane 
-    {
-        glm::vec3 N{0.0f};
-        float D{0.0f};
-    };
-
-    inline float AbsDot(const glm::vec3& a, const glm::vec3& b) 
-    {
-        return glm::abs(glm::dot(a, b));
-    }
-
     inline void BoxWorldData(const BoxShape& B, const glm::mat4& WB, glm::vec3& c, glm::vec3 axes[3], glm::vec3& eWorld)
     {
         glm::vec3 scales;
         AxesScalesFromWorld(WB, axes, scales, c);
-        eWorld = (B.HalfExtents + glm::vec3(B.ConvexRadius)) * scales; // non-uniform scale handled
+        eWorld = (B.HalfExtents + glm::vec3(B.ConvexRadius)) * scales; 
     }
 
-    inline void ProjectBoxOnAxis(const glm::vec3& c, const glm::vec3 axes[3], const glm::vec3& e, const glm::vec3& axis, float& outMin, float& outMax)
+    inline glm::vec3 FaceNormalLocal(const ConvexHullShape& H, const Tri& f) 
     {
-        const float p = glm::dot(c, axis);
-        const float r = e.x * AbsDot(axes[0], axis)
-                    + e.y * AbsDot(axes[1], axis)
-                    + e.z * AbsDot(axes[2], axis);
-
-        outMin = p - r;
-        outMax = p + r;
+        const glm::vec3& a = H.Vertice[f.I0];
+        const glm::vec3& b = H.Vertice[f.I1];
+        const glm::vec3& c = H.Vertice[f.I2];
+        return glm::normalize(glm::cross(b - a, c - a));
     }
 
-    inline float AxisOverlapSAT(const glm::vec3& axis, const glm::vec3& cA, const glm::vec3 aAxes[3], const glm::vec3& eA, const glm::vec3& cB, const glm::vec3 bAxes[3], const glm::vec3& eB)
+    inline std::uint32_t BestFaceAlong(const ConvexHullShape& H, const glm::mat4& W, const glm::vec3& dirWS) 
     {
-        if (glm::length2(axis) < 1e-12f) return std::numeric_limits<float>::infinity(); 
-        const glm::vec3 n = glm::normalize(axis);
+        std::uint32_t best = 0; float bestDot = -FLT_MAX;
+        for (std::uint32_t i = 0; i < H.Faces.size(); ++i) 
+        {
+            glm::vec3 nL    = FaceNormalLocal(H, H.Faces[i]);
+            glm::vec3 nWS   = glm::normalize(RotateVector(W, nL));
+            float d         = glm::dot(nWS, dirWS);
 
-        float minA, maxA, minB, maxB;
-        ProjectBoxOnAxis(cA, aAxes, eA, n, minA, maxA);
-        ProjectBoxOnAxis(cB, bAxes, eB, n, minB, maxB);
-
-        const float d0 = maxB - minA;
-        const float d1 = maxA - minB;
-        if (d0 <= 0.0f || d1 <= 0.0f) return -1.0f; 
-
-        return glm::min(d0, d1);
-    }
-
-    inline void BuildBoxFaceVerts(const glm::vec3& c, const glm::vec3 axes[3], const glm::vec3& e, int faceAxis, float faceSign, glm::vec3 out[4])
-    {
-        const int i = faceAxis;
-        const int j = (i + 1) % 3;
-        const int k = (i + 2) % 3;
-
-        const glm::vec3 n  = axes[i] * faceSign;
-        const glm::vec3 u  = axes[j];
-        const glm::vec3 v  = axes[k];
-
-        const float ei = e[i], ej = e[j], ek = e[k];
-
-        const glm::vec3 fc = c + n * ei; 
-        out[0] = fc + u * ej + v * ek;
-        out[1] = fc - u * ej + v * ek;
-        out[2] = fc - u * ej - v * ek;
-        out[3] = fc + u * ej - v * ek;
-    }
-
-    inline int ClipPolygonAgainstPlane(const glm::vec3* inPts, int inCount, const Plane& pl, glm::vec3* outPts, int outCapacity = 16)
-    {
-        int outCount = 0;
-        if (inCount <= 0) return 0;
-
-        auto inside = [&](const glm::vec3& p) { return glm::dot(pl.N, p) <= pl.D + 1e-6f; };
-
-        glm::vec3 S = inPts[inCount - 1];
-        bool S_in = inside(S);
-
-        for (int i = 0; i < inCount; ++i) {
-            const glm::vec3 E = inPts[i];
-            const bool E_in = inside(E);
-
-            if (S_in && E_in) 
-            {
-                if (outCount < outCapacity) outPts[outCount++] = E;
-            } 
-            else if (S_in && !E_in) 
-            {
-                const glm::vec3 dir     = E - S;
-                const float denom       = glm::dot(pl.N, dir);
-                float t                 = (pl.D - glm::dot(pl.N, S)) / denom;
-                t                       = glm::clamp(t, 0.0f, 1.0f);
-
-                if (outCount < outCapacity) outPts[outCount++] = S + t * dir;
-            } 
-            else if (!S_in && E_in) 
-            {
-                const glm::vec3 dir     = E - S;
-                const float denom       = glm::dot(pl.N, dir);
-                float t                 = (pl.D - glm::dot(pl.N, S)) / denom;
-                t                       = glm::clamp(t, 0.0f, 1.0f);
-
-                if (outCount < outCapacity) outPts[outCount++] = S + t * dir;
-                if (outCount < outCapacity) outPts[outCount++] = E;
-            }
-
-            S = E; S_in = E_in;
+            if (d > bestDot) { bestDot = d; best = i; }
         }
 
-        return outCount;
+        return best;
     }
 
-
-
-
+    inline void BuildFacePolygonWS(const ConvexHullShape& H, const glm::mat4& W, uint32_t faceIdx, std::vector<glm::vec3>& poly)
+    {
+        const Tri& f = H.Faces[faceIdx];
+        poly.clear();
+        poly.push_back( TransformPoint(W, H.Vertice[f.I0]) );
+        poly.push_back( TransformPoint(W, H.Vertice[f.I1]) );
+        poly.push_back( TransformPoint(W, H.Vertice[f.I2]) );
+    }
 
     inline bool CollideSphereSphere(const SphereShape& A, const glm::mat4& WA, const SphereShape& B, const glm::mat4& WB, const NarrowPhaseContext& ctx, ContactManifold& out)
     {
@@ -581,6 +408,113 @@ namespace Motion
         return true;
     }
 
+    inline bool CollideConvexFallback(const Collider& A, const glm::mat4& WA, const Collider& B, const glm::mat4& WB, const NarrowPhaseContext& ctx, ContactManifold& out)
+    {
+        SupportFn sup   = MakeSupport(A, WA, B, WB);
+        auto gjk        = GJK(sup, 32);
+        if (!gjk.Intersect) return false;
+
+        auto epa = EPA(sup, gjk.Splex, 64);
+        if (!epa.Success) return false;
+
+        const glm::vec3 n = epa.Normal;
+        auto SupportWSOriginal = [&](const Collider& C, const glm::mat4& W, const glm::vec3& d) -> glm::vec3 
+        {
+            switch (C.ColliderShape->Type) 
+            {
+                case ShapeType::Sphere: 
+                {
+                    const auto& S   = *static_cast<const SphereShape*>(C.ColliderShape);
+                    glm::vec3 p     = S.Center + glm::normalize(TransformVector(glm::inverse(W), d)) * (S.Radius + S.ConvexRadius);
+                    
+                    return TransformPoint(W, p);
+                }
+                case ShapeType::Capsule: 
+                {
+                    const auto& K = *static_cast<const CapsuleShape*>(C.ColliderShape);
+                    glm::vec3 A0(0, +K.HalfHeight, 0), B0(0, -K.HalfHeight, 0);
+
+                    glm::vec3 dLS   = glm::normalize(TransformVector(glm::inverse(W), d));
+                    float sA        = glm::dot(A0, dLS), sB = glm::dot(B0, dLS);
+                    glm::vec3 q     = (sA > sB) ? A0 : B0;
+
+                    return TransformPoint(W, q + dLS * (K.Radius + K.ConvexRadius));
+                }
+                case ShapeType::Box: 
+                {
+                    const auto& Bx  = *static_cast<const BoxShape*>(C.ColliderShape);
+                    glm::vec3 dLS   = TransformVector(glm::inverse(W), d);
+                    glm::vec3 pLS   = glm::vec3( (dLS.x>=0? +Bx.HalfExtents.x : -Bx.HalfExtents.x),
+                                                 (dLS.y>=0? +Bx.HalfExtents.y : -Bx.HalfExtents.y),
+                                                 (dLS.z>=0? +Bx.HalfExtents.z : -Bx.HalfExtents.z) );
+                    
+                    pLS += glm::sign(dLS) * Bx.ConvexRadius;
+                    return TransformPoint(W, pLS);
+                }
+                case ShapeType::Convex: 
+                {
+                    const auto& H = *static_cast<const ConvexHullShape*>(C.ColliderShape);
+                    glm::vec3 dLS = TransformVector(glm::inverse(W), d);
+
+                    if (glm::length2(dLS) < 1e-24f) dLS = glm::vec3(1,0,0);
+                    dLS = glm::normalize(dLS);
+
+                    glm::vec3 pLS = H.SupportPoint(dLS) + dLS * H.ConvexRadius;
+                    return TransformPoint(W, pLS);
+                }
+            }
+
+            return glm::vec3(0);
+        };
+
+        if (A.ColliderShape->Type & ShapeType::Convex && B.ColliderShape->Type & ShapeType::Convex)
+        {
+            const auto& HA = *static_cast<const ConvexHullShape*>(A.ColliderShape);
+            const auto& HB = *static_cast<const ConvexHullShape*>(B.ColliderShape);
+
+            uint32_t iRef = BestFaceAlong(HA, WA,  n);
+            uint32_t iInc = BestFaceAlong(HB, WB, -n);
+
+            std::vector<glm::vec3> refTri, incPoly;
+            BuildFacePolygonWS(HA, WA, iRef, refTri);
+            BuildFacePolygonWS(HB, WB, iInc, incPoly);
+
+            glm::vec3 rN = glm::normalize(glm::cross(refTri[1]-refTri[0], refTri[2]-refTri[0]));
+            if (glm::dot(rN, n) < 0) std::swap(refTri[1], refTri[2]);
+            rN = glm::normalize(glm::cross(refTri[1]-refTri[0], refTri[2]-refTri[0]));
+
+            Plane refPlane = PlaneFromPointNormal(refTri[0], rN);
+            std::array<Plane,3> sidePlanes;
+            ReferenceFaceSidePlanes(refTri, rN, sidePlanes, ctx.LinearSlop);
+
+            std::vector<glm::vec3> clipped;
+            ClipIncidentAgainstReference(incPoly, sidePlanes, refPlane, ctx.LinearSlop, clipped);
+
+            out.SharedFriction     = CombineFriction(A.MaterialProp, B.MaterialProp);
+            out.SharedRestitution  = CombineRestitution(A.MaterialProp, B.MaterialProp);
+            EmitManifoldFromClipped(clipped, n, refPlane, ctx.LinearSlop, out);
+
+            return out.Count > 0;
+        }
+
+        {
+            glm::vec3 pA = SupportWSOriginal(A, WA, -n);
+            glm::vec3 pB = SupportWSOriginal(B, WB,  n);
+            glm::vec3 contact = 0.5f * (pA + pB);
+
+            out.Count               = 1;
+            out.SharedNormalWS      = n;
+            out.SharedFriction      = CombineFriction(A.MaterialProp, B.MaterialProp);
+            out.SharedRestitution   = CombineRestitution(A.MaterialProp, B.MaterialProp);
+
+            out.Points[0].PositionWS  = contact;
+            out.Points[0].NormalWS    = n;         
+            out.Points[0].Penetration = epa.Depth;
+            return true;
+        }
+    }
+
+
     inline bool Collide(const Collider& a, const glm::mat4& worldA, const Collider& b, const glm::mat4& worldB, const NarrowPhaseContext& ctx, ContactManifold& out)
     {
         if(!a.ColliderShape || !b.ColliderShape) return false;
@@ -668,11 +602,21 @@ namespace Motion
             return true;
         }
 
+
+
+
         if (ta & ShapeType::Box && tb & ShapeType::Box) 
         {
             const auto* BA = static_cast<const BoxShape*>(a.ColliderShape);
             const auto* BB = static_cast<const BoxShape*>(b.ColliderShape);
             return CollideBoxBox(*BA, worldA * a.LocalPose, *BB, worldB * b.LocalPose, ctx, out);
+        }
+
+        
+
+        if(ta & ShapeType::Convex && tb & ShapeType::Convex)
+        {
+            return CollideConvexFallback(a, worldA, b, worldB, ctx, out);
         }
 
         return false;

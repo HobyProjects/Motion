@@ -21,7 +21,7 @@ namespace Motion
         glm::vec3 COM{0.0f};
     };
 
-    struct MaterialBaseProperties
+    struct MaterialProperties
     {
         float Friction{0.6f};
         float Restitution{0.1f};
@@ -31,7 +31,8 @@ namespace Motion
     {
         Box     = BIT(0),
         Sphere  = BIT(1),
-        Capsule = BIT(2)
+        Capsule = BIT(2),
+        Convex  = BIT(3)
     };
 
     template<>
@@ -54,7 +55,17 @@ namespace Motion
     {
         const Shape* ColliderShape{nullptr};
         glm::mat4 LocalPose{1.0f};
-        MaterialBaseProperties MaterialProp{};
+        MaterialProperties MaterialProp{};
         std::uint32_t Filter{0xFFFFFFFF};
     };
+
+    inline float CombineFriction(const MaterialProperties& A, const MaterialProperties& B) 
+    {
+        return std::sqrt(A.Friction * B.Friction);
+    }
+
+    inline float CombineRestitution(const MaterialProperties& A, const MaterialProperties& B) 
+    {
+        return std::max(A.Restitution, B.Restitution);
+    }
 }

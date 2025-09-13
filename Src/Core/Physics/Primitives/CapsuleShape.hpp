@@ -1,18 +1,11 @@
 #pragma once
 
-#include <glm/gtc/constants.hpp>
-
 #include "PhyCore.hpp"
 #include "AABB.hpp"
+#include "ManifoldClip.hpp"
 
 namespace Motion
 {
-    inline glm::vec3 AxisFromCol(const glm::mat4& M, int col, float& lenOut) 
-    {
-        glm::vec3 v = glm::vec3(M[col]);
-        lenOut      = glm::length(v);
-        return (lenOut > 0.f) ? (v / lenOut) : glm::vec3(0,1,0);
-    }
 
     struct CapsuleShape final : Shape
     {

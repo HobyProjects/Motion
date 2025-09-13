@@ -2,40 +2,10 @@
 
 #include "PhyCore.hpp"
 #include "AABB.hpp"
-
-#include <glm/gtc/constants.hpp>
-#include <glm/gtx/compatibility.hpp> 
+#include "ManifoldClip.hpp"
 
 namespace Motion
 {
-    inline glm::mat3 Mat3FromMat4(const glm::mat4& M) 
-    {
-        return glm::mat3(glm::vec3(M[0]), glm::vec3(M[1]), glm::vec3(M[2]));
-    }
-
-    inline glm::mat3 AbsMat3(const glm::mat3& M) 
-    {
-        return glm::mat3(glm::abs(M[0]), glm::abs(M[1]), glm::abs(M[2]));
-    }
-
-    inline void AxesScalesFromWorld(const glm::mat4& world, glm::vec3 axes[3], glm::vec3& scales, glm::vec3& center)
-    {
-        const glm::vec3 cx = glm::vec3(world[0]);
-        const glm::vec3 cy = glm::vec3(world[1]);
-        const glm::vec3 cz = glm::vec3(world[2]);
-
-        const float lx = glm::length(cx);
-        const float ly = glm::length(cy);
-        const float lz = glm::length(cz);
-
-        axes[0] = (lx > 0) ? (cx / lx) : glm::vec3(1,0,0);
-        axes[1] = (ly > 0) ? (cy / ly) : glm::vec3(0,1,0);
-        axes[2] = (lz > 0) ? (cz / lz) : glm::vec3(0,0,1);
-
-        scales = glm::vec3(lx, ly, lz);              
-        center = TransformPoint(world, glm::vec3(0)); 
-    }
-
     struct BoxShape final : Shape
     {
         glm::vec3 HalfExtents{0.5f};

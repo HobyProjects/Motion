@@ -42,7 +42,6 @@ namespace Motion
          {
             std::stable_sort(EndPoints.begin(), EndPoints.end(), [](const EndPoint& a, const EndPoint& b){ return a.Value < b.Value; });
 
-            // Rebuild each proxy's start/end indices
             for (INDEX idx = 0; idx < (INDEX)EndPoints.size(); ++idx) 
             {
                 Proxy& P = Proxies[EndPoints[idx].ProxyIndex];

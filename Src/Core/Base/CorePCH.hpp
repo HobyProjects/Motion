@@ -70,8 +70,8 @@
 #include <imguizmo/ImGuizmo.h>
 
 #include <yaml-cpp/yaml.h>
-#include <IconFonts/IconsMaterialDesign.h>
-#include <IconFonts/IconsFontAwesome6.h>
+#include <IconsMaterialDesign.h>
+#include <IconsFontAwesome6.h>
 
 //Base
 #include "Base.hpp"
@@ -100,7 +100,7 @@
 #include "MeshFit.hpp"
 
 //Physics
-#include "Types.hpp"
+#include "PhyCore.hpp"
 #include "AABB.hpp"
 #include "IBroadphase.hpp"
 #include "Contact.hpp"

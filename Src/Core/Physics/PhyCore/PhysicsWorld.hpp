@@ -2,111 +2,384 @@
 
 #include <vector>
 
-#include "Types.hpp"
+#include "PhyCore.hpp"
 #include "Pairwise.hpp"
 #include "NaiveBroadphase.hpp"
 #include "Contact.hpp"
+#include "SweepAndPrune.hpp"
+#include "AABB.hpp"
+#include "SphereShape.hpp"
+#include "BoxShape.hpp"
+#include "CapsuleShape.hpp"
+#include "Pairwise.hpp"
+#include "ContactSolver.hpp"
+#include "ConstraintSolver.hpp"
+#include "RayCast.hpp"
 
 namespace Motion
 {
-    struct BodyHandle
+    struct BodyHandle { std::uint32_t Index{std::numeric_limits<std::uint32_t>::max()}; };
+    struct ColliderHandle { std::uint32_t Index{std::numeric_limits<std::uint32_t>::max()};};
+    
+    struct WorldCollider 
     {
-        std::uint32_t Index{std::numeric_limits<std::uint32_t>::max()};
+        Collider Coll{};         
+        BodyHandle Body{};     
+        ProxyID   Proxy{0}; 
+        std::uint32_t  Layer{0xFFFFFFFF};
     };
 
-    struct WorldCollider
+    struct WorldSettings
     {
-        Collider Coll{};
-        glm::mat4 World{1.0f};
-        ProxyID ID{0};
+        float DeltaTime{1.0f/60.0f};
+        glm::vec3 Gravity{0.0f, -9.81f, 0.0f};
+        float FatAABBVelocityPad{0.5f};
     };
 
     struct PhysicWorld
     {
-        NarrowPhaseContext CTX{};
-        NaiveBroadPhase BroadPhase{};
-        std::vector<WorldCollider> Colliders{};
+        SweepAndPrune           BroadPhase{};
+        NarrowPhaseContext      NPContext{};
+        SolverSettings          SolveSettings{};
+        WorldSettings           WSettings{};
+        JointSettings           JSettings{}; 
 
-        BodyHandle AddCollider(const Collider& c, const glm::mat4& world) 
+        std::vector<RigidBody>          Bodies{};
+        std::vector<WorldCollider>      Colliders{};
+        std::vector<FixedJointDesc>     FixedJoints{};
+        std::vector<BallSocketDesc>     BallJoints{}; 
+        std::vector<HingeDesc>          HingsJoints{};  
+        std::vector<SliderDesc>         SliderJoints{};  
+
+        void SetCanSleep(BodyHandle h, bool can) 
         {
-            WorldCollider wc{ c, world * c.LocalPose, 0 };
-            AABB aabb{};
+            Bodies[h.Index].CanSleep = can;
+            if (!can) Bodies[h.Index].WakeUp();
+        }
 
-            switch (c.ColliderShape->Type) 
+        void WakeBody(BodyHandle h) { Bodies[h.Index].WakeUp(); }
+        bool IsSleeping(BodyHandle h) const { return Bodies[h.Index].Sleeping; }
+
+        void ApplyForce(BodyHandle h, const glm::vec3& F) 
+        {
+            auto& b = Bodies[h.Index];
+            if (b.InvMass == 0.0f) return;
+            b.WakeUp();
+            b.LinearVelocity += F * (b.InvMass * WSettings.DeltaTime);
+        }
+
+        void ApplyImpulse(BodyHandle h, const glm::vec3& P, const glm::vec3& rWS = glm::vec3(0)) 
+        {
+            auto& b = Bodies[h.Index];
+            if (b.InvMass == 0.0f) return;
+            b.WakeUp();
+            b.ApplyLinearImpulse(P);
+            if (glm::length2(rWS) > 0) b.ApplyAngularImpulse(glm::cross(rWS, P));
+        }
+
+
+        BodyHandle CreateBody(const MassProperties& massProp, const glm::vec3& pos, const glm::quat& rot, bool staticObj = false)
+        {
+            RigidBody rb{};
+            rb.Position = pos;
+            rb.Rotation = rot;
+
+            if(staticObj)
             {
-                case ShapeType::Sphere: 
+                rb.InvMass = 0.0f;
+                rb.InvInertiaLocal = glm::mat3(0.0f);
+            }
+            else
+            {
+                rb.InvMass = (massProp.MASS > 0.0f) ? (1.0f / massProp.MASS) : 0.0f;
+                glm::mat3 invI(0.0f);
+                for(std::int32_t a = 0; a < 3; ++a)
                 {
-                    auto& S = *static_cast<const SphereShape*>(c.ColliderShape);
-                    aabb = SphereShape::WorldAABB(S, world * c.LocalPose);
-                } break;
+                    float Iaa = massProp.Inertia[a][a];
+                    invI[a][a] = (Iaa > 1e-9f) ? 1.0f / Iaa : 0.0f;
+                }
 
-                case ShapeType::Box: 
-                {
-                    auto& B = *static_cast<const BoxShape*>(c.ColliderShape);
-                    aabb = BoxShape::WorldAABB(world * c.LocalPose, B.HalfExtents, B.ConvexRadius);
-                } break;
-
-                case ShapeType::Capsule: 
-                {
-                    auto& K = *static_cast<const CapsuleShape*>(c.ColliderShape);
-                    aabb = CapsuleShape::WorldAABB(K, world * c.LocalPose);
-                } break;
+                rb.InvInertiaLocal = invI;
             }
 
-            wc.ID = BroadPhase.CreateProxy(aabb, 0xFFFFFFFF, (void*)(uintptr_t)Colliders.size());
+            rb.SyncInertiaWorld();
+            Bodies.push_back(rb);
+            return {(std::uint32_t)Bodies.size() - 1 };
+        }
+
+        ColliderHandle AddCollider(BodyHandle bh, const Collider& c) 
+        {
+            WorldCollider wc{};
+            wc.Coll  = c;
+            wc.Body  = bh;
+            wc.Layer = c.Filter;
+
+            const glm::mat4 M   = BodyWorldMatrix(bh) * c.LocalPose;
+            AABB aabb           = ComputeWorldAABB(*c.ColliderShape, M);
+            wc.Proxy            = BroadPhase.CreateProxy(FattenAABB(aabb, glm::vec3(0)), wc.Layer, (void*)(uintptr_t)Colliders.size());
+
             Colliders.push_back(wc);
-            return { (uint32_t)(Colliders.size() - 1) };
+            return { (uint32_t)Colliders.size() - 1 };
         }
 
-        void MoveCollider(BodyHandle h, const glm::mat4& newWorld) 
+        void Step() 
         {
-            auto& wc = Colliders[h.Index];
-            wc.World = newWorld * wc.Coll.LocalPose;
+            const float dt = WSettings.DeltaTime;
 
-            AABB aabb{};
-            switch (wc.Coll.ColliderShape->Type) 
+            for (auto& b : Bodies) 
             {
-                case ShapeType::Sphere: 
+                if (b.InvMass > 0.0f && !b.Sleeping) 
                 {
-                    auto& S = *static_cast<const SphereShape*>(wc.Coll.ColliderShape);
-                    aabb    = SphereShape::WorldAABB(S, newWorld * wc.Coll.LocalPose);
-                } break;
-
-                case ShapeType::Box: 
-                {
-                    auto& B = *static_cast<const BoxShape*>(wc.Coll.ColliderShape);
-                    aabb    = BoxShape::WorldAABB(newWorld * wc.Coll.LocalPose, B.HalfExtents, B.ConvexRadius);
-                } break;
-
-                case ShapeType::Capsule: 
-                {
-                    auto& K = *static_cast<const CapsuleShape*>(wc.Coll.ColliderShape);
-                    aabb    = CapsuleShape::WorldAABB(K, newWorld * wc.Coll.LocalPose);
-                } break;
+                    b.LinearVelocity += WSettings.Gravity * dt;
+                }
             }
 
-            BroadPhase.MoveProxy(wc.ID, aabb);
-        }
+            for (auto& b : Bodies) b.SyncInertiaWorld();
 
-        struct Pair { uint32_t ia, ib; ContactManifold m; };
+            for (size_t ci = 0; ci < Colliders.size(); ++ci) 
+            {
+                auto& wc            = Colliders[ci];
+                const auto& B       = Bodies[wc.Body.Index];
+                const glm::mat4 M   = BodyWorldMatrix(wc.Body) * wc.Coll.LocalPose;
+                const AABB aabb     = ComputeWorldAABB(*wc.Coll.ColliderShape, M);
 
-        void ComputeContacts(std::vector<Pair>& out) 
-        {
-            out.clear();
-            std::vector<std::pair<void*, void*>> pairs;
-            BroadPhase.QueryOverlaps(pairs);
+                glm::vec3 velPad(0);
+                if (!B.Sleeping) velPad = glm::abs(B.LinearVelocity) * dt * WSettings.FatAABBVelocityPad;
+                BroadPhase.MoveProxy(wc.Proxy, FattenAABB(aabb, velPad));
+            }
 
-            for (auto& pr : pairs) {
-                uint32_t ia = (uint32_t)(uintptr_t)pr.first;
-                uint32_t ib = (uint32_t)(uintptr_t)pr.second;
-                const auto& A = Colliders[ia];
-                const auto& B = Colliders[ib];
+            std::vector<std::pair<void*, void*>> rawPairs;
+            BroadPhase.QueryOverlaps(rawPairs);
+
+            std::vector<ContactManifold> manifolds;
+            std::vector<std::pair<int,int>> pairBodies;
+            manifolds.reserve(rawPairs.size());
+
+            for (auto& pr : rawPairs) 
+            {
+                const std::uint32_t ia = (std::uint32_t)(std::uintptr_t)pr.first;
+                const std::uint32_t ib = (std::uint32_t)(std::uintptr_t)pr.second;
+
+                auto& A     = Colliders[ia];
+                auto& B     = Colliders[ib];
+                auto& BA    = Bodies[A.Body.Index];
+                auto& BB    = Bodies[B.Body.Index];
+
+                if (BA.InvMass == 0.0f && BB.InvMass == 0.0f) continue;
+                if (BA.Sleeping && BB.Sleeping) continue;
 
                 ContactManifold m{};
-                if (Collide(A.Coll, glm::mat4(1.0f), B.Coll, glm::mat4(1.0f), CTX, m)) {
-                    out.push_back({ ia, ib, m });
+                if (Collide(A.Coll, BodyWorldMatrix(A.Body), B.Coll, BodyWorldMatrix(B.Body), NPContext, m) && m.Count > 0) 
+                {
+                    manifolds.push_back(m);
+                    pairBodies.push_back({ (int)A.Body.Index, (int)B.Body.Index });
+
+                    if (BA.Sleeping && (BB.InvMass>0.0f || !BB.Sleeping)) BA.WakeUp();
+                    if (BB.Sleeping && (BA.InvMass>0.0f || !BA.Sleeping)) BB.WakeUp();
+                }
+            }
+
+            if (!manifolds.empty()) 
+            {
+                ContactBatch batch;
+                batch.Build(manifolds, pairBodies, Bodies, SolveSettings);
+                if (SolveSettings.WarmStart) batch.WarmStart(Bodies, SolveSettings);
+                batch.Solve(Bodies, SolveSettings);
+            }
+
+            if (!FixedJoints.empty() || !BallJoints.empty() || !HingsJoints.empty() || !SliderJoints.empty())
+            {
+                JointBatch jbatch;
+                for (auto& jd : FixedJoints)    jbatch.AddFixed(jd);
+                for (auto& jd : BallJoints)     jbatch.AddBall (jd);
+                for (auto& jd : HingsJoints)    jbatch.AddHinge(jd);
+                for (auto& jd : SliderJoints)   jbatch.AddSlider(jd);
+                if (JSettings.WarmStart) jbatch.WarmStart(Bodies, JSettings);
+                jbatch.Solve(Bodies, JSettings, WSettings.DeltaTime);
+            }
+
+            for (auto& b : Bodies) 
+            {
+                if (b.InvMass > 0.0f && !b.Sleeping) b.Integrate(dt);
+            }
+
+            for (auto& b : Bodies) 
+            {
+                if (b.InvMass == 0.0f || !b.CanSleep) continue;
+                if (b.Sleeping) continue;
+
+                const float vLin = glm::length(b.LinearVelocity);
+                const float vAng = glm::length(b.AngularVelocity);
+
+                if (vLin < b.SleepLinearThreshold && vAng < b.SleepAngularThreshold) 
+                {
+                    b.SleepTimer += dt;
+                    if (b.SleepTimer >= b.SleepTime) b.PutToSleep();
+                } 
+                else 
+                {
+                    b.SleepTimer = 0.0f; 
                 }
             }
         }
+
+        glm::mat4 BodyWorldMatrix(BodyHandle h) const 
+        {
+            const RigidBody& b = Bodies[h.Index];
+            return glm::translate(glm::mat4(1.0f), b.Position) * glm::toMat4(b.Rotation);
+        }
+
+        static AABB ComputeWorldAABB(const Shape& s, const glm::mat4& M) 
+        {
+            switch (s.Type) 
+            {
+                case ShapeType::Sphere: 
+                {
+                    const auto& S = static_cast<const SphereShape&>(s);
+                    return SphereShape::WorldAABB(S, M);
+                }
+                case ShapeType::Box: 
+                {
+                    const auto& B = static_cast<const BoxShape&>(s);
+                    return BoxShape::WorldAABB(M, B.HalfExtents, B.ConvexRadius);
+                }
+                case ShapeType::Capsule: 
+                {
+                    const auto& K = static_cast<const CapsuleShape&>(s);
+                    return CapsuleShape::WorldAABB(K, M);
+                }
+            }
+
+            return { {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f} };
+        }
+
+        static AABB FattenAABB(const AABB& a, const glm::vec3& extra) 
+        {
+            return { a.MIN - extra, a.MAX + extra };
+        }
+
+        bool RaycastFirst(const Ray& ray, RayHit& outHit) const 
+        {
+            outHit = RayHit{};
+            bool any = false;
+
+            for (size_t i = 0; i < Colliders.size();++i) 
+            {
+                const auto& wc = Colliders[i];
+
+                const auto& proxy = BroadPhase.Proxies[wc.Proxy - 1]; 
+                float tEnter, tExit;
+                if (!RayAABB(ray, proxy.Body, tEnter, tExit)) continue;
+
+                RayHit h; h.T = outHit.T;
+                glm::mat4 W = BodyWorldMatrix(wc.Body) * wc.Coll.LocalPose;
+                if (RaycastCollider(ray, wc.Coll, W, h)) 
+                {
+                    h.HitCollder = &wc.Coll;
+                    if (h.T < outHit.T) { outHit = h; any = true; }
+                }
+            }
+
+            return any;
+        }
+
+        void RaycastAll(const Ray& ray, std::vector<RayHit>& outHits) const 
+        {
+            outHits.clear();
+            for (size_t i = 0;i < Colliders.size();++i) 
+            {
+                const auto& wc      = Colliders[i];
+                const auto& proxy   = BroadPhase.Proxies[wc.Proxy - 1];
+                float tEnter, tExit;
+                if (!RayAABB(ray, proxy.Body, tEnter, tExit)) continue;
+
+                RayHit h; h.T = std::numeric_limits<float>::infinity();
+                glm::mat4 W = BodyWorldMatrix(wc.Body) * wc.Coll.LocalPose;
+                if (RaycastCollider(ray, wc.Coll, W, h)) 
+                {
+                    h.HitCollder = &wc.Coll;
+                    outHits.push_back(h);
+                }
+            }
+            
+            std::sort(outHits.begin(), outHits.end(), [](const RayHit& a, const RayHit& b){ return a.T < b.T; });
+        }
+
+        std::size_t CreateFixedJoint(BodyHandle a, BodyHandle b, const glm::vec3& anchorA_local, const glm::vec3& anchorB_local)
+        {
+            FixedJointDesc jd{};
+            jd.A = (int)a.Index; 
+            jd.B = (int)b.Index;
+
+            jd.AnchorA      = anchorA_local;
+            jd.AnchorB      = anchorB_local;
+            jd.RotationA    = glm::quat(1,0,0,0);
+            jd.RotationB    = glm::quat(1,0,0,0);
+
+            FixedJoints.push_back(jd);
+            return FixedJoints.size() - 1;
+        }
+
+        std::size_t CreateBallSocket(BodyHandle a, BodyHandle b, const glm::vec3& anchorA_local, const glm::vec3& anchorB_local, float baumgarte = 0.2f)
+        {
+            BallSocketDesc jd{};
+            jd.A            = (int)a.Index;
+            jd.B            = (int)b.Index;
+            jd.AnchorA      = anchorA_local;
+            jd.AnchorB      = anchorB_local;
+            jd.Baumgarte    = baumgarte;
+
+            BallJoints.push_back(jd);
+            return BallJoints.size() - 1;
+        }
+
+        std::size_t CreateHinge(BodyHandle a, BodyHandle b, const glm::vec3& anchorA_local, const glm::vec3& anchorB_local, const glm::vec3& axisA_local, const glm::vec3& axisB_local, bool enableLimits=false, float lo=-1.0f, float hi=+1.0f, bool enableMotor=false, float motorSpeed=0.0f, float motorTorque=0.0f)
+        {
+            HingeDesc jd{};
+            jd.A = (int)a.Index; jd.B = (int)b.Index;
+
+            jd.AnchorA          = anchorA_local; jd.AnchorB = anchorB_local;
+            jd.AxisA            = glm::normalize(axisA_local);
+            jd.AxisB            = glm::normalize(axisB_local);
+            jd.EnableLimits     = enableLimits; jd.LimitLow = lo; jd.LimitHigh = hi;
+            jd.EnableMotor      = enableMotor;  jd.MotorSpeed = motorSpeed; jd.MotorTorque = motorTorque;
+
+            HingsJoints.push_back(jd);
+            return HingsJoints.size() - 1;
+        }
+
+        std::size_t CreateSlider(BodyHandle a, BodyHandle b, const glm::vec3& anchorA_local, const glm::vec3& anchorB_local, const glm::vec3& axisA_local, const glm::vec3& axisB_local, glm::vec3 refPerpA_local, glm::vec3 refPerpB_local, bool enableLimits=false, float lo=-1.0f, float hi=+1.0f, bool enableMotor=false, float motorSpeed=0.0f, float motorForce=0.0f)
+        {
+            auto ortho = [](const glm::vec3& axis, glm::vec3 v)
+            {
+                glm::vec3 a = glm::normalize(axis);
+                v           = v - a * glm::dot(a, v);
+
+                if (glm::length2(v) < 1e-8f) 
+                {
+                    glm::vec3 h     = (std::abs(a.x)<0.577f)? glm::vec3(1,0,0) : (std::abs(a.y)<0.577f)? glm::vec3(0,1,0) : glm::vec3(0,0,1);
+                    v               = glm::normalize(glm::cross(a, h));
+                } 
+                else v            = glm::normalize(v);
+
+                return v;
+            };
+
+            SliderDesc jd{};
+            jd.A = (int)a.Index; jd.B = (int)b.Index;
+            
+            jd.AnchorA      = anchorA_local; jd.AnchorB = anchorB_local;
+            jd.AxisA        = glm::normalize(axisA_local);
+            jd.AxisB        = glm::normalize(axisB_local);
+            jd.RefPerpA     = ortho(jd.AxisA, refPerpA_local);
+            jd.RefPerpB     = ortho(jd.AxisB, refPerpB_local);
+            jd.EnableLimits = enableLimits; jd.LimitLow = lo; jd.LimitHigh = hi;
+            jd.EnableMotor  = enableMotor;  jd.MotorSpeed = motorSpeed; jd.MotorForce = motorForce;
+
+            SliderJoints.push_back(jd);
+            return SliderJoints.size()-1;
+        }
+
+
     };
 }

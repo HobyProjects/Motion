@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Types.hpp"
+#include "PhyCore.hpp"
 
 namespace Motion
 {
@@ -35,4 +35,18 @@ namespace Motion
     {
         return { glm::min(a.MIN, b.MIN), glm::max(a.MAX, b.MAX) };
     }
+
+    inline bool RayIntersectsAABB(const glm::vec3& ro, const glm::vec3& rd, const AABB& b, float tMin, float tMax) 
+    {
+        glm::vec3 invD  = 1.0f / rd;
+        glm::vec3 t0    = (b.MIN - ro) * invD;
+        glm::vec3 t1    = (b.MAX - ro) * invD;
+        glm::vec3 tmin  = glm::min(t0, t1);
+        glm::vec3 tmax  = glm::max(t0, t1);
+
+        float enter = glm::max(glm::max(tmin.x, tmin.y), glm::max(tmin.z, tMin));
+        float exit  = glm::min(glm::min(tmax.x, tmax.y), glm::min(tmax.z, tMax));
+        return exit >= enter && exit >= 0.0f;
+    }
+
 }

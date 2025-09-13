@@ -3,7 +3,7 @@
 #include <glm/gtc/constants.hpp>
 #include <glm/gtc/matrix_inverse.hpp>
 
-#include "Types.hpp"
+#include "PhyCore.hpp"
 #include "AABB.hpp"
 
 namespace Motion

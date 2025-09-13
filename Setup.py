@@ -212,6 +212,8 @@ def generate_presets(dir_path: str, packages: list[Package], generator: str | No
             "CMAKE_SYSTEM_NAME": system,
             "CMAKE_SYSTEM_VERSION": platform.release(),
             "CMAKE_SYSTEM_PROCESSOR": platform.machine(),
+            
+            "CMAKE_EXPORT_COMPILE_COMMANDS" : "ON"
         }
 
     def preset(name, cfg):

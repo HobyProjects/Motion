@@ -3,7 +3,7 @@
 #include <vector>
 #include <utility>
 
-#include "Types.hpp"
+#include "PhyCore.hpp"
 
 namespace Motion
 {

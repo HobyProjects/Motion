@@ -2,7 +2,7 @@
 
 #include <memory>
 
-#include "Types.hpp"
+#include "PhyCore.hpp"
 #include "Contact.hpp"
 #include "SphereShape.hpp"
 #include "BoxShape.hpp"

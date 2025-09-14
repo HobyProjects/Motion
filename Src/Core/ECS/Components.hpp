@@ -8,6 +8,7 @@
 #include "UUID.hpp"
 #include "Model.hpp"
 #include "Entity.hpp"
+#include "KinetiX.hpp"
 
 namespace Motion
 {
@@ -76,117 +77,5 @@ namespace Motion
             return t.Rotation * (t.Scale * v);
         }
 
-    };
-
-    struct TransformHistoryComponent
-    {
-        glm::vec3 PrevTranslation{0.0f};
-        glm::quat PrevRotation{1,0,0,0};
-        glm::vec3 PrevScale{1.0f};
-    };
-
-
-    struct RigidBodyComponent
-    {
-        enum class PhysicsBody { Static, Kinematic, Dynamic };
-
-        UUID      ID{ 0 };
-        bool      IsEnabled{true};
-
-        PhysicsBody Type{PhysicsBody::Dynamic};
-        bool        UseGravity{true};
-        float       GravityScale{1.0f};
-
-        glm::vec3 LinearVelocity{0.0f};
-        glm::vec3 AngularVelocity{0.0f};
-
-        glm::vec3 ForceAccum{0.0f};
-        glm::vec3 TorqueAccum{0.0f};
-
-        float Mass = 1.0f;
-        float InvMass = 1.0f;
-
-        glm::mat3 IBodyInv{1.0f};
-        glm::mat3 IWorldInv{1.0f};
-
-        glm::bvec3 LockLinear{false,false,false};
-        glm::bvec3 LockAngular{false,false,false};
-        
-        float MaxLinearSpeed{std::numeric_limits<float>::infinity()};
-        float MaxAngularSpeed{std::numeric_limits<float>::infinity()};
-
-        bool  IsSleeping{false};
-        float SleepTimer{0.0f};
-        float SleepThresholdLin{0.01f};
-        float SleepThresholdAng{0.01f};
-
-        glm::vec3 KinematicTargetPos{0.0f};
-        glm::quat KinematicTargetRot{1,0,0,0};
-
-        bool  CCDEnabled{false};
-        float CCDMotionThreshold{0.01f};
-        float SweptSphereRadius{0.0f};
-
-        RigidBodyComponent(): ID(UniqueIdentity::GetUniqueID()){}
-        ~RigidBodyComponent() = default;
-
-        inline bool Static() const 
-        { 
-            return InvMass == 0.0f || Type == PhysicsBody::Static; 
-        }
-
-        inline void SetMass(float m)
-        {
-            Mass    = m;
-            InvMass = (m > 0.0f) ? 1.0f / m : 0.0f;
-        }
-
-        inline void SyncInertia(const TransformComponent& tc)
-        {
-            glm::mat3 R = tc.GetR();
-            IWorldInv   = R * IBodyInv * glm::transpose(R);
-        }
-    };
-
-    enum class CombineMode : std::uint8_t 
-    { 
-        Average, 
-        Minimum, 
-        Maximum, 
-        Multiply 
-    };
-
-    struct PhysicalMaterial
-    {
-        float Restitution{0.20f};
-        float FrictionStatic{0.60f};
-        float FrictionDynamic{0.45f};
-
-        CombineMode FrictionCombine{CombineMode::Average};
-        CombineMode RestitutionCombine{CombineMode::Maximum};
-    };
-
-    struct ColliderComponent
-    {
-        UUID                ID{0};
-        bool                IsEnabled{true};
-        bool                ShowCollider{false};
-
-        glm::vec3           LocalOffset{0.0f};
-        glm::quat           LocalRotation{1,0,0,0};
-
-        PhysicalMaterial    MaterialBase{};
-
-        ~ColliderComponent() = default;
-    };
-
-    struct DampingComponent
-    {
-        UUID  ID{0};
-        float Linear{0.02f}; 
-        float Angular{0.02f}; 
-
-        DampingComponent(): ID(UniqueIdentity::GetUniqueID()){}
-        ~DampingComponent() = default;
     };
 }

@@ -38,8 +38,8 @@ namespace Motion
 
         bool Dirty{false};
 
-         void Resort() 
-         {
+        void Resort() 
+        {
             std::stable_sort(EndPoints.begin(), EndPoints.end(), [](const EndPoint& a, const EndPoint& b){ return a.Value < b.Value; });
 
             for (INDEX idx = 0; idx < (INDEX)EndPoints.size(); ++idx) 
@@ -50,11 +50,6 @@ namespace Motion
             }
 
             Dirty = false;
-        }
-
-        static bool OverlapYZ(const AABB& a, const AABB& b) 
-        {
-            return (a.MIN.y <= b.MAX.y && a.MAX.y >= b.MIN.y) && (a.MIN.z <= b.MAX.z && a.MAX.z >= b.MIN.z);
         }
 
         INDEX FindProxyIndex(ProxyID id) const 

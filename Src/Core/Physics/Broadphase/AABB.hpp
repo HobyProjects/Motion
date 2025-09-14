@@ -26,6 +26,11 @@ namespace Motion
                (a.MIN.z <= b.MAX.z && a.MAX.z >= b.MIN.z);
     }
 
+    inline bool OverlapYZ(const AABB& a, const AABB& b) 
+    {
+        return (a.MIN.y <= b.MAX.y && a.MAX.y >= b.MIN.y) && (a.MIN.z <= b.MAX.z && a.MAX.z >= b.MIN.z);
+    }
+
     inline AABB Merge(const AABB& a, const AABB& b) 
     {
         return { glm::min(a.MIN, b.MIN), glm::max(a.MAX, b.MAX) };

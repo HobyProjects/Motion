@@ -11,11 +11,19 @@ namespace Motion
         float Radius{0.5f};
         glm::vec3 Center{0.0f};
 
+        static void Validate(float r, float margin) 
+        {
+            if (r <= 0.0f)     throw std::invalid_argument("SphereShape: radius must be > 0");
+            if (margin < 0.0f) throw std::invalid_argument("SphereShape: margin must be >= 0");
+        }
+
         SphereShape(float r, float margin = 0.02f)
         {
+            Validate(r, margin);
+
             Type            = ShapeType::Sphere;
             Radius          = r;
-            ConvexRadius    = margin;
+            ConvexRadius    = glm::clamp(margin, 0.0f, r);
         }
 
         MassProperties  Mass(float density) const override

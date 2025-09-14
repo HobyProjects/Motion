@@ -26,12 +26,14 @@ namespace Motion
 
     struct ConcaveMeshShape : Shape
     {
-        std::vector<glm::vec3> Vertice{};
+        std::vector<glm::vec3>  Vertice{};
         std::vector<TriMeshTri> Tris{};
-        std::vector<AABB> TriAABBs{};
-        std::vector<BVHNode> Nodes{};
-        AABB LocalBounds{};
-        float WeldSlop{1e-4f};
+        std::vector<AABB>       TriAABBs{};
+        std::vector<BVHNode>    Nodes{};
+        
+        AABB    LocalBounds{};
+        float   WeldSlop{1e-4f};
+        bool    BackfaceCull{ true };
 
         ConcaveMeshShape() { Type = ShapeType::Concave; }
 

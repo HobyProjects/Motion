@@ -70,5 +70,11 @@ namespace Motion
         return R * v;
     }
 
+    inline glm::vec3 TriNormalWS(const glm::vec3& a, const glm::vec3& b, const glm::vec3& c)
+    {
+        return glm::normalize(glm::cross(b - a, c - a)); 
+    }
+
+
 
 }

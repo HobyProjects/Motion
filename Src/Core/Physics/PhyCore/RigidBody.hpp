@@ -14,7 +14,7 @@ namespace Motion
         glm::vec3 AngularVelocity{0};
 
         float InvMass = 0.0f;       
-        glm::mat3 InvInertiaLocal{0}; 
+        glm::mat3 InvInertiaLocal{ 0 };
         glm::mat3 InvInertiaWorld{0}; 
 
         float LinearDamping  = 0.01f;

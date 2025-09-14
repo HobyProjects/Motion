@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <cstdint>
+#include <stdexcept>
 #include <glm/glm.hpp>
 
 #include "Base.hpp"
@@ -41,8 +42,8 @@ namespace Motion
 
     struct Shape
     {
-        ShapeType Type;
-        float ConvexRadius{0.02f};
+        ShapeType   Type;
+        float       ConvexRadius{0.02f};
 
         Shape() = default;
         virtual ~Shape() = default;
@@ -54,10 +55,11 @@ namespace Motion
 
     struct Collider
     {
-        const Shape* ColliderShape{nullptr};
-        glm::mat4 LocalPose{1.0f};
-        MaterialProperties MaterialProp{};
-        std::uint32_t Filter{0xFFFFFFFF};
+        const Shape*        ColliderShape{nullptr};
+        glm::mat4           LocalPose{1.0f};
+        MaterialProperties  MaterialProp{};
+        std::uint32_t       Filter{0xFFFFFFFF};
+        std::uint32_t       Mask{0xFFFFFFFF};
     };
 
     inline float CombineFriction(const MaterialProperties& A, const MaterialProperties& B) 

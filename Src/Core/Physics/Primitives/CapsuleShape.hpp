@@ -6,18 +6,26 @@
 
 namespace Motion
 {
-
     struct CapsuleShape final : Shape
     {
         float HalfHeight{0.5f};
         float Radius{0.25f};
 
+        static void Validate(float hh, float r, float margin) 
+        {
+            if (hh < 0.0f)     throw std::invalid_argument("CapsuleShape: half-height must be >= 0");
+            if (r  <= 0.0f)    throw std::invalid_argument("CapsuleShape: radius must be > 0");
+            if (margin < 0.0f) throw std::invalid_argument("CapsuleShape: margin must be >= 0");
+        }
+
         CapsuleShape(float hh, float r, float margin = 0.02f)
         {
+            Validate(hh, r, margin);
+
             Type            = ShapeType::Capsule;
             HalfHeight      = hh;
             Radius          = r;
-            ConvexRadius    = margin;
+            ConvexRadius    = glm::clamp(margin, 0.0f, r);
         }
 
         MassProperties Mass(float density) const override

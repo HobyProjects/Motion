@@ -19,6 +19,7 @@ namespace Motion
         glm::vec3 Dir{0.0f, 0.0f, 1.0f};
         float TMin{0.0f};
         float TMax{1e6f};
+        std::uint32_t Mask{0xFFFFFFFF};
     };
 
     struct RayHit
@@ -223,6 +224,7 @@ namespace Motion
 
     inline bool RaycastConvex(const Ray& r, const ConvexHullShape& H, const glm::mat4& W, const Collider* hullCollider,  RayHit& out)
     {
+        if ((hullCollider->Filter & r.Mask) == 0u) return false;
         if (H.Vertice.empty() || H.Faces.empty()) return false;
 
         glm::vec3 centroid(0.0f);
@@ -286,9 +288,11 @@ namespace Motion
 
     inline bool RaycastConcave(const Ray& r, const ConcaveMeshShape& M, const glm::mat4& Wmesh, const Collider* meshCollider, RayHit& out)
     {
+        if ((meshCollider->Filter & r.Mask) == 0u) return false;
         if (M.Nodes.empty()) return false;
 
-        bool hitAny = false;
+        bool hitAny     = false;
+        const bool cull = M.BackfaceCull;
         float tEnter, tExit;
 
         const AABB rootWB = TransformAABB(M.Nodes[0].Box, Wmesh);
@@ -311,12 +315,15 @@ namespace Motion
                 const std::uint32_t first = N.Left;
                 const std::uint32_t count = N.Right;
 
-                for (std::uint32_t i=0; i<count; ++i) 
+                for (std::uint32_t i=0; i < count; ++i) 
                 {
                     const auto tri      = M.Tris[first + i];
                     const glm::vec3 a   = glm::vec3(Wmesh * glm::vec4(M.Vertice[tri.I0],1));
                     const glm::vec3 b   = glm::vec3(Wmesh * glm::vec4(M.Vertice[tri.I1],1));
                     const glm::vec3 c   = glm::vec3(Wmesh * glm::vec4(M.Vertice[tri.I2],1));
+
+                    glm::vec3 nFace = glm::normalize(glm::cross(b - a, c - a)); 
+                    if (cull && glm::dot(nFace, -r.Dir) <= 0.0f) continue;
 
                     float t; glm::vec3 n;
                     if (RayTriangle(r, a, b, c, t, n) && t < out.T) 
@@ -343,6 +350,8 @@ namespace Motion
 
     inline bool RaycastCollider(const Ray& r, const Collider& col, const glm::mat4& world, RayHit& out) 
     {
+        if ( (col.Filter & r.Mask) == 0u ) return false;
+
         switch (col.ColliderShape->Type) 
         {
             case ShapeType::Sphere: 

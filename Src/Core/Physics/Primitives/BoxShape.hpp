@@ -10,11 +10,21 @@ namespace Motion
     {
         glm::vec3 HalfExtents{0.5f};
 
+        static void Validate(const glm::vec3& he, float margin) 
+        {
+            if (he.x <= 0 || he.y <= 0 || he.z <= 0) throw std::invalid_argument("BoxShape: half-extents must be > 0");
+            if (margin < 0) throw std::invalid_argument("BoxShape: margin must be >= 0");
+        }
+
         BoxShape(const glm::vec3& he, float margin = 0.02f)
         {
+            Validate(he, margin);
+
             Type            = ShapeType::Box;
             HalfExtents     = he;
-            ConvexRadius    = margin;
+
+            const float maxMargin   = glm::min(he.x, glm::min(he.y, he.z));
+            ConvexRadius            = glm::clamp(margin, 0.0f, maxMargin);
         }
 
         MassProperties Mass(float density) const override

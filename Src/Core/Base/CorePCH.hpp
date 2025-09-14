@@ -131,7 +131,7 @@
 #include "PhyCore.hpp"
 #include "PhyMath.hpp"
 #include "RigidBody.hpp"
-#include "PhysicsWorld.hpp"
+#include "KinetiX.hpp"
 
 
 //Events

@@ -15,6 +15,74 @@
 
 namespace Motion
 {
+    struct PairKey 
+    {
+        std::uint32_t A{0}, B{0};
+        bool operator==(const PairKey& o) const { return A==o.A && B==o.B; }
+    };
+    struct PairKeyHash 
+    {
+        size_t operator()(const PairKey& k) const noexcept 
+        {
+            return (size_t(k.A) << 32) ^ size_t(k.B * 0x9e3779b1u);
+        }
+    };
+
+    struct PersistSettings 
+    {
+        float KeepDistance{0.02f};    
+        float KeepNormalCos{0.95f};     
+        float MaxPoints{4.0f};          
+    };
+
+    inline void RefreshPersistent(const ContactManifold& fresh, const PersistSettings& ps, PersistentManifold& cacheOut)
+    {
+        bool usedOld[4] = {false,false,false,false};
+        PersistentPoint newP[4];
+        int newCount = 0;
+
+        for (int i=0; i<fresh.Count && newCount<4; ++i) 
+        {
+            const auto& np = fresh.Points[i];
+            int bestOld = -1;
+            float bestDist2 = FLT_MAX;
+
+            for (int j=0; j<cacheOut.Count; ++j) 
+            {
+                if (usedOld[j]) continue;
+                const auto& op = cacheOut.P[j].CP;
+
+                float c = glm::dot(np.NormalWS, op.NormalWS);
+                if (c < ps.KeepNormalCos) continue;
+
+                float d2 = glm::length2(np.PositionWS - op.PositionWS);
+                if (d2 < bestDist2) { bestDist2 = d2; bestOld = j; }
+            }
+
+            PersistentPoint out{};
+            out.CP = np; 
+
+            if (bestOld >= 0 && bestDist2 <= ps.KeepDistance*ps.KeepDistance) 
+            {
+                out.Warm = cacheOut.P[bestOld].Warm;
+                out.FID  = cacheOut.P[bestOld].FID;
+                usedOld[bestOld] = true;
+            }
+
+            newP[newCount++] = out;
+        }
+
+
+        cacheOut.SharedNormalWS     = (fresh.Count>0) ? fresh.SharedNormalWS : cacheOut.SharedNormalWS;
+        cacheOut.SharedFriction     = fresh.SharedFriction;
+        cacheOut.SharedRestitution  = fresh.SharedRestitution;
+        cacheOut.Count              = newCount;
+
+        for (int k = 0; k < newCount; ++k) cacheOut.P[k] = newP[k];
+    }
+
+    using ManifoldCache = std::unordered_map<PairKey, PersistentManifold, PairKeyHash>;
+
     inline void BoxWorldData(const BoxShape& B, const glm::mat4& WB, glm::vec3& c, glm::vec3 axes[3], glm::vec3& eWorld)
     {
         glm::vec3 scales;

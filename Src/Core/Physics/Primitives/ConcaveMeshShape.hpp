@@ -24,7 +24,6 @@ namespace Motion
         bool IsLeaf{false};
     };
 
-
     struct ConcaveMeshShape : Shape
     {
         std::vector<glm::vec3> Vertice{};

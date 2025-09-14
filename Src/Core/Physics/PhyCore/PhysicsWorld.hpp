@@ -53,7 +53,9 @@ namespace Motion
         NarrowPhaseContext      NPContext{};
         SolverSettings          SolveSettings{};
         WorldSettings           WSettings{};
-        JointSettings           JSettings{}; 
+        JointSettings           JSettings{};
+        ManifoldCache           ContactCache;
+        std::uint32_t           FrameCounter{0}; 
 
         std::vector<RigidBody>          Bodies{};
         std::vector<WorldCollider>      Colliders{};
@@ -533,12 +535,37 @@ namespace Motion
                 }
             }
 
-            if (!manifolds.empty()) 
+            PersistSettings pset{}; 
+            std::vector<ContactManifold> persisted;
+            persisted.reserve(manifolds.size());
+
+            for (size_t i = 0; i < manifolds.size(); ++i) 
+            {
+                const auto ab = pairBodies[i]; 
+                PairKey key
+                {
+                    (std::uint32_t)std::min(ab.first, ab.second),
+                    (std::uint32_t)std::max(ab.first, ab.second)
+                };
+
+                auto it = ContactCache.find(key);
+                if (it == ContactCache.end()) it = ContactCache.emplace(key, Motion::PersistentManifold{}).first;
+
+                RefreshPersistent(manifolds[i], pset, it->second);
+                it->second.LastTouched = ++FrameCounter;
+
+                ContactManifold mOut = manifolds[i];
+                persisted.push_back(mOut);
+            }
+
+
+            if (!persisted.empty()) 
             {
                 ContactBatch batch;
-                batch.Build(manifolds, pairBodies, Bodies, SolveSettings);
-                if (SolveSettings.WarmStart) batch.WarmStart(Bodies, SolveSettings);
+                batch.Build(persisted, pairBodies, Bodies, SolveSettings, &ContactCache);
+                if (SolveSettings.WarmStart) batch.WarmStartCached(Bodies, SolveSettings);
                 batch.Solve(Bodies, SolveSettings);
+                batch.WriteBackToCache();
             }
 
             if (!FixedJoints.empty() || !BallJoints.empty() || !HingsJoints.empty() || !SliderJoints.empty())

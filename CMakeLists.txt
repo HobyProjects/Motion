@@ -29,8 +29,9 @@ target_include_directories(
         ${CMAKE_SOURCE_DIR}/Src/Core
         ${CMAKE_SOURCE_DIR}/Src/Core/Base
         ${CMAKE_SOURCE_DIR}/Src/Core/Event
-        ${CMAKE_SOURCE_DIR}/Src/Core/Renderer
         ${CMAKE_SOURCE_DIR}/Src/Core/Window
+        ${CMAKE_SOURCE_DIR}/Src/Core/Assets
+        ${CMAKE_SOURCE_DIR}/Src/Core/Layer
         ${CMAKE_SOURCE_DIR}/Src/Core/UI
         ${CMAKE_SOURCE_DIR}/Src/Core/UI/IconFonts
         ${CMAKE_SOURCE_DIR}/Src/Core/ECS
@@ -42,10 +43,10 @@ target_include_directories(
         ${CMAKE_SOURCE_DIR}/Src/Core/Physics/Collision
         ${CMAKE_SOURCE_DIR}/Src/Core/Physics/PhyCore
         ${CMAKE_SOURCE_DIR}/Src/Core/Physics/Primitives
+        ${CMAKE_SOURCE_DIR}/Src/Core/Physics/Query
         ${CMAKE_SOURCE_DIR}/Src/Core/Physics/Solver
-        ${CMAKE_SOURCE_DIR}/Src/Core/Assets
-        ${CMAKE_SOURCE_DIR}/Src/Core/Layer
         ${CMAKE_SOURCE_DIR}/Src/Core/Platform
+        ${CMAKE_SOURCE_DIR}/Src/Core/Renderer
         ${CMAKE_SOURCE_DIR}/Src/Core/Renderer/Backends/OpenGL
 )
 

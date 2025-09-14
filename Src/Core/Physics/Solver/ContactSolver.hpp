@@ -5,6 +5,7 @@
 
 #include "RigidBody.hpp"
 #include "Contact.hpp"
+#include "Pairwise.hpp"
 
 namespace Motion 
 {
@@ -30,6 +31,19 @@ namespace Motion
         float  ImpulseT2{0.0f};
 
         float vRelN0{0.0f};
+
+        PairKey Key{};        
+        int     PointCount{0};
+
+        struct Pt 
+        {
+            float AccumNormal{0.0f};
+            float AccumTanU{0.0f};
+            float AccumTanV{0.0f};
+            glm::vec3 PositionWS{0.0f};
+            glm::vec3 NormalWS{0.0f};
+
+        } Points[4];
     };
 
     struct SolverSettings 
@@ -40,15 +54,6 @@ namespace Motion
         float RestitutionThreshold      = 1.0f; 
         bool  WarmStart                 = true;
     };
-
-    inline void OrthonormalBasis(const glm::vec3& n, glm::vec3& t1, glm::vec3& t2) 
-    {
-        glm::vec3 h = (std::abs(n.x) < 0.577f) ? glm::vec3(1,0,0) :
-                      (std::abs(n.y) < 0.577f) ? glm::vec3(0,1,0) : glm::vec3(0,0,1);
-
-        t1 = glm::normalize(glm::cross(h, n));
-        t2 = glm::cross(n, t1);
-    }
 
     inline float EffectiveMass(const RigidBody& A, const RigidBody& B, const glm::vec3& rA, const glm::vec3& rB, const glm::vec3& j)
     {
@@ -62,12 +67,13 @@ namespace Motion
 
     struct ContactBatch 
     {
-        std::vector<ContactConstraint> CONS;
+        std::vector<ContactConstraint> Constraints;
+        const ManifoldCache* Cache{nullptr};
 
         void Build(const std::vector<ContactManifold>& manifolds, const std::vector<std::pair<int,int>>& bodyPairs, const std::vector<RigidBody>& bodies, const SolverSettings& settings)
         {
-            CONS.clear();
-            CONS.reserve(manifolds.size() * 2);
+            Constraints.clear();
+            Constraints.reserve(manifolds.size() * 2);
 
             for (size_t m = 0; m < manifolds.size(); ++m) 
             {
@@ -95,19 +101,89 @@ namespace Motion
                     c.MassT1 = EffectiveMass(A, B, c.RA, c.RB, c.T1);
                     c.MassT2 = EffectiveMass(A, B, c.RA, c.RB, c.T2);
 
-                    c.Friction    = 0.5f * (/*A.mat.friction*/ 0.6f + /*B.mat.friction*/ 0.6f);
-                    c.Restitution = 0.5f * (/*A.mat.restitution*/0.1f + /*B.mat.restitution*/0.1f);
+                    c.Friction    = 0.5f * M.SharedFriction;
+                    c.Restitution = 0.5f * M.SharedRestitution;
 
                     const float pen         = M.Points[i].Penetration;
                     float penetrationError  = glm::max(0.0f, pen - settings.AllowedPenetration);
                     c.Bias = (settings.Baumgarte / (float)settings.Iterations) * penetrationError;
 
-                    // Initial normal relative velocity for restitution decision
-                    glm::vec3 vA = A.LinearVelocity + glm::cross(A.AngularVelocity, c.RA);
-                    glm::vec3 vB = B.LinearVelocity + glm::cross(B.AngularVelocity, c.RB);
-                    c.vRelN0 = glm::dot(c.N, vB - vA);
+                    glm::vec3 vA    = A.LinearVelocity + glm::cross(A.AngularVelocity, c.RA);
+                    glm::vec3 vB    = B.LinearVelocity + glm::cross(B.AngularVelocity, c.RB);
+                    c.vRelN0        = glm::dot(c.N, vB - vA);
 
-                    CONS.push_back(c);
+                    c.Key = { (uint32_t)std::min(ia, ib), (uint32_t)std::max(ia, ib) };
+                    c.PointCount = manifolds[i].Count;
+
+                    for (int k = 0; k < c.PointCount; ++k) 
+                    {
+                        c.Points[k].AccumNormal = 0.0f;
+                        c.Points[k].AccumTanU   = 0.0f;
+                        c.Points[k].AccumTanV   = 0.0f;
+
+                        c.Points[k].PositionWS  = manifolds[i].Points[k].PositionWS;
+                        c.Points[k].NormalWS    = manifolds[i].Points[k].NormalWS;
+                    }
+
+                    Constraints.push_back(c);
+                }
+            }
+        }
+
+        void Build(const std::vector<ContactManifold>& manifolds, const std::vector<std::pair<int,int>>& bodyPairs, std::vector<RigidBody>& bodies, const SolverSettings& settings, const ManifoldCache* cachePtr)
+        {
+            Cache = cachePtr;
+            for (size_t m = 0; m < manifolds.size(); ++m) 
+            {
+                const auto& M   = manifolds[m];
+                const int ia    = bodyPairs[m].first;
+                const int ib    = bodyPairs[m].second;
+
+                const RigidBody& A = bodies[ia];
+                const RigidBody& B = bodies[ib];
+
+                for (int i = 0; i < M.Count; ++i) 
+                {
+                    ContactConstraint c{};
+                    c.A = ia; c.B = ib;
+
+                    c.P = M.Points[i].PositionWS;
+                    c.N = glm::normalize(M.Points[i].NormalWS);
+
+                    OrthonormalBasis(c.N, c.T1, c.T2);
+
+                    c.RA = c.P - A.Position;
+                    c.RB = c.P - B.Position;
+
+                    c.MassN  = EffectiveMass(A, B, c.RA, c.RB, c.N);
+                    c.MassT1 = EffectiveMass(A, B, c.RA, c.RB, c.T1);
+                    c.MassT2 = EffectiveMass(A, B, c.RA, c.RB, c.T2);
+
+                    c.Friction    = 0.5f * M.SharedFriction;
+                    c.Restitution = 0.5f * M.SharedRestitution;
+
+                    const float pen         = M.Points[i].Penetration;
+                    float penetrationError  = glm::max(0.0f, pen - settings.AllowedPenetration);
+                    c.Bias = (settings.Baumgarte / (float)settings.Iterations) * penetrationError;
+
+                    glm::vec3 vA    = A.LinearVelocity + glm::cross(A.AngularVelocity, c.RA);
+                    glm::vec3 vB    = B.LinearVelocity + glm::cross(B.AngularVelocity, c.RB);
+                    c.vRelN0        = glm::dot(c.N, vB - vA);
+
+                    c.Key = { (uint32_t)std::min(ia, ib), (uint32_t)std::max(ia, ib) };
+                    c.PointCount = manifolds[i].Count;
+
+                    for (int k = 0; k < c.PointCount; ++k) 
+                    {
+                        c.Points[k].AccumNormal = 0.0f;
+                        c.Points[k].AccumTanU   = 0.0f;
+                        c.Points[k].AccumTanV   = 0.0f;
+
+                        c.Points[k].PositionWS  = manifolds[i].Points[k].PositionWS;
+                        c.Points[k].NormalWS    = manifolds[i].Points[k].NormalWS;
+                    }
+
+                    Constraints.push_back(c);
                 }
             }
         }
@@ -115,7 +191,7 @@ namespace Motion
         void WarmStart(std::vector<RigidBody>& bodies, const SolverSettings& settings) 
         {
             if (!settings.WarmStart) return;
-            for (auto& c : CONS) {
+            for (auto& c : Constraints) {
                 RigidBody& A = bodies[c.A];
                 RigidBody& B = bodies[c.B];
                 const glm::vec3 P = c.N * c.ImpulseN + c.T1 * c.ImpulseT1 + c.T2 * c.ImpulseT2;
@@ -128,12 +204,101 @@ namespace Motion
             }
         }
 
+        void ApplyImpulseToBodies(std::vector<RigidBody>& bodies, const ContactConstraint& C, int idx, float accumN, float accumU, float accumV)
+        {
+            RigidBody& A = bodies[C.A];
+            RigidBody& B = bodies[C.B];
+            glm::vec3 P = C.N * accumN + C.T1 * accumU + C.T2 * accumV;
+
+            A.ApplyLinearImpulse(-P);
+            A.ApplyAngularImpulse(-glm::cross(C.RA, P));
+
+            B.ApplyLinearImpulse(P);
+            B.ApplyAngularImpulse(glm::cross(C.RB, P));
+        }
+
+        void WarmStartCached(std::vector<RigidBody>& bodies, const SolverSettings& set)
+        {
+            if (!Cache) return;
+            for (auto& C : Constraints) 
+            {
+                auto it = Cache->find(C.Key);
+                if (it == Cache->end()) continue;
+                const PersistentManifold& pm = it->second;
+
+                bool usedPM[4]{ false, false, false, false};
+                for (int i = 0; i < C.PointCount; ++i)
+                {
+                    int best = -1; float bestD2 = FLT_MAX;
+                    for (int j=0; j<pm.Count; ++j) 
+                    {
+                        if (usedPM[j]) continue;
+                        float c = glm::dot(C.Points[i].NormalWS, pm.P[j].CP.NormalWS);
+
+                        if (c < 0.95f) continue;
+                        float d2 = glm::length2(C.Points[i].PositionWS - pm.P[j].CP.PositionWS);
+
+                        if (d2 < bestD2) { bestD2 = d2; best = j; }
+                    }
+
+                    if (best == -1) continue;
+                    usedPM[best] = true;
+
+                    const ContactWarm& w = pm.P[best].Warm;
+                    C.Points[i].AccumNormal = w.NormalImpulse;
+                    C.Points[i].AccumTanU   = w.TangentImpulseU;
+                    C.Points[i].AccumTanV   = w.TangentImpulseV;
+
+                    ApplyImpulseToBodies(bodies, C, i, C.Points[i].AccumNormal, C.Points[i].AccumTanU, C.Points[i].AccumTanV);
+                }
+            }
+        }
+
+        void WriteBackToCache()
+        {
+            if (!Cache) return;
+            for (auto& C : Constraints)
+            {
+                auto it = Cache->find(C.Key);
+                if (it == Cache->end()) continue;
+                PersistentManifold& pm = const_cast<PersistentManifold&>(it->second);
+
+                bool usedPM[4]{ false, false, false, false};
+                for (int i=0; i<C.PointCount; ++i)
+                {
+                    int best = -1; float bestD2 = FLT_MAX;
+                    for (int j=0; j<pm.Count; ++j) 
+                    {
+                        if (usedPM[j]) continue;
+                        float c = glm::dot(C.Points[i].NormalWS, pm.P[j].CP.NormalWS);
+
+                        if (c < 0.95f) continue;
+                        float d2 = glm::length2(C.Points[i].PositionWS - pm.P[j].CP.PositionWS);
+
+                        if (d2 < bestD2) { bestD2 = d2; best = j; }
+                    }
+
+                    if (best == -1) continue;
+                    usedPM[best] = true;
+
+                    pm.P[best].Warm.NormalImpulse       = C.Points[i].AccumNormal;
+                    pm.P[best].Warm.TangentImpulseU     = C.Points[i].AccumTanU;
+                    pm.P[best].Warm.TangentImpulseV     = C.Points[i].AccumTanV;
+                    pm.P[best].CP.PositionWS            = C.Points[i].PositionWS;
+                    pm.P[best].CP.NormalWS              = C.Points[i].NormalWS;
+                }
+            }
+        }
+
+
+
         void Solve(std::vector<RigidBody>& bodies, const SolverSettings& settings) 
         {
             const int iters = settings.Iterations;
             for (int it = 0; it < iters; ++it) 
             {
-                for (auto& c : CONS) {
+                for (auto& c : Constraints) 
+                {
                     RigidBody& A = bodies[c.A];
                     RigidBody& B = bodies[c.B];
 
@@ -173,21 +338,24 @@ namespace Motion
                     float newT1 = oldT1 + lambdaT1;
                     float newT2 = oldT2 + lambdaT2;
 
-                    float maxFriction = c.Friction * c.ImpulseN;
-                    // Project (newT1,newT2) into disc of radius maxFriction
-                    float mag = std::sqrt(newT1*newT1 + newT2*newT2);
-                    if (mag > maxFriction + 1e-6f) {
+                    float maxFriction   = c.Friction * c.ImpulseN;
+                    float mag           = std::sqrt(newT1*newT1 + newT2*newT2);
+
+                    if (mag > maxFriction + 1e-6f) 
+                    {
                         float scale = maxFriction / (mag + 1e-12f);
                         newT1 *= scale; newT2 *= scale;
                     }
-                    lambdaT1 = newT1 - oldT1;
-                    lambdaT2 = newT2 - oldT2;
-                    c.ImpulseT1 = newT1;
-                    c.ImpulseT2 = newT2;
 
-                    glm::vec3 PT = c.T1 * lambdaT1 + c.T2 * lambdaT2;
+                    lambdaT1        = newT1 - oldT1;
+                    lambdaT2        = newT2 - oldT2;
+                    c.ImpulseT1     = newT1;
+                    c.ImpulseT2     = newT2;
+                    glm::vec3 PT    = c.T1 * lambdaT1 + c.T2 * lambdaT2;
+
                     A.ApplyLinearImpulse(-PT);
                     A.ApplyAngularImpulse(-glm::cross(c.RA, PT));
+
                     B.ApplyLinearImpulse(PT);
                     B.ApplyAngularImpulse(glm::cross(c.RB, PT));
                 }

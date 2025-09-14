@@ -99,16 +99,40 @@
 #include "Intersect.hpp"
 #include "MeshFit.hpp"
 
-//Physics
-#include "PhyCore.hpp"
+
+//Physics - Broadphase
 #include "AABB.hpp"
 #include "IBroadphase.hpp"
+#include "NaiveBroadphase.hpp"
+#include "SweepAndPrune.hpp"
+
+//Physics - Collision
 #include "Contact.hpp"
-#include "Pairwise.hpp"
 #include "GJK.hpp"
+#include "ManifoldClip.hpp"
+#include "Pairwise.hpp"
+
+// Physics - Primitives
 #include "BoxShape.hpp"
 #include "SphereShape.hpp"
 #include "CapsuleShape.hpp"
+#include "ConvexHullShape.hpp"
+#include "ConcaveMeshShape.hpp"
+
+//Physics - Query
+#include "RayCast.hpp"
+#include "Sweep.hpp"
+
+//Physics - Solver
+#include "ConstraintSolver.hpp"
+#include "ContactSolver.hpp"
+
+//Physics - Core
+#include "PhyCore.hpp"
+#include "PhyMath.hpp"
+#include "RigidBody.hpp"
+#include "PhysicsWorld.hpp"
+
 
 //Events
 #include "Event.hpp"

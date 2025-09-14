@@ -9,12 +9,7 @@ namespace Motion
         glm::vec3 mx = glm::max(a, glm::max(b, c));
         return { mn, mx };
     }
-
-    static AABB Merge(const AABB& a, const AABB& b) 
-    {
-        return { glm::min(a.MIN, b.MIN), glm::max(a.MAX, b.MAX) };
-    }
-
+    
     void ConcaveMeshShape::BuidBHV()
     {
         TriAABBs.resize(Tris.size());

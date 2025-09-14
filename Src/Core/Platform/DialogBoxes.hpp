@@ -11,17 +11,17 @@ namespace Motion
 {
     class DialogBoxes
     {
-    private:
-        DialogBoxes() = default;
-        ~DialogBoxes() = default;
+        private:
+            DialogBoxes() = default;
+            ~DialogBoxes() = default;
 
-        DialogBoxes(const DialogBoxes&) = delete;
-        DialogBoxes& operator=(const DialogBoxes&) = delete;
-        DialogBoxes(DialogBoxes&&) = delete;
-        DialogBoxes& operator=(DialogBoxes&&) = delete;
+            DialogBoxes(const DialogBoxes&)             = delete;
+            DialogBoxes& operator=(const DialogBoxes&)  = delete;
+            DialogBoxes(DialogBoxes&&)                  = delete;
+            DialogBoxes& operator=(DialogBoxes&&)       = delete;
 
-    public:
-        static std::string OpenFileDialog();
-        static std::string SaveFileDialog();
+        public:
+            static std::string OpenFileDialog();
+            static std::string SaveFileDialog();
     };
 }

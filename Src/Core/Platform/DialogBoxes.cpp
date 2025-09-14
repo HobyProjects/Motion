@@ -1,3 +1,4 @@
+#include "CorePCH.hpp"
 #include "DialogBoxes.hpp"
 
 #ifdef MOTION_PLATFORM_WINDOWS
@@ -54,17 +55,12 @@ namespace Motion
             if (SUCCEEDED(hr))
             {
                 IFileOpenDialog* pFileOpen = nullptr;
-
-                // Create the FileOpenDialog object.
                 hr = CoCreateInstance(CLSID_FileOpenDialog, nullptr, CLSCTX_INPROC_SERVER,
                     IID_PPV_ARGS(&pFileOpen));
 
                 if (SUCCEEDED(hr))
                 {
-                    // Show the Open dialog box.
                     hr = pFileOpen->Show(nullptr);
-
-                    // Get the file name from the dialog box.
                     if (SUCCEEDED(hr))
                     {
                         IShellItem* pItem = nullptr;
@@ -106,17 +102,10 @@ namespace Motion
             if (SUCCEEDED(hr))
             {
                 IFileSaveDialog* pFileSave = nullptr;
-
-                // Create the FileSaveDialog object.
-                hr = CoCreateInstance(CLSID_FileSaveDialog, nullptr, CLSCTX_INPROC_SERVER,
-                    IID_PPV_ARGS(&pFileSave));
-
+                hr = CoCreateInstance(CLSID_FileSaveDialog, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&pFileSave));
                 if (SUCCEEDED(hr))
                 {
-                    // Show the Save dialog box.
                     hr = pFileSave->Show(nullptr);
-
-                    // Get the file name from the dialog box.
                     if (SUCCEEDED(hr))
                     {
                         IShellItem* pItem = nullptr;
@@ -126,7 +115,6 @@ namespace Motion
                             PWSTR pszFilePath = nullptr;
                             hr = pItem->GetDisplayName(SIGDN_FILESYSPATH, &pszFilePath);
 
-                            // Save result
                             if (SUCCEEDED(hr))
                                 result = pszFilePath;
 
@@ -136,6 +124,7 @@ namespace Motion
                     }
                     pFileSave->Release();
                 }
+                
                 CoUninitialize();
             }
 

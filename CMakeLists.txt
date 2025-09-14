@@ -46,7 +46,7 @@ target_include_directories(
         ${CMAKE_SOURCE_DIR}/Src/Core/Assets
         ${CMAKE_SOURCE_DIR}/Src/Core/Layer
         ${CMAKE_SOURCE_DIR}/Src/Core/Platform
-        ${CMAKE_SOURCE_DIR}/Src/Core/Renderer/APIs/OpenGL_46_Core
+        ${CMAKE_SOURCE_DIR}/Src/Core/Renderer/Backends/OpenGL
 )
 
 file(GLOB_RECURSE CORE_CPP CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/Src/Core/*.cpp")

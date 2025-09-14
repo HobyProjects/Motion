@@ -5,9 +5,11 @@
 
 #include "PhyCore.hpp"
 #include "AABB.hpp"
+#include "BoxShape.hpp"
 #include "SphereShape.hpp"
 #include "CapsuleShape.hpp"
-#include "BoxShape.hpp"
+#include "ConvexHullShape.hpp"
+#include "ConcaveMeshShape.hpp"
 
 namespace Motion
 {
@@ -170,6 +172,175 @@ namespace Motion
         return true;
     }
 
+    inline AABB TransformAABB(const AABB& b, const glm::mat4& W)
+    {
+        const glm::vec3 mn = b.MIN, mx = b.MAX;
+        const glm::vec3 corners[8] = 
+        {
+            {mn.x,mn.y,mn.z},{mx.x,mn.y,mn.z},{mn.x,mx.y,mn.z},{mx.x,mx.y,mn.z},
+            {mn.x,mn.y,mx.z},{mx.x,mn.y,mx.z},{mn.x,mx.y,mx.z},{mx.x,mx.y,mx.z}
+        };
+
+        glm::vec3 wmn(+FLT_MAX), wmx(-FLT_MAX);
+        for (auto& c : corners) 
+        {
+            glm::vec3 p = glm::vec3(W * glm::vec4(c,1));
+            wmn = glm::min(wmn, p); wmx = glm::max(wmx, p);
+        }
+
+        return { wmn, wmx };
+    }
+
+    inline bool RayTriangle(const Ray& r, const glm::vec3& a, const glm::vec3& b, const glm::vec3& c, float& t, glm::vec3& n)
+    {
+        const float EPS     = 1e-8f;
+        glm::vec3 e1        = b - a;
+        glm::vec3 e2        = c - a;
+        glm::vec3 p         = glm::cross(r.Dir, e2);
+        float det           = glm::dot(e1, p);
+
+        if (glm::abs(det) < EPS) return false; 
+
+        float invDet    = 1.0f / det;
+        glm::vec3 s     = r.Origin - a;
+        float u         = glm::dot(s, p) * invDet;
+
+        if (u < 0.0f || u > 1.0f) return false;
+
+        glm::vec3 q = glm::cross(s, e1);
+        float v     = glm::dot(r.Dir, q) * invDet;
+
+        if (v < 0.0f || u + v > 1.0f) return false;
+
+        float tt = glm::dot(e2, q) * invDet;
+        if (tt < r.TMin || tt > r.TMax) return false;
+
+        t = tt;
+        n = glm::normalize(glm::cross(e1, e2)); 
+        if (glm::dot(n, r.Dir) > 0.0f) n = -n;  
+        return true;
+    }
+
+    inline bool RaycastConvex(const Ray& r, const ConvexHullShape& H, const glm::mat4& W, const Collider* hullCollider,  RayHit& out)
+    {
+        if (H.Vertice.empty() || H.Faces.empty()) return false;
+
+        glm::vec3 centroid(0.0f);
+        for (const auto& v : H.Vertice) centroid += glm::vec3(W * glm::vec4(v,1));
+        centroid *= (1.0f / float(H.Vertice.size()));
+
+        float tmin = r.TMin;
+        float tmax = glm::min(r.TMax, out.T);
+        glm::vec3 enterNormal(0.0f);
+        bool hadEnter = false;
+
+        const float cr = H.ConvexRadius;
+        for (const auto& f : H.Faces)
+        {
+            const glm::vec3 a = glm::vec3(W * glm::vec4(H.Vertice[f.I0],1));
+            const glm::vec3 b = glm::vec3(W * glm::vec4(H.Vertice[f.I1],1));
+            const glm::vec3 c = glm::vec3(W * glm::vec4(H.Vertice[f.I2],1));
+
+            glm::vec3 n = glm::normalize(glm::cross(b - a, c - a));  
+            glm::vec3 faceCenter = (a + b + c) * (1.0f/3.0f);
+            if (glm::dot(n, faceCenter - centroid) < 0.0f) n = -n;
+
+            const float d     = glm::dot(n, a) + cr;                  
+            const float numer = d - glm::dot(n, r.Origin);
+            const float denom = glm::dot(n, r.Dir);
+
+            if (glm::abs(denom) < 1e-8f)
+            {
+                if (numer < 0.0f) return false; 
+                continue;
+            }
+
+            const float t = numer / denom;
+
+            if (denom < 0.0f)
+            {
+                if (t > tmin)
+                {
+                    tmin = t;
+                    enterNormal = n;
+                    hadEnter = true;
+                }
+            }
+            else
+            {
+                if (t < tmax) tmax = t;
+            }
+
+            if (tmin > tmax) return false; 
+        }
+
+        const float tHit = glm::clamp(tmin, r.TMin, tmax);
+        if (tHit >= out.T) return false; 
+
+        out.T          = tHit;
+        out.Position   = r.Origin + tHit * r.Dir;
+        out.Normal     = hadEnter ? enterNormal : glm::vec3(0,1,0); 
+        out.HitCollder = hullCollider;
+        return true;
+    }
+
+    inline bool RaycastConcave(const Ray& r, const ConcaveMeshShape& M, const glm::mat4& Wmesh, const Collider* meshCollider, RayHit& out)
+    {
+        if (M.Nodes.empty()) return false;
+
+        bool hitAny = false;
+        float tEnter, tExit;
+
+        const AABB rootWB = TransformAABB(M.Nodes[0].Box, Wmesh);
+        if (!RayAABB(r, rootWB, tEnter, tExit)) return false;
+
+        std::vector<std::uint32_t> stack;
+        stack.reserve(64);
+        stack.push_back(0u);
+
+        while (!stack.empty()) 
+        {
+            std::uint32_t ni = stack.back(); stack.pop_back();
+            const auto& N = M.Nodes[ni];
+
+            AABB nodeWB = TransformAABB(N.Box, Wmesh);
+            if (!RayAABB(r, nodeWB, tEnter, tExit)) continue;
+
+            if (N.IsLeaf) 
+            {
+                const std::uint32_t first = N.Left;
+                const std::uint32_t count = N.Right;
+
+                for (std::uint32_t i=0; i<count; ++i) 
+                {
+                    const auto tri      = M.Tris[first + i];
+                    const glm::vec3 a   = glm::vec3(Wmesh * glm::vec4(M.Vertice[tri.I0],1));
+                    const glm::vec3 b   = glm::vec3(Wmesh * glm::vec4(M.Vertice[tri.I1],1));
+                    const glm::vec3 c   = glm::vec3(Wmesh * glm::vec4(M.Vertice[tri.I2],1));
+
+                    float t; glm::vec3 n;
+                    if (RayTriangle(r, a, b, c, t, n) && t < out.T) 
+                    {
+                        out.T           = t;
+                        out.Position    = r.Origin + t * r.Dir;
+                        out.Normal      = n;
+                        out.HitCollder  = meshCollider;
+                        hitAny = true;
+                    }
+                }
+            } 
+            else 
+            {
+                stack.push_back(N.Left);
+                stack.push_back(N.Right);
+            }
+        }
+        
+        return hitAny;
+    }
+
+
+
     inline bool RaycastCollider(const Ray& r, const Collider& col, const glm::mat4& world, RayHit& out) 
     {
         switch (col.ColliderShape->Type) 
@@ -216,10 +387,21 @@ namespace Motion
 
                 return false;
             }
+            case ShapeType::Convex:
+            {
+                const auto& H = *static_cast<const ConvexHullShape*>(col.ColliderShape);
+                return RaycastConvex(r, H, world, &col, out);
+            }
+            case ShapeType::Concave:
+            {
+                const auto& M = *static_cast<const ConcaveMeshShape*>(col.ColliderShape);
+                return RaycastConcave(r, M, world, &col, out);
+            }
         }
         
         return false;
     }
+
 
 
 

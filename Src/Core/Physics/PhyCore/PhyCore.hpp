@@ -32,7 +32,8 @@ namespace Motion
         Box     = BIT(0),
         Sphere  = BIT(1),
         Capsule = BIT(2),
-        Convex  = BIT(3)
+        Convex  = BIT(3),
+        Concave = BIT(4)
     };
 
     template<>

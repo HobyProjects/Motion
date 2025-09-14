@@ -9,11 +9,6 @@ namespace Motion
         return {c - e, c + e};
     };
 
-    inline glm::vec3 TransformPoint(const glm::mat4& M, const glm::vec3& p) 
-    {
-        return glm::vec3(M * glm::vec4(p, 1.0f));
-    }
-
     inline glm::vec3 AABBExtent(const AABB& b) 
     {
         return (b.MAX - b.MIN) * 0.05f;

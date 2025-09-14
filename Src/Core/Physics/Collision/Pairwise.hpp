@@ -11,6 +11,7 @@
 #include "BoxShape.hpp"
 #include "CapsuleShape.hpp"
 #include "ConvexHullShape.hpp"
+#include "ConcaveMeshShape.hpp"
 
 namespace Motion
 {
@@ -51,6 +52,70 @@ namespace Motion
         poly.push_back( TransformPoint(W, H.Vertice[f.I0]) );
         poly.push_back( TransformPoint(W, H.Vertice[f.I1]) );
         poly.push_back( TransformPoint(W, H.Vertice[f.I2]) );
+    }
+
+    struct TempTriHull 
+    {
+        glm::vec3 v[3];
+    };
+
+    inline SupportFn MakeSupportTriVsHull(const TempTriHull& tri, const glm::mat4& Wtri, const Collider& hull, const glm::mat4& Whull)
+    {
+        auto SA = [&](const glm::vec3& dWS) -> glm::vec3 
+        {
+            float best = -FLT_MAX; glm::vec3 bestP(0);
+            for (int i = 0; i < 3;++i) 
+            {
+                glm::vec3 p = glm::vec3(Wtri * glm::vec4(tri.v[i],1));
+                float s = glm::dot(p, dWS);
+                if (s > best) { best = s; bestP = p; }
+            }
+            return bestP;
+        };
+
+        auto SB = [&](const glm::vec3& dWS) -> glm::vec3 
+        {
+            return MakeSupport(hull, Whull, hull, Whull).S(dWS);
+        };
+
+        SupportFn out;
+        out.S = [SA, hull, Whull](const glm::vec3& d) -> glm::vec3 
+        {
+            // Tri ⊖ Hull : SA(d) - SB(-d)
+            auto SB_local = MakeSupport(hull, Whull, hull, Whull);
+            return SA(d) - SB_local.S(-d);
+        };
+
+        return out;
+    }
+
+    inline AABB ComputeWorldAABB(const Shape& s, const glm::mat4& M) 
+    {
+        switch (s.Type) 
+        {
+            case ShapeType::Sphere: 
+            {
+                const auto& S = static_cast<const SphereShape&>(s);
+                return SphereShape::WorldAABB(S, M);
+            }
+            case ShapeType::Box: 
+            {
+                const auto& B = static_cast<const BoxShape&>(s);
+                return BoxShape::WorldAABB(M, B.HalfExtents, B.ConvexRadius);
+            }
+            case ShapeType::Capsule: 
+            {
+                const auto& K = static_cast<const CapsuleShape&>(s);
+                return CapsuleShape::WorldAABB(K, M);
+            }
+            case ShapeType::Convex:
+            {
+                const auto& H = static_cast<const ConvexHullShape&>(s);
+                return ConvexHullShape::WorldAABB(H, M);
+            }
+        }
+
+        return { {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f} };
     }
 
     inline bool CollideSphereSphere(const SphereShape& A, const glm::mat4& WA, const SphereShape& B, const glm::mat4& WB, const NarrowPhaseContext& ctx, ContactManifold& out)
@@ -514,6 +579,254 @@ namespace Motion
         }
     }
 
+    inline bool CollideAgainstConcave(const Collider& dynCol, const glm::mat4& Wdyn, const Collider& meshCol, const glm::mat4& Wmesh, const NarrowPhaseContext& ctx, ContactManifold& out)
+    {
+        const auto* M = static_cast<const ConcaveMeshShape*>(meshCol.ColliderShape);
+        if (!M || M->Nodes.empty()) return false;
+
+        auto TransformAABB = [](const AABB& b, const glm::mat4& W) -> AABB 
+        {
+            const glm::vec3 mn = b.MIN, mx = b.MAX;
+            const glm::vec3 corners[8] = 
+            {
+                {mn.x,mn.y,mn.z},{mx.x,mn.y,mn.z},{mn.x,mx.y,mn.z},{mx.x,mx.y,mn.z},
+                {mn.x,mn.y,mx.z},{mx.x,mn.y,mx.z},{mn.x,mx.y,mx.z},{mx.x,mx.y,mx.z}
+            };
+
+            glm::vec3 wmn(+FLT_MAX), wmx(-FLT_MAX);
+            for (auto& c : corners) 
+            {
+                glm::vec3 p = glm::vec3(W * glm::vec4(c,1));
+                wmn = glm::min(wmn, p); wmx = glm::max(wmx, p);
+            }
+
+            return { wmn, wmx };
+        };
+
+        auto OverlapAABB = [](const AABB& a, const AABB& b) -> bool 
+        {
+            return (a.MIN.x <= b.MAX.x && a.MAX.x >= b.MIN.x) &&
+                (a.MIN.y <= b.MAX.y && a.MAX.y >= b.MIN.y) &&
+                (a.MIN.z <= b.MAX.z && a.MAX.z >= b.MIN.z);
+        };
+
+        auto ClosestPointOnTri = [](const glm::vec3& p, const glm::vec3& a, const glm::vec3& b, const glm::vec3& c) -> glm::vec3
+        {
+            glm::vec3 ab=b-a, ac=c-a, ap=p-a;
+            float d1=glm::dot(ab,ap), d2=glm::dot(ac,ap);
+            if (d1<=0 && d2<=0) return a;
+
+            glm::vec3 bp=p-b; float d3=glm::dot(ab,bp), d4=glm::dot(ac,bp);
+            if (d3>=0 && d4<=d3) return b;
+
+            float vc=d1*d4 - d3*d2;
+            if (vc<=0 && d1>=0 && d3<=0) { float v=d1/(d1-d3); return a + v*ab; }
+
+            glm::vec3 cp=p-c; float d5=glm::dot(ab,cp), d6=glm::dot(ac,cp);
+            if (d6>=0 && d5<=d6) return c;
+
+            float vb=d5*d2 - d1*d6;
+            if (vb<=0 && d2>=0 && d6<=0) { float w=d2/(d2-d6); return a + w*ac; }
+
+            float va=d3*d6 - d5*d4;
+            if (va<=0 && (d4-d3)>=0 && (d5-d6)>=0) {
+                float w=(d4-d3)/((d4-d3)+(d5-d6)); return b + w*(c-b);
+            }
+
+            glm::vec3 n = glm::normalize(glm::cross(ab,ac));
+            float dist = glm::dot(p - a, n);
+            return p - dist*n;
+        };
+
+        auto SupportWSOriginal = [&](const Collider& C, const glm::mat4& W, const glm::vec3& dWS)->glm::vec3
+        {
+            switch (C.ColliderShape->Type) 
+            {
+                case ShapeType::Sphere: 
+                {
+                    const auto& S   = *static_cast<const SphereShape*>(C.ColliderShape);
+                    glm::vec3 c     = SphereShape::WorldCenter(S, W);
+                    float     R     = SphereShape::WorldRadius(S, W) + S.ConvexRadius;
+                    glm::vec3 d     = glm::normalize(dWS);
+
+                    return c + d * R;
+                }
+                case ShapeType::Capsule: 
+                {
+                    const auto& K = *static_cast<const CapsuleShape*>(C.ColliderShape);
+                    glm::vec3 A, B; float r;
+                    CapsuleShape::WorldSegment(K, W, A, B, r);
+                    r += K.ConvexRadius;
+                    glm::vec3 d = glm::normalize(dWS);
+                    const float sA = glm::dot(A, d), sB = glm::dot(B, d);
+                    const glm::vec3 q = (sA > sB) ? A : B;
+                    return q + d * r;
+                }
+                case ShapeType::Box: 
+                {
+                    const auto& Bx = *static_cast<const BoxShape*>(C.ColliderShape);
+                    glm::vec3 axes[3], scales, c;
+                    AxesScalesFromWorld(W, axes, scales, c);
+                    const glm::vec3 e = (Bx.HalfExtents + glm::vec3(Bx.ConvexRadius)) * scales;
+                    float s0 = (glm::dot(axes[0], dWS) >= 0.0f) ? +1.0f : -1.0f;
+                    float s1 = (glm::dot(axes[1], dWS) >= 0.0f) ? +1.0f : -1.0f;
+                    float s2 = (glm::dot(axes[2], dWS) >= 0.0f) ? +1.0f : -1.0f;
+                    return c + axes[0]*(s0*e.x) + axes[1]*(s1*e.y) + axes[2]*(s2*e.z);
+                }
+                case ShapeType::Convex: 
+                {
+                    const auto& H = *static_cast<const ConvexHullShape*>(C.ColliderShape);
+                    glm::mat3 invT = glm::transpose(glm::inverse(glm::mat3(W)));
+                    glm::vec3 dLS  = invT * dWS;
+                    if (glm::length2(dLS) < 1e-24f) dLS = glm::vec3(1,0,0);
+                    dLS = glm::normalize(dLS);
+                    glm::vec3 pLS = H.SupportPoint(dLS) + dLS * H.ConvexRadius;
+                    return glm::vec3(W * glm::vec4(pLS,1));
+                }
+
+                default: break;
+            }
+
+            return glm::vec3(0);
+        };
+
+        auto MakeSupportTriMinusDyn = [&](const glm::vec3& a, const glm::vec3& b, const glm::vec3& c) -> SupportFn
+        {
+            SupportFn fn;
+            fn.S = [&, a,b,c](const glm::vec3& d) -> glm::vec3 
+            {
+                float sa = glm::dot(a,d), sb = glm::dot(b,d), sc = glm::dot(c,d);
+                glm::vec3 pTri = (sa>sb && sa>sc) ? a : (sb>sc ? b : c);
+                glm::vec3 pDyn = SupportWSOriginal(dynCol, Wdyn, -d);
+                return pTri - pDyn;
+            };
+
+            return fn;
+        };
+
+        const AABB dynAABB = ComputeWorldAABB(*dynCol.ColliderShape, Wdyn);
+
+        std::vector<uint32_t> triIdx;
+        triIdx.reserve(64);
+        std::vector<uint32_t> stack; stack.reserve(64);
+        stack.push_back(0u);
+
+        while (!stack.empty()) 
+        {
+            uint32_t ni = stack.back(); stack.pop_back();
+            const auto& N = M->Nodes[ni];
+            AABB nW = TransformAABB(N.Box, Wmesh);
+            if (!OverlapAABB(dynAABB, nW)) continue;
+
+            if (N.IsLeaf) 
+            {
+                const uint32_t first = N.Left;
+                const uint32_t count = N.Right;
+                for (uint32_t i = 0; i < count; ++i) triIdx.push_back(first + i);
+            } 
+            else 
+            {
+                stack.push_back(N.Left);
+                stack.push_back(N.Right);
+            }
+        }
+
+        if (triIdx.empty()) return false;
+        std::vector<ContactPoint> pool; pool.reserve(16);
+
+        for (uint32_t idx : triIdx) 
+        {
+            const auto t        = M->Tris[idx];
+            const glm::vec3 a   = glm::vec3(Wmesh * glm::vec4(M->Vertice[t.I0],1));
+            const glm::vec3 b   = glm::vec3(Wmesh * glm::vec4(M->Vertice[t.I1],1));
+            const glm::vec3 c   = glm::vec3(Wmesh * glm::vec4(M->Vertice[t.I2],1));
+
+            switch (dynCol.ColliderShape->Type)
+            {
+                case ShapeType::Sphere:
+                {
+                    const auto& S               = *static_cast<const SphereShape*>(dynCol.ColliderShape);
+                    const glm::vec3 centerWS    = SphereShape::WorldCenter(S, Wdyn);
+                    const float     radiusWS    = SphereShape::WorldRadius(S, Wdyn) + S.ConvexRadius;
+
+                    glm::vec3 q     = ClosestPointOnTri(centerWS, a, b, c);
+                    glm::vec3 diff  = centerWS - q;
+                    float d2        = glm::dot(diff, diff);
+
+                    if (d2 > 1e-12f) 
+                    {
+                        float d = std::sqrt(d2);
+                        float pen = radiusWS - d;
+                        if (pen > ctx.LinearSlop) 
+                        {
+                            ContactPoint cp;
+                            cp.PositionWS  = q;
+                            cp.NormalWS    = diff / d;   // tri -> sphere
+                            cp.Penetration = pen;
+                            pool.push_back(cp);
+                        }
+                    }
+                    break;
+                }
+
+                case ShapeType::Capsule:
+                case ShapeType::Box:
+                case ShapeType::Convex:
+                {
+                    SupportFn sup = MakeSupportTriMinusDyn(a,b,c);
+                    auto gjk = GJK(sup, 32);
+                    if (!gjk.Intersect) break;
+
+                    auto epa = EPA(sup, gjk.Splex, 64);
+                    if (!epa.Success || epa.Depth <= ctx.LinearSlop) break;
+
+                    const glm::vec3 n   = epa.Normal; 
+                    glm::vec3 pTri      = a;
+                    float sa            = glm::dot(a,n), sb = glm::dot(b,n), sc = glm::dot(c,n);
+
+                    if (sb > sa && sb > sc) pTri = b; else if (sc > sa && sc > sb) pTri = c;
+                    glm::vec3 pDyn = SupportWSOriginal(dynCol, Wdyn,  n);
+                    glm::vec3 mid  = 0.5f*(pTri + pDyn);
+
+                    ContactPoint cp;
+                    cp.PositionWS  = mid;
+                    cp.NormalWS    = n;
+                    cp.Penetration = epa.Depth;
+                    pool.push_back(cp);
+                    break;
+                }
+
+                default: break;
+            }
+        }
+
+        if (pool.empty()) return false;
+
+        std::sort(pool.begin(), pool.end(), [](const ContactPoint& a, const ContactPoint& b){ return a.Penetration > b.Penetration; });
+
+        const int keep  = std::min<int>(4, (int)pool.size());
+        out.Count       = keep;
+
+        glm::vec3 nAvg(0);
+        for (int i = 0; i < keep; ++i) { out.Points[i] = pool[i]; nAvg += pool[i].NormalWS; }
+
+        if (glm::length2(nAvg) > 1e-12f) 
+        {
+            nAvg                = glm::normalize(nAvg);
+            out.SharedNormalWS  = nAvg;                    
+            for (int i = 0; i < keep; ++i) out.Points[i].NormalWS = nAvg; 
+
+        } 
+        else 
+        {
+            out.SharedNormalWS = out.Points[0].NormalWS;
+        }
+
+        out.SharedFriction    = CombineFriction(dynCol.MaterialProp, meshCol.MaterialProp);
+        out.SharedRestitution = CombineRestitution(dynCol.MaterialProp, meshCol.MaterialProp);
+        return true;
+    }
+
 
     inline bool Collide(const Collider& a, const glm::mat4& worldA, const Collider& b, const glm::mat4& worldB, const NarrowPhaseContext& ctx, ContactManifold& out)
     {
@@ -602,9 +915,6 @@ namespace Motion
             return true;
         }
 
-
-
-
         if (ta & ShapeType::Box && tb & ShapeType::Box) 
         {
             const auto* BA = static_cast<const BoxShape*>(a.ColliderShape);
@@ -612,11 +922,25 @@ namespace Motion
             return CollideBoxBox(*BA, worldA * a.LocalPose, *BB, worldB * b.LocalPose, ctx, out);
         }
 
-        
-
         if(ta & ShapeType::Convex && tb & ShapeType::Convex)
         {
             return CollideConvexFallback(a, worldA, b, worldB, ctx, out);
+        }
+
+        if (ta & ShapeType::Concave && tb & ShapeType::Concave) 
+        {
+            // not supported: two dynamic concaves — skip or treat both as static (usually disallowed)
+            return false;
+        }
+
+        if (ta & ShapeType::Concave) 
+        {
+            return CollideAgainstConcave(a, worldB, b, worldA, ctx, out);
+        }
+        
+        if (tb & ShapeType::Concave) 
+        {
+            return CollideAgainstConcave(a, worldA, b, worldB, ctx, out);
         }
 
         return false;

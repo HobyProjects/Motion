@@ -586,35 +586,6 @@ namespace Motion
             return glm::translate(glm::mat4(1.0f), b.Position) * glm::toMat4(b.Rotation);
         }
 
-        static AABB ComputeWorldAABB(const Shape& s, const glm::mat4& M) 
-        {
-            switch (s.Type) 
-            {
-                case ShapeType::Sphere: 
-                {
-                    const auto& S = static_cast<const SphereShape&>(s);
-                    return SphereShape::WorldAABB(S, M);
-                }
-                case ShapeType::Box: 
-                {
-                    const auto& B = static_cast<const BoxShape&>(s);
-                    return BoxShape::WorldAABB(M, B.HalfExtents, B.ConvexRadius);
-                }
-                case ShapeType::Capsule: 
-                {
-                    const auto& K = static_cast<const CapsuleShape&>(s);
-                    return CapsuleShape::WorldAABB(K, M);
-                }
-                case ShapeType::Convex:
-                {
-                    const auto& H = static_cast<const ConvexHullShape&>(s);
-                    return ConvexHullShape::WorldAABB(H, M);
-                }
-            }
-
-            return { {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f} };
-        }
-
         static AABB FattenAABB(const AABB& a, const glm::vec3& extra) 
         {
             return { a.MIN - extra, a.MAX + extra };

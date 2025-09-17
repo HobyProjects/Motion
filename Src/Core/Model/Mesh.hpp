@@ -10,6 +10,7 @@
 namespace Motion
 {
     class Model; 
+
     struct ColliderData
     {
         std::vector<glm::vec3> Vertices; 

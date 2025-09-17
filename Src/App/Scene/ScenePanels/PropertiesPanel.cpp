@@ -256,7 +256,6 @@ namespace Motion
                         }
                         else
                         {
-                            // Resolve material for selected mesh (create if missing)
                             std::shared_ptr<Material> mat = nullptr;
                             if (m_SelectedMesh >= 0 && m_SelectedMesh < (int)smc.Model->GetMeshesCount())
                             {
@@ -276,8 +275,6 @@ namespace Motion
                                 ImGui::TableSetupColumn("##side-bar", ImGuiTableColumnFlags_WidthFixed, 260.0f);
                                 ImGui::TableSetupColumn("##inspector-panel", ImGuiTableColumnFlags_WidthStretch);
                                 ImGui::TableNextRow();
-
-                                // Sidebar
                                 ImGui::TableSetColumnIndex(0);
                                 if (ImGui::BeginChild("##side-bar-list", ImVec2(0.0f, 0.0f), true))
                                 {
@@ -326,27 +323,6 @@ namespace Motion
                 auto& rb = selectedEntity->GetComponent<RigidBodyComponent>();
                 if (ImGui::TreeNodeEx((void*)rb.ID, treeNodeFlags, ICON_MD_3D_ROTATION " Rigid Body"))
                 {
-                    ToggleSwitch("Enabled Physics", rb.IsEnabled);
-                    ImGui::BeginDisabled(!rb.IsEnabled);
-                    BeginPropertyGrid("##rigid-body-grid1");
-
-                    float mass = rb.Mass;
-                    if(SliderFloat("Mass (Kg)", &mass, 0.0f, 10000000.0f)){ rb.SetMass(mass); }
-                    
-                    EndPropertyGrid();
-                    ImGui::SeparatorEx(ImGuiSeparatorFlags_Horizontal, 2.0f);
-                    BeginPropertyGrid("##rigid-body-grid2");
-
-                    std::int32_t phyBody = static_cast<std::int32_t>(rb.Type);
-                    if(ComboBox("Physics Body", { "Static", "Kinematic", "Dynamic"}, phyBody, [&](std::int32_t selectedIndex, const std::string& selectedItem)
-                    {
-                        if(selectedIndex == 0) rb.Type = RigidBodyComponent::PhysicsBody::Static;
-                        if(selectedIndex == 1) rb.Type = RigidBodyComponent::PhysicsBody::Kinematic;
-                        if(selectedIndex == 2) rb.Type = RigidBodyComponent::PhysicsBody::Dynamic;
-                    }));
-
-                    EndPropertyGrid();
-                    ImGui::EndDisabled();
                     ImGui::TreePop();
                 }
             }
@@ -356,76 +332,10 @@ namespace Motion
                 auto& cc = selectedEntity->GetComponent<ColliderComponent>();
                 if (ImGui::TreeNodeEx((void*)cc.ID, treeNodeFlags, ICON_FA_BOX " Collision"))
                 {
-                    BeginPropertyGrid("##collider-grid1");
-                    ToggleSwitch("Enable Collider", cc.IsEnabled);
-                    EndPropertyGrid();
-
-                    BeginPropertyGrid("##collider-grid2");
-                    ImGui::BeginDisabled(!cc.IsEnabled);
-
-                    ToggleSwitch("Show Collider", cc.ShowCollider);
-
-                    auto& phyMat = cc.MaterialBase;
-                    DragFloat("Restitution", &phyMat.Restitution, 0.001f, 0.0f, 1.0f);
-                    if(ImGui::IsItemHovered()) ImGui::SetTooltip("Bounciness. 0 = no bounce, 1 = perfectly elastic (like a super ball).");
-
-                    DragFloat("Friction Static", &phyMat.FrictionStatic, 0.001f, 0.0f, 2.0f);
-                    if(ImGui::IsItemHovered()) ImGui::SetTooltip("How hard it is to start moving when at rest (grip)");
-
-                    DragFloat("Friction Dynamic", &phyMat.FrictionDynamic, 0.001f, 0.0f, 2.0f);
-                    if(ImGui::IsItemHovered()) ImGui::SetTooltip("How much resistance occurs while sliding.");
-
-                    std::int32_t rCombine{static_cast<std::int32_t>(phyMat.RestitutionCombine)};
-                    ComboBox("Restitution Combine", { "Average", "Minimum", "Maximum", "Multiply" }, rCombine, [&](std::int32_t selectedIndex, const std::string& selectedItem)
-                    {
-                        if(selectedIndex == 0) phyMat.RestitutionCombine = CombineMode::Average;
-                        if(selectedIndex == 1) phyMat.RestitutionCombine = CombineMode::Minimum;
-                        if(selectedIndex == 2) phyMat.RestitutionCombine = CombineMode::Maximum;
-                        if(selectedIndex == 3) phyMat.RestitutionCombine = CombineMode::Multiply;
-                    });
-                    if(ImGui::IsItemHovered()) ImGui::SetTooltip("How bounciness is calculated between two colliding objects");
-
-                    std::int32_t fCombine{static_cast<std::int32_t>(phyMat.FrictionCombine)};
-                    ComboBox("Friction Combine", { "Average", "Minimum", "Maximum", "Multiply" }, fCombine, [&](std::int32_t selectedIndex, const std::string& selectedItem)
-                    {
-                        if(selectedIndex == 0) phyMat.RestitutionCombine = CombineMode::Average;
-                        if(selectedIndex == 1) phyMat.RestitutionCombine = CombineMode::Minimum;
-                        if(selectedIndex == 2) phyMat.RestitutionCombine = CombineMode::Maximum;
-                        if(selectedIndex == 3) phyMat.RestitutionCombine = CombineMode::Multiply;
-                    });
-                    if(ImGui::IsItemHovered()) ImGui::SetTooltip("How friction is calculated when two objects touch (average, min, max, multiply).");
-
-
-                    EndPropertyGrid();
-                    ImGui::EndDisabled();
                     ImGui::TreePop();
                 }
             }
 
-            if(selectedEntity->HasComponent<DampingComponent>() && selectedEntity->HasComponent<RigidBodyComponent>())
-            {
-                auto& dc = selectedEntity->GetComponent<DampingComponent>();
-                auto& rb = selectedEntity->GetComponent<RigidBodyComponent>();
-                if (ImGui::TreeNodeEx((void*)dc.ID, treeNodeFlags, ICON_FA_TRUCK_FAST " Daming"))
-                {
-                    BeginPropertyGrid("##rigid-body-grid");
-
-                    ImGui::BeginDisabled(!rb.IsEnabled);
-
-                    SliderFloat("Linear Damping",  &dc.Linear,  0.0f, 1.0f);
-                    if (ImGui::IsItemHovered())
-                        ImGui::SetTooltip("Linear drag (unitless). Higher = slows down faster.");
-
-                    SliderFloat("Angular Damping", &dc.Angular, 0.0f, 1.0f);
-                    if (ImGui::IsItemHovered())
-                        ImGui::SetTooltip("Rotational drag (unitless). Higher = stops spinning sooner.");
-
-                    ImGui::EndDisabled();
-                    EndPropertyGrid();
-
-                    ImGui::TreePop();
-                }
-            }
         }
         else
         {

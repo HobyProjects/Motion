@@ -39,12 +39,6 @@ target_include_directories(
         ${CMAKE_SOURCE_DIR}/Src/Core/Model
         ${CMAKE_SOURCE_DIR}/Src/Core/Maths
         ${CMAKE_SOURCE_DIR}/Src/Core/Physics
-        ${CMAKE_SOURCE_DIR}/Src/Core/Physics/Broadphase
-        ${CMAKE_SOURCE_DIR}/Src/Core/Physics/Collision
-        ${CMAKE_SOURCE_DIR}/Src/Core/Physics/PhyCore
-        ${CMAKE_SOURCE_DIR}/Src/Core/Physics/Primitives
-        ${CMAKE_SOURCE_DIR}/Src/Core/Physics/Query
-        ${CMAKE_SOURCE_DIR}/Src/Core/Physics/Solver
         ${CMAKE_SOURCE_DIR}/Src/Core/Platform
         ${CMAKE_SOURCE_DIR}/Src/Core/Renderer
         ${CMAKE_SOURCE_DIR}/Src/Core/Renderer/Backends/OpenGL
@@ -76,7 +70,15 @@ target_precompile_headers(MotionCore PUBLIC Src/Core/Base/CorePCH.hpp)
 # App
 add_executable(MotionEngine)
 target_compile_features(MotionEngine PRIVATE cxx_std_20)
-target_include_directories(MotionEngine PRIVATE ${CMAKE_SOURCE_DIR}/Src/App)
+target_include_directories(
+    MotionEngine 
+        PUBLIC 
+        ${CMAKE_SOURCE_DIR}/Src/App
+        ${CMAKE_SOURCE_DIR}/Src/App/EntryPoint
+        ${CMAKE_SOURCE_DIR}/Src/App/Layers
+        ${CMAKE_SOURCE_DIR}/Src/App/Scene
+        ${CMAKE_SOURCE_DIR}/Src/App/Scene/ScenePanels
+)
 file(GLOB_RECURSE APP_CPP CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/Src/App/*.cpp")
 file(GLOB_RECURSE APP_HPP CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/Src/App/*.h" "${CMAKE_SOURCE_DIR}/Src/App/*.hpp")
 target_sources(MotionEngine PRIVATE ${APP_CPP} ${APP_HPP})

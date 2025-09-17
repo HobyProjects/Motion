@@ -8,7 +8,6 @@
 #include "UUID.hpp"
 #include "Model.hpp"
 #include "Entity.hpp"
-#include "KinetiX.hpp"
 
 namespace Motion
 {
@@ -78,4 +77,16 @@ namespace Motion
         }
 
     };
+
+    struct RigidBodyComponent
+    {
+    };
+
+    struct ColliderComponent
+    {
+    };
+
+
+
+
 }

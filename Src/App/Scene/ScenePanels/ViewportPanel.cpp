@@ -212,43 +212,6 @@ namespace Motion
 
         {
             glm::mat4 VP = context.ActiveCamera.Camera.Projection * context.ActiveCamera.Camera.View;
-
-            auto GatherHullWorldVertices = [&](Entity e, std::vector<glm::vec3>& out) -> bool
-            {
-                if(std::shared_ptr<Entity> sel = context.ActiveScene->GetSelectedEntity())
-                {
-                    if(!sel->GetComponent<ColliderComponent>().IsEnabled) return false;
-                    const auto& hull        = sel->GetComponent<ColliderComponent>().Shape;
-                    const auto& transform   = sel->GetComponent<TransformComponent>();
-                    glm::mat4 M             = transform.GetTransform();
-                    out.clear();
-                    out.reserve(hull.LocalVerts.size());
-                    for(const glm::vec3& pLocal : hull.LocalVerts)
-                        out.push_back(glm::vec3(M * glm::vec4(pLocal, 1.0f)));
-
-                    return !out.empty();
-                }
-
-                return false;
-            };
-
-            if (auto sel = context.ActiveScene->GetSelectedEntity(); sel && sel != EntityFactory::EMPTYENTITY &&
-                sel->HasComponent<TransformComponent>() && sel->GetComponent<TagComponent>().IsActive)
-            {
-                std::vector<glm::vec3> hullWorldVerts;
-                if (GatherHullWorldVertices(*sel, hullWorldVerts))
-                {
-                    // Draw a bold outline on top of the viewport image
-                    DrawProjectedConvexHullOutline(hullWorldVerts, VP, rect, windowDL, IM_COL32(255, 180, 50, 255), 2.0f);
-                    // Optional: tiny points so you can sanity-check vertex order/coverage
-                    for (const auto& w : hullWorldVerts)
-                    {
-                        ImVec2 sp;
-                        if (WorldToScreen(w, VP, rect, sp))
-                            windowDL->AddCircleFilled(sp, 2.0f, IM_COL32(255, 255, 255, 200));
-                    }
-                }
-            }
         }
 
         ImVec2 mouse = ImGui::GetMousePos();

@@ -43,7 +43,6 @@ namespace Motion
         // TODO: Add more components here 
         CopyComponentIfPresent<RigidBodyComponent>(src, dst);
         CopyComponentIfPresent<ColliderComponent>(src, dst);
-        CopyComponentIfPresent<DampingComponent>(src, dst);
         
         scene->EmplaceEntity(dst);
         return dst;
@@ -66,6 +65,38 @@ namespace Motion
     {
         static DragDupState s;
         return s;
+    }
+
+    static void InsertEntity(const std::shared_ptr<Scene>& scene, const std::shared_ptr<Model>& model)
+    {
+        auto& EF        = EntityFactory::GetInstance();
+        auto entity     = EF.CreateEntity(model->GetName());
+        MOTION_ASSERT(entity, "Faild to create entity");
+
+        auto& KX  = KinetiX::GetInstance();
+        auto& mc  = entity->AddComponent<MeshComponent>(model->GetName(), model);
+        auto& tr  = entity->AddComponent<TransformComponent>();
+
+        auto& rb = entity->AddComponent<RigidBodyComponent>();
+        KX.CreateRigidBody(&rb.Body, rb.PhyProps, &tr.Translation, &tr.Rotation);
+        KX.SetCanSleep(rb.Body.Handle, rb.CanSleep);
+
+        auto& col = entity->AddComponent<ColliderComponent>();
+        col.CollidersCount = (std::uint32_t)model->GetMeshesCount();
+
+        const auto& modelSelf = *model;
+        for(std::uint32_t i = 0; i < col.CollidersCount; ++i)
+        {
+            const auto& mesh        = modelSelf[i];
+            const auto& meshData    = mesh->GetCollisionData();
+            WorldCollider wc{};
+
+            if(!meshData.IsValid()) continue;
+            KX.CreateConvexCollider(&rb.Body, rb.PhyProps, &wc, meshData.Vertices, meshData.Indices, 0.02f);
+            col.Collidr.push_back(wc);
+        }
+
+        scene->EmplaceEntity(entity);
     }
 
     void SceneEntityInspectPanel::RenderUI(ScenePanelContext& ctx)
@@ -96,22 +127,12 @@ namespace Motion
                                 return;
                             }
 
-                            auto& fac   = EntityFactory::GetInstance();
-                            auto entity = fac.CreateEntity(mesh->GetName());
-                            if (!entity)
-                            {
-                                MOTION_ERROR("EntityFactory::CreateEntity('{}') returned null", mesh->GetName());
-                                return;
-                            }
-
-                            const auto& m = entity->AddComponent<MeshComponent>(mesh->GetName(), mesh);
-                            const auto& t = entity->AddComponent<TransformComponent>();
-                            auto& r = entity->AddComponent<RigidBodyComponent>();
-                            entity->AddComponent<ColliderComponent>(m);
-                            entity->AddComponent<DampingComponent>();
-                            scene->EmplaceEntity(entity);
+                            InsertEntity(scene, mesh);
                         },
-                        [&](std::int32_t /*progress*/) {}
+                        [&](std::int32_t /*progress*/) 
+                        {
+                            
+                        }
                     );
                 }
             }

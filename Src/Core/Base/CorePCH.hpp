@@ -29,6 +29,7 @@
 #include <cassert>
 #include <tuple>
 #include <ranges>
+#include <stack>
 
 //external
 #define GLFW_INCLUDE_NONE
@@ -96,42 +97,10 @@
 #include "MaterialComponents.hpp"
 
 //Maths
-#include "Intersect.hpp"
 #include "MeshFit.hpp"
 
-
-//Physics - Broadphase
-#include "AABB.hpp"
-#include "IBroadphase.hpp"
-#include "NaiveBroadphase.hpp"
-#include "SweepAndPrune.hpp"
-
-//Physics - Collision
-#include "Contact.hpp"
-#include "GJK.hpp"
-#include "ManifoldClip.hpp"
-#include "Pairwise.hpp"
-
-// Physics - Primitives
-#include "BoxShape.hpp"
-#include "SphereShape.hpp"
-#include "CapsuleShape.hpp"
-#include "ConvexHullShape.hpp"
-#include "ConcaveMeshShape.hpp"
-
-//Physics - Query
-#include "RayCast.hpp"
-#include "Sweep.hpp"
-
-//Physics - Solver
-#include "ConstraintSolver.hpp"
-#include "ContactSolver.hpp"
-
-//Physics - Core
+//Physics
 #include "PhyCore.hpp"
-#include "PhyMath.hpp"
-#include "RigidBody.hpp"
-#include "KinetiX.hpp"
 
 
 //Events
@@ -176,7 +145,7 @@
 #include "Window.hpp"
 #include "GLFW_Window.hpp"
 
-//UserInterfaceInitializer
+//User Interface Initializer
 #include "UI.hpp"
 #include "Controls.hpp"
 

@@ -100,7 +100,7 @@
 #include "MeshFit.hpp"
 
 //Physics
-#include "PhyCore.hpp"
+#include "KinetiX.hpp"
 
 
 //Events

@@ -373,22 +373,15 @@ def main():
     check_cmake()
 
     packages = [
-        Package("glfw", "libs/glfw", "libs/build/config/glfw", "build/packages/glfw",
-                "-DGLFW_BUILD_EXAMPLES=OFF -DGLFW_BUILD_TESTS=OFF -DGLFW_BUILD_DOCS=OFF"),
-        Package("spdlog", "libs/spdlog", "libs/build/config/spdlog", "build/packages/spdlog",
-                "-DSPDLOG_BUILD_EXAMPLES=OFF"),
+        Package("glfw", "libs/glfw", "libs/build/config/glfw", "build/packages/glfw", "-DGLFW_BUILD_EXAMPLES=OFF -DGLFW_BUILD_TESTS=OFF -DGLFW_BUILD_DOCS=OFF"),
+        Package("spdlog", "libs/spdlog", "libs/build/config/spdlog", "build/packages/spdlog", "-DSPDLOG_BUILD_EXAMPLES=OFF"),
         Package("glad", "libs/glad", "libs/build/config/glad", "build/packages/glad"),
         Package("glm", "libs/glm", "libs/build/config/glm", "build/packages/glm", "-DGLM_BUILD_TESTS=OFF"),
         Package("imgui", "libs/imgui_docking", "libs/build/config/imgui", "build/packages/imgui"),
-        Package("entt", "libs/entt", "libs/build/config/entt", "build/packages/entt",
-                "-DENTT_INCLUDE_HEADERS=ON -DENTT_INCLUDE_NATVIS=ON -DENTT_INSTALL=ON"),
-        Package("assimp", "libs/assimp", "libs/build/config/assimp", "build/packages/assimp",
-                "-DASSIMP_BUILD_TESTS=OFF"),
+        Package("entt", "libs/entt", "libs/build/config/entt", "build/packages/entt", "-DENTT_INCLUDE_HEADERS=ON -DENTT_INCLUDE_NATVIS=ON -DENTT_INSTALL=ON"),
+        Package("assimp", "libs/assimp", "libs/build/config/assimp", "build/packages/assimp", "-DASSIMP_BUILD_TESTS=OFF"),
         Package("stb_image", "libs/stb_image", "libs/build/config/stb_image", "build/packages/stb_image"),
-        Package("yaml-cpp", "libs/yaml-cpp", "libs/build/config/yaml-cpp", "build/packages/yaml-cpp",
-                "-DYAML_BUILD_SHARED_LIBS=OFF"),
-        Package("fastgltf", "libs/fastgltf", "libs/build/config/fastgltf", "build/packages/fastgltf",
-                "-DFASTGLTF_COMPILE_AS_CPP20=ON -DFASTGLTF_ENABLE_KHR_PHYSICS_RIGID_BODIES=ON -DFASTGLTF_ENABLE_KHR_IMPLICIT_SHAPES=ON"),
+        Package("yaml-cpp", "libs/yaml-cpp", "libs/build/config/yaml-cpp", "build/packages/yaml-cpp", "-DYAML_BUILD_SHARED_LIBS=OFF"),
         Package("MikkTSpace", "libs/MikkTSpace", "libs/build/config/MikkTSpace", "build/packages/MikkTSpace"),
         Package("imguizmo", "libs/imguizmo", "libs/build/config/imguizmo", "build/packages/imguizmo"),
     ]

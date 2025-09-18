@@ -3,7 +3,7 @@
 #include <limits>
 #include <entt/entt.hpp>
 #include <glm/glm.hpp>
-#include <glm/gtx/quaternion.hpp> 
+#include <glm/gtx/quaternion.hpp>
 
 #include "UUID.hpp"
 #include "Model.hpp"
@@ -80,13 +80,32 @@ namespace Motion
 
     struct RigidBodyComponent
     {
+        float Mass{1.0f};
+        float Friction{0.5f};
+        float Resittution{0.0f};
+        bool IsKinematic{false};
+
+        bool LockX{false}, LockY{false}, LockZ{false};
+        std::uint16_t Group{1};
+        std::uint16_t Mask{0xFFFF};
+
+        btRigidBody*   Body{nullptr};
+        btMotionState* MotionState{nullptr};
     };
+
+    enum class ShapeType { Box, Sphere, Capsule, ConvexHull, CacaveMesh };
 
     struct ColliderComponent
     {
+        ShapeType Type{ShapeType::Box};
+
+        glm::vec3 HalfExtents{0.5f};
+        float Radius{0.5f};
+        float Height{1.0f};
+
+        glm::vec3 LocalPos{0.0f};
+        glm::quat LocalRot{1.0f, 0.0f, 0.0f, 0.0f};
+
+        btCollisionShape* Shape{nullptr};
     };
-
-
-
-
 }

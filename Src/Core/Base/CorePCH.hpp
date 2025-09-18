@@ -46,11 +46,6 @@
 #include <assimp/postprocess.h>
 #include <assimp/material.h>
 
-#include <fastgltf/core.hpp>
-#include <fastgltf/types.hpp>
-#include <fastgltf/tools.hpp>
-#include <fastgltf/util.hpp>
-
 #include <MikkTSpace/mikktspace.h>
 
 #define GLM_ENABLE_EXPERIMENTAL

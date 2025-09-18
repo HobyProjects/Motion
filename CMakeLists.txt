@@ -16,25 +16,9 @@ find_package(EnTT CONFIG REQUIRED)
 find_package(Assimp CONFIG REQUIRED)
 find_package(yaml-cpp CONFIG REQUIRED)
 find_package(stb CONFIG REQUIRED)
-find_package(fastgltf CONFIG REQUIRED)
 find_package(MikkTSpace CONFIG REQUIRED)
 find_package(imguizmo CONFIG REQUIRED)
-
-# --- Bullet (vendored via add_subdirectory) -----------------
-set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
-set(BUILD_UNIT_TESTS OFF CACHE BOOL "" FORCE)
-set(BUILD_EXTRAS OFF CACHE BOOL "" FORCE)
-set(BUILD_CPU_DEMOS OFF CACHE BOOL "" FORCE)
-set(BUILD_BULLET2_DEMOS OFF CACHE BOOL "" FORCE)
-set(BUILD_OPENGL3_DEMOS OFF CACHE BOOL "" FORCE)
-set(BUILD_PYBULLET OFF CACHE BOOL "" FORCE)
-set(ENABLE_VHACD OFF CACHE BOOL "" FORCE)
-
-# If you don't want Bullet to install anything when you 'cmake --install':
-set(INSTALL_LIBS OFF CACHE BOOL "" FORCE)
-
-# Add the Bullet tree. This will define the library targets in your build.
-add_subdirectory(${CMAKE_SOURCE_DIR}/libs/bullet3)
+find_package(reactphysics3d CONFIG REQUIRED)
 
 # Core library
 add_library(MotionCore STATIC)
@@ -58,12 +42,6 @@ target_include_directories(
         ${CMAKE_SOURCE_DIR}/Src/Core/Platform
         ${CMAKE_SOURCE_DIR}/Src/Core/Renderer
         ${CMAKE_SOURCE_DIR}/Src/Core/Renderer/Backends/OpenGL
-        BulletDynamics
-        BulletCollision
-        LinearMath
-        BulletSoftBody
-        BulletInverseDynamics
-        Bullet3Common
 )
 
 file(GLOB_RECURSE CORE_CPP CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/Src/Core/*.cpp")
@@ -81,15 +59,9 @@ target_link_libraries(MotionCore
     yaml-cpp::yaml-cpp
     EnTT::EnTT
     stb::stb
-    fastgltf::fastgltf
     MikkTSpace::MikkTSpace
     imguizmo::imguizmo
-    BulletDynamics 
-    BulletCollision 
-    LinearMath
-    BulletSoftBody 
-    BulletInverseDynamics 
-    Bullet3Common
+    ReactPhysics3D::ReactPhysics3D
 )
 
 # PCH (optional)

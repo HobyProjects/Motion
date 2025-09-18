@@ -23,9 +23,6 @@
 [submodule "libs/stb_image/stb"]
 	path = libs/stb_image/stb
 	url = https://github.com/nothings/stb.git
-[submodule "libs/fastgltf"]
-	path = libs/fastgltf
-	url = https://github.com/spnda/fastgltf.git
 [submodule "libs/MikkTSpace/MikkTSpace"]
 	path = libs/MikkTSpace/MikkTSpace
 	url = https://github.com/mmikk/MikkTSpace.git
@@ -36,6 +33,3 @@
 	path = libs/imguizmo/imgui
 	url = https://github.com/ocornut/imgui.git
 	branch = docking
-[submodule "libs/bullet3"]
-	path = libs/bullet3
-	url = https://github.com/bulletphysics/bullet3.git

@@ -33,3 +33,6 @@
 	path = libs/imguizmo/imgui
 	url = https://github.com/ocornut/imgui.git
 	branch = docking
+[submodule "libs/reactphysics3d"]
+	path = libs/reactphysics3d
+	url = https://github.com/DanielChappuis/reactphysics3d.git

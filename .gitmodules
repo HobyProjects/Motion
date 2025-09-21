@@ -36,3 +36,6 @@
 [submodule "libs/reactphysics3d"]
 	path = libs/reactphysics3d
 	url = https://github.com/DanielChappuis/reactphysics3d.git
+[submodule "libs/imgui_docking/implot"]
+	path = libs/imgui_docking/implot
+	url = https://github.com/epezent/implot.git

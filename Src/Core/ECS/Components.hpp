@@ -4,6 +4,7 @@
 #include <entt/entt.hpp>
 #include <glm/glm.hpp>
 #include <glm/gtx/quaternion.hpp>
+#include <reactphysics3d/reactphysics3d.h>
 
 #include "UUID.hpp"
 #include "Model.hpp"
@@ -78,13 +79,36 @@ namespace Motion
 
     };
 
-    struct RigidBodyComponent
+    enum class BodyType : std::uint8_t
     {
+        Static,
+        Dynamic
     };
 
-    enum class ShapeType { Box, Sphere, Capsule, ConvexHull, CacaveMesh };
+    struct RigidBodyComponent
+    {
+        UUID ID{UniqueIdentity::GetUniqueID()};
+        BodyType Type{BodyType::Dynamic};
+
+        float LinearDamping{0.01f};
+        float AngularDamping{0.05f};
+
+        bool LockX{false}, LockY{false}, LockZ{false};
+        bool LockRotX{false}, LockRotY{false}, LockRotZ{false};
+
+        rp3d::RigidBody* PhysicsBody{nullptr};
+    };
+
+    enum class ShapeType { Box, Sphere, Capsule, Convex, Concave, HightField };
 
     struct ColliderComponent
     {
+        UUID ID{UniqueIdentity::GetUniqueID()};
+        ShapeType Type{ShapeType::Box};
+        
+        rp3d::Material* Attributes{nullptr};
+
+        rp3d::CollisionShape* Shape{nullptr};
+        rp3d::Collider* Collider{nullptr};
     };
 }

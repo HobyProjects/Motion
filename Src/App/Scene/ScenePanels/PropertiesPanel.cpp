@@ -189,11 +189,8 @@ namespace Motion
 
                     {
                         glm::vec3 eulerDeg = glm::degrees(glm::eulerAngles(tr.Rotation));
-
-                        // Make editing robust: keep values wrapped to [-180, 180] to prevent runaway
                         auto wrap180 = [](float a)
                         {
-                            // Wrap to (-180, 180]
                             a = std::fmod(a + 180.0f, 360.0f);
                             if (a < 0) a += 360.0f;
                             return a - 180.0f;
@@ -215,17 +212,9 @@ namespace Motion
                     }
 
                     {
-                        glm::vec3 scl = tr.Scale;                       
-                        if (DragFloat3("Scale", scl, 0.01f))
-                        {
-                            // Prevent negative/NaN scale; clamp to >= 0
-                            scl.x = std::max(0.0f, scl.x);
-                            scl.y = std::max(0.0f, scl.y);
-                            scl.z = std::max(0.0f, scl.z);
-                            tr.Scale = scl;
-                        }
-                        if (ImGui::IsItemHovered())
-                            ImGui::SetTooltip("Dimensionless. Multiplies mesh size (in meters). Example: (2,1,1) doubles width only.");
+                        glm::vec3 scale = tr.Scale;
+                        if (DragFloat3("Scale (m)", scale, 0.1f))
+                            tr.Scale = scale;
                     }
 
                     EndPropertyGrid();
@@ -238,18 +227,17 @@ namespace Motion
             {
                 if (ImGui::Begin(ICON_MD_IMAGE " Material Editor"))
                 {
-                    auto selected = ctx.ActiveScene->GetSelectedEntity();
-                    if (!selected || selected == EntityFactory::EMPTYENTITY)
+                    if (!selectedEntity || selectedEntity == EntityFactory::EMPTYENTITY)
                     {
                         ImGui::TextDisabled(ICON_MD_INFO " No entity selected.");
                     }
-                    else if (!selected->HasComponent<MeshComponent>())
+                    else if (!selectedEntity->HasComponent<MeshComponent>())
                     {
                         ImGui::TextDisabled(ICON_MD_INFO " Selected entity has no Static Mesh Component.");
                     }
                     else
                     {
-                        auto& smc = selected->GetComponent<MeshComponent>();
+                        auto& smc = selectedEntity->GetComponent<MeshComponent>();
                         if (!smc.Model)
                         {
                             ImGui::TextDisabled(ICON_MD_INFO " Entity has no model.");
@@ -269,8 +257,7 @@ namespace Motion
                                 if (mesh) mat = mesh->Materials;
                             }
 
-                            if (ImGui::BeginTable("##content-splitted", 2,
-                                    ImGuiTableFlags_Resizable | ImGuiTableFlags_NoBordersInBody))
+                            if (ImGui::BeginTable("##content-splitted", 2, ImGuiTableFlags_Resizable | ImGuiTableFlags_NoBordersInBody))
                             {
                                 ImGui::TableSetupColumn("##side-bar", ImGuiTableColumnFlags_WidthFixed, 260.0f);
                                 ImGui::TableSetupColumn("##inspector-panel", ImGuiTableColumnFlags_WidthStretch);
@@ -323,6 +310,62 @@ namespace Motion
                 auto& rb = selectedEntity->GetComponent<RigidBodyComponent>();
                 if (ImGui::TreeNodeEx((void*)rb.ID, treeNodeFlags, ICON_MD_3D_ROTATION " Rigid Body"))
                 {
+                    BeginPropertyGrid("rigid-body");
+                    auto& cc = selectedEntity->GetComponent<ColliderComponent>();
+
+                    std::int32_t selected{static_cast<std::int32_t>(rb.Type)};
+                    ImGui::BeginDisabled(cc.Type == ShapeType::Concave);
+
+                    if(cc.Type == ShapeType::Concave)
+                    {
+                        selected = 0;
+                        if(rb.Type == BodyType::Dynamic) 
+                        {
+                            rb.Type     = BodyType::Static;
+                            auto* body  = rb.PhysicsBody;
+                            body->setType(rp3d::BodyType::STATIC);
+                        }
+                    }
+                    
+                    ComboBox("Interaction",  { "Static", "Dynamic" }, selected, [&](std::int32_t selectedIndex, const std::string& selectedItem)
+                    {
+                        if(selectedIndex == 0)
+                        {
+                            rb.Type     = BodyType::Static;
+                            auto* body  = rb.PhysicsBody;
+                            body->setType(rp3d::BodyType::STATIC);
+                        };
+
+                        if(selectedIndex == 1)
+                        {
+                            rb.Type     = BodyType::Dynamic;
+                            auto* body  = rb.PhysicsBody;
+                            body->setType(rp3d::BodyType::DYNAMIC);
+                        };
+                    });
+
+                    auto* body = rb.PhysicsBody;
+                    
+                    float mass = (float)body->getMass();
+                    if(SliderFloat("Mass", &mass, 0.0001f, 1000000.0f))
+                    {
+                        body->setMass(mass);
+                    }
+
+                    float linearDamping = (float)body->getLinearDamping();
+                    if(SliderFloat("Linear Damping", &linearDamping, 0.0f, 1.0f))
+                    {
+                        body->setLinearDamping(linearDamping);
+                    }
+
+                    float angularDamping = (float)body->getAngularDamping();
+                    if(SliderFloat("Angular Damping", &angularDamping, 0.0f, 1.0f))
+                    {
+                        body->setAngularDamping(angularDamping);
+                    }
+
+                    ImGui::EndDisabled();
+                    EndPropertyGrid();
                     ImGui::TreePop();
                 }
             }
@@ -332,6 +375,34 @@ namespace Motion
                 auto& cc = selectedEntity->GetComponent<ColliderComponent>();
                 if (ImGui::TreeNodeEx((void*)cc.ID, treeNodeFlags, ICON_FA_BOX " Collision"))
                 {
+                    BeginPropertyGrid("collider");
+
+                    std::int32_t selected{static_cast<std::int32_t>(cc.Type)};
+                    ComboBox("Type",  { "Box", "Sphere", "Capsule", "Convex", "Concave" }, selected, [&](std::int32_t selectedIndex, const std::string& selectedItem)
+                    {
+                        if(cc.Type != static_cast<ShapeType>(selectedIndex))
+                            KinetiX::GetInstance().ChangeCollider(selectedEntity, static_cast<ShapeType>(selectedIndex));
+                    });
+
+                    float bounce = (float)cc.Attributes->getBounciness();
+                    if(SliderFloat("Bounce", &bounce, 0.0f, 1.0f))
+                    {
+                        cc.Attributes->setBounciness(bounce);
+                    }
+
+                    float friction = (float)cc.Attributes->getFrictionCoefficient();
+                    if(SliderFloat("Friction", &friction, 0.0f, 1.0f))
+                    {
+                        cc.Attributes->setFrictionCoefficient(friction);
+                    }
+
+                    float density = (float)cc.Attributes->getMassDensity();
+                    if(SliderFloat("Density", &density, 0.0f, 1.0f))
+                    {
+                        cc.Attributes->setMassDensity(density);
+                    }
+
+                    EndPropertyGrid();
                     ImGui::TreePop();
                 }
             }

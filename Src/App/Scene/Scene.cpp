@@ -9,15 +9,20 @@ namespace Motion
         m_Camera = SceneCamera(spec.Viewport.Size.x, spec.Viewport.Size.y, false);
     }
 
+    Scene::~Scene() 
+    {
+        m_Entities.clear();
+    }
+
     void Scene::OnUpdate(WindowHandle handle, Timer deltaTime) noexcept
     {
         m_Camera.OnUpdate(handle, deltaTime);
 
+        auto& KX = KinetiX::GetInstance();
         if (m_SimState == SimulationState::Running)
-        {
-            auto& KX = KinetiX::GetInstance();
-            KX.Step(deltaTime);
-        }
+            KX.Step(m_Entities, deltaTime.GetDeltaTimeSeconds());
+            
+        KX.Refresh(m_Entities);  
     }
 
     void Scene::OnEvent(WindowHandle handle, IEvent& e) noexcept
@@ -75,15 +80,13 @@ namespace Motion
                 break;
 
             case SimulationState::Paused:
-                m_InSimulation = false;   // don't tick while paused
-                m_SimState     = state;
-                m_PhysicsAcc   = 0.0;     // optional: freeze accumulation when pausing
+                m_InSimulation = false;  
+                m_SimState     = state;  
                 break;
 
             case SimulationState::Stop:
                 m_InSimulation = false;
-                m_SimState     = state;
-                m_PhysicsAcc   = 0.0;     // ensure a clean restart
+                m_SimState     = state;    
                 break;
         }
     }

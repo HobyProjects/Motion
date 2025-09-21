@@ -15,6 +15,8 @@ namespace Motion
         m_ImGuiLayer = std::make_shared<ImGuiLayer>(m_Window->GetHandle(), ImGuiColorScheme::Dark);
         m_EditorLayer = std::make_shared<SceneEditorLayer>(m_Window->GetHandle(), m_ImGuiLayer);
 
+        KinetiX::GetInstance().Init();
+
         PushOverlay(m_ImGuiLayer);
         PushLayer(m_EditorLayer);
     }
@@ -23,6 +25,7 @@ namespace Motion
     {
         TaskManager::Instance().Shutdown();
         UserInterfaceInitializer::Quit();
+        KinetiX::GetInstance().Quit();
         Renderer::Quit();
 
         auto& windowManager = WindowManager::GetInstance();

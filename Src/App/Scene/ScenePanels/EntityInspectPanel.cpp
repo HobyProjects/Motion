@@ -76,32 +76,19 @@ namespace Motion
         auto& KX  = KinetiX::GetInstance();
         auto& mc  = entity->AddComponent<MeshComponent>(model->GetName(), model);
         auto& tr  = entity->AddComponent<TransformComponent>();
-
-        auto& rb = entity->AddComponent<RigidBodyComponent>();
-        KX.CreateRigidBody(&rb.Body, rb.PhyProps, &tr.Translation, &tr.Rotation);
-        KX.SetCanSleep(rb.Body.Handle, rb.CanSleep);
-
+        auto& rb  = entity->AddComponent<RigidBodyComponent>();
         auto& col = entity->AddComponent<ColliderComponent>();
-        col.CollidersCount = (std::uint32_t)model->GetMeshesCount();
 
-        const auto& modelSelf = *model;
-        for(std::uint32_t i = 0; i < col.CollidersCount; ++i)
-        {
-            const auto& mesh        = modelSelf[i];
-            const auto& meshData    = mesh->GetCollisionData();
-            WorldCollider wc{};
-
-            if(!meshData.IsValid()) continue;
-            KX.CreateConvexCollider(&rb.Body, rb.PhyProps, &wc, meshData.Vertices, meshData.Indices, 0.02f);
-            col.Collidr.push_back(wc);
-        }
-
+        KX.CreateRigidBody(entity);
+        KX.CreateConvexCollider(entity);
         scene->EmplaceEntity(entity);
     }
 
     void SceneEntityInspectPanel::RenderUI(ScenePanelContext& ctx)
     {
         if (!ctx.ActiveScene) return;
+        std::vector<std::shared_ptr<Entity>> toRemove;
+        auto selected = ctx.ActiveScene->GetSelectedEntity();
 
         ImGui::Begin(ICON_MD_LIST " Entities");
 
@@ -140,8 +127,6 @@ namespace Motion
             ImGui::EndPopup();
         }
 
-        std::vector<std::shared_ptr<Entity>> toRemove;
-        auto selected = ctx.ActiveScene->GetSelectedEntity();
 
         const bool windowFocused = ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
         bool shortcutDuplicate = false;

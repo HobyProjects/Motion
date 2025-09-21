@@ -11,13 +11,6 @@ namespace Motion
 {
     class Model; 
 
-    struct ColliderData
-    {
-        std::vector<glm::vec3> Vertices; 
-        std::vector<uint32_t>  Indices;    
-        bool IsValid() const { return !Vertices.empty() && Indices.size() % 3 == 0; }
-    };
-
     class Mesh
     {
         public:
@@ -29,13 +22,9 @@ namespace Motion
             void Unbind() const noexcept;
             void Render();
 
-            void SetCollisionData(std::vector<glm::vec3> v, std::vector<uint32_t> i);
-
             [[nodiscard]] std::int32_t GetIndicesCount() const noexcept;
             [[nodiscard]] std::shared_ptr<Model> GetParentModel() const noexcept;
             [[nodiscard]] RendererID GetID() const noexcept { return m_VertexArray->GetID(); }
-            [[nodiscard]] const ColliderData& GetCollisionData() const noexcept { return m_Collider; }
-            [[nodiscard]] bool HasCollisionData() const noexcept { return m_Collider.IsValid(); }
             [[nodiscard]] const glm::vec3& GetMinBounds() const noexcept { return MIN; }
             [[nodiscard]] const glm::vec3& GetMaxBounds() const noexcept { return MAX; }
 
@@ -49,10 +38,6 @@ namespace Motion
             std::shared_ptr<Material> Materials{ nullptr };
             glm::vec3 MIN{ FLT_MAX, FLT_MAX, FLT_MAX };
             glm::vec3 MAX{ -FLT_MAX, -FLT_MAX, -FLT_MAX };
-
-
-        private:
-            ColliderData m_Collider{};
 
         private:
             std::shared_ptr<IVertexBuffer>  m_VertexBuffer{ nullptr };

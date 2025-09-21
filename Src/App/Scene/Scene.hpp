@@ -12,6 +12,7 @@
 namespace Motion
 {
     enum class SimulationState { Running, Stop, Paused };
+    
     struct SceneViewport
     {
         FrameBufferSpecification FrameSpec{};
@@ -44,7 +45,7 @@ namespace Motion
         public:
             Scene() = default;
             Scene(const SceneSpecification& spec);
-            ~Scene() = default;
+            ~Scene();
 
             void OnUpdate(WindowHandle handle, Timer deltaTime) noexcept;
             void OnEvent(WindowHandle handle, IEvent& e) noexcept;
@@ -89,11 +90,6 @@ namespace Motion
             SceneCamera         m_Camera;
             SimulationState     m_SimState{SimulationState::Stop};
             bool                m_InSimulation{false};
-
-            double  m_PhysicsAcc   = 0.0;           // accumulated time
-            double  m_PhysicsStep  = 1.0 / 120.0;   // 120 Hz fixed physics
-            double  m_MaxCatchUp   = 0.25;          // clamp to 250 ms to avoid death spiral
-            int     m_MaxSteps     = 8;             // max substeps per frame
 
             friend class SceneRenderer;
     };

@@ -11,6 +11,7 @@ namespace Motion
             auto windowPtr = window.lock();
             IMGUI_CHECKVERSION();
             ImGui::CreateContext();
+            ImPlot::CreateContext();
             ImGuiIO& io = ImGui::GetIO(); (void)io;
 
             // sensible defaults
@@ -69,6 +70,7 @@ namespace Motion
         default:                      MOTION_ASSERT(false, "Unknown base API!"); break;
         }
 
+        ImPlot::DestroyContext();
         ImGui::DestroyContext();
     }
 
@@ -91,7 +93,7 @@ namespace Motion
 
         ImFont* base = nullptr;
         if (fontPath && *fontPath)
-            base = io.Fonts->AddFontFromFileTTF(GetFullPath(fontPath).c_str(), sizePx, &textCfg);
+            base = io.Fonts->AddFontFromFileTTF(fontPath, sizePx, &textCfg);
         if (!base) base = io.Fonts->AddFontDefault();
 
         static const ImWchar icon_md_ranges[] = { (ImWchar)ICON_MIN_MD, (ImWchar)ICON_MAX_MD, 0 };

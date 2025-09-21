@@ -64,6 +64,8 @@
 #include <imgui/imgui_impl_glfw.h>
 #include <imgui/imgui_internal.h>
 #include <imguizmo/ImGuizmo.h>
+#include <imgui/implot.h>
+#include <imgui/implot_internal.h>
 
 #include <yaml-cpp/yaml.h>
 #include <IconsMaterialDesign.h>
@@ -95,6 +97,7 @@
 #include "MeshFit.hpp"
 
 //Physics
+#include "PhyUtils.hpp"
 #include "KinetiX.hpp"
 
 
@@ -117,8 +120,6 @@
 #include "Model.hpp"
 #include "Mesh.hpp"
 #include "Importer.hpp"
-#include "Thumbnail.hpp"
-#include "PostProcessor.hpp"
 #include "Environment.hpp"
 #include "RenderingStage.hpp"
 #include "RenderCommand.hpp"

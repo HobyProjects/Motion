@@ -16,6 +16,9 @@ set(
 		imgui/imstb_truetype.h
         imgui/backends/imgui_impl_glfw.h
         imgui/backends/imgui_impl_opengl3.h
+
+		implot/implot.h
+		implot/implot_internal.h
 )
 
 set(
@@ -27,6 +30,10 @@ set(
 		imgui/imgui_demo.cpp
 		imgui/backends/imgui_impl_glfw.cpp
 		imgui/backends/imgui_impl_opengl3.cpp
+
+		implot/implot.cpp
+		implot/implot_items.cpp
+		implot/implot_demo.cpp
 )
 
 add_library(

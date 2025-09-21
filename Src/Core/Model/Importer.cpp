@@ -492,11 +492,8 @@ namespace Motion
                 meshPtr->MIN        = mesh.MIN;
                 meshPtr->MAX        = mesh.MAX;
 
-                std::vector<glm::vec3> colVerts;
-                colVerts.reserve(mesh.Vertices.size());
-                for (const auto& v : mesh.Vertices) colVerts.emplace_back(v.Position);
-
-                meshPtr->SetCollisionData(std::move(colVerts), mesh.Indices);
+                for(auto& vtx : mesh.Vertices) model->m_Vertices.insert(model->m_Vertices.end(), vtx.Position);
+                model->m_Indices.insert(model->m_Indices.end(), mesh.Indices.begin(), mesh.Indices.end());
                 model->m_Meshes.emplace_back(std::move(meshPtr));
             }
 

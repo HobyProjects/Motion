@@ -69,6 +69,7 @@ namespace Motion
         m_Panels->Emplace<SceneEntityPropertiesPanel>();
         m_Panels->Emplace<SceneSettingsPanel>();
         m_Panels->Emplace<SceneViewPanel>();
+        m_Panels->Emplace<SimulationPanel>();
     }
 
     void SceneEditorLayer::OnDetach()
@@ -103,7 +104,9 @@ namespace Motion
     void SceneEditorLayer::OnUIRender(WindowHandle handle)
     {
         BuildDockspace();
+
         ImGui::ShowDemoWindow();
+        ImPlot::ShowDemoWindow();
 
         ScenePanelContext panelContext;
         panelContext.ActiveScene                    = m_ActiveScene;
@@ -158,42 +161,6 @@ namespace Motion
 
                     ImGui::EndMenu();
                 }
-                if (ImGui::BeginMenu(ICON_MD_EDIT " Edit"))
-                {
-                    if (ImGui::MenuItem("Undo", "Ctrl+Z")) {}
-                    if (ImGui::MenuItem("Redo", "Ctrl+Y")) {}
-
-                    ImGui::Separator();
-                    if (ImGui::MenuItem("Preferences...")) {}
-                    ImGui::EndMenu();
-                }
-                if (ImGui::BeginMenu(ICON_MD_VIEW_COMFY " View"))
-                {
-                    if (ImGui::MenuItem("Reset Layout")) {}
-                    ImGui::EndMenu();
-                }
-                if (ImGui::BeginMenu(ICON_MD_HELP " Help"))
-                {
-                    if (ImGui::MenuItem("About")) {}
-                    ImGui::EndMenu();
-                }
-
-                ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
-
-                ImGui::TextUnformatted("Active Scene");
-                ImGui::SameLine();
-                ImGui::PushItemWidth(220.0f);
-                
-                std::int32_t selectedIndex = -1;
-                std::vector<const char*> sceneNames;
-                for (const auto& scene : m_Scenes)
-                {
-                    sceneNames.push_back(scene->GetName().c_str());
-                    if (scene == m_ActiveScene) selectedIndex = (std::int32_t)(sceneNames.size() - 1);
-                }
-
-                ImGui::Combo("##scene-list", &selectedIndex, sceneNames.data(), sceneNames.size());
-                ImGui::PopItemWidth();
 
                 ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
 

@@ -58,12 +58,6 @@ namespace Motion
         return m_ParentModel;
     }
 
-    void Mesh::SetCollisionData(std::vector<glm::vec3> v, std::vector<uint32_t> i)
-    {
-        m_Collider.Vertices = std::move(v);
-        m_Collider.Indices  = std::move(i);
-    }
-
     std::shared_ptr<Mesh> Mesh::Create(const Vertex* vertices, std::uint32_t verticesSize, const std::uint32_t* indices, std::uint32_t indicesCount, const BufferLayout& layout, const std::shared_ptr<Model>& parentModel)
     {
         return std::make_shared<Mesh>(vertices, verticesSize, indices, indicesCount, layout, parentModel);

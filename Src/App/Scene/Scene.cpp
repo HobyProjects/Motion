@@ -37,10 +37,10 @@ namespace Motion
 
     void Scene::SelectEntityIf()
     {
-        if (m_SelectedEntity != EntityFactory::EMPTYENTITY && !m_Entities.empty())
+        if (m_SelectedEntity != Entity::Empty() && !m_Entities.empty())
             m_SelectedEntity = m_Entities.front();
         else
-            m_SelectedEntity = EntityFactory::EMPTYENTITY;
+            m_SelectedEntity = Entity::Empty();
     }
 
     void Scene::RemoveEntity(const std::shared_ptr<Entity>& entity)
@@ -52,8 +52,7 @@ namespace Motion
             return;
 
         const bool wasSelected = (m_SelectedEntity == *it);
-        auto& EF = EntityFactory::GetInstance();
-        EF.DestroyEntity(*it);       
+        Entity::Destroy(*it);       
         m_Entities.erase(it);       
 
         if (wasSelected)
@@ -61,7 +60,7 @@ namespace Motion
             if (!m_Entities.empty())
                 m_SelectedEntity = m_Entities.front();
             else
-                m_SelectedEntity = EntityFactory::EMPTYENTITY;
+                m_SelectedEntity = Entity::Empty();
         }
     }
 

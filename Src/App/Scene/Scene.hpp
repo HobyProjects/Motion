@@ -84,7 +84,7 @@ namespace Motion
 
         private:
             std::vector<std::shared_ptr<Entity>>    m_Entities{};
-            std::shared_ptr<Entity>                 m_SelectedEntity{ EntityFactory::EMPTYENTITY };
+            std::shared_ptr<Entity>                 m_SelectedEntity{ Entity::Empty() };
 
             SceneSpecification  m_Specification;
             SceneCamera         m_Camera;

@@ -85,10 +85,6 @@
 #include "Layer.hpp"
 #include "LayersManager.hpp"
 
-// Assets
-#include "Asset.hpp"
-#include "AssetManager.hpp"
-
 //Material
 #include "Material.hpp"
 #include "MaterialComponents.hpp"
@@ -117,7 +113,6 @@
 #include "Arrays.hpp"
 #include "Camera.hpp"
 #include "Camera3D.hpp"
-#include "Model.hpp"
 #include "Mesh.hpp"
 #include "Importer.hpp"
 #include "Environment.hpp"

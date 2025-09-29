@@ -3,11 +3,6 @@
 
 namespace Motion
 {
-    BaseMaterial::BaseMaterial(UUID uniqueID, const std::string& materialName, const std::filesystem::path& materialFile)
-        :AssetBase<IAsset>(uniqueID, materialName, AssetType::Material, materialFile.string())
-    {
-    }
-
     static bool YAML_GetVec3(const YAML::Node& n, glm::vec3& out)
     {
         if (!n || !n.IsSequence() || n.size() < 3) return false;
@@ -24,15 +19,22 @@ namespace Motion
         map[type] = ITexture::Create(texPath, type);
     }
 
-    void BaseMaterial::Import(const std::filesystem::path& materialYAML)
+    std::shared_ptr<Material> Material::Create(const std::shared_ptr<BaseMaterial>& baseMaterial)
+    {
+        std::shared_ptr<Material> material = std::make_shared<Material>(m_MaterialRegistry.create(), baseMaterial);
+        material->Emplace<CoreMaterialComponents>();
+        return material;
+    }
+
+    std::shared_ptr<BaseMaterial> Material::CreateBase(const std::filesystem::path & materialYAML)
     {
         if (!std::filesystem::exists(materialYAML)) {
             MOTION_CORE_ERROR("Physical Based Material file: '{}' does not exist!", materialYAML.string());
-            return;
+            return nullptr;
         }
         if (materialYAML.extension() != ".yaml" && materialYAML.extension() != ".yml") {
             MOTION_CORE_ERROR("Physical Based Material file: '{}' is not a valid YAML file!", materialYAML.string());
-            return;
+            return nullptr;
         }
 
         try
@@ -41,8 +43,7 @@ namespace Motion
             YAML::Node materialNode = root["Material"];
             std::string name = materialNode["Name"].as<std::string>();
 
-            auto& assetManager = AssetManager::GetInstance();
-            auto material = assetManager.Create<BaseMaterial>(name, materialYAML);
+            auto material = std::make_shared<BaseMaterial>(name);
 
             if (auto params = materialNode["Parameters"])
             {
@@ -64,74 +65,20 @@ namespace Motion
                 TryLoadTexture(T, textures, "Emissive", TextureType::EmissiveTexture);
                 TryLoadTexture(T, textures, "Displacement", TextureType::DisplacementTexture);
             }
+
+            return material;
         }
         catch (const std::exception& e)
         {
             MOTION_CORE_ERROR("Failed to import material from '{}': {}", materialYAML.filename().string(), e.what());
-            return;
+            return nullptr;
         }
     }
 
-    std::shared_ptr<Material> MaterialBuilder::Create(const std::shared_ptr<BaseMaterial>& baseMaterial)
+    void Material::Destroy(const std::shared_ptr<Material>& material)
     {
-        std::shared_ptr<Material> material = std::make_shared<Material>(_Registry.create(), baseMaterial);
-        material->AddTexture<CorePBR>();
-        return material;
-    }
-
-    void MaterialBuilder::Destroy(const std::shared_ptr<Material>& material)
-    {
-        auto handle = material->GetHandle();
-        _Registry.destroy(handle);
-        material->Destroy();
-    }
-
-    void BaseMaterial::SerializeYAML(const std::filesystem::path& outFile) const
-    {
-        YAML::Emitter out;
-        out << YAML::BeginMap;
-        out << YAML::Key << "Material" << YAML::Value << YAML::BeginMap;
-
-        out << YAML::Key << "Name" << YAML::Value << outFile.filename().stem().string();
-
-        out << YAML::Key << "Parameters" << YAML::Value << YAML::BeginMap;
-        out << YAML::Key << "BaseColor" << YAML::Value << YAML::Flow << YAML::BeginSeq << BaseColor.x << BaseColor.y << BaseColor.z << YAML::EndSeq;
-        out << YAML::Key << "MetallicFactor" << YAML::Value << MetallicFactor;
-        out << YAML::Key << "RoughnessFactor" << YAML::Value << RoughnessFactor;
-        out << YAML::Key << "OpacityFactor" << YAML::Value << OpacityFactor;
-        out << YAML::EndMap;
-
-        out << YAML::Key << "Textures" << YAML::Value << YAML::BeginMap;
-        auto writeTex =
-            [&](TextureType t, const char* key)
-            {
-                auto it = Textures.find(t);
-                if (it != Textures.end() && it->second)
-                {
-                    const auto& spec = it->second->GetSpecification();
-                    std::string path = spec.TextureFile.empty() ? fmt::format("<generated:{}:{}x{}>", GetTextureTypeString(t), spec.Width, spec.Height) : spec.TextureFile;
-                    out << YAML::Key << key << YAML::Value << path;
-                }
-            };
-
-        writeTex(TextureType::BaseColorTexture, "BaseColor");
-        writeTex(TextureType::MetallicTexture, "Metallic");
-        writeTex(TextureType::RoughnessTexture, "Roughness");
-        writeTex(TextureType::NormalTexture, "Normal");
-        writeTex(TextureType::AmbientOcclusionTexture, "AO");
-        writeTex(TextureType::EmissiveTexture, "Emissive");
-        writeTex(TextureType::OpacityTexture, "Opacity");
-        writeTex(TextureType::ORMTexture, "ORM");
-        writeTex(TextureType::DisplacementTexture, "Displacement");
-        out << YAML::EndMap;
-
-        out << YAML::EndMap; // Material
-        out << YAML::EndMap;
-
-        std::filesystem::create_directories(outFile.parent_path());
-        std::ofstream fout(outFile);
-        MOTION_ASSERT(fout.good(), "Failed to write material YAML '{}'", outFile.string());
-        fout << out.c_str();
+        auto handle = material->Handle();
+        m_MaterialRegistry.destroy(handle);
     }
 }
 

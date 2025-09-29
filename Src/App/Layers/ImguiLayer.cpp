@@ -9,7 +9,7 @@ namespace Motion
 
     void ImGuiLayer::OnAttach()
     {
-        UserInterfaceInitializer::LoadDefaultFonts("Assets/Fonts/JetBrainsMono/JetBrainsMono-Regular.ttf", 17.0f);
+        UserInterfaceInitializer::LoadDefaultFonts("Assets/Fonts/JetBrainsMono/JetBrainsMono-Regular.ttf", 17.5f);
         (m_ColorScheme == ImGuiColorScheme::Dark) ? UserInterfaceInitializer::UseColorDark() : UserInterfaceInitializer::UseColorLight();
     }
 

@@ -1,9 +1,7 @@
 #pragma once
 
 #include "Base.hpp"
-#include "Model.hpp"
-
-#include "TaskManager.hpp"
+#include "Entity.hpp"
 
 namespace Motion
 {
@@ -19,6 +17,6 @@ namespace Motion
             Importer& operator=(Importer&&) = delete;
 
         public:
-            static TaskManager::TaskId ImportModelAsync(const std::filesystem::path& path, bool shouldExport, const std::string& exportPath, std::function<void(std::shared_ptr<Model>)> onCompleted, std::function<void(std::int32_t)> onProgress);
+            static std::shared_ptr<Entity> ImportModelAsync(const std::filesystem::path& path, bool shouldExport, const std::string& exportPath);
     };
 }

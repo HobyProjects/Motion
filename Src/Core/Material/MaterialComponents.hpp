@@ -52,7 +52,7 @@ namespace Motion
     template <>
     struct enable_bitmask_operations<TexturesBitMask> : std::true_type {};
 
-    struct CorePBR
+    struct CoreMaterialComponents
     {
         std::shared_ptr<ITexture> BaseColorTexture{ nullptr };
         std::shared_ptr<ITexture> NormalTexture{ nullptr };
@@ -73,7 +73,7 @@ namespace Motion
         float OpacityFactor{ 1.0f };
     };
 
-    struct PackedMaps
+    struct PackedMaterialComponents
     {
         std::shared_ptr<ITexture> ORMTexture{ nullptr };
     };

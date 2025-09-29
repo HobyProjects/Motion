@@ -250,17 +250,17 @@ namespace Motion
         for (auto& [type, src] : shaderSources)
         {
             src = InjectDefinitions(src, defineBlock);
-            //VariantWrite(name, type, src, "Assets/Shaders/Variants");
+            // VariantWrite(name, type, src, "Assets/Shaders/Variants"); //<- Enable this if you want to ouput variants
         }
 
 
         std::shared_ptr<IShader> shader{ nullptr };
         switch(Renderer::GetAPI())
         {
-            case RenderingAPI::OpenGL:      shader  = std::make_shared<GL_Shader>(vID, name, shaderSources, sourceFile);    break;
-            case RenderingAPI::Vulkan:      MOTION_ASSERT(false, "Vulkan support not implemented yet!");                    break;
-            case RenderingAPI::DirectX:     MOTION_ASSERT(false, "DirectX support not implemented yet!");                   break;
-            default:                        MOTION_ASSERT(false, "Unknown rendering API!");                                 break;
+            case RenderingAPI::OpenGL:      shader  = std::make_shared<GL_Shader>(shaderSources);         break;
+            case RenderingAPI::Vulkan:      MOTION_ASSERT(false, "Vulkan support not implemented yet!");  break;
+            case RenderingAPI::DirectX:     MOTION_ASSERT(false, "DirectX support not implemented yet!"); break;
+            default:                        MOTION_ASSERT(false, "Unknown rendering API!");               break;
         }
 
         m_ShaderCache[hash] = shader;

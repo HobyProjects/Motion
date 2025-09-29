@@ -33,8 +33,6 @@ namespace Motion
             [[nodiscard]] std::vector<std::shared_ptr<Scene>>::const_iterator begin() const { return m_Scenes.begin(); }
             [[nodiscard]] std::vector<std::shared_ptr<Scene>>::const_iterator end() const { return m_Scenes.end(); }
 
-            [[nodiscard]] SimulationState GetSimulationState() const { return m_SimulationState; }
-
         private:
             void BuildDockspace();
 
@@ -48,9 +46,6 @@ namespace Motion
             std::vector<std::shared_ptr<Scene>>                         m_Scenes{};
             std::unordered_map<std::shared_ptr<Scene>, FrameTextureID>  m_SceneTextures{};
 
-            std::shared_ptr<ScenePanelManager> m_Panels{ nullptr };
-
-        private:
-            SimulationState     m_SimulationState{SimulationState::Stop};       
+            std::shared_ptr<ScenePanelManager> m_Panels{ nullptr };     
     };
 }

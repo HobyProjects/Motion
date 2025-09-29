@@ -3,26 +3,20 @@
 
 namespace Motion 
 {
-    static constexpr float kFixedStep = 1.0f / 120.0f;
+    static constexpr float kFixedStep = 1.0f / 60.0f;
 
     void KinetiX::Init() 
     {
         MOTION_ASSERT(m_World == nullptr, "Physics world already initialized");
 
-        m_Settings.gravity = rp3d::Vector3(0.0f, -Motion::Units::g_mps2, 0.0f);
+        m_Settings.gravity = rp3d::Vector3(0.0f, -Motion::Units::SI_GRAVITY, 0.0f);
         m_Settings.defaultVelocitySolverNbIterations = 20;
         m_Settings.isSleepingEnabled = true;
 
         m_World = m_Common.createPhysicsWorld(m_Settings);
         MOTION_ASSERT(m_World, "Failed to create physics world");
-        m_World->setNbIterationsVelocitySolver(15);
-        m_World->setNbIterationsPositionSolver(8);
-
-        m_Logger = m_Common.createDefaultLogger();
-        std::uint32_t logLevel = static_cast<std::uint32_t>(static_cast<std::uint32_t>(rp3d::Logger::Level::Warning) | static_cast<std::uint32_t>(rp3d::Logger::Level::Error));
-        m_Logger->addStreamDestination(std::cout, logLevel, rp3d::DefaultLogger::Format::Text);
-        m_Logger->addFileDestination("MotionPhysicsLogs.txt", logLevel, rp3d::DefaultLogger::Format::Text);
-        m_Common.setLogger(m_Logger);
+        m_World->setNbIterationsVelocitySolver(15); 
+        m_World->setNbIterationsPositionSolver(6);   
 
         m_World->setIsDebugRenderingEnabled(true);
         auto& dr = m_World->getDebugRenderer();
@@ -66,18 +60,6 @@ namespace Motion
         }
     }
 
-    void KinetiX::ApplyDefaultMaterial(rp3d::Collider* collider) 
-    {
-        if (!collider) return;
-
-        rp3d::Material mat = collider->getMaterial();
-        mat.setFrictionCoefficient(0.5f);
-        mat.setBounciness(0.1f);
-        mat.setMassDensity(1.0f);
-
-        collider->setMaterial(mat);
-    }
-
     void KinetiX::Reset() 
     {
         MOTION_ASSERT(m_World != nullptr, "World not initialized");
@@ -96,14 +78,13 @@ namespace Motion
     void KinetiX::CreateRigidBody(const std::shared_ptr<Entity>& e) 
     {
         MOTION_ASSERT(m_World, "Physics world not initialized");
-        MOTION_ASSERT(e && e->IsAlive(), "Invalid entity");
 
-        auto& tc  = e->GetComponent<TransformComponent>();
-        if (!e->HasComponent<RigidBodyComponent>()) e->AddComponent<RigidBodyComponent>();
-        auto& rbc = e->GetComponent<RigidBodyComponent>();
+        auto& tc  = e->Get<TransformComponent>();
+        if (!e->Has<RigidBodyComponent>()) e->Emplace<RigidBodyComponent>();
+        auto& rbc = e->Get<RigidBodyComponent>();
 
         rp3d::RigidBody* rb = static_cast<rp3d::RigidBody*>(rbc.PhysicsBody);
-        if (!rb) { rb = m_World->createRigidBody(ToRp3dTransform(tc)); rbc.PhysicsBody = rb; }
+        if (!rb) { rb = m_World->createRigidBody(Transform(tc)); rbc.PhysicsBody = rb; }
 
         rb->setType(ToRp3dBodyType(rbc.Type));
         rb->setIsDebugEnabled(true);
@@ -125,19 +106,21 @@ namespace Motion
 
         rb->setLinearLockAxisFactor(linLock);
         rb->setAngularLockAxisFactor(angLock);
+        rb->setAngularDamping(rbc.AngularDamping);
+        rb->setLinearDamping(rbc.LinearDamping);
         rb->setUserData(e.get());
     }
 
     void KinetiX::DestroyRigidBody(const std::shared_ptr<Entity>& e) 
     {
-        if (!e->HasComponent<RigidBodyComponent>()) return;
-        auto& rbc = e->GetComponent<RigidBodyComponent>();
+        if (!e->Has<RigidBodyComponent>()) return;
+        auto& rbc = e->Get<RigidBodyComponent>();
         auto* rb  = static_cast<rp3d::RigidBody*>(rbc.PhysicsBody);
         if (!rb) return;
 
-        if (e->HasComponent<ColliderComponent>()) 
+        if (e->Has<ColliderComponent>()) 
         {
-            auto& cc = e->GetComponent<ColliderComponent>();
+            auto& cc = e->Get<ColliderComponent>();
 
             if (cc.Collider)
             {
@@ -154,7 +137,6 @@ namespace Motion
                 if (cc.Type == ShapeType::Concave)  m_Common.destroyConcaveMeshShape(dynamic_cast<rp3d::ConcaveMeshShape*>(cc.Shape));
 
                 cc.Shape = nullptr;
-                cc.Attributes = nullptr;
             }
         }
 
@@ -166,11 +148,11 @@ namespace Motion
 
     void KinetiX::ChangeCollider(const std::shared_ptr<Entity>& e, ShapeType type)
     {
-        auto& tr    = e->GetComponent<TransformComponent>();
-        auto& mc    = e->GetComponent<MeshComponent>();
-        auto& rbc   = e->GetComponent<RigidBodyComponent>();
-        auto& cc    = e->GetComponent<ColliderComponent>();
-        if(cc.Type == type) return;
+        auto& tr    = e->Get<TransformComponent>();
+        auto& mc    = e->Get<MeshComponent>();
+        auto& rbc   = e->Get<RigidBodyComponent>();
+        auto& cc    = e->Get<ColliderComponent>();
+        if(cc.Type  == type) return;
         
         auto* rb = rbc.PhysicsBody;
         if(cc.Collider) rb->removeCollider(cc.Collider);
@@ -189,302 +171,365 @@ namespace Motion
             DestroyCachedMeshesFor(e.get());
         }
 
-        cc.Shape = nullptr;
-        cc.Attributes = nullptr;
-
+        cc.Shape        = nullptr;
         if(type == ShapeType::Box)      CreateBoxCollider(e);
         if(type == ShapeType::Sphere)   CreateSphereCollider(e);
         if(type == ShapeType::Capsule)  CreateCapsuleCollider(e);
-        if(type == ShapeType::Convex)   CreateConvexCollider(e);
-        if(type == ShapeType::Concave)  CreateConcaveCollider(e);
+        if(type == ShapeType::Convex)   CreateConvexCollider(e, mc.MeshPointer->Positions, mc.MeshPointer->Faces);
+        if(type == ShapeType::Concave)  CreateConcaveCollider(e, mc.MeshPointer->Positions, mc.MeshPointer->Faces);
     }
+
+
 
     void KinetiX::CreateBoxCollider(const std::shared_ptr<Entity>& e) 
     {
-        auto& rbc = e->GetComponent<RigidBodyComponent>();
-        auto& cc  = e->GetComponent<ColliderComponent>();
-        auto& tr  = e->GetComponent<TransformComponent>();
+        auto& RBC   = e->Get<RigidBodyComponent>();
+        auto& CC    = e->Get<ColliderComponent>();
+        auto& TRC   = e->Get<TransformComponent>();
 
-        auto* rb  = rbc.PhysicsBody;
-        rb->setTransform(ToRp3dTransform(tr));
+        auto* RB    = RBC.PhysicsBody;
+        RB->setTransform(Transform(TRC));
 
-        auto* shape = m_Common.createBoxShape(ToRp3dVec3(glm::vec3(0.5f * tr.Scale)));
-        auto* col   = rb->addCollider(shape, rp3d::Transform::identity());
-        col->setIsSimulationCollider(true);
-        ApplyDefaultMaterial(col);
+        auto* shape         = m_Common.createBoxShape(ToVec3(CC.BoxHalfExtents));
+        auto* collider      = RB->addCollider(shape, rp3d::Transform::identity());
+        rp3d::Material& mat = collider->getMaterial();
 
-        cc.Shape        = shape;
-        cc.Collider     = col;
-        cc.Type         = ShapeType::Box;
-        cc.Attributes   = &col->getMaterial();
+        collider->setIsSimulationCollider(true);
+        mat.setFrictionCoefficient(CC.Friction);
+        mat.setBounciness(CC.Restitution);
+        mat.setMassDensity(CC.MassDensity);
 
-        if (rb->getType() == rp3d::BodyType::DYNAMIC)
-            rb->updateMassPropertiesFromColliders();        
+        CC.Shape            = shape;
+        CC.Collider         = collider;
+        CC.Type             = ShapeType::Box;
+
+        if (RB->getType() == rp3d::BodyType::DYNAMIC)
+            RB->updateMassPropertiesFromColliders();        
     }
 
     void KinetiX::CreateSphereCollider(const std::shared_ptr<Entity>& e) 
     {
-        auto& rbc = e->GetComponent<RigidBodyComponent>();
-        auto& cc  = e->GetComponent<ColliderComponent>();
-        auto& tr  = e->GetComponent<TransformComponent>();
-        auto* rb  = rbc.PhysicsBody;
-        rb->setTransform(ToRp3dTransform(tr));
+        auto& RBC   = e->Get<RigidBodyComponent>();
+        auto& CC    = e->Get<ColliderComponent>();
+        auto& TRC   = e->Get<TransformComponent>();
+        auto* RB    = RBC.PhysicsBody;
+        RB->setTransform(Transform(TRC));
 
-        auto* shape = m_Common.createSphereShape(0.5f * glm::max(tr.Scale.x, tr.Scale.y, tr.Scale.z));
-        auto* col   = rb->addCollider(shape, rp3d::Transform::identity());
-        col->setIsSimulationCollider(true);
-        ApplyDefaultMaterial(col);
+        const glm::vec3 S       = TRC.Scale;
+        const float s           = (S.x + S.y + S.z) / 3.0f;
+        const float r           = std::max(0.0f, CC.SphereRadius * s);
+        auto* shape             = m_Common.createSphereShape(r);
+        auto* collider          = RB->addCollider(shape, rp3d::Transform::identity());
+        rp3d::Material& mat     = collider->getMaterial();
 
-        cc.Shape        = shape;
-        cc.Collider     = col;
-        cc.Type         = ShapeType::Sphere;
-        cc.Attributes   = &col->getMaterial();
+        collider->setIsSimulationCollider(true);
+        mat.setFrictionCoefficient(CC.Friction);
+        mat.setBounciness(CC.Restitution);
+        mat.setMassDensity(CC.MassDensity);
 
-        if (rb->getType() == rp3d::BodyType::DYNAMIC)
-            rb->updateMassPropertiesFromColliders();
+        CC.Shape        = shape;
+        CC.Collider     = collider;
+        CC.Type         = ShapeType::Sphere;
+        CC.SphereRadius = r;
+
+        if (RB->getType() == rp3d::BodyType::DYNAMIC)
+            RB->updateMassPropertiesFromColliders();
     }
 
     void KinetiX::CreateCapsuleCollider(const std::shared_ptr<Entity>& e) 
     {
-        auto& rbc = e->GetComponent<RigidBodyComponent>();
-        auto& cc  = e->GetComponent<ColliderComponent>();
-        auto& tr  = e->GetComponent<TransformComponent>();
+        auto& RBC = e->Get<RigidBodyComponent>();
+        auto& CC  = e->Get<ColliderComponent>();
+        auto& TRC = e->Get<TransformComponent>();
 
-        auto* rb  = rbc.PhysicsBody;
-        rb->setTransform(ToRp3dTransform(tr));
+        auto* RB  = RBC.PhysicsBody;
+        RB->setTransform(Transform(TRC));
 
-        auto radius = 0.5f * glm::max(tr.Scale.x, tr.Scale.z);
-        auto height = tr.Scale.y - 2 * radius;
+        const glm::vec3 S           = TRC.Scale;
+        const std::int32_t axis     = CC.Capsule.Axis;
 
-        auto* shape = m_Common.createCapsuleShape(radius, height);
-        auto* col   = rb->addCollider(shape, rp3d::Transform::identity());
-        col->setIsSimulationCollider(true);
-        ApplyDefaultMaterial(col);
+        float sx = S.x, sy = S.y, sz = S.z;
+        float rScale = 1.0f, hScale = 1.0f;
 
-        cc.Shape        = shape;
-        cc.Collider     = col;
-        cc.Type         = ShapeType::Capsule;
-        cc.Attributes   = &col->getMaterial();
+        if(axis == 0) { rScale = std::max(sy, sz); hScale = sx; }
+        else if(axis == 1) { rScale = std::max(sx, sz); hScale = sy; }
+        else { rScale = std::max(sx, sy); hScale = sz; }
 
-        if (rb->getType() == rp3d::BodyType::DYNAMIC)
-            rb->updateMassPropertiesFromColliders();
+        const float r = std::max(0.0f, CC.Capsule.Radius * rScale);
+        const float h = std::max(0.0f, CC.Capsule.Height * hScale);
+
+        auto* shape             = m_Common.createCapsuleShape(r, h);
+        auto* collider          = RB->addCollider(shape, rp3d::Transform::identity());
+        rp3d::Material& mat     = collider->getMaterial();
+
+        collider->setIsSimulationCollider(true);
+        mat.setFrictionCoefficient(CC.Friction);
+        mat.setBounciness(CC.Restitution);
+        mat.setMassDensity(CC.MassDensity);
+
+        CC.Shape            = shape;
+        CC.Collider         = collider;
+        CC.Type             = ShapeType::Capsule;
+        CC.Capsule.Radius   = r;
+        CC.Capsule.Height   = h;
+        CC.Capsule.Axis     = axis;
+
+        if (RB->getType() == rp3d::BodyType::DYNAMIC)
+            RB->updateMassPropertiesFromColliders();
     }
 
-    void KinetiX::CreateConvexCollider(const std::shared_ptr<Entity>& e) 
+    void KinetiX::CreateConvexCollider(const std::shared_ptr<Entity>& e, const std::vector<glm::vec3>& inVertices, const std::vector<uint32_t>&  inIndices)
     {
-        auto& mc  = e->GetComponent<MeshComponent>();
-        auto& rbc = e->GetComponent<RigidBodyComponent>();
-        auto& cc  = e->GetComponent<ColliderComponent>();
-        auto& tr  = e->GetComponent<TransformComponent>();
+        auto& RBC   = e->Get<RigidBodyComponent>();
+        auto& CC    = e->Get<ColliderComponent>();
+        auto& TRC   = e->Get<TransformComponent>();
 
-        auto* rb = rbc.PhysicsBody;
-        rb->setTransform(ToRp3dTransform(tr));
-
-        if (!m_ConvexMeshes.contains(e.get())) 
+        auto* RB = RBC.PhysicsBody;
+        RB->setTransform(Transform(TRC));
+        if (m_ConvexMeshes.contains(e.get())) 
         {
-            auto clean = SanitizeConvex(mc.Model->GetPositions(), mc.Model->GetFaces());
-            MOTION_ASSERT(clean.vertices.size() >= 4, "Convex mesh needs ≥ 4 unique vertices");
-            MOTION_ASSERT(clean.indices.size() >= 3, "No valid triangles after sanitization");
+            rp3d::ConvexMesh* cmesh     = m_ConvexMeshes[e.get()];
+            glm::vec3 safeScale         = glm::max(TRC.Scale, glm::vec3(1e-3f));
+            auto* shape                 = m_Common.createConvexMeshShape(cmesh, ToVec3(safeScale));
+            MOTION_ASSERT(shape, "ConvexMeshShape creation failed");
 
-            std::vector<rp3d::PolygonVertexArray::PolygonFace> faceHeaders;
-            faceHeaders.reserve(clean.indices.size() / 3);
-            for (uint32_t t = 0; t < clean.indices.size() / 3; ++t) 
+            auto* collider          = RB->addCollider(shape, rp3d::Transform::identity());
+            rp3d::Material& mat     = collider->getMaterial();
+
+            collider->setIsSimulationCollider(true);
+            mat.setFrictionCoefficient(CC.Friction);
+            mat.setBounciness(CC.Restitution);
+            mat.setMassDensity(CC.MassDensity);
+
+            CC.Shape      = shape;
+            CC.Collider   = collider;
+            CC.Type       = ShapeType::Convex;
+
+            if (RB->getType() == rp3d::BodyType::DYNAMIC)
+                RB->updateMassPropertiesFromColliders();
+
+            return;
+        }
+
+        constexpr float EPS_WELD  = 1e-4f;     
+        constexpr float EPS_AREA2 = 1e-12f;   
+        constexpr float EPS_PLANAR = 1e-4f;  
+
+        const std::vector<glm::vec3>& srcVerts = inVertices;
+        const std::vector<uint32_t>&  srcTris  = inIndices;
+
+        MOTION_ASSERT(srcVerts.size() >= 4, "Convex cooking requires at least 4 vertices");
+        WeldResult wr = weldAndClean(srcVerts, srcTris, EPS_WELD, EPS_AREA2);
+
+        std::vector<glm::vec3> cookPts = wr.vertices;
+        MOTION_ASSERT(cookPts.size() >= 4, "Insufficient unique vertices after welding");
+
+        bool nonCoplanar = hasNonCoplanarSeed(cookPts, EPS_PLANAR);
+        MOTION_ASSERT(nonCoplanar, "Input points are coplanar or nearly coplanar — cannot build a 3D convex hull");
+
+        CookScale cs = chooseCookScale(cookPts);
+        if (cs.toCook != glm::vec3(1.0f)) 
+        {
+            for (auto& p : cookPts) p *= cs.toCook;
+        }
+
+        rp3d::ConvexMesh* cmesh = nullptr;
+        std::vector<rp3d::Message> messages;
+        auto logMessages = [&](const char* stage) 
+        {
+            for (auto& msg : messages) 
             {
-                rp3d::PolygonVertexArray::PolygonFace pf; pf.indexBase = t * 3; pf.nbVertices = 3; faceHeaders.push_back(pf);
+                const char* type =
+                    msg.type == rp3d::Message::Type::Information ? "INFO" :
+                    msg.type == rp3d::Message::Type::Warning     ? "WARN" : "ERROR";
+                MOTION_CORE_ERROR("Convex Collider [{}]:[{}] {}", stage, type, msg.text);
+            }
+        };
+
+        {
+            rp3d::VertexArray va(
+                (const void*)cookPts.data(), sizeof(glm::vec3),
+                (uint32_t)cookPts.size(),
+                rp3d::VertexArray::DataType::VERTEX_FLOAT_TYPE
+            );
+            messages.clear();
+            cmesh = m_Common.createConvexMesh(va, messages);
+            logMessages("QuickHull");
+        }
+
+        if (!cmesh && !wr.indices.empty()) 
+        {
+            std::vector<rp3d::PolygonVertexArray::PolygonFace> faces;
+            faces.reserve(wr.indices.size() / 3);
+            for (uint32_t t = 0; t < (uint32_t)(wr.indices.size() / 3); ++t)
+                faces.push_back({ t * 3, 3 });
+
+            std::vector<glm::vec3> triVerts = wr.vertices;
+            if (cs.toCook != glm::vec3(1.0f)) 
+            {
+                for (auto& p : triVerts) p *= cs.toCook;
             }
 
             rp3d::PolygonVertexArray pva(
-                (std::uint32_t)clean.vertices.size(), (const void*)clean.vertices.data(), (std::uint32_t)sizeof(glm::vec3),
-                (const void*)clean.indices.data(), (std::uint32_t)sizeof(uint32_t),
-                (std::uint32_t)faceHeaders.size(), faceHeaders.data(),
+                (uint32_t)triVerts.size(), (const void*)triVerts.data(), sizeof(glm::vec3),
+                (const void*)wr.indices.data(), sizeof(uint32_t),
+                (uint32_t)faces.size(), faces.data(),
                 rp3d::PolygonVertexArray::VertexDataType::VERTEX_FLOAT_TYPE,
                 rp3d::PolygonVertexArray::IndexDataType::INDEX_INTEGER_TYPE
             );
 
-            std::vector<rp3d::Message> messages;
-            rp3d::ConvexMesh* cmesh = m_Common.createConvexMesh(pva, messages);
-            for (const auto& msg : messages) 
-            {
-                const char* t = (msg.type==rp3d::Message::Type::Information)?"INFO":(msg.type==rp3d::Message::Type::Warning)?"WARN":"ERROR";
-                MOTION_CORE_ERROR("Convex (Triangles) Collider:[{}]: {}", t, msg.text);
-            }
+            messages.clear();
+            cmesh = m_Common.createConvexMesh(pva, messages);
+            logMessages("Polygon");
+        }
 
-            if (!cmesh) 
+        MOTION_ASSERT(cmesh, "Convex mesh creation failed (QuickHull then Polygon)");
+
+        glm::vec3 combinedScale = TRC.Scale * cs.toModel;
+        glm::vec3 safeScale     = glm::max(combinedScale, glm::vec3(1e-3f));
+
+        auto* shape = m_Common.createConvexMeshShape(cmesh, ToVec3(safeScale));
+        MOTION_ASSERT(shape, "ConvexMeshShape creation failed");
+
+        auto* collider          = RB->addCollider(shape, rp3d::Transform::identity());
+        rp3d::Material& mat     = collider->getMaterial();
+
+        collider->setIsSimulationCollider(true);
+        mat.setFrictionCoefficient(CC.Friction);
+        mat.setBounciness(CC.Restitution);
+        mat.setMassDensity(CC.MassDensity);
+
+        CC.Shape      = shape;
+        CC.Collider   = collider;
+        CC.Type       = ShapeType::Convex;
+
+        m_ConvexMeshes[e.get()] = cmesh;
+
+        if (RB->getType() == rp3d::BodyType::DYNAMIC)
+            RB->updateMassPropertiesFromColliders();
+    }
+
+    void KinetiX::CreateConcaveCollider(const std::shared_ptr<Entity>& e, const std::vector<glm::vec3>& inVertices, const std::vector<uint32_t>& inIndices)
+    {
+        MOTION_ASSERT(false, "Not implemented yet");
+    }
+
+    void KinetiX::Refresh(const std::vector<std::shared_ptr<Entity>>& entities)
+    {
+        for(const auto& e : entities)
+        {
+            std::shared_ptr<Entity> current = e;
+            while(current)
             {
-                MOTION_CORE_WARN("Polygon convex cook failed; falling back to QuickHull on vertices");
-                rp3d::VertexArray va((const void*)clean.vertices.data(), (std::uint32_t)sizeof(glm::vec3), (std::uint32_t)clean.vertices.size(), rp3d::VertexArray::DataType::VERTEX_FLOAT_TYPE);
-                messages.clear(); cmesh = m_Common.createConvexMesh(va, messages);
-                for (const auto& msg : messages) 
+                std::shared_ptr<Entity> next = nullptr;
+                if(current->Has<NodeComponent>())
                 {
-                    const char* t = (msg.type==rp3d::Message::Type::Information)?"INFO":(msg.type==rp3d::Message::Type::Warning)?"WARN":"ERROR";
-                    MOTION_CORE_ERROR("Convex (QuickHull) Collider:[{}]: {}", t, msg.text);
+                    next = current->Get<NodeComponent>().EnTTNext;
+                    if(current->Get<NodeComponent>().IsRoot)
+                    {
+                        current = next;
+                        continue;
+                    }
                 }
-            }
 
-            MOTION_ASSERT(cmesh != nullptr, "Convex mesh creation failed (polygon and QuickHull)");
+                auto& TRC = current->Get<TransformComponent>();
+                auto& RBC = current->Get<RigidBodyComponent>();
+                auto& CC  = current->Get<ColliderComponent>();
 
-            auto* shape     = m_Common.createConvexMeshShape(cmesh, ToRp3dVec3(glm::max(tr.Scale, glm::vec3(1e-3f))));
-            MOTION_ASSERT(shape != nullptr, "ConvexMeshShape creation failed");
+                rp3d::RigidBody* body = RBC.PhysicsBody;
+                if(!body || !CC.Collider || !CC.Shape) { current = next; continue; }
 
-            auto* col = rb->addCollider(shape, rp3d::Transform::identity()); 
-            col->setIsSimulationCollider(true); 
-            ApplyDefaultMaterial(col);
+                const auto type                 = body->getType();
+                const bool isDynamic            = (type == rp3d::BodyType::DYNAMIC);
+                const bool isKinematicOrStatic  = !isDynamic;
 
-            cc.Shape        = shape;
-            cc.Collider     = col;
-            cc.Attributes   = &col->getMaterial();
-            cc.Type         = ShapeType::Convex;
+                body->setTransform(Transform(TRC));
 
-            m_ConvexMeshes[e.get()] = cmesh;
-        } 
-        else 
-        {
-            rp3d::ConvexMesh* cmesh     = m_ConvexMeshes[e.get()];
-            auto* shape                 = m_Common.createConvexMeshShape(cmesh);
-            MOTION_ASSERT(shape != nullptr, "ConvexMeshShape creation failed");
+                const glm::vec3 S = TRC.Scale;
+                if(!nearlyEqualVec3(S, CC.LastAppliedScale))
+                {
+                    rp3d::CollisionShape* newShape = nullptr;
+                    switch(CC.Type)
+                    {
+                        case ShapeType::Box:
+                        {
+                            auto* boxShape = dynamic_cast<rp3d::BoxShape*>(CC.Shape);
+                            const glm::vec3 H
+                            (
+                                CC.BoxHalfExtents.x * S.x,
+                                CC.BoxHalfExtents.y * S.y,
+                                CC.BoxHalfExtents.z * S.z
+                            );
 
-            auto* col = rb->addCollider(shape, rp3d::Transform::identity());
-            col->setIsSimulationCollider(true);
-            ApplyDefaultMaterial(col);
+                            if(boxShape) boxShape->setHalfExtents(ToVec3(H));
+                            break;
+                        }
+                        case ShapeType::Sphere:
+                        {
+                            auto* sphereShape   = dynamic_cast<rp3d::SphereShape*>(CC.Shape);
+                            const float s       = (S.x + S.y + S.z) / 3.0f;
+                            const float r       = std::max(0.0f, CC.SphereRadius * s);
+                            if(sphereShape) sphereShape->setRadius(r);
+                            break;
+                        }
+                        case ShapeType::Capsule:
+                        {
+                            auto* capsuleShape = dynamic_cast<rp3d::CapsuleShape*>(CC.Shape);
+                            const std::int32_t axis = CC.Capsule.Axis;
+                            float sx = S.x, sy = S.y, sz = S.z;
+                            float rScale = 1.0f, hScale = 1.0f;
 
-            cc.Shape        = shape;
-            cc.Collider     = col;
-            cc.Attributes   = &col->getMaterial();
-            cc.Type         = ShapeType::Convex;
-        }
+                            if(axis == 0) 
+                            { 
+                                rScale = std::max(sy, sz); 
+                                hScale = sx; 
+                            }
+                            else if(axis == 1) 
+                            { 
+                                rScale = std::max(sx, sz); 
+                                hScale = sy; 
+                            }
+                            else 
+                            { 
+                                rScale = std::max(sx, sy); 
+                                hScale = sz; 
+                            }
 
-        if (rb->getType() == rp3d::BodyType::DYNAMIC)
-            rb->updateMassPropertiesFromColliders();                  
-    }
+                            const float radius  = capsuleShape->getRadius() * rScale;
+                            const float height  = capsuleShape->getHeight() * hScale;
+                            const float r = std::max(0.0f, radius);
+                            const float h = std::max(0.0f, height);
 
-    void KinetiX::CreateConcaveCollider(const std::shared_ptr<Entity>& e) 
-    {
-        auto& mc  = e->GetComponent<MeshComponent>();
-        auto& rbc = e->GetComponent<RigidBodyComponent>();
-        auto& cc  = e->GetComponent<ColliderComponent>();
-        auto& tr  = e->GetComponent<TransformComponent>();
+                            CC.Capsule.Radius   = r;
+                            CC.Capsule.Height   = h;
+                            CC.Capsule.Axis     = axis;
 
-        const std::vector<glm::vec3>& vert = mc.Model->GetPositions();
-        const std::vector<uint32_t>& faces = mc.Model->GetFaces();
+                            capsuleShape->setRadius(r);
+                            capsuleShape->setHeight(h);
 
-        auto* rb = rbc.PhysicsBody;
-        rb->setTransform(ToRp3dTransform(tr));
+                            break;
+                        }
+                        case ShapeType::Convex:
+                        {
+                            auto* convexShape = dynamic_cast<rp3d::ConvexMeshShape*>(CC.Shape);
+                            if(convexShape) convexShape->setScale(ToVec3(S));
+                            break;
+                        }
+                        case ShapeType::Concave:
+                        {
+                            MOTION_ASSERT(false, "Not implemented yet");
+                            break;
+                        }
 
-        auto clean = SanitizeConcave(vert, faces);
-        if (!m_TriangleMeshes.contains(e.get())) 
-        {
-            MOTION_ASSERT(faces.size() % 3 == 0, "faces must be multiple of 3");
-            const std::uint32_t nbVerts = (std::uint32_t)clean.vertices.size();
-            const std::uint32_t nbTri   = (std::uint32_t)(clean.indices.size() / 3);
+                        default: break;
+                    }
+                }
 
-            rp3d::TriangleVertexArray tva(nbVerts, clean.vertices.data(), (std::uint32_t)sizeof(glm::vec3),
-                                          nbTri,  clean.indices.data(), (std::uint32_t)( 3 * sizeof(uint32_t)),
-                                          rp3d::TriangleVertexArray::VertexDataType::VERTEX_FLOAT_TYPE,
-                                          rp3d::TriangleVertexArray::IndexDataType::INDEX_INTEGER_TYPE);
-
-            std::vector<rp3d::Message> messages;
-            rp3d::TriangleMesh* tmesh = m_Common.createTriangleMesh(tva, messages);
-            for (const auto& msg : messages) 
-            {
-                const char* t = (msg.type==rp3d::Message::Type::Information)?"INFO":(msg.type==rp3d::Message::Type::Warning)?"WARN":"ERROR";
-                MOTION_CORE_ERROR("Concave Collider:[{}]: {}", t, msg.text);
-            }
-            MOTION_ASSERT(tmesh != nullptr, "Concave mesh creation failed");
-
-            auto safeScale = glm::max(tr.Scale, glm::vec3(1e-3f));
-            auto* shape = m_Common.createConcaveMeshShape(tmesh, ToRp3dVec3(glm::max(tr.Scale, glm::vec3(1e-3f))));
-            MOTION_ASSERT(shape != nullptr, "ConcaveMeshShape creation failed");
-
-            auto* col = rb->addCollider(shape, rp3d::Transform::identity()); 
-            col->setIsSimulationCollider(true);
-            ApplyDefaultMaterial(col);
-
-            cc.Shape        = shape;
-            cc.Collider     = col;
-            cc.Attributes   = &col->getMaterial();
-            cc.Type         = ShapeType::Concave;
-
-            m_TriangleMeshes[e.get()] = tmesh;
-        } 
-        else 
-        {
-            rp3d::TriangleMesh* tmesh = m_TriangleMeshes[e.get()];
-            auto* shape = m_Common.createConcaveMeshShape(tmesh, ToRp3dVec3(glm::max(tr.Scale, glm::vec3(1e-3f))));
-            MOTION_ASSERT(shape != nullptr, "ConcaveMeshShape creation failed");
-            auto* col = rb->addCollider(shape,rp3d::Transform::identity());
-            col->setIsSimulationCollider(true);
-            ApplyDefaultMaterial(col);
-
-            cc.Shape        = shape;
-            cc.Collider     = col;
-            cc.Attributes   = &col->getMaterial();
-            cc.Type         = ShapeType::Concave;
-        }
-
-        if (rb->getType() != rp3d::BodyType::STATIC) 
-        {
-            MOTION_CORE_WARN("ConcaveMeshShape attached to non-static body; forcing STATIC.");
-            rb->setType(rp3d::BodyType::STATIC);
-        }
-    }
-
-    void KinetiX::Refresh(const std::vector<std::shared_ptr<Entity>>& entities) 
-    {
-        for(auto& e : entities)
-        {
-            if (!e || e == EntityFactory::EMPTYENTITY) continue;
-            auto& tr  = e->GetComponent<TransformComponent>();
-            auto& rb  = e->GetComponent<RigidBodyComponent>();
-            auto& col = e->GetComponent<ColliderComponent>();
-
-            auto* body = rb.PhysicsBody;
-            if (!body) continue;
-            
-            body->setTransform(ToRp3dTransform(tr));
-
-            if(col.Type == ShapeType::Box) 
-            {
-                auto* shape = dynamic_cast<rp3d::BoxShape*>(col.Shape);
-                shape->setHalfExtents(ToRp3dVec3(glm::vec3(0.5f * tr.Scale)));
-
-                if (body->getType() == rp3d::BodyType::DYNAMIC)
+                if(body->getType() == rp3d::BodyType::DYNAMIC)
                     body->updateMassPropertiesFromColliders();
-            }
 
-            if (col.Type == ShapeType::Sphere) 
-            {
-                auto* shape = dynamic_cast<rp3d::SphereShape*>(col.Shape);
-                shape->setRadius(0.5f * glm::max(tr.Scale.x, tr.Scale.y, tr.Scale.z));
-
-                if (body->getType() == rp3d::BodyType::DYNAMIC)
-                    body->updateMassPropertiesFromColliders();
-            }
-
-            if (col.Type == ShapeType::Capsule) 
-            {
-                auto* shape = dynamic_cast<rp3d::CapsuleShape*>(col.Shape);
-                auto radius = 0.5f * glm::max(tr.Scale.x, tr.Scale.z);
-                auto height = tr.Scale.y - 2 * radius;
-                shape->setRadius(radius);
-                shape->setHeight(height);
-
-                if (body->getType() == rp3d::BodyType::DYNAMIC)
-                    body->updateMassPropertiesFromColliders();
-            }
-
-            if(col.Type == ShapeType::Convex)
-            {
-                auto* s = dynamic_cast<rp3d::ConvexMeshShape*>(col.Shape);
-                s->setScale(ToRp3dVec3(tr.Scale));
-
-                if (body->getType() == rp3d::BodyType::DYNAMIC)
-                    body->updateMassPropertiesFromColliders();
-            }
-
-            if (col.Type == ShapeType::Concave) 
-            {
-                auto* s = dynamic_cast<rp3d::ConcaveMeshShape*>(col.Shape);
-                s->setScale(ToRp3dVec3(tr.Scale));
+                CC.LastAppliedScale = S;
+                current = next;
             }
         }
     }
@@ -505,17 +550,40 @@ namespace Motion
 
             for (auto& e : entities) 
             {
-                if (!e || !e->IsAlive()) continue;
-                if (!e->HasComponent<RigidBodyComponent>()) continue;
+                std::shared_ptr<Entity> current = e;
+                std::shared_ptr<Entity> next = nullptr;
 
-                auto& rbc = e->GetComponent<RigidBodyComponent>();
-                if (rbc.Type != BodyType::Dynamic) continue;
+                while(current)
+                {
+                    if(current->Has<NodeComponent>())
+                    {
+                        next = current->Get<NodeComponent>().EnTTNext;
+                        if(current->Get<NodeComponent>().IsRoot)
+                        {
+                            current = next;
+                            continue;
+                        }
+                    }
 
-                auto* rb = rbc.PhysicsBody;
-                if (!rb) continue;
+                    auto& rigidBodyComponent = current->Get<RigidBodyComponent>();
+                    if(rigidBodyComponent.Type != BodyType::Dynamic)
+                    {
+                        current = next;
+                        continue;
+                    }
 
-                auto& tc = e->GetComponent<TransformComponent>();
-                FromRp3dTransform(rb->getTransform(), tc);
+                    rp3d::RigidBody* rb = rigidBodyComponent.PhysicsBody;
+                    if(!rb)
+                    {
+                        current = next;
+                        continue;
+                    }
+
+                    auto& transformComponent = current->Get<TransformComponent>();
+                    Transform(rb->getTransform(), transformComponent);
+
+                    current = next;
+                }
             }
         }
         catch(const std::exception& e)
@@ -554,13 +622,13 @@ namespace Motion
         if (!m_World) return false;
 
         RaycastCB cb;
-        rp3d::Ray ray(ToRp3dVec3(from), ToRp3dVec3(to));
+        rp3d::Ray ray(ToVec3(from), ToVec3(to));
         m_World->raycast(ray, &cb);
 
         if (!cb.hasHit) return false;
 
-        if (hitPointWorld)  *hitPointWorld  = ToGlmVec3(cb.bestPoint);
-        if (hitNormalWorld) *hitNormalWorld = ToGlmVec3(cb.bestNormal);
+        if (hitPointWorld)  *hitPointWorld  = ToVec3(cb.bestPoint);
+        if (hitNormalWorld) *hitNormalWorld = ToVec3(cb.bestNormal);
         
         return true;
     }

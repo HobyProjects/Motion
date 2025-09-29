@@ -33,13 +33,13 @@ namespace Motion
             }
         };
 
-        if(!material->HasTexture<CorePBR>())
+        if(!material->Has<CoreMaterialComponents>())
         {
             MOTION_ASSERT(false, "Material does not have required textures!");
             return rm;
         }
 
-        const auto& c = material->GetTexture<CorePBR>();
+        const auto& c = material->Get<CoreMaterialComponents>();
 
         applyTexture(c.BaseColorTexture,      rm.BaseColor,       TextureType::BaseColorTexture,          TexturesBitMask::HasBaseColor);
         applyTexture(c.NormalTexture,         rm.Normal,          TextureType::NormalTexture,             TexturesBitMask::HasNormal);
@@ -48,9 +48,9 @@ namespace Motion
         applyTexture(c.OcclusionTexture,      rm.AO,              TextureType::AmbientOcclusionTexture,   TexturesBitMask::HasOcclusion);
         applyTexture(c.EmissiveTexture,       rm.Emissive,        TextureType::EmissiveTexture,           TexturesBitMask::HasEmissive);
 
-        if(material->HasTexture<PackedMaps>())
+        if(material->Has<PackedMaterialComponents>())
         {
-            const auto& p = material->GetTexture<PackedMaps>();
+            const auto& p = material->Get<PackedMaterialComponents>();
             applyTexture(p.ORMTexture, rm.ORM, TextureType::ORMTexture, TexturesBitMask::HasORM);
         }
 

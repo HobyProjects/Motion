@@ -3,93 +3,8 @@
 
 namespace Motion
 {
-    template<typename T>
-    static bool Has(const std::shared_ptr<Entity>& e) { return e->HasComponent<T>(); }
-
-    template<typename T>
-    static T& Get(const std::shared_ptr<Entity>& e) { return e->GetComponent<T>(); }
-
-    template<typename T>
-    static void AddCopy(const std::shared_ptr<Entity>& dst, const T& src) 
-    {
-        dst->AddComponent<T>(src);
-    }
-
-    template<typename T>
-    static void CopyComponentIfPresent(const std::shared_ptr<Entity>& src,const std::shared_ptr<Entity>& dst) 
-    {
-        if (Has<T>(src)) 
-        {
-            AddCopy<T>(dst, Get<T>(src));
-        }
-    }
-
-    static std::shared_ptr<Entity> DuplicateEntity(Scene* scene, const std::shared_ptr<Entity>& src)
-    {
-        auto& fac = EntityFactory::GetInstance();
-
-        std::string baseName = Has<TagComponent>(src) ? Get<TagComponent>(src).Tag : std::string("Entity");
-        std::string name = baseName + " (Copy)";
-
-        auto dst = fac.CreateEntity(name);
-        CopyComponentIfPresent<TransformComponent>(src, dst);
-
-        if (Has<MeshComponent>(src)) 
-        {
-            const auto& sm = Get<MeshComponent>(src);
-            dst->AddComponent<MeshComponent>(sm.Model->GetName(), sm.Model);
-        }
-
-        // TODO: Add more components here 
-        CopyComponentIfPresent<RigidBodyComponent>(src, dst);
-        CopyComponentIfPresent<ColliderComponent>(src, dst);
-        
-        scene->EmplaceEntity(dst);
-        return dst;
-    }
-
-    static std::string EntityLabel(const std::shared_ptr<Entity>& e) 
-    {
-        if (e->HasComponent<TagComponent>()) return e->GetComponent<TagComponent>().Tag;
-        return "Entity";
-    }
-
-    struct DragDupState 
-    {
-        bool                  active = false;
-        std::shared_ptr<Entity> newEntity;
-        std::weak_ptr<Entity>  source;
-    };
-
-    static DragDupState& GetDragDupState() 
-    {
-        static DragDupState s;
-        return s;
-    }
-
-    static void InsertEntity(const std::shared_ptr<Scene>& scene, const std::shared_ptr<Model>& model)
-    {
-        auto& EF        = EntityFactory::GetInstance();
-        auto entity     = EF.CreateEntity(model->GetName());
-        MOTION_ASSERT(entity, "Faild to create entity");
-
-        auto& KX  = KinetiX::GetInstance();
-        auto& mc  = entity->AddComponent<MeshComponent>(model->GetName(), model);
-        auto& tr  = entity->AddComponent<TransformComponent>();
-        auto& rb  = entity->AddComponent<RigidBodyComponent>();
-        auto& col = entity->AddComponent<ColliderComponent>();
-
-        KX.CreateRigidBody(entity);
-        KX.CreateConvexCollider(entity);
-        scene->EmplaceEntity(entity);
-    }
-
     void SceneEntityInspectPanel::RenderUI(ScenePanelContext& ctx)
     {
-        if (!ctx.ActiveScene) return;
-        std::vector<std::shared_ptr<Entity>> toRemove;
-        auto selected = ctx.ActiveScene->GetSelectedEntity();
-
         ImGui::Begin(ICON_MD_LIST " Entities");
 
         if (ImGui::BeginPopupContextWindow("##import-mesh-context", ImGuiPopupFlags_NoOpenOverItems | ImGuiPopupFlags_MouseButtonRight))
@@ -98,148 +13,68 @@ namespace Motion
             {
                 if (auto path = DialogBoxes::OpenFileDialog(); !path.empty())
                 {
-                    auto ID = Importer::ImportModelAsync(path, false, "default",
-                        [ctx, path](std::shared_ptr<Model> mesh)
-                        {
-                            if (!mesh)
-                            {
-                                MOTION_ERROR("Fail to import model in {}", path);
-                                return;
-                            }
-
-                            auto scene = ctx.ActiveScene;
-                            if (!scene)
-                            {
-                                MOTION_ERROR("No active scene when importing '{}'", path);
-                                return;
-                            }
-
-                            InsertEntity(scene, mesh);
-                        },
-                        [&](std::int32_t /*progress*/) 
-                        {
-                            
-                        }
-                    );
+                    auto entity = Importer::ImportModelAsync(path, false, "default");
+                    if(entity) ctx.ActiveScene->EmplaceEntity(entity);
                 }
             }
             
             ImGui::EndPopup();
         }
 
-
-        const bool windowFocused = ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
-        bool shortcutDuplicate = false;
-        bool shortcutDelete    = false;
-
-        if (windowFocused && selected) 
-        {
-            const ImGuiIO& io = ImGui::GetIO();
-            if ((io.KeyCtrl || io.KeySuper) && ImGui::IsKeyPressed(ImGuiKey_D, false))
-                shortcutDuplicate = true;
-
-            if (ImGui::IsKeyPressed(ImGuiKey_Delete, false))
-                shortcutDelete = true;
-        }
-
-        if (shortcutDuplicate && selected) 
-        {
-            auto duplicated = DuplicateEntity(ctx.ActiveScene.get(), selected);
-            ctx.ActiveScene->SelectedEntity(duplicated);
-        }
-
-        if (shortcutDelete && selected) 
-        {
-            toRemove.push_back(selected);
-            ctx.ActiveScene->SelectedEntity(EntityFactory::EMPTYENTITY);
-        }
-
+        ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_Framed;
+        static std::shared_ptr<Entity> selectedEntity = nullptr;
         for (auto& ent : *ctx.ActiveScene) 
         {
+            std::string name = ent->Get<TagComponent>().Tag;
             ImGui::PushID(ent.get());
-
-            static bool isSelected = (selected == ent);
-            ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_Leaf
-                                    | ImGuiTreeNodeFlags_NoTreePushOnOpen
-                                    | ImGuiTreeNodeFlags_SpanFullWidth
-                                    | ImGuiTreeNodeFlags_Framed;
-                                    
-            if (isSelected) flags |= ImGuiTreeNodeFlags_Selected;
-
-            const std::string label = EntityLabel(ent);
-            ImGui::TreeNodeEx("##node", flags, "%s", label.c_str());
-
-            if (ImGui::IsItemClicked(ImGuiMouseButton_Left)) 
+            if(ImGui::CollapsingHeader(name.c_str(), flags))
             {
-                ctx.ActiveScene->SelectedEntity(ent);
-                isSelected = true;
-            }
-
-            bool requestDuplicate = false;
-            bool requestDelete    = false;
-
-            if (ImGui::BeginPopupContextItem()) 
-            {
-                if (ImGui::MenuItem(ICON_MD_CONTENT_COPY "  Duplicate"))
-                    requestDuplicate = true;
-
-                if (ImGui::MenuItem(ICON_MD_DELETE "  Delete"))
-                    requestDelete = true;
-
-                ImGui::EndPopup();
-            }
-
-            if (isSelected) 
-            {
-                auto& state         = GetDragDupState();
-                const ImGuiIO& io   = ImGui::GetIO();
-                const bool altHeld  = io.KeyAlt;
-
-                if (!state.active && altHeld && ImGui::IsMouseDragging(ImGuiMouseButton_Left) && ImGui::IsItemHovered()) 
+                if (ImGui::IsItemClicked())
                 {
-                    state.active   = true;
-                    state.source   = ent;
-                    state.newEntity = DuplicateEntity(ctx.ActiveScene.get(), ent);
+                    selectedEntity = ent;
+                    ctx.ActiveScene->SelectedEntity(selectedEntity);
+                }
 
-                    ctx.ActiveScene->SelectedEntity(state.newEntity);
-                    if (Has<TransformComponent>(state.newEntity)) 
+                std::shared_ptr<Entity> current = ent;
+                std::shared_ptr<Entity> next = nullptr;
+                while(current)
+                {
+                    if(current->Has<NodeComponent>())
                     {
-                        auto& t = Get<TransformComponent>(state.newEntity);
-                        t.Translation += glm::vec3(0.05f, 0.05f, 0.05f); 
+                        next = current->Get<NodeComponent>().EnTTNext;
+                        if(current->Get<NodeComponent>().IsRoot)
+                        {
+                            current = next;
+                            continue;
+                        }
                     }
+                    
+                    std::string currentEntityName = current->Get<TagComponent>().Tag;
+                    ImGui::PushID(current.get());
+                    ImGui::Indent();
+                    if(ImGui::CollapsingHeader(currentEntityName.c_str()))
+                    {
+                        if (ImGui::IsItemClicked()) 
+                        {
+                            selectedEntity = current;
+                            ctx.ActiveScene->SelectedEntity(selectedEntity);
+                        }
+
+                        ImGui::Indent();
+                        ImGui::BulletText(ICON_FA_CUBE" Transform Component");
+                        ImGui::BulletText(ICON_FA_CUBES" Mesh Component");
+                        ImGui::BulletText(ICON_MD_IMAGE" Material Component");
+                        ImGui::BulletText(ICON_MD_3D_ROTATION" RigidBody Component");
+                        ImGui::BulletText(ICON_FA_BOX" Collider Component");
+                        ImGui::Unindent();
+                    }
+                    ImGui::Unindent();
+                    ImGui::PopID();
+
+                    current = next;
                 }
-
-                if (state.active && !ImGui::IsMouseDown(ImGuiMouseButton_Left)) 
-                {
-                    state.active = false;
-                    state.newEntity.reset();
-                    state.source.reset();
-                }
             }
-
-            if (requestDuplicate) 
-            {
-                auto duplicated = DuplicateEntity(ctx.ActiveScene.get(), ent);
-                ctx.ActiveScene->SelectedEntity(duplicated);
-            }
-
-            if (requestDelete) 
-            {
-                if (selected == ent)
-                    ctx.ActiveScene->SelectedEntity(EntityFactory::EMPTYENTITY);
-
-                toRemove.push_back(ent);
-            }
-
             ImGui::PopID();
-        }
-
-        if (!toRemove.empty()) 
-        {
-            for (auto& e : toRemove)
-                ctx.ActiveScene->RemoveEntity(e); 
-
-            toRemove.clear();
         }
 
         ImGui::End();

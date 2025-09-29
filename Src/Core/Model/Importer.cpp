@@ -2,8 +2,8 @@
 
 namespace Motion
 {
-    static constexpr bool sCenterWholeModel = true;
-    static constexpr bool sCenterEachMesh   = false;
+    static constexpr bool sCenterWholeModel = false;
+    static constexpr bool sCenterEachMesh   = true;
 
     static std::filesystem::path GetAvailableCopyName(const std::filesystem::path& originalPath)
     {
@@ -96,6 +96,18 @@ namespace Motion
             }
         }
 
+        return { min, max };
+    }
+
+    static std::pair<glm::vec3, glm::vec3> ModelBounds(const std::vector<Vertex>& vertices)
+    {
+        glm::vec3 min = glm::vec3(std::numeric_limits<float>::max());
+        glm::vec3 max = glm::vec3(std::numeric_limits<float>::lowest());
+        for (const auto& v : vertices)
+        {
+            min = glm::min(min, v.Position);
+            max = glm::max(max, v.Position);
+        }
         return { min, max };
     }
 
@@ -321,18 +333,8 @@ namespace Motion
 
             traverse(scene->mRootNode);
 
-           glm::vec3 modelMin( std::numeric_limits<float>::max());
+            glm::vec3 modelMin( std::numeric_limits<float>::max());
             glm::vec3 modelMax(-std::numeric_limits<float>::max());
-
-            if (sCenterWholeModel)
-            {
-                for (auto& kv : outResults.Meshes)
-                {
-                    auto& verts = kv.second.Vertices;
-                    for (auto& v : verts)
-                        v.Position -= modelCenter;
-                }
-            }
 
             for (auto& kv : outResults.Meshes)
             {
@@ -349,29 +351,18 @@ namespace Motion
                     mx = glm::max(mx, v.Position);
                 }
 
-                if (sCenterEachMesh)
+                const glm::vec3 meshCenter = 0.5f * (mn + mx);
+                for (auto& v : verts)
+                    v.Position -= meshCenter;
+
+                const glm::vec3 half = 0.5f * (mx - mn);
+                mesh.MIN = -half;
+                mesh.MAX =  half;
+
+                for (auto& v : verts)
                 {
-                    const glm::vec3 meshCenter = 0.5f * (mn + mx);
-                    for (auto& v : verts)
-                        v.Position -= meshCenter;
-
-                    const glm::vec3 half = 0.5f * (mx - mn);
-                    mesh.MIN = -half;
-                    mesh.MAX =  half;
-
-                    for (auto& v : verts)
-                    {
-                        modelMin = glm::min(modelMin, v.Position);
-                        modelMax = glm::max(modelMax, v.Position);
-                    }
-                }
-                else
-                {
-                    mesh.MIN = mn;
-                    mesh.MAX = mx;
-
-                    modelMin = glm::min(modelMin, mn);
-                    modelMax = glm::max(modelMax, mx);
+                    modelMin = glm::min(modelMin, v.Position);
+                    modelMax = glm::max(modelMax, v.Position);
                 }
             }
 
@@ -396,83 +387,22 @@ namespace Motion
         return std::filesystem::path(exportPath);
     }
 
-    TaskManager::TaskId Motion::Importer::ImportModelAsync(const std::filesystem::path & path, bool shouldExport, const std::string & exportPath, std::function<void(std::shared_ptr<Model>)> onCompleted, std::function<void(std::int32_t)> onProgress)
+    std::shared_ptr<Entity> Importer::ImportModelAsync(const std::filesystem::path & path, bool shouldExport, const std::string & exportPath)
     {
-        using TM = TaskManager;
+        ImportedResults imported{};
+        std::filesystem::path outDir        = shouldExport ? ComputeExportPath(exportPath) : std::filesystem::path{};
+        std::future<bool>  importResults    = std::async(std::launch::async, Import, path, outDir, std::ref(imported));
 
-        struct JobArgs 
+        bool importedSuccessfully = importResults.get();
+        if (!importedSuccessfully)
         {
-            std::filesystem::path path{};
-            bool shouldExport{};
-            std::string exportPath{};
-
-        } args{ path, shouldExport, exportPath };
-
-        TM::TaskSpec spec;
-        spec.WorkerReportsProgress      = true;
-        spec.WorkerSupportsCancellation = true;
-
-        spec.DoWork = [args](BackgroundWorker& w, const std::any&, std::atomic_bool& cancel) -> std::any 
-        {
-            if (cancel.load()) return std::any{};
-
-            auto imported = std::make_shared<ImportedResults>(); 
-            std::filesystem::path outDir = args.shouldExport ? ComputeExportPath(args.exportPath) : std::filesystem::path{};
-            w.ReportProgress(5);
-
-            bool ok = Import(args.path, outDir, *imported);
-            if (!ok) 
-            {
-                throw std::runtime_error("Import failed");
-            }
-
-            w.ReportProgress(60);
-            return imported;
-        };
-
-        if (onProgress) 
-        {
-            spec.OnProgress = [onProgress](BackgroundWorker&, int percent, const std::any&) 
-            {
-                onProgress(percent);
-            };
+            return nullptr;
         }
-
-        spec.CallbackExecutor = std::shared_ptr<IExecutor>(&MainThreadDispatcher::Instance(), [](IExecutor*){});
-
-        spec.OnCompleted = [onCompleted, path, exportPath](BackgroundWorker&, const std::any& result, bool cancelled, std::exception_ptr error)
+        else
         {
-            if (error) {
-                try { std::rethrow_exception(error); } 
-                catch (const std::exception& ex) 
-                {
-                    MOTION_CORE_ERROR("Import error: {}", ex.what());
-                }
-
-                if (onCompleted) onCompleted(nullptr);
-                return;
-            }
-            if (cancelled) 
-            {
-                if (onCompleted) onCompleted(nullptr);
-                return;
-            }
-
-            auto imported = std::any_cast<std::shared_ptr<ImportedResults>>(result);;
-            if (!imported) 
-            {
-                if (onCompleted) onCompleted(nullptr);
-                return;
-            }
-
-            std::string modelName = path.filename().stem().string();
-            std::filesystem::path finalOutputPath = ComputeExportPath(exportPath);
-
-            auto& MB = MaterialBuilder::GetInstance();
-
-            std::shared_ptr<Model> model = std::make_shared<Model>(UniqueIdentity::GetUniqueID(), modelName, finalOutputPath);
-            model->m_MIN = imported->MIN;
-            model->m_MAX = imported->MAX;
+            auto& KX                        = KinetiX::GetInstance();
+            std::string modelName           = path.filename().stem().string();
+            std::shared_ptr<Entity> root    = Entity::Create(modelName);
 
             const BufferLayout layout
             {
@@ -483,25 +413,58 @@ namespace Motion
                 { "a_Bitangents", BufferComponents::XYZ,  BufferStride::F3, false, offsetof(Vertex, Bitangent)   },
             };
 
-            for (const auto& [meshID, mesh] : imported->Meshes)
-            {
-                auto meshPtr        = Mesh::Create(mesh.Vertices.data(), static_cast<std::uint32_t>(mesh.Vertices.size()), mesh.Indices.data(),  static_cast<std::uint32_t>(mesh.Indices.size()), layout, model);
-                meshPtr->Index      = meshID;
-                meshPtr->Name       = mesh.Name;
-                meshPtr->Materials  = MB.Create(nullptr);
-                meshPtr->MIN        = mesh.MIN;
-                meshPtr->MAX        = mesh.MAX;
+            auto& node  = root->Get<NodeComponent>();
+            node.IsRoot = true;
+            
+            bool nextNodeSet{false};
+            std::shared_ptr<Entity> lastEntt{nullptr};
 
-                for(auto& vtx : mesh.Vertices) model->m_Vertices.insert(model->m_Vertices.end(), vtx.Position);
-                model->m_Indices.insert(model->m_Indices.end(), mesh.Indices.begin(), mesh.Indices.end());
-                model->m_Meshes.emplace_back(std::move(meshPtr));
+            for (const auto& [meshID, mesh] : imported.Meshes)
+            {
+                auto entt = Entity::Create(std::format("{}[{}]", mesh.Name, meshID));
+                if (!nextNodeSet)
+                {
+                    node.EnTTNext = entt;
+                    nextNodeSet = true;
+                }
+
+                if(lastEntt) 
+                {
+                    lastEntt->Get<NodeComponent>().EnTTNext     = entt;
+                    lastEntt->Get<NodeComponent>().IsRoot       = false;
+                }
+                
+                auto& meshComponent = entt->Emplace<MeshComponent>();
+
+                auto meshPtr = Mesh::Create(
+                    mesh.Vertices.data(), static_cast<std::uint32_t>(mesh.Vertices.size()), 
+                    mesh.Indices.data(),  static_cast<std::uint32_t>(mesh.Indices.size()), 
+                    layout
+                );
+
+                auto bounds = ModelBounds(mesh.Vertices);
+                meshPtr->MIN = bounds.first;
+                meshPtr->MAX = bounds.second;
+
+                std::transform(mesh.Vertices.begin(), mesh.Vertices.end(), std::back_inserter(meshPtr->Positions), [](const Vertex& v) { return v.Position; });
+                meshPtr->Faces.insert(meshPtr->Faces.end(), mesh.Indices.begin(), mesh.Indices.end());
+
+                meshComponent.MeshPointer = std::move(meshPtr);
+
+                entt->Emplace<TransformComponent>();
+                entt->Emplace<RigidBodyComponent>();
+                entt->Emplace<ColliderComponent>();
+                
+                auto& material              = entt->Emplace<MaterialComponent>();
+                material.MaterialPointer    = Material::Create(nullptr);
+
+                KX.CreateRigidBody(entt);
+                KX.CreateBoxCollider(entt);
+                lastEntt = entt;
             }
 
-            if (onCompleted) onCompleted(std::move(model));
-        };
-
-        auto& tm = TaskManager::Instance();
-        return tm.AddTask(std::move(spec));
+            return root;
+        }
     }
 }
 

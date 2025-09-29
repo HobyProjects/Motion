@@ -2,23 +2,24 @@
 
 namespace Motion
 {
-    std::shared_ptr<Entity> EntityFactory::EMPTYENTITY = EntityFactory::GetInstance().CreateEntity("Empty Entity");
-
-    std::shared_ptr<Entity> EntityFactory::CreateEntity(const std::string& name) noexcept
+    std::shared_ptr<Entity> Entity::Create(const std::string& name) noexcept
     {
-        std::shared_ptr<Entity> entity = std::make_shared<Entity>(Registry.create());
-        auto& tag = entity->AddComponent<TagComponent>(name);
-        tag.Tag = name.empty() ? "unnamed" : name;
+        std::shared_ptr<Entity> entity  = std::make_shared<Entity>(m_EntityRegistry.create());
+        auto& tag                       = entity->Emplace<TagComponent>(name);
+        auto& node                      = entity->Emplace<NodeComponent>();
+        tag.Tag                         = name.empty() ? "unnamed" : name;
+
         return entity;
     }
 
-    void EntityFactory::DestroyEntity(const std::shared_ptr<Entity>& entity) noexcept
+    void Entity::Destroy(const std::shared_ptr<Entity>& entity)
     {
-        entity->Destroy();
+        m_EntityRegistry.destroy(entity->Handle());
     }
 
-    std::shared_ptr<Entity> EntityFactory::Nullify() const noexcept
+    std::shared_ptr<Entity> Entity::Empty()
     {
-        return EMPTYENTITY;
+        static std::shared_ptr<Entity> entity = Create("null");
+        return entity;
     }
 }

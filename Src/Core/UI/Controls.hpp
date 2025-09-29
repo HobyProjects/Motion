@@ -87,6 +87,21 @@ namespace Motion
         ImGui::SetNextItemWidth(-FLT_MIN);
     }
 
+    inline void HelpMarker(const char* desc) 
+    {
+        ImGui::SameLine();
+        ImGui::TextDisabled("(?)");
+        if (ImGui::IsItemHovered()) 
+        {
+            ImGui::BeginTooltip();
+            ImGui::PushTextWrapPos(ImGui::GetFontSize() * 42.0f);
+            ImGui::TextUnformatted(desc);
+            ImGui::PopTextWrapPos();
+            ImGui::EndTooltip();
+        }
+    }
+
+
     bool DragFloat(const char* label,  float* v, float speed = 0.1f, float minV = -FLT_MAX, float maxV = FLT_MAX, const char* fmt = "%.3f");
     bool DragFloat2(const char* label, glm::vec2&  v, float speed = 0.1f, float minV = -FLT_MAX, float maxV = FLT_MAX, const char* fmt = "%.3f");
     bool DragFloat3(const char* label, glm::vec3&  v, float speed = 0.1f, float minV = -FLT_MAX, float maxV = FLT_MAX, const char* fmt = "%.3f");

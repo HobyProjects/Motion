@@ -8,152 +8,83 @@
 #include <glm/glm.hpp>
 #include <entt/entt.hpp>
 
-#include "Texture.hpp"
-#include "Shaders.hpp"
-#include "Buffers.hpp"
-#include "Asset.hpp"
-
 namespace Motion
 {
-    struct BaseMaterial : public AssetBase<IAsset>
+    struct BaseMaterial 
     {
         glm::vec3 BaseColor{ 1.0f, 1.0f, 1.0f };
         float MetallicFactor{ 0.0f };
         float RoughnessFactor{ 0.0f };
         float OpacityFactor{ 1.0f };
 
+        std::string Name;
         std::unordered_map<TextureType, std::shared_ptr<ITexture>> Textures{};
 
-        BaseMaterial(UUID uniqueID, const std::string& materialName, const std::filesystem::path& materialFile);
+        BaseMaterial(const std::string& materialName) : Name(materialName) {};
         ~BaseMaterial() = default;
-
-        static void Import(const std::filesystem::path& materialYAML);
-        void SerializeYAML(const std::filesystem::path& outFile) const;
     };
 
     using MaterialHandle = entt::entity;
-    class Material;
-
-    class MaterialBuilder
-    {
-    private:
-        MaterialBuilder() = default;
-        ~MaterialBuilder() = default;
-
-        MaterialBuilder(const MaterialBuilder&) = delete;
-        MaterialBuilder& operator=(const MaterialBuilder&) = delete;
-        MaterialBuilder(MaterialBuilder&&) = delete;
-        MaterialBuilder& operator=(MaterialBuilder&&) = delete;
-
-    public:
-        static MaterialBuilder& GetInstance()
-        {
-            static MaterialBuilder instance;
-            return instance;
-        }
-
-    public:
-        [[nodiscard]] std::shared_ptr<Material> Create(const std::shared_ptr<BaseMaterial>& baseMaterial);
-        void Destroy(const std::shared_ptr<Material>& material);
-
-    private:
-        entt::registry _Registry;
-        friend class Material;
-    };
 
     class Material
     {
-    public:
-        Material() = default;
-        Material(MaterialHandle handle, const std::shared_ptr<BaseMaterial>& baseMaterial) :
-            _Handle(handle), _BaseMaterial(baseMaterial), _IsAlive(true) {
-        }
-        ~Material() = default;
+        public:
+            Material() = default;
+            Material(MaterialHandle handle, const std::shared_ptr<BaseMaterial>& baseMaterial) :
+                m_Handle(handle), m_BaseMaterial(baseMaterial) {}
+            ~Material() = default;
 
-        template<typename T>
-        bool HasTexture() const
-        {
-            if (_IsAlive)
+            template<typename T>
+            bool Has() const
             {
-                auto& materialFactory = MaterialBuilder::GetInstance();
-                return materialFactory._Registry.any_of<T>(_Handle);
-            }
-            return false;
-        }
-
-        template<typename T, typename... Args>
-        T& AddTexture(Args&&... args)
-        {
-            MOTION_ASSERT(!HasTexture<T>(), "Material already has this texture type!");
-            if (_IsAlive)
-            {
-                auto& materialFactory = MaterialBuilder::GetInstance();
-                return materialFactory._Registry.emplace<T>(_Handle, std::forward<Args>(args)...);
+                return m_MaterialRegistry.any_of<T>(m_Handle);
             }
 
-            MOTION_ASSERT(false, "Material is not alive!");
-            static T dummy{};
-            return dummy;
-        }
-
-        template<typename T>
-        T& GetTexture() const
-        {
-            MOTION_ASSERT(HasTexture<T>(), "Material does not have this texture type!");
-            if (_IsAlive)
+            template<typename T, typename... Args>
+            T& Emplace(Args&&... args)
             {
-                auto& materialFactory = MaterialBuilder::GetInstance();
-                return materialFactory._Registry.get<T>(_Handle);
+                return m_MaterialRegistry.emplace<T>(m_Handle, std::forward<Args>(args)...);
             }
 
-            static T dummy{};
-            return dummy;
-        }
-
-        std::shared_ptr<BaseMaterial> GetBaseMaterial() const
-        {
-            return _BaseMaterial;
-        }
-
-        void SetBaseMaterial(const std::shared_ptr<BaseMaterial>& baseMaterial)
-        {
-            _BaseMaterial = baseMaterial;
-        }
-
-        template<typename T>
-        void RemoveTexture()
-        {
-            MOTION_ASSERT(HasTexture<T>(), "Material does not have this texture type!");
-
-            if (_IsAlive)
+            template<typename T>
+            T& Get() const
             {
-                auto& materialFactory = MaterialBuilder::GetInstance();
-                materialFactory._Registry.remove<T>(_Handle);
-                return;
+                return m_MaterialRegistry.get<T>(m_Handle);
             }
 
-            MOTION_ASSERT(false, "Material is not alive!");
-        }
+            std::shared_ptr<BaseMaterial> GetBaseMaterial() const
+            {
+                return m_BaseMaterial;
+            }
 
-        void Destroy()
-        {
-            auto& materialFactory = MaterialBuilder::GetInstance();
-            materialFactory._Registry.destroy(_Handle);
-            _Handle = entt::null;
-            _IsAlive = false;
-        }
+            void SetBaseMaterial(const std::shared_ptr<BaseMaterial>& baseMaterial)
+            {
+                m_BaseMaterial = baseMaterial;
+            }
 
-        [[nodiscard]] bool IsAlive() const { return _IsAlive; }
-        [[nodiscard]] MaterialHandle GetHandle() const { return _Handle; }
-        [[nodiscard]] operator bool() const { return _Handle != entt::null; }
-        [[nodiscard]] operator std::uint32_t() const { return static_cast<std::uint32_t>(_Handle); }
-        [[nodiscard]] operator entt::entity() const { return _Handle; }
-        [[nodiscard]] bool operator==(const Material& other) const { return _Handle == other._Handle; }
-        [[nodiscard]] bool operator!=(const Material& other) const { return _Handle != other._Handle; }
+            template<typename T>
+            void Remove()
+            {
+                m_MaterialRegistry.remove<T>(m_Handle);
+            }
 
-    private:
-        MaterialHandle _Handle{ entt::null };
-        std::shared_ptr<BaseMaterial> _BaseMaterial{ nullptr };
-        bool _IsAlive{ false };
+            [[nodiscard]] MaterialHandle Handle() const { return m_Handle; }
+            [[nodiscard]] operator bool() const { return m_Handle != entt::null; }
+            [[nodiscard]] operator std::uint32_t() const { return static_cast<std::uint32_t>(m_Handle); }
+            [[nodiscard]] operator entt::entity() const { return m_Handle; }
+            [[nodiscard]] bool operator==(const Material& other) const { return m_Handle == other.m_Handle; }
+            [[nodiscard]] bool operator!=(const Material& other) const { return m_Handle != other.m_Handle; }
+
+        public:
+            static std::shared_ptr<Material> Create(const std::shared_ptr<BaseMaterial>& baseMaterial);
+            static std::shared_ptr<BaseMaterial> CreateBase(const std::filesystem::path& materialYAML);
+            static void Destroy(const std::shared_ptr<Material>& material);
+
+        private:
+            inline static entt::registry m_MaterialRegistry;
+
+        private:
+            MaterialHandle m_Handle{ entt::null };
+            std::shared_ptr<BaseMaterial> m_BaseMaterial{ nullptr };
     };
 }

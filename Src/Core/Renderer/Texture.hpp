@@ -5,7 +5,6 @@
 #include <cstdint>
 #include <concepts>
 
-#include "Asset.hpp"
 #include "Buffers.hpp"
 
 namespace Motion

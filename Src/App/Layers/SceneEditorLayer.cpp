@@ -16,25 +16,6 @@ namespace Motion
 
     void SceneEditorLayer::OnAttach()
     {
-        //----------------------------------------------------------------------------
-        // TEMP: (Until creating a scene serializer and application config serializer)
-        //---------------------------------------------------------------------------
-
-        auto& AM = AssetManager::GetInstance();
-        AM.Create<IShader>("ENV_SKY", "Assets/Shaders/GLSL/Environment/Environment.glsl");
-        AM.Create<IShader>("ENV_IRR", "Assets/Shaders/GLSL/Environment/EnvironmentIrradiance.glsl");
-        AM.Create<IShader>("ENV_PRE", "Assets/Shaders/GLSL/Environment/EnvironmentPrefiltered.glsl");
-        AM.Create<IShader>("ENV_CUB", "Assets/Shaders/GLSL/Environment/EnvironmentCubeConverter.glsl");
-        AM.Create<IShader>("ENV_BRD", "Assets/Shaders/GLSL/Environment/EnvironmentBRDF.glsl");
-        
-        BaseMaterial::Import("Assets/Materials/Metal/Base.yaml");
-        BaseMaterial::Import("Assets/Materials/Marble/Base.yaml");
-        BaseMaterial::Import("Assets/Materials/Plastic/Base.yaml");
-        BaseMaterial::Import("Assets/Materials/Rubber/Base.yaml");
-        BaseMaterial::Import("Assets/Materials/Stone/Base.yaml");
-
-        //------------------------------------------------------------------------------------
-
         m_Viewport.Size                 = m_CurrentViewportSize;
         m_Viewport.FrameSpec.Name       = "SceneEditorFrame";
         m_Viewport.FrameSpec.Width      = (std::uint32_t)m_CurrentViewportSize.x;
@@ -43,15 +24,15 @@ namespace Motion
         m_Framebuffer                   = IFrameBuffer::Create(m_Viewport.FrameSpec);
 
         EnvironmentSpecification specEnv;
-        specEnv.UseSHDiffuse = false;
-        specEnv.BuildBRDFLUT = true;
-        specEnv.HDRfile = "Assets/HDRI/Scene.hdr";
+        specEnv.UseSHDiffuse    = false;
+        specEnv.BuildBRDFLUT    = true;
+        specEnv.HDRfile         = "Assets/HDRI/Scene.hdr";
 
         SceneSpecification spec{};
-        spec.Name = "Default Scene";
-        spec.IsActive = true;
-        spec.Viewport = m_Viewport;
-        spec.Environment = SceneEnvironment();
+        spec.Name           = "Default Scene";
+        spec.IsActive       = true;
+        spec.Viewport       = m_Viewport;
+        spec.Environment    = SceneEnvironment();
         spec.Environment.EnvironmentInstance = IEnvironment::Create(specEnv);
 
         if (m_Scenes.empty())
@@ -59,7 +40,6 @@ namespace Motion
 
         m_ActiveScene = m_Scenes[0];
         m_ActiveScene->Activate(true);
-
         m_SceneTextures[m_ActiveScene] = m_Framebuffer->GetAttachment(FrameBufferColorAttachmentStandards::Standard).ID;
 
         //------------------------------------------------------------------------------------
@@ -105,9 +85,6 @@ namespace Motion
     {
         BuildDockspace();
 
-        ImGui::ShowDemoWindow();
-        ImPlot::ShowDemoWindow();
-
         ScenePanelContext panelContext;
         panelContext.ActiveScene                    = m_ActiveScene;
         panelContext.ActiveCamera                   = m_ActiveScene->GetCamera();
@@ -143,96 +120,122 @@ namespace Motion
         {
             if (ImGui::BeginMenuBar())
             {
-                ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, { 5, 10 });
-                
+                // --- Modern look tweaks for the menubar itself ---
+                ImGuiStyle& style = ImGui::GetStyle();
+                ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(6, 10));     // roomier
+                ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing,  ImVec2(8, 6));      // breathing room
+                ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 6.0f);             // soft corners
+                ImGui::PushStyleColor(ImGuiCol_MenuBarBg, ImGui::GetStyleColorVec4(ImGuiCol_WindowBg)); // flatter bar
+
+                // We'll measure and place three "lanes": left (Files), center (Sim), right (Camera)
+                const float full_w   = ImGui::GetContentRegionAvail().x;
+                const float start_x  = ImGui::GetCursorPosX();
+                const float pad_x    = style.ItemSpacing.x;
+
+                // Precompute sizes we’ll need
+                const ImVec2 btnSz(30, 30);
+
+                // Center group width: [Play][Stop][Pause] + spacings + "Simulation State: " + "RUNNING" (longest)
+                auto text_w = [](const char* s){ return ImGui::CalcTextSize(s).x; };
+                const float sep_w = style.ItemSpacing.x; // visual spacing between blocks
+                const float sim_buttons_w = (btnSz.x * 3.0f) + (pad_x * 2.0f); // two gaps between 3 buttons
+                const float sim_label_w   = text_w("Simulation State: ");
+                const float sim_value_w   = text_w("RUNNING"); // longest of IDLE/PAUSED/RUNNING
+                const float sim_center_w  = sim_buttons_w + sep_w + sim_label_w + sim_value_w;
+
+                // Right group width: "Camera Speed" + drag + spacing + "Camera Sensitivity" + drag
+                const float drag_w        = 70.0f;
+                const float cam_speed_w   = text_w("Camera Speed");
+                const float cam_sens_w    = text_w("Camera Sensitivity");
+                const float right_w = cam_speed_w + pad_x + drag_w + pad_x + cam_sens_w + pad_x + drag_w;
+
+                // --- LEFT LANE: Files menu (render first so we know where it ends) ---
+                bool left_open = false;
                 if (ImGui::BeginMenu(ICON_MD_FOLDER " Files"))
                 {
-                    if (ImGui::MenuItem("New Scene")) 
-                    { 
-                    }
-
-                    if (ImGui::MenuItem("Open...")) 
-                    { 
-                    }
-
-                    if (ImGui::MenuItem("Save")) 
-                    { 
-                    }
-
+                    left_open = true;
+                    if (ImGui::MenuItem("New Scene")) { /* ... */ }
+                    if (ImGui::MenuItem("Open..."))   { /* ... */ }
+                    if (ImGui::MenuItem("Save"))      { /* ... */ }
                     ImGui::EndMenu();
                 }
 
-                ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
+                // Track where the left lane ended so we don’t overlap the center
+                const float after_left_x = ImGui::GetCursorPosX();
 
-                ImGui::TextUnformatted("Simulation Controls");
+                // --- CENTER LANE: Simulation controls + state (absolute position) ---
+                float center_x = start_x + (full_w - sim_center_w) * 0.5f;
+                // avoid overlapping the left lane if window is squeezed
+                center_x = ImMax(center_x, after_left_x + pad_x);
 
-                ImGui::SameLine();
+                ImGui::SameLine(0, 0);
+                ImGui::SetCursorPosX(center_x);
 
-                ImGui::BeginDisabled(m_SimulationState == SimulationState::Running);
-                if (ImGui::Button(ICON_MD_PLAY_ARROW, ImVec2(30, 30)))
-                {
-                    m_SimulationState   = SimulationState::Running;
-                    m_ActiveScene->GotoSimulation(m_SimulationState);
-                }
-                ImGui::EndDisabled();
+                // Slightly modern button colors (subtle, not neon)
+                ImGui::PushStyleColor(ImGuiCol_Button,        ImVec4(42,  42,  48, 255));
+                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(64,  64,  72, 255));
+                ImGui::PushStyleColor(ImGuiCol_ButtonActive,  ImVec4(92,  92, 104, 255));
 
-                ImGui::SameLine(0, 6);
+                // Controls: Play | Stop | Pause
+                ImGui::PushID("simbar");
+                if (ImGui::Button(ICON_MD_PLAY_ARROW, btnSz))
+                    m_ActiveScene->GotoSimulation(SimulationState::Running);
 
-                ImGui::BeginDisabled(m_SimulationState != SimulationState::Running);
-                if (ImGui::Button(ICON_MD_STOP, ImVec2(30, 30)))
-                {
-                    m_SimulationState   = SimulationState::Stop;
-                    m_ActiveScene->GotoSimulation(m_SimulationState);
-                }
-                ImGui::EndDisabled();
+                ImGui::SameLine(0, pad_x);
+                if (ImGui::Button(ICON_MD_STOP, btnSz))
+                    m_ActiveScene->GotoSimulation(SimulationState::Stop);
 
-                ImGui::SameLine(0, 6);
+                ImGui::SameLine(0, pad_x);
+                if (ImGui::Button(ICON_MD_PAUSE, btnSz))
+                    m_ActiveScene->GotoSimulation(SimulationState::Paused);
+                ImGui::PopID();
 
-                ImGui::BeginDisabled(m_SimulationState != SimulationState::Running);
-                if (ImGui::Button(ICON_MD_PAUSE, ImVec2(30, 30)))
-                {
-                    m_SimulationState = SimulationState::Paused;
-                    m_ActiveScene->GotoSimulation(m_SimulationState);
-                }
-                ImGui::EndDisabled();
-
-                ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
+                ImGui::SameLine(0, style.ItemSpacing.x * 1.5f);
 
                 ImGui::TextUnformatted("Simulation State: ");
                 ImGui::SameLine();
-                switch(m_SimulationState)
+
+                switch (m_ActiveScene->GetSimualtionState())
                 {
                     case SimulationState::Stop:
-                        ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "IDLE");
+                        ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.65f, 1.0f), "IDLE");     // slightly softer gray
                         break;
-
                     case SimulationState::Paused:
-                        ImGui::TextColored(ImVec4(1.0f, 0.65f, 0.0f, 1.0f), "PAUSED");
+                        ImGui::TextColored(ImVec4(1.0f, 0.72f, 0.0f, 1.0f), "PAUSED");   // warmer amber
                         break;
-
                     case SimulationState::Running:
-                        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "RUNNING");
+                        ImGui::TextColored(ImVec4(0.1f, 0.95f, 0.4f, 1.0f), "RUNNING");  // modern green
                         break;
-                    
                     default: break;
                 }
 
-                ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
+                ImGui::PopStyleColor(3); // buttons
+
+                // --- RIGHT LANE: Camera controls (absolute right alignment) ---
+                float right_x = start_x + full_w - right_w;
+                // ensure the right lane doesn’t overlap what we just drew in center
+                right_x = ImMax(right_x, ImGui::GetCursorPosX() + pad_x);
+
+                ImGui::SameLine(0, 0);
+                ImGui::SetCursorPosX(right_x);
 
                 ImGui::TextUnformatted("Camera Speed");
                 ImGui::SameLine();
-                ImGui::PushItemWidth(70.0f);
+                ImGui::PushItemWidth(drag_w);
                 ImGui::DragFloat("##camspeed", &m_ActiveScene->GetCamera().Camera.TranslationSpeed, 0.001f, 0.0f);
                 ImGui::PopItemWidth();
 
                 ImGui::SameLine();
                 ImGui::TextUnformatted("Camera Sensitivity");
                 ImGui::SameLine();
-                ImGui::PushItemWidth(70.0f);
+                ImGui::PushItemWidth(drag_w);
                 ImGui::DragFloat("##camsens", &m_ActiveScene->GetCamera().Camera.Sensitivity, 0.001f);
                 ImGui::PopItemWidth();
 
-                ImGui::PopStyleVar();
+                // Done styling for the menubar
+                ImGui::PopStyleColor();  // MenuBarBg
+                ImGui::PopStyleVar(3);
+
                 ImGui::EndMenuBar();
             }
 

@@ -38,8 +38,8 @@ namespace Motion
             void DestroyRigidBody(const std::shared_ptr<Entity>& e);
 
             void ChangeCollider(const std::shared_ptr<Entity>& e, ShapeType type);
-            void CreateConvexCollider(const std::shared_ptr<Entity>& e);
-            void CreateConcaveCollider(const std::shared_ptr<Entity>& e);
+            void CreateConvexCollider(const std::shared_ptr<Entity>& e, const std::vector<glm::vec3>& vertices, const std::vector<uint32_t>& indices);
+            void CreateConcaveCollider(const std::shared_ptr<Entity>& e, const std::vector<glm::vec3>& vertices, const std::vector<uint32_t>& indices);
             void CreateBoxCollider(const std::shared_ptr<Entity>& e);
             void CreateSphereCollider(const std::shared_ptr<Entity>& e);
             void CreateCapsuleCollider(const std::shared_ptr<Entity>& e);
@@ -55,7 +55,6 @@ namespace Motion
             ~KinetiX() override = default;
             
             void DestroyAll();
-            void ApplyDefaultMaterial(rp3d::Collider* collider);
             void DestroyCachedMeshesFor(Entity* key);
 
         private:

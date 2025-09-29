@@ -234,9 +234,9 @@ namespace Motion
                 {
                     for (const auto& entity : *scene)
                     {
-                        if (entity->HasComponent<TagComponent>())
+                        if (entity->Has<TagComponent>())
                         {
-                            const std::string& tag = entity->GetComponent<TagComponent>().Tag;
+                            const std::string& tag = entity->Get<TagComponent>().Tag;
                             ImGui::BulletText("%s  %s", ICON_MD_LABEL, tag.c_str());
                         }
                         else

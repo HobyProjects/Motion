@@ -5,114 +5,67 @@
 
 namespace Motion
 {
-    class Entity; // Forward Declaration
-
-    class EntityFactory
-    {
-        private:
-            EntityFactory() = default;
-            ~EntityFactory() = default;
-
-            EntityFactory(const EntityFactory&) = delete;
-            EntityFactory& operator=(const EntityFactory&) = delete;
-            EntityFactory(EntityFactory&&) = delete;
-            EntityFactory& operator=(EntityFactory&&) = delete;
-
-        public:
-            static EntityFactory& GetInstance() noexcept
-            {
-                static EntityFactory instance;
-                return instance;
-            }
-
-        public:
-            [[nodiscard]] std::shared_ptr<Entity> CreateEntity(const std::string& name) noexcept;
-            [[nodiscard]] std::shared_ptr<Entity> Nullify() const noexcept;
-            [[nodiscard]] const entt::registry& GetRegistry() const { return Registry; }
-
-            void DestroyEntity(const std::shared_ptr<Entity>& entity) noexcept;
-
-        public:
-            static std::shared_ptr<Entity> EMPTYENTITY;
-
-        private:
-            entt::registry Registry;
-            friend class Entity;
-    };
-
     class Entity
     {
         public:
+            struct Node
+            {
+                bool IsRoot{false};
+                std::shared_ptr<Entity> Next{nullptr};
+            };
+
+        public:
             Entity() = default;
-            Entity(entt::entity handle) :m_EntityHandle(handle), m_IsAlive(true) {}
+            Entity(entt::entity handle) :m_EntityHandle(handle){}
             ~Entity() = default;
 
             template<typename T>
-            bool HasComponent() const
+            bool Has() const
             {
-                MOTION_ASSERT(m_IsAlive, "Entity already been destroyed");
-                auto& entityFactory = EntityFactory::GetInstance();
-                return entityFactory.Registry.any_of<T>(m_EntityHandle);
+                return m_EntityRegistry.any_of<T>(m_EntityHandle);
             }
 
             template<typename T, typename... Args>
-            T& AddComponent(Args&&... args)
+            T& Emplace(Args&&... args)
             {
-                MOTION_ASSERT(m_IsAlive, "Entity already been destroyed");
-                MOTION_ASSERT(!HasComponent<T>(), "Entity already has component!");
-                
-                auto& entityFactory = EntityFactory::GetInstance();
-                auto& component = entityFactory.Registry.emplace<T>(m_EntityHandle, std::forward<Args>(args)...);
+                auto& component = m_EntityRegistry.emplace<T>(m_EntityHandle, std::forward<Args>(args)...);
                 return component;
             }
 
             template<typename T>
-            T& GetComponent() const
+            T& Get() 
             {
-                MOTION_ASSERT(m_IsAlive, "Entity already been destroyed");
-                MOTION_ASSERT(HasComponent<T>(), "Entity does not have component!");
-
-                auto& entityFactory = EntityFactory::GetInstance();
-                return entityFactory.Registry.get<T>(m_EntityHandle);
+                return m_EntityRegistry.get<T>(m_EntityHandle);
             }
 
             template<typename T>
-            void RemoveComponent() 
+            void Remove() 
             {
-                MOTION_ASSERT(m_IsAlive, "Entity already been destroyed");
-                MOTION_ASSERT(HasComponent<T>(), "Entity does not have component!");
-                auto& entityFactory = EntityFactory::GetInstance();
-                entityFactory.Registry.remove<T>(m_EntityHandle);
+                m_EntityRegistry.remove<T>(m_EntityHandle);
             }
-
-            void Destroy()
-            {
-                auto& entityFactory = EntityFactory::GetInstance();
-                entityFactory.Registry.destroy(m_EntityHandle);
-
-                m_EntityHandle  = entt::null;
-                m_IsAlive       = false;
-            }
-
-            [[nodiscard]] bool IsAlive() const
-            {
-                return m_IsAlive;
-            }
-
-            [[nodiscard]] entt::entity GetHandle() const
+            
+            [[nodiscard]] entt::entity Handle() const
             {
                 return m_EntityHandle;
             }
 
+        public:
+            static std::shared_ptr<Entity> Create(const std::string& name) noexcept;
+            static void Destroy(const std::shared_ptr<Entity>& entity);
+            static std::shared_ptr<Entity> Empty();
+
+
+        public:
             operator bool() const { return m_EntityHandle != entt::null; }
             operator uint32_t() const { return (uint32_t)m_EntityHandle; }
             operator entt::entity() const { return m_EntityHandle; }
             bool operator==(const Entity& other) const { return m_EntityHandle == other.m_EntityHandle; }
             bool operator!=(const Entity& other) const { return !(*this == other); }
+            static entt::registry& GetRegistry() { return m_EntityRegistry; }
 
         private:
             entt::entity m_EntityHandle{ entt::null };
-            bool m_IsAlive{ false };
+            inline static entt::registry m_EntityRegistry;
     };
 
     class ScriptbleEntity
@@ -124,7 +77,7 @@ namespace Motion
             template<typename T>
             T& GetComponent()
             {
-                return m_Entity.GetComponent<T>();
+                return m_Entity.Get<T>();
             }
 
         protected:

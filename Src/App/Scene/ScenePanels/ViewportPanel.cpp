@@ -328,13 +328,13 @@ namespace Motion
 
             // ---------------- Entity gizmo ----------------
             if (auto sel = context.ActiveScene->GetSelectedEntity();
-                sel && sel != EntityFactory::EMPTYENTITY &&
-                sel->HasComponent<TransformComponent>() &&
-                sel->GetComponent<TagComponent>().IsActive)
+                sel && sel != Entity::Empty() &&
+                sel->Has<TransformComponent>() &&
+                sel->Get<TagComponent>().IsActive)
             {
                 ImGuizmo::PushID(1);
 
-                auto& TRS = sel->GetComponent<TransformComponent>();
+                auto& TRS = sel->Get<TransformComponent>();
                 glm::vec3 T = TRS.Translation;
                 glm::vec3 S = TRS.Scale;
                 glm::vec3 eulerDeg = glm::degrees(glm::eulerAngles(TRS.Rotation));

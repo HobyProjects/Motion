@@ -132,12 +132,17 @@ namespace Motion
         glCreateFramebuffers(1, &m_fbo.id);
         glCreateRenderbuffers(1, &m_rbo.id);
 
-        auto& AM = AssetManager::GetInstance();
-        m_shSky        = AM.Get<GL_Shader>("ENV_SKY");
-        m_shIrradiance = AM.Get<GL_Shader>("ENV_IRR");
-        m_shPrefilter  = AM.Get<GL_Shader>("ENV_PRE");
-        m_shBRDF       = AM.Get<GL_Shader>("ENV_BRD");
-        m_shEquiToCube = AM.Get<GL_Shader>("ENV_CUB");
+        auto shSkeySrc = IShader::ReadFullShaderFile("Assets/Shaders/GLSL/Environment/Environment.glsl");
+        auto shIrrSrc  = IShader::ReadFullShaderFile("Assets/Shaders/GLSL/Environment/EnvironmentIrradiance.glsl");
+        auto shPreSrc  = IShader::ReadFullShaderFile("Assets/Shaders/GLSL/Environment/EnvironmentPrefiltered.glsl");
+        auto shCubSrc  = IShader::ReadFullShaderFile("Assets/Shaders/GLSL/Environment/EnvironmentCubeConverter.glsl");
+        auto shBrdSrc  = IShader::ReadFullShaderFile("Assets/Shaders/GLSL/Environment/EnvironmentBRDF.glsl");
+
+        m_shSky        = std::make_shared<GL_Shader>(shSkeySrc);
+        m_shIrradiance = std::make_shared<GL_Shader>(shIrrSrc);
+        m_shPrefilter  = std::make_shared<GL_Shader>(shPreSrc);
+        m_shBRDF       = std::make_shared<GL_Shader>(shBrdSrc);
+        m_shEquiToCube = std::make_shared<GL_Shader>(shCubSrc);
 
         BakeHDR();
     }

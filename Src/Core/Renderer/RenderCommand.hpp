@@ -2,7 +2,7 @@
 
 #include "Base.hpp"
 #include "UUID.hpp"
-#include "Model.hpp"
+#include "Mesh.hpp"
 #include "Shaders.hpp"
 #include "Texture.hpp"
 #include "Environment.hpp"

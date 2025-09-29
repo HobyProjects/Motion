@@ -15,41 +15,59 @@ namespace Motion
     {
         if (!scene) { MOTION_CORE_ERROR("Scene is null >> SKIPPING SUBMISSION"); return; }
         s_CurrentScene = scene;
-        AssetManager& assets = AssetManager::GetInstance();
 
         for (const auto& entity : scene->m_Entities)
         {
-            if (!entity || !entity->HasComponent<MeshComponent>() || !entity->HasComponent<TagComponent>()) continue;
-
-            const bool active   = entity->GetComponent<TagComponent>().IsActive;
-            const auto& sm  = entity->GetComponent<MeshComponent>();
-            if (!active) continue;
-            if (!sm.Model || sm.Model->GetMeshesCount() <= 0) continue;
-
-            auto    modelMatrix     = entity->HasComponent<TransformComponent>() ? entity->GetComponent<TransformComponent>().GetTransform() : glm::mat4(1.0f);
-            auto&   camera          = scene->GetCamera();
-            auto&   env             = scene->GetEnvironment();
-
-            for (auto& mesh : *sm.Model)
+            std::shared_ptr<Entity> current = entity;
+            std::shared_ptr<Entity> next{nullptr};
+            while(current)
             {
+                if(current->Has<NodeComponent>())
+                {
+                    next = current->Get<NodeComponent>().EnTTNext;
+                    if(current->Get<NodeComponent>().IsRoot)
+                    {
+                        current = next;
+                        continue;
+                    }
+                }
+
+                const bool active   = current->Get<TagComponent>().IsActive;
+                const auto& mesh    = current->Get<MeshComponent>(); // I'm sure there's a better way to do this
+                const auto& mat     = current->Get<MaterialComponent>();
+                
+                if (!active)
+                {
+                    if(next) current    = next;
+                    else current        = nullptr;
+                    continue;
+                }
+
+                const glm::mat4 meshTransform = current->Has<TransformComponent>() ? current->Get<TransformComponent>().GetTransform() : glm::mat4(1.0f);
+                const auto& camera            = scene->GetCamera();
+                const auto& env               = scene->GetEnvironment();
+
                 RenderCommand cmd{};
-                cmd.SortKey             = sm.ID;
-                cmd.MaterialPointer     = mesh->Materials.get();
-                cmd.MeshPointer         = mesh.get();
+                cmd.SortKey             = mesh.ID;
+                cmd.MaterialPointer     = mat.MaterialPointer.get();
+                cmd.MeshPointer         = mesh.MeshPointer.get();
                 cmd.EnvPointer          = env.EnvironmentInstance.get();
 
                 cmd.CameraData.CameraPosition   = camera.Camera.Position;
                 cmd.CameraData.View             = camera.Camera.View;
                 cmd.CameraData.Projection       = camera.Camera.Projection;
 
-                cmd.ModelData.Model        = modelMatrix;
-                cmd.ModelData.Normal       = glm::transpose(glm::inverse(glm::mat3(modelMatrix)));
+                cmd.ModelData.Model        = meshTransform;
+                cmd.ModelData.Normal       = glm::transpose(glm::inverse(glm::mat3(meshTransform)));
 
                 cmd.LightData.Color           = env.Sun.Color;
                 cmd.LightData.Direction       = env.Sun.Direction;
                 cmd.LightData.Intensity       = env.Sun.Intensity;
 
                 Renderer::Submit(cmd);
+
+                if(next) current    = next;
+                else current        = nullptr;
             }
         }
     }

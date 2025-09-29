@@ -3,7 +3,7 @@
 
 namespace Motion
 {
-    Mesh::Mesh(const Vertex* vertices, std::uint32_t verticesSize, const std::uint32_t* indices, std::uint32_t indicesCount, const BufferLayout& layout, const std::shared_ptr<Model>& parentModel)
+    Mesh::Mesh(const Vertex* vertices, std::uint32_t verticesSize, const std::uint32_t* indices, std::uint32_t indicesCount, const BufferLayout& layout)
     {
         m_VertexBuffer = IVertexBuffer::Create(vertices, verticesSize);
         m_ElementBuffer = IElementBuffer::Create(indices, indicesCount);
@@ -12,12 +12,10 @@ namespace Motion
         m_VertexArray = IVertexArray::Create();
         m_VertexArray->EmplaceVertexBuffer(m_VertexBuffer);
         m_VertexArray->EmplaceIndexBuffer(m_ElementBuffer);
-
-        m_ParentModel = parentModel;
         m_IndicesCount = indicesCount;
     }
 
-    Mesh::Mesh(const float* vertices, std::uint32_t verticesSize, const std::uint32_t* indices, std::uint32_t indicesCount, const BufferLayout& layout, const std::shared_ptr<Model>& parentModel)
+    Mesh::Mesh(const float* vertices, std::uint32_t verticesSize, const std::uint32_t* indices, std::uint32_t indicesCount, const BufferLayout& layout)
     {
         m_VertexBuffer = IVertexBuffer::Create(vertices, verticesSize);
         m_ElementBuffer = IElementBuffer::Create(indices, indicesCount);
@@ -26,8 +24,6 @@ namespace Motion
         m_VertexArray = IVertexArray::Create();
         m_VertexArray->EmplaceVertexBuffer(m_VertexBuffer);
         m_VertexArray->EmplaceIndexBuffer(m_ElementBuffer);
-
-        m_ParentModel = parentModel;
         m_IndicesCount = indicesCount;
     }
 
@@ -53,19 +49,14 @@ namespace Motion
         return m_IndicesCount;
     }
 
-    std::shared_ptr<Model> Mesh::GetParentModel() const noexcept
+    std::shared_ptr<Mesh> Mesh::Create(const Vertex* vertices, std::uint32_t verticesSize, const std::uint32_t* indices, std::uint32_t indicesCount, const BufferLayout& layout)
     {
-        return m_ParentModel;
+        return std::make_shared<Mesh>(vertices, verticesSize, indices, indicesCount, layout);
     }
 
-    std::shared_ptr<Mesh> Mesh::Create(const Vertex* vertices, std::uint32_t verticesSize, const std::uint32_t* indices, std::uint32_t indicesCount, const BufferLayout& layout, const std::shared_ptr<Model>& parentModel)
+    std::shared_ptr<Mesh> Mesh::Create(const float* vertices, std::uint32_t verticesSize, const std::uint32_t* indices, std::uint32_t indicesCount, const BufferLayout& layout)
     {
-        return std::make_shared<Mesh>(vertices, verticesSize, indices, indicesCount, layout, parentModel);
-    }
-
-    std::shared_ptr<Mesh> Mesh::Create(const float* vertices, std::uint32_t verticesSize, const std::uint32_t* indices, std::uint32_t indicesCount, const BufferLayout& layout, const std::shared_ptr<Model>& parentModel)
-    {
-        return std::make_shared<Mesh>(vertices, verticesSize, indices, indicesCount, layout, parentModel);
+        return std::make_shared<Mesh>(vertices, verticesSize, indices, indicesCount, layout);
     }
 }
 

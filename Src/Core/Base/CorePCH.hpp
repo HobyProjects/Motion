@@ -115,7 +115,6 @@
 #include "Camera3D.hpp"
 #include "Mesh.hpp"
 #include "Importer.hpp"
-#include "Environment.hpp"
 #include "RenderingStage.hpp"
 #include "RenderCommand.hpp"
 #include "CommandQueue.hpp"
@@ -128,7 +127,6 @@
 #include "GL_Shaders.hpp"
 #include "GL_Texture.hpp"
 #include "GL_Arrays.hpp"
-#include "GL_Environment.hpp"
 #include "GLFW_GL_Context.hpp"
 #include "GL_RenderingStage.hpp"
 

@@ -19,9 +19,9 @@ namespace Motion
         for (const auto& entity : scene->m_Entities)
         {
             std::shared_ptr<Entity> current = entity;
-            std::shared_ptr<Entity> next{nullptr};
             while(current)
             {
+                std::shared_ptr<Entity> next{ nullptr };
                 if(current->Has<NodeComponent>())
                 {
                     next = current->Get<NodeComponent>().EnTTNext;
@@ -51,11 +51,10 @@ namespace Motion
                 cmd.SortKey             = mesh.ID;
                 cmd.MaterialPointer     = mat.MaterialPointer.get();
                 cmd.MeshPointer         = mesh.MeshPointer.get();
-                cmd.EnvPointer          = env.EnvironmentInstance.get();
 
-                cmd.CameraData.CameraPosition   = camera.Camera.Position;
-                cmd.CameraData.View             = camera.Camera.View;
-                cmd.CameraData.Projection       = camera.Camera.Projection;
+                cmd.CameraData.View             = camera.View;
+                cmd.CameraData.CameraPosition   = camera.Position;
+                cmd.CameraData.Projection       = camera.Projection;
 
                 cmd.ModelData.Model        = meshTransform;
                 cmd.ModelData.Normal       = glm::transpose(glm::inverse(glm::mat3(meshTransform)));
@@ -74,19 +73,6 @@ namespace Motion
 
     void SceneRenderer::EndScene() noexcept
     {
-        RenderSkyboxPass(s_CurrentScene);
         Renderer::End();
-    }
-
-    void SceneRenderer::RenderSkyboxPass(Scene* scene) noexcept
-    {
-        if (!scene) return;
-
-        auto&           env = scene->GetEnvironment();
-        IEnvironment*   ibl = env.EnvironmentInstance ? env.EnvironmentInstance.get() : nullptr;
-        if (!ibl)       return;
-
-        const auto& cam = scene->GetCamera().Camera;
-        ibl->RenderSkyBox(cam.Projection, cam.View);
     }
 }

@@ -80,37 +80,6 @@ namespace Motion
             v.Normal = glm::normalize(v.Normal);
     }
 
-    static std::pair<glm::vec3, glm::vec3> ModelBounds(const aiScene* scene)
-    {
-        glm::vec3 min = glm::vec3(std::numeric_limits<float>::max());
-        glm::vec3 max = glm::vec3(std::numeric_limits<float>::lowest());
-
-        for (uint32_t m = 0; m < scene->mNumMeshes; ++m)
-        {
-            const aiMesh* mesh = scene->mMeshes[m];
-            for (uint32_t v = 0; v < mesh->mNumVertices; ++v)
-            {
-                glm::vec3 pos(mesh->mVertices[v].x, mesh->mVertices[v].y, mesh->mVertices[v].z);
-                min = glm::min(min, pos);
-                max = glm::max(max, pos);
-            }
-        }
-
-        return { min, max };
-    }
-
-    static std::pair<glm::vec3, glm::vec3> ModelBounds(const std::vector<Vertex>& vertices)
-    {
-        glm::vec3 min = glm::vec3(std::numeric_limits<float>::max());
-        glm::vec3 max = glm::vec3(std::numeric_limits<float>::lowest());
-        for (const auto& v : vertices)
-        {
-            min = glm::min(min, v.Position);
-            max = glm::max(max, v.Position);
-        }
-        return { min, max };
-    }
-
     static std::string HashString(const std::string& input)
     {
         return std::format("{:X}", std::hash<std::string>{}(input));
@@ -188,48 +157,28 @@ namespace Motion
         }
     }
 
-    using MeshAssetID = std::uint32_t;
-
-    struct MeshAsset
+    static bool Import(const std::filesystem::path& input, const std::filesystem::path& output, std::shared_ptr<ImportedResults>& outResults)
     {
-        MeshAssetID                 ID{ 0 };
-        std::string                 Name{ "" };
-        std::vector<Vertex>         Vertices{};
-        std::vector<std::uint32_t>  Indices{};
-        glm::vec3                   MIN{0.0f};
-        glm::vec3                   MAX{0.0f};
-    };
-
-    struct ImportedResults
-    {
-        uint32_t                                         MeshCount = 0;
-        glm::vec3                                        MIN = {};
-        glm::vec3                                        MAX = {};
-        std::unordered_map<MeshAssetID, MeshAsset>       Meshes{};
-    };
-
-    static bool Import(const std::filesystem::path& input, const std::filesystem::path& output, ImportedResults& outResults)
-    {
-        try
+        try 
         {
             std::filesystem::path uniqueOutput = input;
+            outResults->Name = input.filename().stem().string();
 
-            if (!output.empty())
+            if (!output.empty()) 
             {
-                std::string modelFileName  = input.filename().string();
-                std::string modelFolderName = input.filename().stem().string();
+                const std::string modelFileName   = input.filename().string();
+                const std::string modelFolderName = input.filename().stem().string();
                 uniqueOutput = GetAvailableCopyName(output / modelFolderName) / modelFileName;
 
-                if (!std::filesystem::exists(uniqueOutput))
+                if (!std::filesystem::exists(uniqueOutput)) 
                 {
-                    try
+                    try 
                     {
                         std::filesystem::create_directories(uniqueOutput.parent_path());
-                        std::filesystem::copy(input.parent_path(), uniqueOutput.parent_path(),
-                            std::filesystem::copy_options::recursive | std::filesystem::copy_options::overwrite_existing);
+                        std::filesystem::copy(input.parent_path(), uniqueOutput.parent_path(), std::filesystem::copy_options::recursive | std::filesystem::copy_options::overwrite_existing);
                         MOTION_CORE_INFO("Copied all content from {} to {}", input.string(), uniqueOutput.string());
-                    }
-                    catch (const std::exception& e)
+                    } 
+                    catch (const std::exception& e) 
                     {
                         MOTION_CORE_ERROR("Failed to copy directory: {}", e.what());
                         return false;
@@ -245,29 +194,27 @@ namespace Motion
                 aiProcess_ImproveCacheLocality |
                 aiProcess_RemoveRedundantMaterials |
                 aiProcess_ValidateDataStructure |
+                aiProcess_JoinIdenticalVertices |
+                aiProcess_PreTransformVertices |
+                aiProcess_FindInvalidData |
+                aiProcess_FindDegenerates |
+                aiProcess_SortByPType |
                 aiProcess_FlipUVs;
 
             const aiScene* scene = importer.ReadFile(uniqueOutput.string(), importFlags);
-            if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)
+            if (!scene || (scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE) || !scene->mRootNode) 
             {
                 MOTION_CORE_ERROR("Assimp Importer Error: {}", importer.GetErrorString());
                 return false;
             }
 
-            auto [minBounds, maxBounds] = ModelBounds(scene);            
-            outResults.MIN = minBounds;
-            outResults.MAX = maxBounds;
-            outResults.MeshCount = scene->mNumMeshes;                    
-
-            const glm::vec3 modelCenter = 0.5f * (minBounds + maxBounds);
             std::vector<bool> meshLoaded(scene->mNumMeshes, false);
-
             auto loadMesh = [&](std::uint32_t meshIndex, const aiMesh* mesh)
             {
                 if (!mesh || meshLoaded[meshIndex]) return;
                 meshLoaded[meshIndex] = true;
 
-                auto [it, inserted] = outResults.Meshes.emplace(meshIndex, MeshAsset{});
+                auto [it, inserted] = outResults->Meshes.emplace(meshIndex, MeshAsset{});
                 MeshAsset& m = it->second;
                 m.ID   = meshIndex;
                 m.Name = mesh->mName.C_Str();
@@ -276,107 +223,124 @@ namespace Motion
                 const bool hasNormals  = mesh->HasNormals();
                 const bool hasTangents = mesh->HasTangentsAndBitangents();
 
-                auto& verts = m.Vertices;
-                verts.reserve(mesh->mNumVertices);
+                // --- Vertices ---
+                m.Vertices.clear();
+                m.Vertices.reserve(mesh->mNumVertices);
 
-                for (std::uint32_t i = 0; i < mesh->mNumVertices; ++i)
+                for (std::uint32_t i = 0; i < mesh->mNumVertices; ++i) 
                 {
-                    Vertex vtx;
-                    vtx.Position  = { mesh->mVertices[i].x, mesh->mVertices[i].y, mesh->mVertices[i].z };
-                    vtx.TexCoord  = hasUVs ? glm::vec2(mesh->mTextureCoords[0][i].x, mesh->mTextureCoords[0][i].y)
-                                           : glm::vec2{ 0.f, 0.f };
-                    vtx.Normal    = hasNormals  ? glm::vec3(mesh->mNormals[i].x,  mesh->mNormals[i].y,  mesh->mNormals[i].z)
-                                                : glm::vec3{ 0.f, 0.f, 1.f };
-                    vtx.Tangent   = hasTangents ? glm::vec4(mesh->mTangents[i].x,  mesh->mTangents[i].y,  mesh->mTangents[i].z, 0.0f)
-                                                : glm::vec4{ 1.f, 0.f, 0.f, 0.0f };
-                    vtx.Bitangent = hasTangents ? glm::vec3(mesh->mBitangents[i].x, mesh->mBitangents[i].y, mesh->mBitangents[i].z)
-                                                : glm::vec3{ 0.f, 1.f, 0.f };
+                    Vertex vtx{};
+                    vtx.Position = glm::vec3(mesh->mVertices[i].x,
+                                            mesh->mVertices[i].y,
+                                            mesh->mVertices[i].z);
 
-                    if (hasTangents)
+                    vtx.TexCoord = hasUVs
+                        ? glm::vec2(mesh->mTextureCoords[0][i].x,
+                                    mesh->mTextureCoords[0][i].y)
+                        : glm::vec2(0.f, 0.f);
+
+                    vtx.Normal = hasNormals
+                        ? glm::vec3(mesh->mNormals[i].x,
+                                    mesh->mNormals[i].y,
+                                    mesh->mNormals[i].z)
+                        : glm::vec3(0.f, 0.f, 1.f);
+
+                    if (hasTangents) 
                     {
-                        // handedness sign
-                        const glm::vec3 n(mesh->mNormals[i].x,   mesh->mNormals[i].y,   mesh->mNormals[i].z);
-                        const glm::vec3 t(mesh->mTangents[i].x,  mesh->mTangents[i].y,  mesh->mTangents[i].z);
-                        const glm::vec3 b(mesh->mBitangents[i].x,mesh->mBitangents[i].y,mesh->mBitangents[i].z);
+                        const glm::vec3 n(mesh->mNormals[i].x,    mesh->mNormals[i].y,    mesh->mNormals[i].z);
+                        const glm::vec3 t(mesh->mTangents[i].x,   mesh->mTangents[i].y,   mesh->mTangents[i].z);
+                        const glm::vec3 b(mesh->mBitangents[i].x, mesh->mBitangents[i].y, mesh->mBitangents[i].z);
+                        vtx.Tangent   = glm::vec4(t, 0.0f);
+                        vtx.Bitangent = b;
                         vtx.Tangent.w = (glm::dot(glm::cross(n, t), b) < 0.f) ? -1.f : 1.f;
-                    }
-                    else
+                    } 
+                    else 
                     {
-                        vtx.Tangent.w = 1.f;
+                        vtx.Tangent   = glm::vec4(1.f, 0.f, 0.f, 1.f);
+                        vtx.Bitangent = glm::vec3(0.f, 1.f, 0.f);
                     }
 
-                    verts.emplace_back(vtx);
+                    m.Vertices.emplace_back(vtx);
                 }
 
-                auto& idxs = m.Indices;
-                idxs.reserve(mesh->mNumFaces * 3);
-                for (std::uint32_t i = 0; i < mesh->mNumFaces; ++i)
-                    for (std::uint32_t idx = 0; idx < mesh->mFaces[i].mNumIndices; ++idx)
-                        idxs.emplace_back(mesh->mFaces[i].mIndices[idx]);
+                m.Indices.clear();
+                m.Indices.reserve(mesh->mNumFaces * 3);
+
+                for (std::uint32_t f = 0; f < mesh->mNumFaces; ++f) 
+                {
+                    const aiFace& face = mesh->mFaces[f];
+                    if (face.mNumIndices != 3) continue;
+
+                    const std::uint32_t i0 = face.mIndices[0];
+                    const std::uint32_t i1 = face.mIndices[1];
+                    const std::uint32_t i2 = face.mIndices[2];
+
+                    if (i0 >= mesh->mNumVertices || i1 >= mesh->mNumVertices || i2 >= mesh->mNumVertices) continue;
+
+                    m.Indices.emplace_back(i0);
+                    m.Indices.emplace_back(i1);
+                    m.Indices.emplace_back(i2);
+                }
 
                 if (!hasNormals)   GenerateNormals(m.Vertices, m.Indices);
                 if (!hasUVs)       GenerateBoxProjectionUVs(m.Vertices);
                 if (!hasTangents)  MikkTSpace::GenerateTangents(m.Vertices, m.Indices);
             };
 
-            std::function<void(const aiNode*)> traverse =
-            [&](const aiNode* node)
+            std::function<void(const aiNode*)> traverse = [&](const aiNode* node)
             {
-                for (std::size_t i = 0; i < node->mNumMeshes; ++i)
+                for (std::size_t i = 0; i < node->mNumMeshes; ++i) 
                 {
                     const std::uint32_t meshIdx = node->mMeshes[i];
                     loadMesh(meshIdx, scene->mMeshes[meshIdx]);
                 }
+
                 for (std::uint32_t i = 0; i < node->mNumChildren; ++i)
                     traverse(node->mChildren[i]);
             };
 
             traverse(scene->mRootNode);
-
             glm::vec3 modelMin( std::numeric_limits<float>::max());
             glm::vec3 modelMax(-std::numeric_limits<float>::max());
 
-            for (auto& kv : outResults.Meshes)
+            for (auto& kv : outResults->Meshes) 
             {
                 auto& mesh  = kv.second;
                 auto& verts = mesh.Vertices;
-                if (verts.empty())
-                    continue;
+                if (verts.empty()) continue;
 
                 glm::vec3 mn( std::numeric_limits<float>::max());
                 glm::vec3 mx(-std::numeric_limits<float>::max());
-                for (auto& v : verts)
+                for (auto& v : verts) 
                 {
                     mn = glm::min(mn, v.Position);
                     mx = glm::max(mx, v.Position);
                 }
 
                 const glm::vec3 meshCenter = 0.5f * (mn + mx);
-                for (auto& v : verts)
-                    v.Position -= meshCenter;
+                for (auto& v : verts) v.Position -= meshCenter;
 
                 const glm::vec3 half = 0.5f * (mx - mn);
                 mesh.MIN = -half;
                 mesh.MAX =  half;
 
-                for (auto& v : verts)
+                for (auto& v : verts) 
                 {
                     modelMin = glm::min(modelMin, v.Position);
                     modelMax = glm::max(modelMax, v.Position);
                 }
             }
 
-            outResults.MIN = modelMin;
-            outResults.MAX = modelMax;
-            outResults.MeshCount = static_cast<std::uint32_t>(outResults.Meshes.size());
-
+            outResults->MeshCount = static_cast<std::uint32_t>(outResults->Meshes.size());
             return true;
         }
-        catch (const std::exception& e)
+        catch (const std::exception& e) 
         {
+            MOTION_CORE_ERROR("Importer exception: {}", e.what());
             return false;
         }
     }
+
 
     static std::filesystem::path ComputeExportPath(const std::string& exportPath) 
     {
@@ -387,84 +351,17 @@ namespace Motion
         return std::filesystem::path(exportPath);
     }
 
-    std::shared_ptr<Entity> Importer::ImportModelAsync(const std::filesystem::path & path, bool shouldExport, const std::string & exportPath)
+    std::shared_ptr<ImportedResults> Importer::ImportModelAsync(const std::filesystem::path & path, bool shouldExport, const std::string & exportPath)
     {
-        ImportedResults imported{};
-        std::filesystem::path outDir        = shouldExport ? ComputeExportPath(exportPath) : std::filesystem::path{};
-        std::future<bool>  importResults    = std::async(std::launch::async, Import, path, outDir, std::ref(imported));
-
-        bool importedSuccessfully = importResults.get();
-        if (!importedSuccessfully)
+        std::shared_ptr<ImportedResults> imported = std::make_shared<ImportedResults>();
+        std::filesystem::path outDir = shouldExport ? ComputeExportPath(exportPath) : std::filesystem::path{};
+        if(!Import(path, outDir, imported)) 
         {
+            MOTION_CORE_ERROR("Failed to import model: {}", path.string());
             return nullptr;
         }
-        else
-        {
-            auto& KX                        = KinetiX::GetInstance();
-            std::string modelName           = path.filename().stem().string();
-            std::shared_ptr<Entity> root    = Entity::Create(modelName);
 
-            const BufferLayout layout
-            {
-                { "a_Position",   BufferComponents::XYZ,  BufferStride::F3, false, offsetof(Vertex, Position)    },
-                { "a_TexCoords",  BufferComponents::UV,   BufferStride::F2, false, offsetof(Vertex, TexCoord)    },
-                { "a_Normals",    BufferComponents::XYZ,  BufferStride::F3, false, offsetof(Vertex, Normal)      },
-                { "a_Tangents",   BufferComponents::XYZW, BufferStride::F4, false, offsetof(Vertex, Tangent)     },
-                { "a_Bitangents", BufferComponents::XYZ,  BufferStride::F3, false, offsetof(Vertex, Bitangent)   },
-            };
-
-            auto& node  = root->Get<NodeComponent>();
-            node.IsRoot = true;
-            
-            bool nextNodeSet{false};
-            std::shared_ptr<Entity> lastEntt{nullptr};
-
-            for (const auto& [meshID, mesh] : imported.Meshes)
-            {
-                auto entt = Entity::Create(std::format("{}[{}]", mesh.Name, meshID));
-                if (!nextNodeSet)
-                {
-                    node.EnTTNext = entt;
-                    nextNodeSet = true;
-                }
-
-                if(lastEntt) 
-                {
-                    lastEntt->Get<NodeComponent>().EnTTNext     = entt;
-                    lastEntt->Get<NodeComponent>().IsRoot       = false;
-                }
-                
-                auto& meshComponent = entt->Emplace<MeshComponent>();
-
-                auto meshPtr = Mesh::Create(
-                    mesh.Vertices.data(), static_cast<std::uint32_t>(mesh.Vertices.size()), 
-                    mesh.Indices.data(),  static_cast<std::uint32_t>(mesh.Indices.size()), 
-                    layout
-                );
-
-                auto bounds = ModelBounds(mesh.Vertices);
-                meshPtr->MIN = bounds.first;
-                meshPtr->MAX = bounds.second;
-
-                std::transform(mesh.Vertices.begin(), mesh.Vertices.end(), std::back_inserter(meshPtr->Positions), [](const Vertex& v) { return v.Position; });
-                meshPtr->Faces.insert(meshPtr->Faces.end(), mesh.Indices.begin(), mesh.Indices.end());
-
-                meshComponent.MeshPointer = std::move(meshPtr);
-
-                entt->Emplace<TransformComponent>();
-                entt->Emplace<RigidBodyComponent>();
-                entt->Emplace<ColliderComponent>();
-                
-                auto& material              = entt->Emplace<MaterialComponent>();
-                material.MaterialPointer    = Material::Create(nullptr);
-
-                KX.CreateRigidBody(entt);
-                KX.CreateBoxCollider(entt);
-                lastEntt = entt;
-            }
-
-            return root;
-        }
+        return imported;  
     }
 }
 

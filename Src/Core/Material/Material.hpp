@@ -76,7 +76,7 @@ namespace Motion
             [[nodiscard]] bool operator!=(const Material& other) const { return m_Handle != other.m_Handle; }
 
         public:
-            static std::shared_ptr<Material> Create(const std::shared_ptr<BaseMaterial>& baseMaterial);
+            static std::shared_ptr<Material> Create(const std::shared_ptr<BaseMaterial>& baseMaterial = nullptr);
             static std::shared_ptr<BaseMaterial> CreateBase(const std::filesystem::path& materialYAML);
             static void Destroy(const std::shared_ptr<Material>& material);
 

@@ -51,8 +51,6 @@ namespace Motion
         if (m_CommandQueue.empty()) return;
         EnsureInitialized();
 
-        // --- helpers (non-alloc, inline-friendly) -----------------------------
-
         auto GetFallbackTexture = [&](TextureType type) -> std::shared_ptr<ITexture>
         {
             switch (type)
@@ -73,24 +71,27 @@ namespace Motion
                                TextureType type, const std::weak_ptr<ITexture>& texture, std::int32_t slot)
         {
             if (auto tex = texture.lock())
+            {
                 tex->Bind(slot);
+            }
             else
             {
                 GetFallbackTexture(type)->Bind(slot);
             }
+            
             shader->SetUniform(uniformName, slot);
         };
 
         auto GetShaderVariant = [&](const ResolvedMaterials& RM) -> std::shared_ptr<IShader>
         {
             ShaderFeatureMask SFM{ShaderFeatureMask::USE_NONE};
-            if (RM.TMask & TexturesBitMask::HasBaseColor) SFM |= ShaderFeatureMask::USE_BASECOLOR_MAP;
-            if (RM.TMask & TexturesBitMask::HasNormal)    SFM |= ShaderFeatureMask::USE_NORMAL_MAP;
-            if (RM.TMask & TexturesBitMask::HasRoughness) SFM |= ShaderFeatureMask::USE_ROUGHNESS_MAP;
-            if (RM.TMask & TexturesBitMask::HasMetallic)  SFM |= ShaderFeatureMask::USE_METALLIC_MAP;
-            if (RM.TMask & TexturesBitMask::HasEmissive)  SFM |= ShaderFeatureMask::USE_EMISSIVE_MAP;
-            if (RM.TMask & TexturesBitMask::HasOcclusion) SFM |= ShaderFeatureMask::USE_OCCLUSION_MAP;
-            if (RM.TMask & TexturesBitMask::HasORM)       SFM |= ShaderFeatureMask::USE_ORM_MAP;
+            if (RM.TMask & TexturesBitMask::HasBaseColor)   SFM |= ShaderFeatureMask::USE_BASECOLOR_MAP;
+            if (RM.TMask & TexturesBitMask::HasNormal)      SFM |= ShaderFeatureMask::USE_NORMAL_MAP;
+            if (RM.TMask & TexturesBitMask::HasRoughness)   SFM |= ShaderFeatureMask::USE_ROUGHNESS_MAP;
+            if (RM.TMask & TexturesBitMask::HasMetallic)    SFM |= ShaderFeatureMask::USE_METALLIC_MAP;
+            if (RM.TMask & TexturesBitMask::HasEmissive)    SFM |= ShaderFeatureMask::USE_EMISSIVE_MAP;
+            if (RM.TMask & TexturesBitMask::HasOcclusion)   SFM |= ShaderFeatureMask::USE_OCCLUSION_MAP;
+            if (RM.TMask & TexturesBitMask::HasORM)         SFM |= ShaderFeatureMask::USE_ORM_MAP;
 
             auto& SV    = ShaderVariant::GetInstance();
             auto shader = SV.GetVariant("Assets/Shaders/GLSL/PBR/ModularPBR.glsl", SFM);
@@ -116,19 +117,6 @@ namespace Motion
             shader->SetUniform("uLight.Direction", cmd.LightData.Direction);
             shader->SetUniform("uLight.Color",     cmd.LightData.Color);
             shader->SetUniform("uLight.Intensity", cmd.LightData.Intensity);
-        };
-
-        auto ApplyEnvironmentTextures = [](IShader* shader, IEnvironment* env)
-        {
-            IBLTextureBinding IBL;
-            IBL.SlotBRDFLUT     = TextureSlot::BRDFLUT;
-            IBL.SlotIrradiance  = TextureSlot::Irradiance;
-            IBL.SlotPrefiltered = TextureSlot::Prefilter;
-
-            env->BindIBL(IBL);
-            shader->SetUniform("uPrefilteredMap", IBL.SlotPrefiltered);
-            shader->SetUniform("uBRDFLUTMap",     IBL.SlotBRDFLUT);
-            if (!env->IsUsingSH()) shader->SetUniform("uIrradianceMap", IBL.SlotIrradiance);
         };
 
         auto ApplyMaterials = [&](const std::shared_ptr<IShader>& shader, const ResolvedMaterials& RM)
@@ -170,17 +158,15 @@ namespace Motion
         Sort(); 
 
         Material*     lastMaterial              = nullptr;
-        IEnvironment* lastEnv                   = nullptr;
         Mesh*         lastMesh                  = nullptr;
         std::shared_ptr<IShader> lastShader     = nullptr;
 
         for (const auto& cmd : m_CommandQueue)
         {
-            if (!cmd.MeshPointer || !cmd.MaterialPointer || !cmd.EnvPointer)
+            if (!cmd.MeshPointer || !cmd.MaterialPointer)
                 continue;
 
             const bool materialChanged = (cmd.MaterialPointer != lastMaterial);
-            const bool envChanged      = (cmd.EnvPointer     != lastEnv);
 
             std::shared_ptr<IShader> shader;
             if (materialChanged || !lastShader)
@@ -204,17 +190,11 @@ namespace Motion
                 shader = lastShader;
             }
 
-            if (envChanged)
-            {
-                ApplyEnvironmentTextures(shader.get(), cmd.EnvPointer);
-                lastEnv = cmd.EnvPointer;
-            }
-
             ApplyModelData(shader.get(), cmd);
             if (cmd.MeshPointer != lastMesh)
                 lastMesh = cmd.MeshPointer;
 
-            ConfigureRegular(*m_RenderingStage);
+            // ConfigureRegular(*m_RenderingStage);
             IssueDrawIndexed(cmd);
         }
     }

@@ -38,8 +38,6 @@ namespace Motion
             ImGui::NewFrame();
             ImGuizmo::BeginFrame();
         }
-
-        //[TODO] : Add support for Win32
     }
 
     void ImGuiLayer::End()

@@ -96,10 +96,6 @@ uniform sampler2D uMetallicMap;
 uniform sampler2D uEmissiveMap;
 #endif
 
-uniform samplerCube uIrradianceMap;  
-uniform samplerCube uPrefilteredMap; 
-uniform sampler2D   uBRDFLUTMap;
-
 const float PI = 3.14159265358979323846;
 #define saturate(x) clamp(x, 0.0, 1.0)
 
@@ -174,6 +170,7 @@ vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness)
 void main()
 {
     vec4 baseSample = uMat.BaseColorFactor;
+
 #ifdef USE_BASECOLOR_MAP
     baseSample *= texture(uBaseColorMap, vUV);
 #endif
@@ -184,6 +181,8 @@ void main()
     float metallic  = uMat.MetallicFactor;
     float roughness = uMat.RoughnessFactor;
     float ao        = uMat.AOFactor;
+
+
 
 #ifdef USE_ORM_MAP
     vec3 orm   = texture(uORM, vUV).rgb;
@@ -249,45 +248,28 @@ void main()
         float VoH = clamp(dot(V, H), 0.0, 1.0);
         vec3  F   = fresnelSchlick(VoH, F0);
 
-        float NoV   = max(dot(N, V), 1e-4);
+        float NoV = max(dot(N, V), 1e-4);
         vec3  spec  = (NDF * G * F) / max(4.0 * NoV * NoL, 1e-4);
 
-        vec3 kS = F;                               
-        vec3 kD = (1.0 - kS) * (1.0 - metallic);    
+        vec3  kS = F;
+        vec3  kD = (1.0 - kS) * (1.0 - metallic);
 
-        Lo += (kD * albedo / PI + spec) * (uLight.Color * uLight.Intensity) * NoL;
+        vec3  lightI = (uLight.Color * uLight.Intensity) * NoL;
+
+        vec3 diffuse = (kD * albedo / PI) * lightI;
+        vec3 specular = spec * lightI;
+
+        Lo += diffuse * ao + specular;   // AO on diffuse only
     }
 
-    //////////////////////////////////////////////////////////////
-
-    vec3 R      = normalize(reflect(-V, N));
-    vec3 F_ibl  = fresnelSchlickRoughness(NoV, F0, roughness);
-
-    int   levels  = textureQueryLevels(uPrefilteredMap);
-    float maxLod  = float(max(levels - 1, 0));      
-    float lod     = roughness * maxLod;
-
-    vec3 irradiance  = texture(uIrradianceMap, N).rgb;
-    vec3 prefiltered = textureLod(uPrefilteredMap, R, lod).rgb;
-    vec2 brdf        = texture(uBRDFLUTMap, vec2(NoV, roughness)).rg;
-
-    vec3 kS = F_ibl;
-    vec3 kD = (1.0 - kS) * (1.0 - metallic);
-
-    float specAO = ao;
-
-    vec3 envLighting    = kD * (irradiance * albedo / PI) * ao + prefiltered * (F_ibl * brdf.x + brdf.y) * specAO;
-    vec3 color          = envLighting + Lo;
-
-    //////////////////////////////////////////////////////////////
-
-    vec3 emissive = uMat.EmissiveColor * uMat.EmissiveStrength;
+    vec3 emissive   = uMat.EmissiveColor * uMat.EmissiveStrength;
 
 #ifdef USE_EMISSIVE_MAP
     emissive *= texture(uEmissiveMap, vUV).rgb;
 #endif
 
-    color += emissive;
+    vec3 ambient = 0.03 * albedo * ao;  // cheap placeholder for missing IBL
+    vec3 color   = ambient + Lo + emissive;
 
     //////////////////////////////////////////////////////////////
 

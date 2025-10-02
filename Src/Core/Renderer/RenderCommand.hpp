@@ -5,7 +5,6 @@
 #include "Mesh.hpp"
 #include "Shaders.hpp"
 #include "Texture.hpp"
-#include "Environment.hpp"
 
 namespace Motion
 {   
@@ -44,18 +43,16 @@ namespace Motion
 
     struct RenderCommand
     {
-        UUID SortKey{0};
-
+        UUID            SortKey{0};
         Mesh*           MeshPointer{nullptr};
         Material*       MaterialPointer{nullptr};
-        IEnvironment*   EnvPointer{nullptr};
 
         ModelMatrix             ModelData{};
         CameraViewProjection    CameraData{};
         DirectionalLight        LightData{};
 
-        bool operator<(const RenderCommand& other) const { return std::tie(SortKey, MaterialPointer, EnvPointer, MeshPointer) < std::tie(other.SortKey, other.MaterialPointer, other.EnvPointer, other.MeshPointer); }
-        bool operator>(const RenderCommand& other) const { return std::tie(SortKey, MaterialPointer, EnvPointer, MeshPointer) > std::tie(other.SortKey, other.MaterialPointer, other.EnvPointer, other.MeshPointer); }
+        bool operator<(const RenderCommand& other) const { return std::tie(SortKey, MaterialPointer, MeshPointer) < std::tie(other.SortKey, other.MaterialPointer, other.MeshPointer); }
+        bool operator>(const RenderCommand& other) const { return std::tie(SortKey, MaterialPointer, MeshPointer) > std::tie(other.SortKey, other.MaterialPointer, other.MeshPointer); }
     };
 
 }

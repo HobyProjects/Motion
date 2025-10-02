@@ -149,13 +149,11 @@ namespace Motion
         float GizmoSizeClip   = 0.18f;   // ImGuizmo size in clip space
         bool  UseLocalSpace   = true;    // LOCAL vs WORLD for rotation
 
-        // Optional debugging lines (a little sun-ray flair)
         bool  DrawRays        = true;
         float RayLength       = 0.75f;
         int   RayCount        = 6;
     };
 
-    // ----------------------------- Light gizmo ----------------------------- //
     static bool DrawDirectionalLight(DirectLight& light, const Camera3D& camera, const ViewportRect& rect, ImDrawList* dl, const LightGizmoConfig& cfg)
     {
         ImGuizmo::PushID(cfg.GizmoId);
@@ -249,7 +247,6 @@ namespace Motion
         return changed;
     }
 
-    // ----------------------------- Panel ----------------------------- //
     void SceneViewportPanel::RenderUI(ScenePanelContext& context)
     {
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {0, 0});
@@ -277,8 +274,8 @@ namespace Motion
         ViewportRect rect{ vpMin, vpMax };
         ImDrawList* windowDL = ImGui::GetWindowDrawList();
 
-        context.ActiveSceneSpecification.Viewport.MIN = { vpMin.x, vpMin.y };
-        context.ActiveSceneSpecification.Viewport.MAX = { vpMax.x, vpMax.y };
+        context.ActiveScene->GetSpecification().Viewport.MIN = { vpMin.x, vpMin.y };
+        context.ActiveScene->GetSpecification().Viewport.MAX = { vpMax.x, vpMax.y };
 
         const ImVec2 mouse = ImGui::GetMousePos();
 
@@ -293,9 +290,10 @@ namespace Motion
                 glm::vec2 local = { mouse.x - vpMin.x, mouse.y - vpMin.y };
                 local.y = vpAvail.y - local.y;
 
-                const glm::vec2 fbSize = {
-                    (float)context.ActiveSceneSpecification.Viewport.FrameSpec.Width,
-                    (float)context.ActiveSceneSpecification.Viewport.FrameSpec.Height
+                const glm::vec2 fbSize = 
+                {
+                    (float)context.ActiveScene->GetSpecification().Viewport.FrameSpec.Width,
+                    (float)context.ActiveScene->GetSpecification().Viewport.FrameSpec.Height
                 };
                 const glm::vec2 mouseInFB = {
                     local.x * (fbSize.x / vpAvail.x),
@@ -374,13 +372,13 @@ namespace Motion
             {
                 const bool clutchHide = ImGui::IsKeyDown(ImGuiKey_4);
                 static LightGizmoConfig lightCfg;
-                lightCfg.Enabled = context.ActiveSceneSpecification.Environment.Sun.ShowLightDirectionGuizmo && !clutchHide;
+                lightCfg.Enabled = context.ActiveScene->GetEnvironment().Sun.ShowLightDirectionGuizmo && !clutchHide;
 
                 if (!gizmoConsumedInput && lightCfg.Enabled)
                 {
                     // Mirror the setting back so user toggles still work elsewhere
-                    context.ActiveSceneSpecification.Environment.Sun.ShowLightDirectionGuizmo = true;
-                    DrawDirectionalLight(context.ActiveScene->GetEnvironment().Sun, context.ActiveCamera.Camera, rect, windowDL, lightCfg);
+                    context.ActiveScene->GetEnvironment().Sun.ShowLightDirectionGuizmo = true;
+                    DrawDirectionalLight(context.ActiveScene->GetEnvironment().Sun, context.ActiveScene->GetCamera(), rect, windowDL, lightCfg);
                 }
             }
         }
@@ -427,7 +425,7 @@ namespace Motion
         // Resize callback
         if (context.EditorLayerInstance && context.ActiveScene)
         {
-            auto& viewport = context.ActiveSceneSpecification.Viewport;
+            auto& viewport = context.ActiveScene->GetSpecification().Viewport;
             if (viewport.Size.x != vpAvail.x || viewport.Size.y != vpAvail.y)
                 context.EditorLayerInstance->SetViewportSize({ vpAvail.x, vpAvail.y });
         }

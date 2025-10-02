@@ -5,7 +5,6 @@
 
 #include "ImguiLayer.hpp"
 #include "Scene.hpp"
-#include "Environment.hpp"
 #include "ScenePanel.hpp"
 
 namespace Motion
@@ -39,7 +38,6 @@ namespace Motion
         private:
             glm::vec2                     m_CurrentViewportSize{ 1280.0f, 720.0f };
             std::shared_ptr<IFrameBuffer> m_Framebuffer{ nullptr };
-            std::shared_ptr<IEnvironment> m_Environment{ nullptr };
 
             SceneViewport                                               m_Viewport{};
             std::shared_ptr<Scene>                                      m_ActiveScene{ nullptr };

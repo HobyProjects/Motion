@@ -9,7 +9,6 @@ namespace Motion
     {
         ImGui::Begin("Project Scenes");
 
-        // ── Top row: Search box + Add button (same line)
         static char s_SearchBuf[128] = {};
         {
             ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 38.0f); // leave room for the button
@@ -26,7 +25,6 @@ namespace Motion
             ImGui::Separator();
         }
 
-        // ── Create New Scene modal
         if (ImGui::BeginPopupModal("New Scene", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
         {
             static char s_NewSceneName[128] = {};
@@ -51,7 +49,6 @@ namespace Motion
 
             ImGui::Checkbox("Set active after creating", &s_SetActive);
 
-            // Validation helpers
             auto isBlank =
                 [](const char* s)
                 {
@@ -76,7 +73,8 @@ namespace Motion
 
             ImGui::Separator();
 
-            auto tryCreate = [&]() {
+            auto tryCreate = [&]() 
+            {
                 std::string name = s_NewSceneName;
                 if (isBlank(name.c_str()))
                 {
@@ -93,7 +91,7 @@ namespace Motion
                 s_Init = true;
                 ImGui::CloseCurrentPopup();
                 return true;
-                };
+             };
 
             bool createClicked = ImGui::Button("Create", ImVec2(100, 0));
             if (createClicked || enterPressed)

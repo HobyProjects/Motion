@@ -35,6 +35,9 @@ namespace Motion
             glm::mat4 GetProjection() const { return Projection; }
             glm::mat4 GetView() const { return View; }
             glm::mat4 GetCameraMatrix() const { return MVP; }
+            glm::vec3 GetPosition() const { return Position; }
+            glm::vec3 GetOrientation() const { return Oriantaion; }
+            void SetAspectRatio(float width, float height);
             void LookAt(const glm::vec3& target, const glm::vec3& eye = glm::vec3(-1));
             void RefreshCameraMatrix();
     };

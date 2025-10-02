@@ -95,7 +95,6 @@ namespace Motion
     struct SceneEnvironment
     {
         DirectLight Sun{};
-        std::shared_ptr<IEnvironment> EnvironmentInstance;
         ScenePhysics  Physics;
     };
 }

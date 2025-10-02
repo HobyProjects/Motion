@@ -351,51 +351,6 @@ namespace Motion
             }
 
             {
-                std::int32_t selected{static_cast<std::int32_t>(CC.Type)};
-                ComboBox("Type",  { "Box", "Sphere", "Capsule", "Convex" }, selected, [&](std::int32_t selectedIndex, const std::string& selectedItem)
-                {
-                    if(CC.Type != static_cast<ShapeType>(selectedIndex))
-                        KinetiX::GetInstance().ChangeCollider(selectedEntity, static_cast<ShapeType>(selectedIndex));
-                });
-
-                if (ImGui::IsItemHovered()) 
-                {
-                    ImGui::SetItemTooltip(
-                        "Collision shape used for contacts:\n"
-                        " • Box: half-extents (hx,hy,hz)\n"
-                        " • Sphere: radius r\n"
-                        " • Capsule: radius r, height h (cylindrical section)\n"
-                        " • Convex: mesh hull (can bake non-uniform scale)"
-                    );
-                }
-
-                ImGui::BeginDisabled();
-                
-                if(CC.Type == ShapeType::Box)
-                {
-                    DragFloat3("Half-Extents", CC.BoxHalfExtents);
-                }
-
-                if(CC.Type == ShapeType::Sphere)
-                {
-                    DragFloat("Radius", &CC.SphereRadius);
-                }
-
-                if(CC.Type == ShapeType::Capsule)
-                {
-                    DragFloat("Radius", &CC.Capsule.Radius);
-                    DragFloat("Height", &CC.Capsule.Height);
-                }
-
-                if(CC.Type == ShapeType::Convex)
-                {
-                    DragFloat3("Scale", TRC.Scale);
-                }
-
-                ImGui::EndDisabled();
-
-                ImGui::SeparatorEx(ImGuiSeparatorFlags_Horizontal, 0.8f);
-
                 float bounce = CC.Restitution;
                 if(DragFloat("Bounce", &bounce, 0.001f, 0.0f, 1.0f))
                 {

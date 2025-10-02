@@ -4,7 +4,6 @@
 #include "Components.hpp"
 #include "Buffers.hpp"
 
-#include "SceneCamera.hpp"
 #include "SceneRenderer.hpp"
 #include "SceneEnviroment.hpp"
 #include "ImguiLayer.hpp"
@@ -34,7 +33,7 @@ namespace Motion
         std::string Name{};
         bool IsActive{ false };
         SceneViewport Viewport{};
-        SceneEnvironment Environment{};
+
 
         SceneSpecification() = default;
         ~SceneSpecification() = default;
@@ -59,10 +58,10 @@ namespace Motion
             [[nodiscard]] std::shared_ptr<Entity> GetSelectedEntity() const { return m_SelectedEntity; }
             [[nodiscard]] std::shared_ptr<Entity> PickEntity(const glm::vec2& mousePos, const glm::vec2& viewportSize);
             
-            [[nodiscard]] SceneCamera& GetCamera() { return m_Camera; }
-            [[nodiscard]] glm::mat4 GetCameraProjection() const { return m_Camera.Camera.Projection; }
-            [[nodiscard]] glm::mat4 GetCameraView() const { return m_Camera.Camera.View; }
-            [[nodiscard]] glm::vec3 GetCameraPosition() const { return m_Camera.Camera.Position; }
+            [[nodiscard]] Camera3D& GetCamera() { return m_Camera; }
+            [[nodiscard]] glm::mat4 GetCameraProjection() const { return m_Camera.Projection; }
+            [[nodiscard]] glm::mat4 GetCameraView() const { return m_Camera.View; }
+            [[nodiscard]] glm::vec3 GetCameraPosition() const { return m_Camera.Position; }
 
             [[nodiscard]] std::vector<std::shared_ptr<Entity>>::iterator begin() { return m_Entities.begin(); }
             [[nodiscard]] std::vector<std::shared_ptr<Entity>>::iterator end() { return m_Entities.end(); }
@@ -70,7 +69,7 @@ namespace Motion
             [[nodiscard]] std::vector<std::shared_ptr<Entity>>::const_iterator end() const { return m_Entities.end(); }
 
             [[nodiscard]] SceneSpecification& GetSpecification() { return m_Specification; }
-            [[nodiscard]] SceneEnvironment& GetEnvironment() { return m_Specification.Environment; }
+            [[nodiscard]] SceneEnvironment& GetEnvironment() { return m_Environment; }
             [[nodiscard]] std::string GetName() const { return m_Specification.Name; }
             [[nodiscard]] UUID GetID() const { return m_Specification.SceneHandle; }
             [[nodiscard]] bool IsActive() const { return m_Specification.IsActive; }
@@ -83,13 +82,23 @@ namespace Motion
             void GotoSimulation(SimulationState state);
 
         private:
+            bool OnMouseCursorPosChange(WindowHandle handle, EventMouseCursorMove& e);
+            bool OnMouseWheelScrollEvent(WindowHandle handle, EventMouseWheelScroll& e);
+
+        private:
             std::vector<std::shared_ptr<Entity>>    m_Entities{};
             std::shared_ptr<Entity>                 m_SelectedEntity{ Entity::Empty() };
 
             SceneSpecification  m_Specification;
-            SceneCamera         m_Camera;
+            Camera3D            m_Camera;
+            SceneEnvironment    m_Environment;
+
+
             SimulationState     m_SimState{SimulationState::Stop};
             bool                m_InSimulation{false};
+
+            float m_MouseX  = 0.0f, m_MouseY    = 0.0f;
+            float m_Yaw     = -90.0f, m_Pitch   = 0.0f;
 
             friend class SceneRenderer;
     };

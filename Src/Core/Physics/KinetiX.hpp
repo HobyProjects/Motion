@@ -55,15 +55,11 @@ namespace Motion
             ~KinetiX() override = default;
             
             void DestroyAll();
-            void DestroyCachedMeshesFor(Entity* key);
 
         private:
             rp3d::PhysicsCommon m_Common;
             rp3d::PhysicsWorld* m_World{nullptr};
             rp3d::PhysicsWorld::WorldSettings m_Settings{};
-            rp3d::DefaultLogger* m_Logger{nullptr};
-
-            std::unordered_map<Entity*, rp3d::ConvexMesh*>   m_ConvexMeshes{};
-            std::unordered_map<Entity*, rp3d::TriangleMesh*> m_TriangleMeshes{};
+            std::unordered_map<Entity*, HullBuildResult> m_ConvexCache{};
     };
 }

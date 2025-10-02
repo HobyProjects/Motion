@@ -57,12 +57,12 @@ namespace Motion
     {
         const rp3d::Quaternion q    = tr.getOrientation();
         const rp3d::Vector3 pos     = tr.getPosition();
-        out.Translation             = glm::vec3(pos.x, pos.y, pos.z);
-        out.Rotation                = glm::quat(q.w, q.x, q.y, q.z);
+        out.Translation             = ToVec3(pos);
+        out.Rotation                = ToQuat(q);
     }
 
 
-    inline rp3d::BodyType ToRp3dBodyType(BodyType t)
+    inline rp3d::BodyType GetBodyType(BodyType t)
     {
         switch (t) 
         { 
@@ -73,228 +73,320 @@ namespace Motion
         return rp3d::BodyType::STATIC;
     }
 
-    inline float sqr(float x) 
-    { 
-        return x * x; 
-    }
-
-    inline float length2(const glm::vec3& v) 
-    { 
-        return glm::dot(v, v); 
-    }
-
-    inline bool nearlyEqual(const glm::vec3& a, const glm::vec3& b, float eps) 
+    inline float Distance(const glm::vec3& a, const glm::vec3& b) 
     {
-        return (fabsf(a.x - b.x) <= eps) && (fabsf(a.y - b.y) <= eps) && (fabsf(a.z - b.z) <= eps);
+        glm::vec3 d = a - b;
+        return glm::dot(d, d);
     }
 
-    inline float triArea2(const glm::vec3& a, const glm::vec3& b, const glm::vec3& c) 
+    inline bool IsFinite(const glm::vec3& p) 
     {
-        return length2(glm::cross(b - a, c - a)); // squared area * 4
+        return std::isfinite(p.x) && std::isfinite(p.y) && std::isfinite(p.z);
     }
 
-    inline bool isFiniteVec3(const glm::vec3& v) 
+    static inline float Len2(const glm::vec3& v) { return glm::dot(v, v); }
+
+    inline glm::vec3 Centroid(const std::vector<glm::vec3>& v) 
     {
-        return std::isfinite(v.x) && std::isfinite(v.y) && std::isfinite(v.z);
+        glm::dvec3 acc(0.0);
+        for (auto& p : v) acc += glm::dvec3(p);
+        return v.empty() ? glm::vec3(0) : glm::vec3(acc / (double)v.size());
     }
 
-    struct QKey 
+    struct AABB 
     {
-        int x, y, z;
-        bool operator==(const QKey& o) const { return x == o.x && y == o.y && z == o.z; }
+        glm::vec3 minv, maxv;
     };
 
-    struct QKeyHash 
+    struct CellKey 
     {
-        size_t operator()(const QKey& k) const 
-        {
-            size_t h = 1469598103934665603ull;
-            auto mix = [&](int v) 
-            {
-                size_t u = static_cast<size_t>(v);
-                h ^= u + 0x9e3779b97f4a7c15ull + (h << 6) + (h >> 2);
-            };
+        int64_t x, y, z;
+        bool operator==(const CellKey& o) const { return x==o.x && y==o.y && z==o.z; }
+    };
 
-            mix(k.x); mix(k.y); mix(k.z);
-            return h;
+    struct CellKeyHash 
+    {
+        size_t operator()(const CellKey& k) const noexcept 
+        {
+            auto h = static_cast<uint64_t>(1469598103934665603ull);
+            auto mix = [&](uint64_t v){ h ^= v; h *= 1099511628211ull; };
+            mix(static_cast<uint64_t>(k.x) + 0x9e3779b97f4a7c15ull);
+            mix(static_cast<uint64_t>(k.y) + 0x85ebca6b);
+            mix(static_cast<uint64_t>(k.z) + 0xc2b2ae35);
+            return static_cast<size_t>(h);
         }
     };
 
-    struct WeldResult 
+    enum class PointSetRank { Degenerate, Line, Plane, Full3D };
+
+    struct HullBuildResult 
     {
-        std::vector<glm::vec3> vertices;  
-        std::vector<uint32_t>  indices;   
+        rp3d::ConvexMesh* mesh = nullptr; 
+        rp3d::ConvexMeshShape* shape = nullptr; 
+        glm::vec3 localOffset = glm::vec3(0.0f);
+        std::vector<std::string> log;              
+        bool ok() const { return mesh && shape; }
     };
 
-    inline WeldResult weldAndClean(const std::vector<glm::vec3>& inVerts, const std::vector<uint32_t>&  inIndices, float epsWeld, float epsArea) 
+    static inline CellKey ToCell(const glm::vec3& p, float eps) 
     {
-        MOTION_ASSERT((inIndices.size() % 3) == 0, "Triangle index list must be a multiple of 3");
-        std::unordered_map<QKey, uint32_t, QKeyHash> grid;
-        grid.reserve(inVerts.size() * 2 + 1);
-
-        std::vector<glm::vec3> unique;
-        unique.reserve(inVerts.size());
-
-        std::vector<uint32_t> remap(inVerts.size(), UINT32_MAX);
-
-        auto quantize = [&](const glm::vec3& v) -> QKey 
+        return CellKey
         {
-            return QKey{
-                (int)std::floor(v.x / epsWeld),
-                (int)std::floor(v.y / epsWeld),
-                (int)std::floor(v.z / epsWeld)
-            };
+            static_cast<int64_t>(std::floor(p.x / eps)),
+            static_cast<int64_t>(std::floor(p.y / eps)),
+            static_cast<int64_t>(std::floor(p.z / eps))
+        };
+    }
+
+    inline AABB ComputeAABB(const std::vector<glm::vec3>& v) 
+    {
+        AABB b;
+        if (v.empty()) { b.minv = b.maxv = glm::vec3(0); return b; }
+        b.minv = b.maxv = v[0];
+        for (auto& p : v) 
+        {
+            b.minv = glm::min(b.minv, p);
+            b.maxv = glm::max(b.maxv, p);
+        }
+        
+        return b;
+    }
+
+    inline PointSetRank EstimateRank(const std::vector<glm::vec3>& v, float eps = 1e-6f) 
+    {
+        if (v.size() < 4) return PointSetRank::Degenerate;
+
+        AABB b          = ComputeAABB(v);
+        glm::vec3 ext   = b.maxv - b.minv;
+        float e[3]      = { std::abs(ext.x), std::abs(ext.y), std::abs(ext.z) };
+
+        std::sort(e, e+3);
+
+        if (e[2] < eps) return PointSetRank::Degenerate; 
+        if (e[1] < eps) return PointSetRank::Line;       
+        if (e[0] < eps) return PointSetRank::Plane; 
+
+        return PointSetRank::Full3D;
+    }
+
+    inline void Simplify(std::vector<glm::vec3>& points, std::uint32_t maxPoints) 
+    {
+        if (points.size() <= maxPoints || maxPoints == 0) return;
+        if (points.empty()) return;
+
+        const std::size_t N = points.size();
+        std::size_t minX = 0, maxX = 0, minY = 0, maxY = 0, minZ = 0, maxZ = 0;
+        for (std::size_t i = 1; i < N; ++i) 
+        {
+            if (points[i].x < points[minX].x) minX = i;
+            if (points[i].x > points[maxX].x) maxX = i;
+            if (points[i].y < points[minY].y) minY = i;
+            if (points[i].y > points[maxY].y) maxY = i;
+            if (points[i].z < points[minZ].z) minZ = i;
+            if (points[i].z > points[maxZ].z) maxZ = i;
+        }
+
+        std::vector<std::size_t> chosenIdx;
+        chosenIdx.reserve(std::min<std::size_t>(maxPoints, 6));
+        auto pushUnique = [&](std::size_t idx) 
+        {
+            if (std::find(chosenIdx.begin(), chosenIdx.end(), idx) == chosenIdx.end())
+                chosenIdx.push_back(idx);
         };
 
-        for (uint32_t i = 0; i < (uint32_t)inVerts.size(); ++i) 
-        {
-            const glm::vec3 v = inVerts[i];
-            if (!isFiniteVec3(v)) continue; 
-            QKey k = quantize(v);
+        pushUnique(minX); pushUnique(maxX);
+        pushUnique(minY); pushUnique(maxY);
+        pushUnique(minZ); pushUnique(maxZ);
 
-            uint32_t idx;
-            auto it = grid.find(k);
-            if (it == grid.end()) 
+        if (chosenIdx.size() >= maxPoints) 
+        {
+            chosenIdx.resize(maxPoints);
+        } 
+        else 
+        {
+            std::vector<float> minDist2(N, std::numeric_limits<float>::infinity());
+            auto updateMinDists = [&](std::size_t newIdx) 
             {
-                idx = (uint32_t)unique.size();
-                unique.push_back(v);
-                grid.emplace(k, idx);
-            } 
-            else 
-            {
-                idx = it->second;
-                if (!nearlyEqual(unique[idx], v, epsWeld)) 
+                const glm::vec3& pNew = points[newIdx];
+                for (std::size_t i = 0; i < N; ++i) 
                 {
-                    static const int off[6][3] = {{1,0,0},{-1,0,0},{0,1,0},{0,-1,0},{0,0,1},{0,0,-1}};
-                    bool snapped = false;
-                    for (auto& d : off) 
+                    float d2 = Distance(points[i], pNew);
+                    if (d2 < minDist2[i]) minDist2[i] = d2;
+                }
+            };
+
+            for (std::size_t idx : chosenIdx) updateMinDists(idx);
+
+            std::vector<char> taken(N, 0);
+            for (auto idx : chosenIdx) taken[idx] = 1;
+            while (chosenIdx.size() < maxPoints) 
+            {
+                float bestD2 = -1.0f;
+                std::size_t bestIdx = N; 
+                for (std::size_t i = 0; i < N; ++i) 
+                {
+                    if (taken[i]) continue;
+                    if (minDist2[i] > bestD2) 
                     {
-                        QKey k2{k.x + d[0], k.y + d[1], k.z + d[2]};
-                        auto it2 = grid.find(k2);
-                        if (it2 != grid.end() && nearlyEqual(unique[it2->second], v, epsWeld)) 
-                        {
-                            idx = it2->second;
-                            snapped = true;
-                            break;
-                        }
+                        bestD2 = minDist2[i];
+                        bestIdx = i;
                     }
-                    if (!snapped) 
+                }
+
+                if (bestIdx == N) break; 
+
+                taken[bestIdx] = 1;
+                chosenIdx.push_back(bestIdx);
+                updateMinDists(bestIdx);
+            }
+        }
+
+        std::vector<glm::vec3> simplified;
+        simplified.reserve(chosenIdx.size());
+        for (std::size_t idx : chosenIdx) simplified.push_back(points[idx]);
+        points.swap(simplified);
+    }
+
+    inline void RemoveDuplicates(std::vector<glm::vec3>& verts, float eps, std::vector<std::uint32_t>& oldToNew)
+    {
+        const std::size_t N = verts.size();
+        oldToNew.assign(N, 0);
+
+        if (N == 0) 
+        {
+            verts.clear();
+            return;
+        }
+
+        const float minEps = 1e-12f;
+        if (!(eps > minEps) || !std::isfinite(eps))
+        {
+            eps = 1e-6f;
+        }
+        const float eps2 = eps * eps;
+
+        std::unordered_map<CellKey, std::vector<std::uint32_t>, CellKeyHash> grid;
+        grid.reserve(N * 2);
+
+        std::vector<glm::vec3> uniqueVerts;
+        uniqueVerts.reserve(N);
+
+
+        for (std::size_t i = 0; i < N; ++i) 
+        {
+            const glm::vec3 p = verts[i];
+            if (!IsFinite(p)) 
+            {
+                std::uint32_t newIdx = static_cast<std::uint32_t>(uniqueVerts.size());
+                uniqueVerts.push_back(p);
+                oldToNew[i] = newIdx;
+                continue;
+            }
+
+            const CellKey c = ToCell(p, eps);
+            std::uint32_t matchIdx = std::numeric_limits<std::uint32_t>::max();
+            for (int dz = -1; dz <= 1 && matchIdx == std::numeric_limits<std::uint32_t>::max(); ++dz) 
+            {
+                for (int dy = -1; dy <= 1 && matchIdx == std::numeric_limits<std::uint32_t>::max(); ++dy) 
+                {
+                    for (int dx = -1; dx <= 1 && matchIdx == std::numeric_limits<std::uint32_t>::max(); ++dx) 
                     {
-                        idx = (uint32_t)unique.size();
-                        unique.push_back(v);
-                        grid.emplace(quantize(v + glm::vec3(1e-9f)), idx); 
+                        CellKey ncell{ c.x + dx, c.y + dy, c.z + dz };
+                        auto it = grid.find(ncell);
+                        if (it == grid.end()) continue;
+
+                        const auto& candidates = it->second;
+                        for (std::uint32_t u : candidates) {
+                            if (Distance(p, uniqueVerts[u]) <= eps2) 
+                            {
+                                matchIdx = u; 
+                                break;
+                            }
+                        }
                     }
                 }
             }
-            remap[i] = idx;
-        }
 
-        std::vector<uint32_t> triOut;
-        triOut.reserve(inIndices.size());
-
-        auto pushTriIfValid = [&](uint32_t a, uint32_t b, uint32_t c) 
-        {
-            if (a == UINT32_MAX || b == UINT32_MAX || c == UINT32_MAX) return;
-            if (a == b || b == c || c == a) return; 
-            const glm::vec3& A = unique[a];
-            const glm::vec3& B = unique[b];
-            const glm::vec3& C = unique[c];
-            if (triArea2(A, B, C) <= epsArea) return;
-            triOut.push_back(a); triOut.push_back(b); triOut.push_back(c);
-        };
-
-        for (size_t i = 0; i < inIndices.size(); i += 3) 
-        {
-            const uint32_t ia = inIndices[i + 0];
-            const uint32_t ib = inIndices[i + 1];
-            const uint32_t ic = inIndices[i + 2];
-            MOTION_ASSERT(ia < remap.size() && ib < remap.size() && ic < remap.size(), "Index out of range");
-            pushTriIfValid(remap[ia], remap[ib], remap[ic]);
-        }
-
-        std::vector<uint8_t> used(unique.size(), 0);
-        for (uint32_t idx : triOut) used[idx] = 1;
-
-        std::vector<uint32_t> compactRemap(unique.size(), UINT32_MAX);
-        std::vector<glm::vec3> compact;
-        compact.reserve(unique.size());
-        for (uint32_t i = 0; i < (uint32_t)unique.size(); ++i) 
-        {
-            if (used[i]) 
+            if (matchIdx == std::numeric_limits<std::uint32_t>::max()) 
             {
-                compactRemap[i] = (uint32_t)compact.size();
-                compact.push_back(unique[i]);
+                std::uint32_t newIdx = static_cast<std::uint32_t>(uniqueVerts.size());
+                uniqueVerts.push_back(p);
+                oldToNew[i] = newIdx;
+                grid[c].push_back(newIdx);
+
+            } 
+            else 
+            {
+                oldToNew[i] = matchIdx;
             }
         }
-        for (uint32_t& idx : triOut) idx = compactRemap[idx];
 
-        WeldResult out;
-        out.vertices = std::move(compact);
-        out.indices  = std::move(triOut);
-        return out;
+        verts.swap(uniqueVerts);
     }
 
-    inline bool hasNonCoplanarSeed(const std::vector<glm::vec3>& pts, float eps) 
+    inline void ComputeConvexHull(rp3d::PhysicsCommon& physicsCommon, const std::vector<glm::vec3>& inputPoints, HullBuildResult& res, const rp3d::Vector3 scaling = rp3d::Vector3(1,1,1), float degeneracyEps = 1e-6f)
     {
-        if (pts.size() < 4) return false;
-        uint32_t i0 = 0, i1 = UINT32_MAX, i2 = UINT32_MAX;
-        for (uint32_t i = 1; i < (uint32_t)pts.size(); ++i) 
+        if (inputPoints.size() < 4) 
         {
-            if (length2(pts[i] - pts[i0]) > sqr(eps)) { i1 = i; break; }
+            res.log.emplace_back("Not enough unique points to build a 3D hull (need >= 4).");
+            return;
         }
 
-        if (i1 == UINT32_MAX) return false;
-        for (uint32_t i = i1 + 1; i < (uint32_t)pts.size(); ++i) 
+        auto pts = inputPoints;
+        res.localOffset = Centroid(pts);
+        for (auto& p : pts) p -= res.localOffset;
+
+        switch (EstimateRank(pts, degeneracyEps)) 
         {
-            if (triArea2(pts[i0], pts[i1], pts[i]) > sqr(eps)) { i2 = i; break; }
+            case PointSetRank::Degenerate:
+                res.log.emplace_back("Point set is degenerate (all same / too close).");
+                return;
+            case PointSetRank::Line:
+                res.log.emplace_back("Point set is nearly colinear; cannot build a 3D convex hull.");
+                return;
+            case PointSetRank::Plane:
+                res.log.emplace_back("Point set is nearly coplanar; 3D hull may fail or be paper-thin.");
+                return;
+            case PointSetRank::Full3D:
+                break;
         }
 
-        if (i2 == UINT32_MAX) return false;
-        glm::vec3 n = glm::normalize(glm::cross(pts[i1] - pts[i0], pts[i2] - pts[i0]));
-        for (uint32_t i = i2 + 1; i < (uint32_t)pts.size(); ++i) 
+        std::vector<float> flat; flat.reserve(pts.size()*3);
+        for (auto& p : pts) { flat.push_back(p.x); flat.push_back(p.y); flat.push_back(p.z); }
+
+        rp3d::VertexArray vtxArray(
+            flat.data(),
+            sizeof(float)*3,
+            static_cast<uint32_t>(pts.size()),
+            rp3d::VertexArray::DataType::VERTEX_FLOAT_TYPE
+        );
+
+        std::vector<rp3d::Message> rpmsg;
+        rp3d::ConvexMesh* convex = physicsCommon.createConvexMesh(vtxArray, rpmsg);
+
+        for (const auto& m : rpmsg) 
         {
-            float d = glm::dot(n, pts[i] - pts[i0]);
-            if (fabsf(d) > eps) return true;
+            std::string t = (m.type == rp3d::Message::Type::Information) ? "Info" :
+                            (m.type == rp3d::Message::Type::Warning)     ? "Warn" : "Error";
+
+            res.log.push_back(std::format("{}: {}", t, m.text.empty() ? m.text : ""));
         }
 
-        return false;
-    }
-
-    struct CookScale 
-    {
-        glm::vec3 toCook   = glm::vec3(1.0f);
-        glm::vec3 toModel  = glm::vec3(1.0f);
-    };
-
-    inline CookScale chooseCookScale(const std::vector<glm::vec3>& v) 
-    {
-        glm::vec3 mn( FLT_MAX), mx(-FLT_MAX);
-        for (auto& p : v) 
+        if (!convex) 
         {
-            mn = glm::min(mn, p);
-            mx = glm::max(mx, p);
+            res.log.emplace_back("rp3d failed to create ConvexMesh (see messages above).");
+            return;
         }
 
-        glm::vec3 ext = glm::max(mx - mn, glm::vec3(1e-6f));
-        float maxAxis = glm::compMax(ext);
-        float s = (maxAxis < 1e-2f) ? (1.0f / std::max(maxAxis, 1e-6f)) :
-                  (maxAxis > 1e+3f) ? (1.0f / maxAxis) : 1.0f;
+        rp3d::ConvexMeshShape* shape = physicsCommon.createConvexMeshShape(convex, scaling);
+        if (!shape) 
+        {
+            res.log.emplace_back("Failed to create ConvexMeshShape.");
+            physicsCommon.destroyConvexMesh(convex);
+            return;
+        }
 
-        CookScale cs;
-        cs.toCook  = glm::vec3(s);
-        cs.toModel = glm::vec3(1.0f / s);
-        return cs;
+        res.mesh  = convex;
+        res.shape = shape;
     }
-
-    inline bool nearlyEqual(float a, float b, float eps = 1e-4f) 
-    {
-        return std::fabs(a - b) <= eps * std::max(1.0f, std::max(std::fabs(a), std::fabs(b)));
-    }
-
-    inline bool nearlyEqualVec3(const glm::vec3& a, const glm::vec3& b, float eps = 1e-4f) 
-    {
-        return nearlyEqual(a.x,b.x,eps) && nearlyEqual(a.y,b.y,eps) && nearlyEqual(a.z,b.z,eps);
-    }
-
-
 }

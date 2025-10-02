@@ -21,6 +21,5 @@ namespace Motion
             static void BeginScene() noexcept;
             static void Submit(Scene* scene) noexcept;
             static void EndScene() noexcept;
-            static void RenderSkyboxPass(Scene* scene) noexcept;
     };
 }

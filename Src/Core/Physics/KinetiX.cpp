@@ -26,12 +26,6 @@ namespace Motion
 
     void KinetiX::DestroyAll() 
     {
-        for (auto& p : m_ConvexMeshes)   m_Common.destroyConvexMesh(p.second);
-        for (auto& p : m_TriangleMeshes) m_Common.destroyTriangleMesh(p.second);
-
-        m_ConvexMeshes.clear();
-        m_TriangleMeshes.clear();
-
         for(std::uint32_t i = 0; i < m_World->getNbRigidBodies(); ++i)
         {
             rp3d::RigidBody* body = m_World->getRigidBody(i);
@@ -40,23 +34,13 @@ namespace Motion
                 rp3d::Collider* collider = body->getCollider(k);
                 body->removeCollider(collider);
             }
-
             m_World->destroyRigidBody(body);
         }
-    }
 
-    void KinetiX::DestroyCachedMeshesFor(Entity* key)
-    {
-        if (auto it = m_ConvexMeshes.find(key); it != m_ConvexMeshes.end())
+        for(auto& [_, res] : m_ConvexCache) 
         {
-            if (it->second) m_Common.destroyConvexMesh(it->second);
-            m_ConvexMeshes.erase(it);
-        }
-
-        if (auto it2 = m_TriangleMeshes.find(key); it2 != m_TriangleMeshes.end())
-        {
-            if (it2->second) m_Common.destroyTriangleMesh(it2->second);
-            m_TriangleMeshes.erase(it2);
+            if(res.shape) m_Common.destroyConvexMeshShape(res.shape);
+            if(res.mesh) m_Common.destroyConvexMesh(res.mesh);
         }
     }
 
@@ -86,7 +70,7 @@ namespace Motion
         rp3d::RigidBody* rb = static_cast<rp3d::RigidBody*>(rbc.PhysicsBody);
         if (!rb) { rb = m_World->createRigidBody(Transform(tc)); rbc.PhysicsBody = rb; }
 
-        rb->setType(ToRp3dBodyType(rbc.Type));
+        rb->setType(GetBodyType(rbc.Type));
         rb->setIsDebugEnabled(true);
         rb->enableGravity(true);
         rb->setIsAllowedToSleep(true);
@@ -140,8 +124,6 @@ namespace Motion
             }
         }
 
-        DestroyCachedMeshesFor(e.get());
-
         m_World->destroyRigidBody(rb);
         rbc.PhysicsBody = nullptr;
     }
@@ -166,19 +148,13 @@ namespace Motion
             if(cc.Type == ShapeType::Concave)   m_Common.destroyConcaveMeshShape(dynamic_cast<rp3d::ConcaveMeshShape*>(cc.Shape));
         }
 
-        if ((cc.Type == ShapeType::Convex || cc.Type == ShapeType::Concave) && cc.Type != type)
-        {
-            DestroyCachedMeshesFor(e.get());
-        }
-
         cc.Shape        = nullptr;
         if(type == ShapeType::Box)      CreateBoxCollider(e);
         if(type == ShapeType::Sphere)   CreateSphereCollider(e);
         if(type == ShapeType::Capsule)  CreateCapsuleCollider(e);
         if(type == ShapeType::Convex)   CreateConvexCollider(e, mc.MeshPointer->Positions, mc.MeshPointer->Faces);
-        if(type == ShapeType::Concave)  CreateConcaveCollider(e, mc.MeshPointer->Positions, mc.MeshPointer->Faces);
+        //if(type == ShapeType::Concave)  CreateConcaveCollider(e, mc.MeshPointer->Positions, mc.MeshPointer->Faces);
     }
-
 
 
     void KinetiX::CreateBoxCollider(const std::shared_ptr<Entity>& e) 
@@ -280,133 +256,59 @@ namespace Motion
 
     void KinetiX::CreateConvexCollider(const std::shared_ptr<Entity>& e, const std::vector<glm::vec3>& inVertices, const std::vector<uint32_t>&  inIndices)
     {
-        auto& RBC   = e->Get<RigidBodyComponent>();
-        auto& CC    = e->Get<ColliderComponent>();
-        auto& TRC   = e->Get<TransformComponent>();
+        const std::uint32_t simplifyTarget = 256;
+        const float dedupEps = 1e-6f;
+        const rp3d::Vector3 scaling(1,1,1);
+        const float degeneracyEps = 1e-6f;
+        
+        std::vector<glm::vec3> vertices;
+        vertices.reserve(inVertices.size());
+        vertices.assign(inVertices.begin(), inVertices.end());
 
-        auto* RB = RBC.PhysicsBody;
-        RB->setTransform(Transform(TRC));
-        if (m_ConvexMeshes.contains(e.get())) 
+        if(simplifyTarget > 0 && vertices.size() > simplifyTarget)
         {
-            rp3d::ConvexMesh* cmesh     = m_ConvexMeshes[e.get()];
-            glm::vec3 safeScale         = glm::max(TRC.Scale, glm::vec3(1e-3f));
-            auto* shape                 = m_Common.createConvexMeshShape(cmesh, ToVec3(safeScale));
-            MOTION_ASSERT(shape, "ConvexMeshShape creation failed");
+            Simplify(vertices, simplifyTarget);
+            MOTION_CORE_INFO("Simplified convex mesh to {} vertices", vertices.size());
+        }
 
-            auto* collider          = RB->addCollider(shape, rp3d::Transform::identity());
-            rp3d::Material& mat     = collider->getMaterial();
+        std::vector<std::uint32_t> oldToNew{};
+        RemoveDuplicates(vertices, dedupEps, oldToNew);
+        MOTION_CORE_INFO("Removed duplicates, {} vertices remain", vertices.size());
 
-            collider->setIsSimulationCollider(true);
-            mat.setFrictionCoefficient(CC.Friction);
-            mat.setBounciness(CC.Restitution);
-            mat.setMassDensity(CC.MassDensity);
-
-            CC.Shape      = shape;
-            CC.Collider   = collider;
-            CC.Type       = ShapeType::Convex;
-
-            if (RB->getType() == rp3d::BodyType::DYNAMIC)
-                RB->updateMassPropertiesFromColliders();
-
+        if(vertices.size() < 4)
+        {
+            MOTION_CORE_WARN("Convex mesh has less than 4 unique vertices, cannot create convex collider");
             return;
         }
 
-        constexpr float EPS_WELD  = 1e-4f;     
-        constexpr float EPS_AREA2 = 1e-12f;   
-        constexpr float EPS_PLANAR = 1e-4f;  
+        HullBuildResult hull{};
+        ComputeConvexHull(m_Common, vertices, hull, scaling, degeneracyEps);
 
-        const std::vector<glm::vec3>& srcVerts = inVertices;
-        const std::vector<uint32_t>&  srcTris  = inIndices;
-
-        MOTION_ASSERT(srcVerts.size() >= 4, "Convex cooking requires at least 4 vertices");
-        WeldResult wr = weldAndClean(srcVerts, srcTris, EPS_WELD, EPS_AREA2);
-
-        std::vector<glm::vec3> cookPts = wr.vertices;
-        MOTION_ASSERT(cookPts.size() >= 4, "Insufficient unique vertices after welding");
-
-        bool nonCoplanar = hasNonCoplanarSeed(cookPts, EPS_PLANAR);
-        MOTION_ASSERT(nonCoplanar, "Input points are coplanar or nearly coplanar — cannot build a 3D convex hull");
-
-        CookScale cs = chooseCookScale(cookPts);
-        if (cs.toCook != glm::vec3(1.0f)) 
+        if(!hull.ok())
         {
-            for (auto& p : cookPts) p *= cs.toCook;
+            for(const auto& msg : hull.log)
+                MOTION_CORE_WARN(msg);
+
+            MOTION_CORE_ERROR("Failed to compute convex hull");
+            return;
         }
 
-        rp3d::ConvexMesh* cmesh = nullptr;
-        std::vector<rp3d::Message> messages;
-        auto logMessages = [&](const char* stage) 
-        {
-            for (auto& msg : messages) 
-            {
-                const char* type =
-                    msg.type == rp3d::Message::Type::Information ? "INFO" :
-                    msg.type == rp3d::Message::Type::Warning     ? "WARN" : "ERROR";
-                MOTION_CORE_ERROR("Convex Collider [{}]:[{}] {}", stage, type, msg.text);
-            }
-        };
+        auto* shape = hull.shape;
+        auto& RBC = e->Get<RigidBodyComponent>();
+        auto& CC  = e->Get<ColliderComponent>();
+        auto* RB  = RBC.PhysicsBody;
 
-        {
-            rp3d::VertexArray va(
-                (const void*)cookPts.data(), sizeof(glm::vec3),
-                (uint32_t)cookPts.size(),
-                rp3d::VertexArray::DataType::VERTEX_FLOAT_TYPE
-            );
-            messages.clear();
-            cmesh = m_Common.createConvexMesh(va, messages);
-            logMessages("QuickHull");
-        }
-
-        if (!cmesh && !wr.indices.empty()) 
-        {
-            std::vector<rp3d::PolygonVertexArray::PolygonFace> faces;
-            faces.reserve(wr.indices.size() / 3);
-            for (uint32_t t = 0; t < (uint32_t)(wr.indices.size() / 3); ++t)
-                faces.push_back({ t * 3, 3 });
-
-            std::vector<glm::vec3> triVerts = wr.vertices;
-            if (cs.toCook != glm::vec3(1.0f)) 
-            {
-                for (auto& p : triVerts) p *= cs.toCook;
-            }
-
-            rp3d::PolygonVertexArray pva(
-                (uint32_t)triVerts.size(), (const void*)triVerts.data(), sizeof(glm::vec3),
-                (const void*)wr.indices.data(), sizeof(uint32_t),
-                (uint32_t)faces.size(), faces.data(),
-                rp3d::PolygonVertexArray::VertexDataType::VERTEX_FLOAT_TYPE,
-                rp3d::PolygonVertexArray::IndexDataType::INDEX_INTEGER_TYPE
-            );
-
-            messages.clear();
-            cmesh = m_Common.createConvexMesh(pva, messages);
-            logMessages("Polygon");
-        }
-
-        MOTION_ASSERT(cmesh, "Convex mesh creation failed (QuickHull then Polygon)");
-
-        glm::vec3 combinedScale = TRC.Scale * cs.toModel;
-        glm::vec3 safeScale     = glm::max(combinedScale, glm::vec3(1e-3f));
-
-        auto* shape = m_Common.createConvexMeshShape(cmesh, ToVec3(safeScale));
-        MOTION_ASSERT(shape, "ConvexMeshShape creation failed");
-
-        auto* collider          = RB->addCollider(shape, rp3d::Transform::identity());
-        rp3d::Material& mat     = collider->getMaterial();
+        auto* collider = RB->addCollider(shape, rp3d::Transform::identity());
+        rp3d::Material& mat = collider->getMaterial();
 
         collider->setIsSimulationCollider(true);
         mat.setFrictionCoefficient(CC.Friction);
         mat.setBounciness(CC.Restitution);
         mat.setMassDensity(CC.MassDensity);
 
-        CC.Shape      = shape;
-        CC.Collider   = collider;
-        CC.Type       = ShapeType::Convex;
-
-        m_ConvexMeshes[e.get()] = cmesh;
-
-        if (RB->getType() == rp3d::BodyType::DYNAMIC)
-            RB->updateMassPropertiesFromColliders();
+        CC.Shape            = shape;
+        CC.Collider         = collider;
+        CC.Type             = ShapeType::Convex;
     }
 
     void KinetiX::CreateConcaveCollider(const std::shared_ptr<Entity>& e, const std::vector<glm::vec3>& inVertices, const std::vector<uint32_t>& inIndices)
@@ -446,7 +348,7 @@ namespace Motion
                 body->setTransform(Transform(TRC));
 
                 const glm::vec3 S = TRC.Scale;
-                if(!nearlyEqualVec3(S, CC.LastAppliedScale))
+                if(S != CC.LastAppliedScale)
                 {
                     rp3d::CollisionShape* newShape = nullptr;
                     switch(CC.Type)

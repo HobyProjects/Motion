@@ -13,9 +13,9 @@ namespace Motion
     struct ScenePanelContext
     {
         std::shared_ptr<Scene>  ActiveScene{ nullptr };
-        FrameTextureID          ActiveViewportTexture{};
-        ImGuiLayer*             UILayerInstance{ nullptr };
-        SceneEditorLayer*       EditorLayerInstance{ nullptr };
+        FrameTextureID          ViewportTexture{};
+        ImGuiLayer*             UIInstance{ nullptr };
+        SceneEditorLayer*       EditorInstance{ nullptr };
     };
 
     enum class PanelCategory

@@ -270,7 +270,20 @@ namespace Motion
 
         if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
         {
-            std::filesystem::path path = DialogBoxes::OpenFileDialog();
+            DialogBoxes::InitializeCOM();
+
+            OpenDialogOptions options{};
+            options.Title = L"Import Texture";
+            options.DefaultExtension = L"png";
+            options.AllowMultiSelect = false;
+            options.InitialDirectory = std::filesystem::current_path();
+            options.Filters = 
+            {
+                {L"Image Files", L"*.jpg;*.jpeg;*.png"},
+                {L"All Files",   L"*.*"}
+            };
+
+            std::filesystem::path path = DialogBoxes::OpenFileDialog(options);
             if (!path.empty())
             {
                 if (!tex)       tex = ITexture::Create(path, type);
@@ -278,13 +291,28 @@ namespace Motion
                 if (onAction)   onAction(TextureSlotAction::Upload, tex);
                 result          = TextureSlotAction::Upload;
             }
+
+            DialogBoxes::UninitializeCOM();
         }
 
         if (ImGui::BeginPopupContextItem("tex_card_ctx"))
         {
             if (ImGui::MenuItem("Load Texture"))
             {
-                std::filesystem::path path = DialogBoxes::OpenFileDialog();
+                DialogBoxes::InitializeCOM();
+
+                OpenDialogOptions options{};
+                options.Title = L"Import Texture";
+                options.DefaultExtension = L"png";
+                options.AllowMultiSelect = false;
+                options.InitialDirectory = std::filesystem::current_path();
+                options.Filters = 
+                {
+                    {L"Image Files", L"*.jpg;*.jpeg;*.png"},
+                    {L"All Files",   L"*.*"}
+                };
+
+                std::filesystem::path path = DialogBoxes::OpenFileDialog(options);
                 if (!path.empty())
                 {
                     if (!tex)       tex = ITexture::Create(path, type);
@@ -292,6 +320,8 @@ namespace Motion
                     if (onAction)   onAction(TextureSlotAction::Upload, tex);
                     result          = TextureSlotAction::Upload;
                 }
+
+                DialogBoxes::UninitializeCOM();
             }
 
             bool canReload = tex && !tex->GetSpecification().TextureFile.empty();

@@ -10,9 +10,8 @@ namespace Motion
         m_Camera.ViewportWidth      = spec.Viewport.Size.x;
         m_Camera.ViewportHeight     = spec.Viewport.Size.y;
         m_Camera.RotationEnabled    = false;
-        m_Camera.Position           = glm::vec3(0.0f, 0.0f, 5.0f);
-
-        m_Camera.RefreshCameraMatrix();
+        m_Camera.Position           = glm::vec3(0.0f, 0.0f, 15.0f);
+        m_Camera.TranslationSpeed   = 0.1;
     }
 
     Scene::~Scene() 
@@ -27,17 +26,17 @@ namespace Motion
             glm::vec3 forward   = glm::normalize(m_Camera.Oriantaion);
             glm::vec3 right     = glm::normalize(glm::cross(forward, m_Camera.WorldUp));
     
-            if (InputsHandler::GetKeyState(handle, KEY_W))              m_Camera.Position += forward * m_Camera.TranslationSpeed * deltaTime.GetDeltaTimeSeconds();
-            if (InputsHandler::GetKeyState(handle, KEY_S))              m_Camera.Position -= forward * m_Camera.TranslationSpeed * deltaTime.GetDeltaTimeSeconds();
-            if (InputsHandler::GetKeyState(handle, KEY_A))              m_Camera.Position -= right * m_Camera.TranslationSpeed * deltaTime.GetDeltaTimeSeconds();
-            if (InputsHandler::GetKeyState(handle, KEY_D))              m_Camera.Position += right * m_Camera.TranslationSpeed * deltaTime.GetDeltaTimeSeconds();
-            if (InputsHandler::GetKeyState(handle, KEY_LEFT_CONTROL))   m_Camera.Position.y -= m_Camera.TranslationSpeed * deltaTime.GetDeltaTimeSeconds();
-            if (InputsHandler::GetKeyState(handle, KEY_SPACE))          m_Camera.Position.y += m_Camera.TranslationSpeed * deltaTime.GetDeltaTimeSeconds();
+            if (InputsHandler::GetKeyState(handle, KEY_W))              m_Camera.Position += forward * m_Camera.TranslationSpeed * deltaTime.GetDeltaTimeMilliseconds();
+            if (InputsHandler::GetKeyState(handle, KEY_S))              m_Camera.Position -= forward * m_Camera.TranslationSpeed * deltaTime.GetDeltaTimeMilliseconds();
+            if (InputsHandler::GetKeyState(handle, KEY_A))              m_Camera.Position -= right * m_Camera.TranslationSpeed * deltaTime.GetDeltaTimeMilliseconds();
+            if (InputsHandler::GetKeyState(handle, KEY_D))              m_Camera.Position += right * m_Camera.TranslationSpeed * deltaTime.GetDeltaTimeMilliseconds();
+            if (InputsHandler::GetKeyState(handle, KEY_LEFT_CONTROL))   m_Camera.Position.y -= m_Camera.TranslationSpeed * deltaTime.GetDeltaTimeMilliseconds();
+            if (InputsHandler::GetKeyState(handle, KEY_SPACE))          m_Camera.Position.y += m_Camera.TranslationSpeed * deltaTime.GetDeltaTimeMilliseconds();
         }
 
         auto& KX = KinetiX::GetInstance();
         if (m_SimState == SimulationState::Running)
-            KX.Step(m_Entities, deltaTime.GetDeltaTimeSeconds());
+            KX.Step(m_Entities, deltaTime.GetDeltaTimeMilliseconds());
         
         KX.Refresh(m_Entities);  
         m_Camera.RefreshCameraMatrix();

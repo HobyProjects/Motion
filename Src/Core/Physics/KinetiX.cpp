@@ -3,7 +3,8 @@
 
 namespace Motion 
 {
-    static constexpr float kFixedStep = 1.0f / 60.0f;
+    static constexpr float kFixedStep = 1.0f / 120.0f;
+    static float accumulator = 0.0f;
 
     void KinetiX::Init() 
     {
@@ -441,49 +442,35 @@ namespace Motion
         try
         {
             MOTION_ASSERT(m_World, "World not initialized");
-            static float accumulator = 0.0f;
-            accumulator += dtSeconds;
-
-            while (accumulator >= kFixedStep) 
+            dtSeconds = std::clamp(dtSeconds, 0.0f, 0.1f);
+            accumulator = std::min(accumulator + dtSeconds, 0.25f);
+            
+            int steps = 0;
+            constexpr int kMaxStepsPerFrame = 8;
+            while (accumulator >= kFixedStep && steps < kMaxStepsPerFrame) 
             {
                 m_World->update(kFixedStep);
                 accumulator -= kFixedStep;
+                ++steps;
             }
 
+            // 3) Sync transforms for dynamics
             for (auto& e : entities) 
             {
-                std::shared_ptr<Entity> current = e;
-                std::shared_ptr<Entity> next = nullptr;
-
-                while(current)
+                for (auto current = e; current; ) 
                 {
-                    if(current->Has<NodeComponent>())
+                    std::shared_ptr<Entity> next = nullptr;
+                    if (current->Has<NodeComponent>()) next = current->Get<NodeComponent>().EnTTNext;
+
+                    if (current->Has<RigidBodyComponent>()) 
                     {
-                        next = current->Get<NodeComponent>().EnTTNext;
-                        if(current->Get<NodeComponent>().IsRoot)
+                        auto& rb = current->Get<RigidBodyComponent>();
+                        if (rb.Type == BodyType::Dynamic && rb.PhysicsBody) 
                         {
-                            current = next;
-                            continue;
+                            auto& tc = current->Get<TransformComponent>();
+                            Transform(rb.PhysicsBody->getTransform(), tc);
                         }
                     }
-
-                    auto& rigidBodyComponent = current->Get<RigidBodyComponent>();
-                    if(rigidBodyComponent.Type != BodyType::Dynamic)
-                    {
-                        current = next;
-                        continue;
-                    }
-
-                    rp3d::RigidBody* rb = rigidBodyComponent.PhysicsBody;
-                    if(!rb)
-                    {
-                        current = next;
-                        continue;
-                    }
-
-                    auto& transformComponent = current->Get<TransformComponent>();
-                    Transform(rb->getTransform(), transformComponent);
-
                     current = next;
                 }
             }

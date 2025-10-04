@@ -38,8 +38,6 @@ namespace Motion
         //------------------------------------------------------------------------------------
 
         m_Panels->Emplace<SceneViewportPanel>();
-        m_Panels->Emplace<SceneEntityInspectPanel>();
-        m_Panels->Emplace<SceneEntityPropertiesPanel>();
         m_Panels->Emplace<SceneSettingsPanel>();
         m_Panels->Emplace<SceneViewPanel>();
         m_Panels->Emplace<SimulationPanel>();
@@ -80,9 +78,9 @@ namespace Motion
 
         ScenePanelContext panelContext;
         panelContext.ActiveScene                    = m_ActiveScene;
-        panelContext.ActiveViewportTexture          = m_SceneTextures[m_ActiveScene]; 
-        panelContext.UILayerInstance                = s_ImGuiLayer.get();
-        panelContext.EditorLayerInstance            = this;
+        panelContext.ViewportTexture          = m_SceneTextures[m_ActiveScene]; 
+        panelContext.UIInstance                = s_ImGuiLayer.get();
+        panelContext.EditorInstance            = this;
 
         for (const auto& panel : *m_Panels)
             panel->RenderUI(panelContext);

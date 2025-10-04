@@ -140,6 +140,7 @@ namespace Motion
                             ImPlot::EndPlot();
                         }
                     }
+                    
                     ImGui::PopID();
                     current = next;
                 }

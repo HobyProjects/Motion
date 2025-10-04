@@ -43,7 +43,6 @@ namespace Motion
             std::shared_ptr<Scene>                                      m_ActiveScene{ nullptr };
             std::vector<std::shared_ptr<Scene>>                         m_Scenes{};
             std::unordered_map<std::shared_ptr<Scene>, FrameTextureID>  m_SceneTextures{};
-
-            std::shared_ptr<ScenePanelManager> m_Panels{ nullptr };     
+            std::shared_ptr<ScenePanelManager>                          m_Panels{ nullptr };     
     };
 }

@@ -13,28 +13,24 @@ namespace Motion
 {
     class Application
     {
-    public:
-        Application();
-        ~Application();
+        public:
+            Application();
+            ~Application();
 
-        void Start();
-        void OnEvent(WindowHandle handle, IEvent& e);
+            void Start();
+            void OnEvent(WindowHandle handle, IEvent& e);
 
-        void PushLayer(const std::shared_ptr<Layer>& layer);
-        void PushOverlay(const std::shared_ptr<Layer>& layer);
+            void PushLayer(const std::shared_ptr<Layer>& layer);
+            void PushOverlay(const std::shared_ptr<Layer>& layer);
 
-    private:
-        bool OnWindowClose(WindowHandle handle, EventWindowClose& e);
-        bool OnWindowResize(WindowHandle handle, EventWindowResize& e);
+        private:
+            bool OnWindowClose(WindowHandle handle, EventWindowClose& e);
+            bool OnWindowResize(WindowHandle handle, EventWindowResize& e);
 
-    private:
-        std::shared_ptr<IWindow> m_Window{ nullptr };
-
-        // Application Layers
-        std::shared_ptr<ImGuiLayer> m_ImGuiLayer{ nullptr };
-        std::shared_ptr<SceneEditorLayer> m_EditorLayer{ nullptr };
-
-        // Frame constant
-        float m_LastFrameTime{ 0.0f };
+        private:
+            std::shared_ptr<IWindow> m_Window{ nullptr };
+            std::shared_ptr<ImGuiLayer> m_ImGuiLayer{ nullptr };
+            std::shared_ptr<SceneEditorLayer> m_EditorLayer{ nullptr };
+            float m_LastFrameTime{ 0.0f };
     };
 }

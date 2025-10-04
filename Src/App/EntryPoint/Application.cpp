@@ -12,8 +12,8 @@ namespace Motion
         Renderer::Init();
         UserInterfaceInitializer::Init(m_Window->GetHandle());
 
-        m_ImGuiLayer = std::make_shared<ImGuiLayer>(m_Window->GetHandle(), ImGuiColorScheme::Dark);
-        m_EditorLayer = std::make_shared<SceneEditorLayer>(m_Window->GetHandle(), m_ImGuiLayer);
+        m_ImGuiLayer    = std::make_shared<ImGuiLayer>(m_Window->GetHandle(), ImGuiColorScheme::Dark);
+        m_EditorLayer   = std::make_shared<SceneEditorLayer>(m_Window->GetHandle(), m_ImGuiLayer);
 
         KinetiX::GetInstance().Init();
 
@@ -23,7 +23,6 @@ namespace Motion
 
     Application::~Application()
     {
-        TaskManager::Instance().Shutdown();
         UserInterfaceInitializer::Quit();
         KinetiX::GetInstance().Quit();
         Renderer::Quit();
@@ -53,8 +52,6 @@ namespace Motion
                 layer->OnUpdate(m_Window->GetHandle(), dt);
             }
 
-            MainThreadDispatcher::Instance().Dispatch();
-
             m_ImGuiLayer->Begin();
 
             for (auto& layer : LM)
@@ -63,7 +60,6 @@ namespace Motion
             }
 
             m_ImGuiLayer->End();
-
             m_Window->SwapBuffers();
         }
     }

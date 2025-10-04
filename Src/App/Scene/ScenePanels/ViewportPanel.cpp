@@ -65,7 +65,6 @@ namespace Motion
             dl->AddLine(pa, pb, col, thickness);
     }
 
-    // ----------------------------- Gizmo state & config ----------------------------- //
     struct GizmoState
     {
         ImGuizmo::OPERATION Operation = ImGuizmo::TRANSLATE;
@@ -254,18 +253,16 @@ namespace Motion
 
         const ImVec2 vpAvail = ImGui::GetContentRegionAvail();
         const bool focused_or_hovered = ImGui::IsWindowFocused() || ImGui::IsWindowHovered();
-        if (context.UILayerInstance) context.UILayerInstance->AcceptEvents(focused_or_hovered);
+        if (context.UIInstance) context.UIInstance->AcceptEvents(focused_or_hovered);
 
-        // Backbuffer
         {
-            FrameTextureID tex = context.ActiveViewportTexture;
+            FrameTextureID tex = context.ViewportTexture;
             if (tex != 0)
                 ImGui::Image((ImTextureID)(intptr_t)tex, vpAvail, ImVec2(0, 1), ImVec2(1, 0));
             else
                 ImGui::Dummy(vpAvail);
         }
 
-        // Viewport rect, draw list, and spec sync
         ImVec2 winPos = ImGui::GetWindowPos();
         ImVec2 crMin  = ImGui::GetWindowContentRegionMin();
         ImVec2 crMax  = ImGui::GetWindowContentRegionMax();
@@ -281,11 +278,7 @@ namespace Motion
 
         if (!context.ActiveScene->InSimulationMode())
         {
-            // ---------------- Selection (unchanged) ----------------
-            if (ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem) &&
-                ImGui::IsWindowFocused() &&
-                ImGui::IsMouseClicked(ImGuiMouseButton_Left) &&
-                !ImGuizmo::IsUsing())
+            if (ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem) && ImGui::IsWindowFocused() && ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !ImGuizmo::IsUsing())
             {
                 glm::vec2 local = { mouse.x - vpMin.x, mouse.y - vpMin.y };
                 local.y = vpAvail.y - local.y;
@@ -295,7 +288,9 @@ namespace Motion
                     (float)context.ActiveScene->GetSpecification().Viewport.FrameSpec.Width,
                     (float)context.ActiveScene->GetSpecification().Viewport.FrameSpec.Height
                 };
-                const glm::vec2 mouseInFB = {
+
+                const glm::vec2 mouseInFB = 
+                {
                     local.x * (fbSize.x / vpAvail.x),
                     local.y * (fbSize.y / vpAvail.y)
                 };
@@ -304,7 +299,6 @@ namespace Motion
                     context.ActiveScene->SelectedEntity(picked);
             }
 
-            // ---------------- ImGuizmo setup ----------------
             glm::mat4 view       = context.ActiveScene->GetCameraView();
             glm::mat4 projection = context.ActiveScene->GetCameraProjection();
 
@@ -319,19 +313,12 @@ namespace Motion
 
             bool gizmoConsumedInput = false;
 
-            // Snap computation
             float snapTriplet[3] = {0,0,0};
             gizmo.FillSnapTriplet(snapTriplet);
             const float* snapPtr = (snapTriplet[0] != 0 || snapTriplet[1] != 0 || snapTriplet[2] != 0) ? snapTriplet : nullptr;
-
-            // ---------------- Entity gizmo ----------------
-            if (auto sel = context.ActiveScene->GetSelectedEntity();
-                sel && sel != Entity::Empty() &&
-                sel->Has<TransformComponent>() &&
-                sel->Get<TagComponent>().IsActive)
+            if (auto sel = context.ActiveScene->GetSelectedEntity(); sel && sel != Entity::Empty() && sel->Has<TransformComponent>() && sel->Get<TagComponent>().IsActive)
             {
                 ImGuizmo::PushID(1);
-
                 auto& TRS = sel->Get<TransformComponent>();
                 glm::vec3 T = TRS.Translation;
                 glm::vec3 S = TRS.Scale;
@@ -342,6 +329,7 @@ namespace Motion
                     if (a < 0) a += 360.0f;
                     return a - 180.0f;
                 };
+
                 eulerDeg.x = wrap180(eulerDeg.x);
                 eulerDeg.y = wrap180(eulerDeg.y);
                 eulerDeg.z = wrap180(eulerDeg.z);
@@ -350,8 +338,7 @@ namespace Motion
                 glm::mat4 transform{1.0f};
                 ImGuizmo::RecomposeMatrixFromComponents(&T.x, &Rdeg.x, &S.x, glm::value_ptr(transform));
 
-                if (ImGuizmo::Manipulate(glm::value_ptr(view), glm::value_ptr(projection), gizmo.Operation, gizmo.Mode,
-                                          glm::value_ptr(transform), nullptr, snapPtr))
+                if (ImGuizmo::Manipulate(glm::value_ptr(view), glm::value_ptr(projection), gizmo.Operation, gizmo.Mode, glm::value_ptr(transform), nullptr, snapPtr))
                 {
                     gizmoConsumedInput = true;
                     float Td[3], RdDeg[3], Sd[3];
@@ -367,8 +354,6 @@ namespace Motion
 
                 ImGuizmo::PopID();
             }
-
-            // ---------------- Light gizmo ----------------
             {
                 const bool clutchHide = ImGui::IsKeyDown(ImGuiKey_4);
                 static LightGizmoConfig lightCfg;
@@ -376,58 +361,17 @@ namespace Motion
 
                 if (!gizmoConsumedInput && lightCfg.Enabled)
                 {
-                    // Mirror the setting back so user toggles still work elsewhere
                     context.ActiveScene->GetEnvironment().Sun.ShowLightDirectionGuizmo = true;
                     DrawDirectionalLight(context.ActiveScene->GetEnvironment().Sun, context.ActiveScene->GetCamera(), rect, windowDL, lightCfg);
                 }
             }
         }
 
-        // ---------------- Colliders ----------------
-        // {
-        //     auto* world = Motion::KinetiX::GetInstance().GetWorld();
-
-        //     auto& dr = world->getDebugRenderer();
-        //     auto& lines = dr.getLines();
-        //     auto& tris  = dr.getTriangles();
-
-        //     ImDrawList* dl = ImGui::GetWindowDrawList();
-        //     const glm::mat4 VP = context.ActiveScene->GetCameraProjection() * context.ActiveScene->GetCameraView();
-        //     ViewportRect rect{ vpMin, vpMax };
-
-        //     ImU32 lineColor   = ImGui::GetColorU32(ImVec4(0.0f, 1.0f, 1.0f, 1.0f));  // solid cyan
-        //     ImU32 triFillCol  = ImGui::GetColorU32(ImVec4(0.0f, 1.0f, 1.0f, 0.25f)); // translucent cyan
-        //     ImU32 triLineCol  = ImGui::GetColorU32(ImVec4(0.0f, 1.0f, 1.0f, 1.0f));  // outline cyan
-
-        //     for (const auto& L : lines) 
-        //     {
-        //         ImVec2 a, b;
-        //         if (WorldToScreen(Motion::ToGlmVec3(L.point1), VP, rect, a) && WorldToScreen(Motion::ToGlmVec3(L.point2), VP, rect, b))
-        //         {
-        //             ImU32 col = ImGui::GetColorU32(lineColor);
-        //             dl->AddLine(a, b, col, 1.5f);
-        //         }
-        //     }
-
-        //     for (const auto& T : tris) 
-        //     {
-        //         ImVec2 a, b, c;
-        //         if (WorldToScreen(Motion::ToGlmVec3(T.point1), VP, rect, a) &&
-        //             WorldToScreen(Motion::ToGlmVec3(T.point2), VP, rect, b) &&
-        //             WorldToScreen(Motion::ToGlmVec3(T.point3), VP, rect, c))
-        //         {
-        //             dl->AddTriangleFilled(a, b, c, triFillCol);
-        //             dl->AddTriangle(a, b, c, triLineCol, 1.0f);
-        //         }
-        //     }
-        // }
-
-        // Resize callback
-        if (context.EditorLayerInstance && context.ActiveScene)
+        if (context.EditorInstance && context.ActiveScene)
         {
             auto& viewport = context.ActiveScene->GetSpecification().Viewport;
             if (viewport.Size.x != vpAvail.x || viewport.Size.y != vpAvail.y)
-                context.EditorLayerInstance->SetViewportSize({ vpAvail.x, vpAvail.y });
+                context.EditorInstance->SetViewportSize({ vpAvail.x, vpAvail.y });
         }
 
         ImGui::End();

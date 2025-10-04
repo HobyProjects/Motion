@@ -4,8 +4,6 @@
 
 namespace Motion
 {
-    static Scene* s_CurrentScene = nullptr;
-
     void SceneRenderer::BeginScene() noexcept
     {
         Renderer::Begin();
@@ -14,7 +12,6 @@ namespace Motion
     void SceneRenderer::Submit(Scene* scene) noexcept
     {
         if (!scene) { MOTION_CORE_ERROR("Scene is null >> SKIPPING SUBMISSION"); return; }
-        s_CurrentScene = scene;
 
         for (const auto& entity : scene->m_Entities)
         {

@@ -77,9 +77,6 @@
 #include "Log.hpp"
 #include "UUID.hpp"
 #include "Timer.hpp"
-#include "BackgroundWorker.hpp"
-#include "MainThreadDispatcher.hpp"
-#include "TaskManager.hpp"
 
 //Layers
 #include "Layer.hpp"

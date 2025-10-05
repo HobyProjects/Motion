@@ -38,7 +38,6 @@ namespace Motion
         //------------------------------------------------------------------------------------
 
         m_Panels->Emplace<SceneViewportPanel>();
-        m_Panels->Emplace<SceneSettingsPanel>();
         m_Panels->Emplace<SceneViewPanel>();
         m_Panels->Emplace<SimulationPanel>();
     }

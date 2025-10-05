@@ -231,12 +231,6 @@ namespace Motion
             ImGui::EndPopup();
         }
 
-        ImGuiTreeNodeFlags nodeFlags = 
-            ImGuiTreeNodeFlags_DefaultOpen      | 
-            ImGuiTreeNodeFlags_Framed           | 
-            ImGuiTreeNodeFlags_SpanAvailWidth   | 
-            ImGuiTreeNodeFlags_AllowItemOverlap | 
-            ImGuiTreeNodeFlags_FramePadding;
 
         auto ci_contains = [](std::string hay, std::string needle)
         {
@@ -251,10 +245,19 @@ namespace Motion
         static bool s_RequestSceneRename    = false;
         static bool s_RequestSceneDelete    = false;
 
+        static const ImGuiTreeNodeFlags treeNodeFlags = 
+                ImGuiTreeNodeFlags_Framed | 
+                ImGuiTreeNodeFlags_SpanAvailWidth | 
+                ImGuiTreeNodeFlags_AllowItemOverlap | 
+                ImGuiTreeNodeFlags_FramePadding;
+
+        static const ImGuiTreeNodeFlags headerFlags =
+                ImGuiTreeNodeFlags_FramePadding |
+                ImGuiTreeNodeFlags_SpanAvailWidth |
+                ImGuiTreeNodeFlags_Framed;
+
         for (auto& scene : *context.EditorInstance)
         {
-            ImGui::PushID(scene.get());
-        
             const bool isActive = scene->IsActive();
             std::string label = std::format("{}  {}[{:X}]{}", ICON_MD_DASHBOARD, scene->GetName(), scene->GetID(), isActive ? std::string("  ") + ICON_MD_STAR : "");
 
@@ -263,12 +266,6 @@ namespace Motion
                 ImGui::PopID();
                 continue;
             }
-
-            static const ImGuiTreeNodeFlags treeNodeFlags = 
-                ImGuiTreeNodeFlags_Framed | 
-                ImGuiTreeNodeFlags_SpanAvailWidth | 
-                ImGuiTreeNodeFlags_AllowItemOverlap | 
-                ImGuiTreeNodeFlags_FramePadding;
 
             bool open = ImGui::TreeNodeEx((void*)scene->GetID(), treeNodeFlags, label.c_str());
             if (ImGui::IsItemClicked())
@@ -380,6 +377,8 @@ namespace Motion
                         auto id = scene->GetID();
                         ImGui::CloseCurrentPopup();
                         context.EditorInstance->DeleteScene(id);
+
+                        ImGui::TreePop();
                         ImGui::EndPopup(); 
                         ImGui::PopID();
                         break; 
@@ -487,202 +486,202 @@ namespace Motion
 
             if (open)
             {
-                std::shared_ptr<Entity> selected = scene->GetSelectedEntity();
-                for(auto& entt : scene->GetEntities())
+                if (ImGui::TreeNodeEx(scene.get(), treeNodeFlags, ICON_FA_CUBE " Scene Entities"))
                 {
-                    std::shared_ptr<Entity> current = entt;
-                    while(current)
+                    std::shared_ptr<Entity> selected = scene->GetSelectedEntity();
+                    for (auto& root : scene->GetEntities())
                     {
-                        std::shared_ptr<Entity> next = nullptr;
-
-                        bool openedHeader = ImGui::TreeNodeEx(current.get(), treeNodeFlags, current->Get<TagComponent>().Tag.c_str());
+                        const char* rootTag = root->Get<TagComponent>().Tag.c_str();
+                        bool rootOpen = ImGui::TreeNodeEx(root.get(), treeNodeFlags, rootTag);
                         if (ImGui::IsItemClicked())
                         {
-                            selected = current;
+                            selected = root;
                             context.ActiveScene->SelectedEntity(selected);
                         }
 
-                        if(openedHeader)
+                        if (!root->Has<NodeComponent>() || !root->Get<NodeComponent>().IsRoot)
                         {
-                            if(current->Has<NodeComponent>())
+                            if(rootOpen) ImGui::TreePop();
+                            continue;
+                        }
+
+                        if (rootOpen)
+                        {
+                            std::shared_ptr<Entity> current = root->Get<NodeComponent>().EnTTNext;
+                            while (current)
                             {
-                                next = current->Get<NodeComponent>().EnTTNext;
-                                if(current->Get<NodeComponent>().IsRoot)
+                                std::shared_ptr<Entity> next = nullptr;
+                                if (current->Has<NodeComponent>()) next = current->Get<NodeComponent>().EnTTNext;
+
+                                const char* childName = current->Get<TagComponent>().Tag.c_str();
+                                bool openChild = ImGui::TreeNodeEx(current.get(), treeNodeFlags, childName);
+                                if (ImGui::IsItemClicked())
                                 {
-                                    current = next;
-                                    continue;
+                                    selected = current;
+                                    context.ActiveScene->SelectedEntity(selected);
                                 }
-                            }
-                        
-                            bool isActive{false};
-                            BeginPropertyGrid("##tag-grid");
 
-                            auto& tag = entt->Get<TagComponent>();
-                            TextBox("Name Tag", tag.Tag, false);
-                            isActive = tag.IsActive;
-                            ToggleSwitch("Is Active", tag.IsActive);
-
-                            EndPropertyGrid();
-
-                            if(isActive)
-                            {
-                                auto& TRC = current->Get<TransformComponent>();
-                                auto& RBC = current->Get<RigidBodyComponent>();
-                                auto& CC  = current->Get<ColliderComponent>();
-                                auto& MC  = current->Get<MeshComponent>();
-                                auto& MTC = current->Get<MaterialComponent>();
-
-                                BeginPropertyGrid("##physics-grid");
-
+                                if (openChild)
                                 {
-                                    glm::vec3 posM = TRC.Translation;                
-                                    if (DragFloat3("Position (m)", posM, 0.01f))
-                                    {
-                                        TRC.Translation = posM;
-                                    }
-                                }
-                                {
-                                    glm::vec3 eulerDeg = glm::degrees(glm::eulerAngles(TRC.Rotation));
-                                    auto wrap180 = [](float a)
-                                    {
-                                        a = std::fmod(a + 180.0f, 360.0f);
-                                        if (a < 0) a += 360.0f;
-                                        return a - 180.0f;
-                                    };
+                                    bool isActive = false;
 
-                                    eulerDeg.x = wrap180(eulerDeg.x);
-                                    eulerDeg.y = wrap180(eulerDeg.y);
-                                    eulerDeg.z = wrap180(eulerDeg.z);
+                                    BeginPropertyGrid("##tag-grid");
+                                    auto& tag = current->Get<TagComponent>();
+                                    TextBox("Name Tag", tag.Tag, false);
+                                    isActive = tag.IsActive;
+                                    ToggleSwitch("Is Active", tag.IsActive);
+                                    EndPropertyGrid();
 
-                                    glm::vec3 edited = eulerDeg;
-                                    if (DragFloat3("Rotation (deg)", edited, 0.1f))
+                                    if (isActive)
                                     {
-                                        const glm::vec3 rad = glm::radians(edited);
-                                        glm::quat q = glm::normalize(glm::quat(rad));
-                                        if (glm::any(glm::epsilonNotEqual(q, TRC.Rotation, 1e-6f))) TRC.Rotation = q;
-                                    }
-                                }
-                                {
-                                    glm::vec3 scale = TRC.Scale;
-                                    if (DragFloat3("Scale (m)", scale, 0.1f))
-                                    {
-                                        TRC.Scale = scale;
-                                    }
-                                }
-                                {
-                                    std::int32_t selected{static_cast<std::int32_t>(RBC.Type)};
+                                        auto& TRC = current->Get<TransformComponent>();
+                                        auto& RBC = current->Get<RigidBodyComponent>();
+                                        auto& CC  = current->Get<ColliderComponent>();
+                                        auto& MC  = current->Get<MeshComponent>();
+                                        auto& MTC = current->Get<MaterialComponent>();
 
-                                    if(CC.Type == ShapeType::Concave)
-                                    {
-                                        selected = 0;
-                                        if(RBC.Type == BodyType::Dynamic) 
+                                        BeginPropertyGrid("##physics-grid");
+
                                         {
-                                            RBC.Type     = BodyType::Static;
-                                            auto* body   = RBC.PhysicsBody;
-                                            body->setType(rp3d::BodyType::STATIC);
+                                            glm::vec3 posM = TRC.Translation;
+                                            if (DragFloat3("Position (m)", posM, 0.01f))
+                                                TRC.Translation = posM;
                                         }
-                                    }
-                                    
-                                    ComboBox("Interaction",  { "Static", "Dynamic" }, selected, [&](std::int32_t selectedIndex, const std::string& selectedItem)
-                                    {
-                                        if(selectedIndex == 0)
                                         {
-                                            RBC.Type     = BodyType::Static;
-                                            auto* body   = RBC.PhysicsBody;
-                                            body->setType(rp3d::BodyType::STATIC);
-                                        };
+                                            glm::vec3 eulerDeg = glm::degrees(glm::eulerAngles(TRC.Rotation));
+                                            auto wrap180 = [](float a){ a = std::fmod(a + 180.0f, 360.0f); if (a < 0) a += 360.0f; return a - 180.0f; };
+                                            eulerDeg.x = wrap180(eulerDeg.x);
+                                            eulerDeg.y = wrap180(eulerDeg.y);
+                                            eulerDeg.z = wrap180(eulerDeg.z);
 
-                                        if(selectedIndex == 1)
-                                        {
-                                            RBC.Type     = BodyType::Dynamic;
-                                            auto* body   = RBC.PhysicsBody;
-                                            body->setType(rp3d::BodyType::DYNAMIC);
-                                        };
-                                    });
-
-                                    auto* body = RBC.PhysicsBody;
-                                    
-                                    float mass = (float)body->getMass();
-                                    if(DragFloat("Compute Mass", &mass, 0.001f, 0.0000000001f, FLT_MAX))
-                                    {
-                                        body->setMass(Units::ToKilograms(mass));
-                                    }
-
-                                    float linearDamping = (float)body->getLinearDamping();
-                                    if(DragFloat("Linear Damping", &linearDamping, 0.001f, 0.0f, 1.0f))
-                                    {
-                                        body->setLinearDamping(Units::ToMetersPerSecond(linearDamping));
-                                    }
-
-                                    float angularDamping = (float)body->getAngularDamping();
-                                    if(DragFloat("Angular Damping", &angularDamping, 0.001f, 0.0f, 1.0f))
-                                    {
-                                        body->setAngularDamping(Units::ToMetersPerSecond(angularDamping));
-                                    }
-                                }
-                                {
-                                    float bounce = CC.Restitution;
-                                    if(DragFloat("Bounce", &bounce, 0.001f, 0.0f, 1.0f))
-                                    {
-                                        auto& material = CC.Collider->getMaterial();
-                                        material.setBounciness(bounce);
-                                        CC.Restitution = bounce;
-                                    }
-
-                                    float friction = CC.Friction;
-                                    if(DragFloat("Friction", &friction, 0.001f, 0.0f, 1.0f))
-                                    {
-                                        auto& material = CC.Collider->getMaterial();
-                                        material.setBounciness(friction);
-                                        CC.Friction = friction;
-                                    }
-
-                                    float density = CC.MassDensity;
-                                    if(DragFloat("Density", &density, 0.01f, 0.0f, FLT_MAX))
-                                    {
-                                        auto& material = CC.Collider->getMaterial();
-                                        material.setMassDensity(density);
-                                        CC.MassDensity = density;
-                                    } 
-                                }
-                                {
-                                    static bool isEditorOpen = false;
-                                    if (ImGui::Button(ICON_MD_IMAGE " Material Editor"))
-                                        isEditorOpen = !isEditorOpen;
-
-                                    if (isEditorOpen)
-                                    {
-                                        if (ImGui::Begin(ICON_MD_IMAGE " Material Editor", &isEditorOpen, ImGuiWindowFlags_NoDocking))
-                                        {
-                                            if (ImGui::BeginChild("##inspector-area", ImVec2(0.0f, 0.0f)))
+                                            glm::vec3 edited = eulerDeg;
+                                            if (DragFloat3("Rotation (deg)", edited, 0.1f))
                                             {
-                                                if (MTC.MaterialPointer)
-                                                    DrawMaterialUI(context, MTC.MaterialPointer);
-                                                else
-                                                    ImGui::TextDisabled(ICON_MD_INFO " No material assigned");
-
-                                                ImGui::EndChild(); 
+                                                const glm::vec3 rad = glm::radians(edited);
+                                                glm::quat q = glm::normalize(glm::quat(rad));
+                                                if (glm::any(glm::epsilonNotEqual(q, TRC.Rotation, 1e-6f)))
+                                                    TRC.Rotation = q;
+                                            }
+                                        }
+                                        {
+                                            glm::vec3 scale = TRC.Scale;
+                                            if (DragFloat3("Scale (m)", scale, 0.1f))
+                                                TRC.Scale = scale;
+                                        }
+                                        {
+                                            std::int32_t interaction{ static_cast<std::int32_t>(RBC.Type) };
+                                            if (CC.Type == ShapeType::Concave)
+                                            {
+                                                interaction = 0; // force Static
+                                                if (RBC.Type == BodyType::Dynamic)
+                                                {
+                                                    RBC.Type = BodyType::Static;
+                                                    RBC.PhysicsBody->setType(rp3d::BodyType::STATIC);
+                                                }
                                             }
 
-                                            ImGui::End();
-                                        }
-                                    }
-                                }
+                                            ComboBox("Interaction", { "Static", "Dynamic" }, interaction,
+                                                [&](std::int32_t idx, const std::string&)
+                                                {
+                                                    if (idx == 0) { RBC.Type = BodyType::Static;  RBC.PhysicsBody->setType(rp3d::BodyType::STATIC); }
+                                                    if (idx == 1) { RBC.Type = BodyType::Dynamic; RBC.PhysicsBody->setType(rp3d::BodyType::DYNAMIC); }
+                                                });
 
-                                EndPropertyGrid();
+                                            auto* body = RBC.PhysicsBody;
+
+                                            float mass = (float)body->getMass();
+                                            if (DragFloat("Compute Mass", &mass, 0.001f, 1e-10f, FLT_MAX))
+                                                body->setMass(Units::ToKilograms(mass));
+
+                                            float linearDamping = (float)body->getLinearDamping();
+                                            if (DragFloat("Linear Damping", &linearDamping, 0.001f, 0.0f, 1.0f))
+                                                body->setLinearDamping(Units::ToMetersPerSecond(linearDamping));
+
+                                            float angularDamping = (float)body->getAngularDamping();
+                                            if (DragFloat("Angular Damping", &angularDamping, 0.001f, 0.0f, 1.0f))
+                                                body->setAngularDamping(Units::ToMetersPerSecond(angularDamping));
+                                        }
+                                        {
+                                            float bounce = CC.Restitution;
+                                            if (DragFloat("Bounce", &bounce, 0.001f, 0.0f, 1.0f))
+                                            {
+                                                CC.Collider->getMaterial().setBounciness(bounce);
+                                                CC.Restitution = bounce;
+                                            }
+
+                                            float friction = CC.Friction;
+                                            if (DragFloat("Friction", &friction, 0.001f, 0.0f, 1.0f))
+                                            {
+                                                CC.Collider->getMaterial().setBounciness(friction);
+                                                CC.Friction = friction;
+                                            }
+
+                                            float density = CC.MassDensity;
+                                            if (DragFloat("Density", &density, 0.01f, 0.0f, FLT_MAX))
+                                            {
+                                                CC.Collider->getMaterial().setMassDensity(density);
+                                                CC.MassDensity = density;
+                                            }
+                                        }
+                                        {
+                                            static bool isEditorOpen = false;
+                                            if (ImGui::Button(ICON_MD_IMAGE " Material Editor"))
+                                                isEditorOpen = !isEditorOpen;
+
+                                            if (isEditorOpen)
+                                            {
+                                                std::string w = std::string(ICON_MD_IMAGE " Material Editor##") + std::to_string((uintptr_t)current.get());
+                                                if (ImGui::Begin(w.c_str(), &isEditorOpen, ImGuiWindowFlags_NoDocking))
+                                                {
+                                                    if (ImGui::BeginChild("##inspector-area", ImVec2(0.0f, 0.0f)))
+                                                    {
+                                                        if (MTC.MaterialPointer)
+                                                            DrawMaterialUI(context, MTC.MaterialPointer);
+                                                        else
+                                                            ImGui::TextDisabled(ICON_MD_INFO " No material assigned");
+                                                        ImGui::EndChild();
+                                                    }
+                                                    ImGui::End();
+                                                }
+                                            }
+                                        }
+
+                                        EndPropertyGrid();
+                                    }
+
+                                    ImGui::TreePop();
+                                } 
+                                
+                                current = next;
                             }
 
                             ImGui::TreePop();
                         }
+                    } 
 
-                        current = next;
+                    ImGui::TreePop();
+                }
+
+                if(ImGui::TreeNodeEx(scene->GetName().c_str(), treeNodeFlags, ICON_MD_WB_SUNNY "Scene Environment"))
+                {
+                    auto& env = scene->GetEnvironment(); 
+                    if (ImGui::CollapsingHeader(ICON_MD_LIGHTBULB " Light", headerFlags))
+                    {
+                        BeginPropertyGrid("##sun-properties");
+
+                        DragFloat3("Direction", env.Sun.Direction);
+                        ColorEdit3("Color", env.Sun.Color);
+                        DragFloat("Intensity", &env.Sun.Intensity, 0.01f, 0.0f, 50.0f);;
+                        ToggleSwitch("Show Light Direction", env.Sun.ShowLightDirectionGuizmo);
+
+                        EndPropertyGrid();
                     }
+
+                    ImGui::TreePop();
                 }
 
                 ImGui::TreePop();
             }
-
-            ImGui::PopID();
         }
 
         ImGui::End();

@@ -122,7 +122,7 @@ namespace Motion
 
         [[nodiscard]] virtual BufferID GetFrameBufferID() const override { return m_FrameBufferID; }
         [[nodiscard]] virtual std::int32_t GetAttachmentCount() const override { return static_cast<std::int32_t>(m_ColorAttachments.size()); }
-        [[nodiscard]] virtual FrameBufferSpecification& GetFrameSpecification() override { return m_Specification; }
+        [[nodiscard]] virtual FrameBufferSpecification& GetSpecification() override { return m_Specification; }
         [[nodiscard]] virtual FrameTextureID ResolveTo(IFrameBuffer* target) override;
         [[nodiscard]] virtual ColorAttachments GetAttachment(FrameBufferColorAttachmentStandards attachment) const override;
         [[nodiscard]] virtual std::int32_t ReadPixel(FrameBufferColorAttachmentStandards attachment, std::int32_t x, std::int32_t y) override;

@@ -43,11 +43,11 @@ namespace Motion
             static bool InitializeCOM();
             static void UninitializeCOM();
 
+            static std::filesystem::path GetDocumentsFolder();
             static std::filesystem::path OpenFileDialog(const OpenDialogOptions& opt);
             static std::optional<std::filesystem::path> SaveFileDialog(const SaveDialogOptions& opt);
 
         private:
-
 #ifdef _WIN32
             static bool EnsureOpenDialog();
             static bool EnsureSaveDialog();

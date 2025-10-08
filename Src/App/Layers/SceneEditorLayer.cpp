@@ -1,88 +1,34 @@
 #include "CorePCH.hpp"
-
-#include "Panels.hpp"
 #include "SceneEditorLayer.hpp"
 
 namespace Motion
 {
-    static std::shared_ptr<ImGuiLayer> s_ImGuiLayer{ nullptr };
-    static bool s_RequestLayoutReset = false;
-
-    SceneEditorLayer::SceneEditorLayer(WindowHandle handle, const std::shared_ptr<ImGuiLayer>& imguiLayer) : Layer("EditorLayer")
-    {
-        s_ImGuiLayer = imguiLayer;
-        m_Panels = std::make_shared<ScenePanelManager>();
-    }
-
     void SceneEditorLayer::OnAttach()
     {
-        m_Viewport.Size                 = m_CurrentViewportSize;
-        m_Viewport.FrameSpec.Name       = "SceneEditorFrame";
-        m_Viewport.FrameSpec.Width      = (std::uint32_t)m_CurrentViewportSize.x;
-        m_Viewport.FrameSpec.Height     = (std::uint32_t)m_CurrentViewportSize.y;
-        m_Viewport.FrameSpec.Samples    = 1;
-        m_Framebuffer                   = IFrameBuffer::Create(m_Viewport.FrameSpec);
-
-        SceneSpecification spec{};
-        spec.Name           = "Default Scene";
-        spec.IsActive       = true;
-        spec.Viewport       = m_Viewport;
-
-        if (m_Scenes.empty())
-            m_Scenes.push_back(std::make_shared<Scene>(spec));
-
-        m_ActiveScene = m_Scenes[0];
-        m_ActiveScene->Activate(true);
-        m_SceneTextures[m_ActiveScene] = m_Framebuffer->GetAttachment(FrameBufferColorAttachmentStandards::Standard).ID;
-
-        //------------------------------------------------------------------------------------
-
-        m_Panels->Emplace<SceneViewportPanel>();
-        m_Panels->Emplace<SceneViewPanel>();
-        m_Panels->Emplace<SimulationPanel>();
+        // TODO: Make this load a scene
+        m_Scene = std::make_shared<Scene>(UniqueIdentity::GetUniqueID(), "Default Scene");
     }
 
     void SceneEditorLayer::OnDetach()
     {
-        m_Framebuffer.reset();
-        m_Scenes.clear();
+
     }
 
     void SceneEditorLayer::OnUpdate(WindowHandle handle, Timer deltaTime)
     {
-        m_ActiveScene->OnUpdate(handle, deltaTime);
-
-        m_Framebuffer->Bind();
-
-        Renderer::SetViewport(0, 0,  (std::int32_t)m_CurrentViewportSize.x, (std::int32_t)m_CurrentViewportSize.y);
-        Renderer::ClearColor({ 0.243f, 0.243f, 0.243f, 1.0f });
-        Renderer::Clear();
-
-        SceneRenderer::BeginScene();
-        SceneRenderer::Submit(m_ActiveScene.get());
-        SceneRenderer::EndScene();
-
-        m_Framebuffer->Unbind();
-        m_SceneTextures[m_ActiveScene] = m_Framebuffer->GetAttachment(FrameBufferColorAttachmentStandards::Standard).ID;
+        m_Scene->OnUpdate(handle, deltaTime);
+        m_Scene->Submit();
     }
 
     void SceneEditorLayer::OnEvent(WindowHandle handle, IEvent& e)
     {
-        m_ActiveScene->OnEvent(handle, e);
+        m_Scene->OnEvent(handle, e);
     }
 
     void SceneEditorLayer::OnUIRender(WindowHandle handle)
     {
         BuildDockspace();
-
-        ScenePanelContext panelContext;
-        panelContext.ActiveScene                    = m_ActiveScene;
-        panelContext.ViewportTexture          = m_SceneTextures[m_ActiveScene]; 
-        panelContext.UIInstance                = s_ImGuiLayer.get();
-        panelContext.EditorInstance            = this;
-
-        for (const auto& panel : *m_Panels)
-            panel->RenderUI(panelContext);
+        m_Scene->OnUIRender(handle);
     }
 
     void SceneEditorLayer::BuildDockspace()
@@ -150,15 +96,16 @@ namespace Motion
 
                 ImGui::PushID("simbar");
                 if (ImGui::Button(ICON_MD_PLAY_ARROW, btnSz))
-                    m_ActiveScene->GotoSimulation(SimulationState::Running);
+                    m_Scene->StartSimulation();
 
                 ImGui::SameLine(0, pad_x);
                 if (ImGui::Button(ICON_MD_STOP, btnSz))
-                    m_ActiveScene->GotoSimulation(SimulationState::Stop);
+                    m_Scene->StopSimulation();
 
                 ImGui::SameLine(0, pad_x);
                 if (ImGui::Button(ICON_MD_PAUSE, btnSz))
-                    m_ActiveScene->GotoSimulation(SimulationState::Paused);
+                    m_Scene->PauseSimulation();
+
                 ImGui::PopID();
 
                 ImGui::SameLine(0, style.ItemSpacing.x * 1.5f);
@@ -166,15 +113,15 @@ namespace Motion
                 ImGui::TextUnformatted("Simulation State: ");
                 ImGui::SameLine();
 
-                switch (m_ActiveScene->GetSimualtionState())
+                switch (m_Scene->GetSimulationState())
                 {
-                    case SimulationState::Stop:
+                    case Scene::Simulation::IDLE:
                         ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.65f, 1.0f), "IDLE");   
                         break;
-                    case SimulationState::Paused:
+                    case Scene::Simulation::PAUSE:
                         ImGui::TextColored(ImVec4(1.0f, 0.72f, 0.0f, 1.0f), "PAUSED");   
                         break;
-                    case SimulationState::Running:
+                    case Scene::Simulation::RUNNING:
                         ImGui::TextColored(ImVec4(0.1f, 0.95f, 0.4f, 1.0f), "RUNNING"); 
                         break;
                     default: break;
@@ -189,14 +136,14 @@ namespace Motion
                 ImGui::TextUnformatted("Camera Speed");
                 ImGui::SameLine();
                 ImGui::PushItemWidth(drag_w);
-                ImGui::DragFloat("##camspeed", &m_ActiveScene->GetCamera().TranslationSpeed, 0.001f, 0.0f);
+                ImGui::DragFloat("##camspeed", &m_Scene->GetCamera().TranslationSpeed, 0.001f, 0.0f);
                 ImGui::PopItemWidth();
 
                 ImGui::SameLine();
                 ImGui::TextUnformatted("Camera Sensitivity");
                 ImGui::SameLine();
                 ImGui::PushItemWidth(drag_w);
-                ImGui::DragFloat("##camsens", &m_ActiveScene->GetCamera().Sensitivity, 0.001f);
+                ImGui::DragFloat("##camsens", &m_Scene->GetCamera().Sensitivity, 0.001f);
                 ImGui::PopItemWidth();
 
                 ImGui::PopStyleColor(); 
@@ -217,103 +164,5 @@ namespace Motion
         }
 
         ImGui::End();
-    }
-
-    void SceneEditorLayer::SetViewportSize(const glm::vec2 & size)
-    {
-        if (size == m_CurrentViewportSize || size.x <= 1.0f || size.y <= 1.0f) return;
-        m_CurrentViewportSize = size;
-
-        if (m_Framebuffer)         m_Framebuffer->ResizeFrame((std::int32_t)size.x, (std::int32_t)size.y);
-        if (m_ActiveScene)         m_ActiveScene->OnViewportSizeChanges(size);
-    }
-
-    void SceneEditorLayer::SetActiveScene(const std::shared_ptr<Scene>& scene)
-    {
-        if (!scene || scene == m_ActiveScene) return;
-
-        if (m_ActiveScene) m_ActiveScene->Activate(false);
-        m_ActiveScene = scene;
-        m_ActiveScene->Activate(true);
-
-        m_CurrentViewportSize = m_ActiveScene->GetSpecification().Viewport.Size;
-        m_Viewport = m_ActiveScene->GetSpecification().Viewport;
-    }
-
-    void SceneEditorLayer::RemoveScene(const std::shared_ptr<Scene>& scene)
-    {
-        if (!scene) return;
-
-        bool deletingActive = (scene == m_ActiveScene);
-        m_SceneTextures.erase(scene);
-
-        auto it = std::find(m_Scenes.begin(), m_Scenes.end(), scene);
-        if (it != m_Scenes.end()) m_Scenes.erase(it);
-
-        if (m_Scenes.empty()) 
-        {
-            SceneSpecification spec{};
-
-            spec.Name           = "New Scene";
-            spec.IsActive       = true;
-            spec.Viewport       = m_Viewport;
-
-            m_Scenes.push_back(std::make_shared<Scene>(spec));
-        }
-        if (deletingActive)
-        {
-            SetActiveScene(m_Scenes.front());
-        }
-    }
-
-    std::shared_ptr<Scene> SceneEditorLayer::AddNewScene(const std::string& name, bool makeActive)
-    {
-        SceneSpecification spec{};
-
-        spec.Name           = name.empty() ? "Untitled Scene" : name;
-        spec.IsActive       = false;      
-        spec.Viewport       = m_Viewport;
-
-        auto s = std::make_shared<Scene>(spec);
-        m_Scenes.push_back(s);
-
-        if (makeActive)
-            SetActiveScene(s);
-
-        return s;
-    }
-
-    void SceneEditorLayer::DeleteScene(UUID id)
-    {
-        if (m_Scenes.empty()) return;
-        bool deletingActive = (m_ActiveScene && m_ActiveScene->GetID() == id);
-
-        for (auto it = m_SceneTextures.begin(); it != m_SceneTextures.end(); )
-        {
-            if (it->first && it->first->GetID() == id) it = m_SceneTextures.erase(it);
-            else ++it;
-        }
-
-        for (auto it = m_Scenes.begin(); it != m_Scenes.end(); ++it)
-        {
-            if ((*it)->GetID() == id)
-            {
-                m_Scenes.erase(it);
-                break;
-            }
-        }
-        
-        if (deletingActive)
-        {
-            if (!m_Scenes.empty())
-            {
-                m_ActiveScene = m_Scenes.front();
-                m_ActiveScene->Activate(true);
-            }
-            else
-            {
-                m_ActiveScene.reset();
-            }
-        }
     }
 }

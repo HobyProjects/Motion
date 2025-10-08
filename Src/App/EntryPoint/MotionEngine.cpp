@@ -1,3 +1,4 @@
+#include "CorePCH.hpp"
 #include "Application.hpp"
 
 using namespace Motion;
@@ -15,11 +16,11 @@ int main(int argc, char* argv[])
     }
     else
     {
-        MOTION_CORE_ERROR("Failed to initialize Core API!");
+        MOTION_ERROR("Failed to initialize Core API!");
         return -1;
     }
 
     coreAPI.Quit();
-    MOTION_CORE_INFO("Application exited successfully.");
+    MOTION_INFO("Application exited successfully.");
     return 0;
 }

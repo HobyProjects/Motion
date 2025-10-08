@@ -13,9 +13,7 @@ namespace Motion
         UserInterfaceInitializer::Init(m_Window->GetHandle());
 
         m_ImGuiLayer    = std::make_shared<ImGuiLayer>(m_Window->GetHandle(), ImGuiColorScheme::Dark);
-        m_EditorLayer   = std::make_shared<SceneEditorLayer>(m_Window->GetHandle(), m_ImGuiLayer);
-
-        KinetiX::GetInstance().Init();
+        m_EditorLayer   = std::make_shared<SceneEditorLayer>();
 
         PushOverlay(m_ImGuiLayer);
         PushLayer(m_EditorLayer);
@@ -24,7 +22,6 @@ namespace Motion
     Application::~Application()
     {
         UserInterfaceInitializer::Quit();
-        KinetiX::GetInstance().Quit();
         Renderer::Quit();
 
         auto& windowManager = WindowManager::GetInstance();

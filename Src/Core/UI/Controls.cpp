@@ -207,7 +207,7 @@ namespace Motion
             for (float x = r.Min.x; x < r.Max.x; x += cell)
             {
                 bool alt = (int)((x - r.Min.x) / cell + (y - r.Min.y) / cell) & 1;
-                ImRect q(ImVec2(x, y), ImVec2(std::min(x + cell, r.Max.x), std::min(y + cell, r.Max.y)));
+                ImRect q(ImVec2(x, y), ImVec2(std::min<float>(x + cell, r.Max.x), std::min<float>(y + cell, r.Max.y)));
                 dl->AddRectFilled(q.Min, q.Max, alt ? c0 : c1);
             }
         }
@@ -252,7 +252,7 @@ namespace Motion
         if (ImGui::IsItemHovered())
         {
             ImGui::BeginTooltip();
-            const int big = std::min(previewSize * 2, 512);
+            const int big = std::min<std::int32_t>(previewSize * 2, 512);
             if (tex)
                 ImGui::Image(AsImTextureID(tex), ImVec2((float)big, (float)big), ImVec2(0, 1), ImVec2(1, 0));
             else

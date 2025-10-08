@@ -108,7 +108,7 @@ namespace Motion
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 
         GLfloat maxAniso = 0.0f; glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY, &maxAniso);
-        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY, std::min(4.0f, maxAniso));
+        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY, std::min<float>(4.0f, maxAniso));
 
         glBindTexture(GL_TEXTURE_2D, 0);
     }
@@ -190,7 +190,7 @@ namespace Motion
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 
         GLfloat maxAniso = 0.0f; glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY, &maxAniso);
-        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY, std::min(4.0f, maxAniso));
+        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY, std::min<float>(4.0f, maxAniso));
 
         glBindTexture(GL_TEXTURE_2D, 0);
         return true;
@@ -257,7 +257,7 @@ namespace Motion
             textureData[i * 4 + 3] = 255;
         }
 
-        const int mipLevels = static_cast<int>(std::floor(std::log2(std::max(width, height)))) + 1;
+        const int mipLevels = static_cast<int>(std::floor(std::log2(std::max<std::int32_t>(width, height)))) + 1;
 
         glCreateTextures(GL_TEXTURE_2D, 1, &m_Specification.TexID);
         glTextureStorage2D(m_Specification.TexID, mipLevels, m_Specification.InternalDataFormat, width, height);
@@ -271,7 +271,7 @@ namespace Motion
         glGenerateTextureMipmap(m_Specification.TexID);
 
         GLfloat maxAniso = 0.0f; glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY, &maxAniso);
-        glTextureParameterf(m_Specification.TexID, GL_TEXTURE_MAX_ANISOTROPY, std::min(4.0f, maxAniso));
+        glTextureParameterf(m_Specification.TexID, GL_TEXTURE_MAX_ANISOTROPY, std::min<float>(4.0f, maxAniso));
 
         delete[] textureData;
         return true;

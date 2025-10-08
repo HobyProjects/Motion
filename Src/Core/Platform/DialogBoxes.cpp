@@ -7,7 +7,10 @@
 #include <glfw/glfw3native.h>
 #include <wrl/client.h>
 #include <shellapi.h>
+#include <shlobj.h>
 #include <commdlg.h>
+#include <combaseapi.h>
+#include "DialogBoxes.hpp"
 
 #pragma comment(lib, "ole32.lib")
 #pragma comment(lib, "shell32.lib")
@@ -139,6 +142,20 @@ namespace Motion
     }
 
 #endif
+
+    std::filesystem::path DialogBoxes::GetDocumentsFolder()
+    {
+#ifdef _WIN32
+        PWSTR path = nullptr;
+        if (SUCCEEDED(SHGetKnownFolderPath(FOLDERID_Documents, 0, nullptr, &path))) 
+        {
+            std::filesystem::path p(path);
+            CoTaskMemFree(path);
+            return p;
+        }
+#endif
+        return {};
+    }
 
     std::filesystem::path DialogBoxes::OpenFileDialog(const OpenDialogOptions& opt) 
     {

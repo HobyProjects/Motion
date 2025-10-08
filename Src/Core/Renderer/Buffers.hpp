@@ -269,7 +269,7 @@ namespace Motion
 
         [[nodiscard]] virtual BufferID GetFrameBufferID() const = 0;
         [[nodiscard]] virtual std::int32_t GetAttachmentCount() const = 0;
-        [[nodiscard]] virtual FrameBufferSpecification& GetFrameSpecification() = 0;
+        [[nodiscard]] virtual FrameBufferSpecification& GetSpecification() = 0;
         [[nodiscard]] virtual FrameTextureID ResolveTo(IFrameBuffer* target) = 0;
         [[nodiscard]] virtual ColorAttachments GetAttachment(FrameBufferColorAttachmentStandards attachment) const = 0;
         [[nodiscard]] virtual std::int32_t ReadPixel(FrameBufferColorAttachmentStandards attachment, std::int32_t x, std::int32_t y) = 0;

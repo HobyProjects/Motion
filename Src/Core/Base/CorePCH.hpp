@@ -58,6 +58,7 @@
 #include <glm/gtx/intersect.hpp>
 #include <glm/gtx/norm.hpp>
 #include <glm/gtx/compatibility.hpp>
+#include <glm/gtc/quaternion.hpp>
 
 #include <imgui/imgui.h>
 #include <imgui/imgui_impl_opengl3.h>
@@ -86,14 +87,6 @@
 #include "Material.hpp"
 #include "MaterialComponents.hpp"
 
-//Maths
-#include "MeshFit.hpp"
-
-//Physics
-#include "PhyUtils.hpp"
-#include "KinetiX.hpp"
-
-
 //Events
 #include "Event.hpp"
 #include "EventKeyboard.hpp"
@@ -111,7 +104,7 @@
 #include "Camera.hpp"
 #include "Camera3D.hpp"
 #include "Mesh.hpp"
-#include "Importer.hpp"
+#include "ModelImporter.hpp"
 #include "RenderingStage.hpp"
 #include "RenderCommand.hpp"
 #include "CommandQueue.hpp"
@@ -136,8 +129,16 @@
 #include "Controls.hpp"
 
 //ECS
-#include "Entity.hpp"
 #include "Components.hpp"
 
 //Platform
 #include "DialogBoxes.hpp"
+
+//Scene
+#include "SceneUtils.hpp"
+#include "Scene.hpp"
+#include "ScenePanel.hpp"
+#include "SceneViewport.hpp"
+#include "SceneProperty.hpp"
+#include "SimulationControl.hpp"
+#include "SceneSerializer.hpp"

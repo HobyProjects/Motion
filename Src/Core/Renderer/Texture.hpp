@@ -83,6 +83,37 @@ namespace Motion
         }
     }
 
+    inline TextureType GetTextureTypeFromName(const std::string& name)
+    {
+        if (name == "Specular")              return TextureType::SpecularTexture;
+        if (name == "Normal")                return TextureType::NormalTexture;
+        if (name == "Emissive")              return TextureType::EmissiveTexture;
+        if (name == "Opacity")               return TextureType::OpacityTexture;
+        if (name == "Base Color")            return TextureType::BaseColorTexture;
+        if (name == "Metallic")              return TextureType::MetallicTexture;
+        if (name == "Roughness")             return TextureType::RoughnessTexture;
+        if (name == "Ambient Occlusion")     return TextureType::AmbientOcclusionTexture;
+        if (name == "Displacement")          return TextureType::DisplacementTexture;
+        if (name == "Sheen")                 return TextureType::SheenTexture;
+        if (name == "Transmission")          return TextureType::TransmissionTexture;
+        if (name == "ORM (AO/R/M)")          return TextureType::ORMTexture;
+        if (name == "Clearcoat")             return TextureType::ClearcoatTexture;
+        if (name == "Clearcoat Roughness")   return TextureType::ClearcoatRoughnessTexture;
+        if (name == "Clearcoat Normal")      return TextureType::ClearcoatNormalTexture;
+        if (name == "Specular Color")        return TextureType::SpecularColorTexture;
+        if (name == "Sheen Color")           return TextureType::SheenColorTexture;
+        if (name == "Sheen Roughness")       return TextureType::SheenRoughnessTexture;
+        if (name == "Thickness")             return TextureType::ThicknessTexture;
+        if (name == "Anisotropy")            return TextureType::AnisotropyTexture;
+        if (name == "Iridescence")           return TextureType::IridescenceTexture;
+        if (name == "Iridescence Thickness")  return TextureType::IridescenceThicknessTexture;
+        if (name == "Cube")                  return TextureType::CubeTexture;
+        if (name == "Irradiance")            return TextureType::IrradianceTexture;
+        if (name == "Prefiltered")           return TextureType::PrefilteredTexture;
+        if (name == "BRDF")                  return TextureType::BRDFTexture;
+        return TextureType::UnknownTexture;
+    }
+
     struct TextureSpecification
     {
         std::string Name{};

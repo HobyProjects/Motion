@@ -4,12 +4,9 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
-
 #include <yaml-cpp/yaml.h>
 
 #include "Scene.hpp"
-#include "Components.hpp"
-#include "SceneEnviroment.hpp"
 
 namespace Motion
 {

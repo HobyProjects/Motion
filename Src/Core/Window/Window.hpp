@@ -70,108 +70,104 @@ namespace Motion
 
     class IPlatformBaseAPI
     {
-    public:
-        IPlatformBaseAPI() = default;
-        virtual ~IPlatformBaseAPI() = default;
+        public:
+            IPlatformBaseAPI() = default;
+            virtual ~IPlatformBaseAPI() = default;
 
-        [[nodiscard]] virtual bool Init() noexcept = 0;
-        [[nodiscard]] virtual PlatformBaseAPIs API() const noexcept = 0;
-        [[nodiscard]] virtual bool IsInitialized() const noexcept = 0;
+            [[nodiscard]] virtual bool Init() noexcept = 0;
+            [[nodiscard]] virtual PlatformBaseAPIs API() const noexcept = 0;
+            [[nodiscard]] virtual bool IsInitialized() const noexcept = 0;
 
-        virtual void Quit() noexcept = 0;
+            virtual void Quit() noexcept = 0;
     };
 
     class IContext
     {
-    public:
-        IContext() = default;
-        virtual ~IContext() = default;
+        public:
+            IContext() = default;
+            virtual ~IContext() = default;
 
-        virtual bool Activate() noexcept = 0;
-        virtual void Attach(NativeWindow) noexcept = 0;
-        virtual void Detach() noexcept = 0;
-        virtual void SwapBuffers(NativeWindow) noexcept = 0;
+            virtual bool Create() noexcept = 0;
+            virtual void MakeCurrent(NativeWindow) noexcept = 0;
+            virtual void ClearCurrent() noexcept = 0;
+            virtual void SwapBuffers(NativeWindow) noexcept = 0;
 
-        [[nodiscard]] virtual bool IsContextCreated() const noexcept = 0;
-        [[nodiscard]] virtual NativeWindow GetCurrentContext() const noexcept = 0;
+            static std::shared_ptr<IContext> GetContext();
     };
 
     class IWindow
     {
-    public:
-        IWindow() = default;
-        virtual ~IWindow() = default;
+        public:
+            IWindow() = default;
+            virtual ~IWindow() = default;
 
-        [[nodiscard]] virtual bool IsActive() const noexcept = 0;
-        [[nodiscard]] virtual bool IsFocused() const noexcept = 0;
-        [[nodiscard]] virtual bool IsVSyncEnabled() const noexcept = 0;
-        [[nodiscard]] virtual WindowHandle GetHandle() const noexcept = 0;
-        [[nodiscard]] virtual NativeWindow GetNativeWindow() const noexcept = 0;
-        [[nodiscard]] virtual WindowProperties& GetProperties() noexcept = 0;
-        [[nodiscard]] virtual std::shared_ptr<IContext> GetContext() const noexcept = 0;
+            [[nodiscard]] virtual bool IsActive() const noexcept = 0;
+            [[nodiscard]] virtual bool IsFocused() const noexcept = 0;
+            [[nodiscard]] virtual bool IsVSyncEnabled() const noexcept = 0;
+            [[nodiscard]] virtual WindowHandle GetHandle() const noexcept = 0;
+            [[nodiscard]] virtual NativeWindow GetNativeWindow() const noexcept = 0;
+            [[nodiscard]] virtual WindowProperties& GetProperties() noexcept = 0;
 
-        virtual void PollEvents() = 0;
-        virtual void SwapBuffers() = 0;
-        virtual void SetEventsCallbackFunc(const EventProcessingFunction&) = 0;
-        virtual void SetContext(const std::shared_ptr<IContext>& context) = 0;
+            virtual void PollEvents() = 0;
+            virtual void SetEventsCallbackFunc(const EventProcessingFunction&) = 0;
     };
 
     class CoreAPI
     {
-    private:
-        CoreAPI() = default;
-        ~CoreAPI() = default;
+        private:
+            CoreAPI() = default;
+            ~CoreAPI() = default;
 
-        CoreAPI(const CoreAPI&) = delete;
-        CoreAPI& operator=(const CoreAPI&) = delete;
-        CoreAPI(CoreAPI&&) = delete;
-        CoreAPI& operator=(CoreAPI&&) = delete;
+            CoreAPI(const CoreAPI&) = delete;
+            CoreAPI& operator=(const CoreAPI&) = delete;
+            CoreAPI(CoreAPI&&) = delete;
+            CoreAPI& operator=(CoreAPI&&) = delete;
 
-    public:
-        [[nodiscard]] static CoreAPI& GetInstance() noexcept
-        {
-            static CoreAPI instance;
-            return instance;
-        }
+        public:
+            [[nodiscard]] static CoreAPI& GetInstance() noexcept
+            {
+                static CoreAPI instance;
+                return instance;
+            }
 
-    public:
-        [[nodiscard]] bool Init() noexcept;
-        [[nodiscard]] PlatformBaseAPIs API() const noexcept;
-        [[nodiscard]] std::shared_ptr<IPlatformBaseAPI> GetBaseAPI() const noexcept;
+        public:
+            [[nodiscard]] bool Init() noexcept;
+            [[nodiscard]] PlatformBaseAPIs API() const noexcept;
+            [[nodiscard]] std::shared_ptr<IPlatformBaseAPI> GetBaseAPI() const noexcept;
 
-        void Quit() noexcept;
+            void Quit() noexcept;
 
-    private:
-        std::shared_ptr<IPlatformBaseAPI> m_PlatformBaseAPIService{ nullptr };
+        private:
+            std::shared_ptr<IPlatformBaseAPI> m_PlatformBaseAPIService{ nullptr };
     };
 
     class WindowManager
     {
-    private:
-        WindowManager() = default;
-        ~WindowManager() = default;
+        private:
+            WindowManager() = default;
+            ~WindowManager() = default;
 
-        WindowManager(const WindowManager&) = delete;
-        WindowManager& operator=(const WindowManager&) = delete;
-        WindowManager(WindowManager&&) = delete;
-        WindowManager& operator=(WindowManager&&) = delete;
+            WindowManager(const WindowManager&) = delete;
+            WindowManager& operator=(const WindowManager&) = delete;
+            WindowManager(WindowManager&&) = delete;
+            WindowManager& operator=(WindowManager&&) = delete;
 
-    public:
-        [[nodiscard]] static WindowManager& GetInstance() noexcept
-        {
-            static WindowManager instance;
-            return instance;
-        }
+        public:
+            [[nodiscard]] static WindowManager& GetInstance() noexcept
+            {
+                static WindowManager instance;
+                return instance;
+            }
 
-    public:
-        [[nodiscard]] std::shared_ptr<IWindow> Create(const std::string& title) noexcept;
-        [[nodiscard]] std::shared_ptr<IWindow> GetWindow(WindowHandle handle) const noexcept;
-        [[nodiscard]] std::shared_ptr<IWindow> GetActiveWindow() const noexcept;
+        public:
+            [[nodiscard]] std::shared_ptr<IWindow> Create(const std::string& title, bool isVisible, NativeWindow sharedWindow = nullptr) noexcept;
+            [[nodiscard]] std::shared_ptr<IWindow> GetWindow(WindowHandle handle) const noexcept;
+            [[nodiscard]] std::shared_ptr<IWindow> GetActiveWindow() const noexcept;
 
-        void Destroy(WindowHandle windowHandle) noexcept;
+            void Destroy(WindowHandle windowHandle) noexcept;
 
-    private:
-        std::unordered_map<WindowHandle, std::shared_ptr<IWindow>> m_WindowManagementService;
+        private:
+            std::unordered_map<WindowHandle, std::shared_ptr<IWindow>> m_WindowManagementService;
     };
 
 }

@@ -94,6 +94,11 @@ namespace Motion
         glViewport(x, y, width, height);
     }
 
+    void GL_DrawArrays(PrimitiveTopology topology, std::uint32_t count)
+    {
+        glDrawArrays(ToGL(topology), 0, count);
+    }
+
     void GL_DrawIndexed(std::int32_t indicesCount)
     {
         glDrawElements(GL_TRIANGLES, indicesCount, GL_UNSIGNED_INT, nullptr);

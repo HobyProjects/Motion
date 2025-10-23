@@ -36,6 +36,13 @@ namespace Motion
         std::filesystem::path FilePath{};
         std::unordered_map<MeshAssetID, MeshAsset> Meshes{};
     };
+
+    struct ImportSettings
+    {
+        std::filesystem::path FilePath;
+        bool ShouldExport{false};
+        std::filesystem::path ExportPath;
+    };
     
     class Importer
     {
@@ -49,6 +56,6 @@ namespace Motion
             Importer& operator=(Importer&&) = delete;
 
         public:
-            static std::shared_ptr<ImportedResults> ImportModelAsync(const std::filesystem::path& path, bool shouldExport, const std::string& exportPath);
+            static std::shared_ptr<ImportedResults> ImportEntity(ImportSettings settings);
     };
 }

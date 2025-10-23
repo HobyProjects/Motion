@@ -7,7 +7,7 @@ namespace Motion
     class GL_Shader final : public IShader
     {
         public:
-            GL_Shader(std::unordered_map<ShaderType, std::string>& shaderSources);
+            GL_Shader(const std::unordered_map<ShaderType, std::string>& shaderSources);
             virtual ~GL_Shader() override;
 
             virtual void Bind() const override;

@@ -6,19 +6,13 @@ namespace Motion
 {
     class GLFW_GL_Context final : public IContext
     {
-    public:
-        GLFW_GL_Context() = default;
-        virtual ~GLFW_GL_Context() = default;
+        public:
+            GLFW_GL_Context() = default;
+            virtual ~GLFW_GL_Context() = default;
 
-        virtual bool Activate() noexcept override;
-        virtual void Attach(NativeWindow window) noexcept override;
-        virtual void Detach() noexcept override;
-        virtual void SwapBuffers(NativeWindow window) noexcept override;
-
-        [[nodiscard]] virtual bool IsContextCreated() const noexcept override;
-        [[nodiscard]] virtual NativeWindow GetCurrentContext() const noexcept override;
-
-    private:
-        bool m_IsContextCreated{ false };
+            virtual bool Create() noexcept override;
+            virtual void MakeCurrent(NativeWindow) noexcept override;
+            virtual void ClearCurrent() noexcept override;
+            virtual void SwapBuffers(NativeWindow) noexcept override;
     };
 }

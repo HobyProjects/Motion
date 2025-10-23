@@ -113,6 +113,7 @@ namespace Motion
         std::shared_ptr<Mesh> MeshPointer{nullptr};
         glm::vec3 MinBounds{};
         glm::vec3 MaxBounds{};
+        std::uint32_t MeshIndex{0};
     };
 
     struct MaterialComponent

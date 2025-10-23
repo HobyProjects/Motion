@@ -1,13 +1,9 @@
 #pragma once
+
 #include <string>
 #include <vector>
 #include <optional>
 #include <filesystem>
-
-#ifdef _WIN32
-#include <windows.h>
-#include <shobjidl.h>
-#endif
 
 namespace Motion 
 {
@@ -37,18 +33,29 @@ namespace Motion
         bool OverwritePrompt{true};               
     };
 
+    enum class SystemFolder
+    {
+        Desktop,
+        Documents,
+        Downloads,
+        UserFolder
+    };
+
     class DialogBoxes 
     {
         public:
             static bool InitializeCOM();
             static void UninitializeCOM();
 
-            static std::filesystem::path GetDocumentsFolder();
+            static std::filesystem::path GetSystemFolder(SystemFolder folder = SystemFolder::Documents);
             static std::filesystem::path OpenFileDialog(const OpenDialogOptions& opt);
             static std::optional<std::filesystem::path> SaveFileDialog(const SaveDialogOptions& opt);
+            static std::filesystem::path OpenFolderDialog(const std::wstring& title = L"Select a folder", const std::filesystem::path& initialDir = {});
 
         private:
-#ifdef _WIN32
+
+#ifdef MOTION_PLATFORM_WINDOWS
+
             static bool EnsureOpenDialog();
             static bool EnsureSaveDialog();
 #endif

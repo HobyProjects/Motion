@@ -6,17 +6,11 @@
 
 namespace Motion
 {
-    enum class ImGuiColorScheme
-    {
-        Light,
-        Dark,
-    };
-
     class ImGuiLayer final : public Layer
     {
         public:
             ImGuiLayer() : Layer("ImGuiLayer") {}
-            ImGuiLayer(WindowHandle handle, ImGuiColorScheme colorScheme = ImGuiColorScheme::Dark);
+            ImGuiLayer(WindowHandle handle);
             virtual ~ImGuiLayer() = default;
 
             virtual void OnAttach() override;
@@ -26,11 +20,9 @@ namespace Motion
             void Begin();
             void End();
             void AcceptEvents(bool allowed) { m_AllowEvents = allowed; }
-            void UseColorScheme(ImGuiColorScheme colorScheme);
 
         private:
             WindowHandle m_WindowHandle{ 0 };
-            ImGuiColorScheme m_ColorScheme{ ImGuiColorScheme::Dark };
             bool m_AllowEvents{ false };
     };
 

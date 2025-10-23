@@ -2,7 +2,7 @@
 
 namespace Motion
 {
-    void UserInterfaceInitializer::Init(WindowHandle windowHandle) noexcept
+    void UserInterface::Init(WindowHandle windowHandle) noexcept
     {
         auto& windowManager = WindowManager::GetInstance();
         std::weak_ptr<IWindow> window = windowManager.GetWindow(windowHandle);
@@ -25,25 +25,25 @@ namespace Motion
             auto& coreAPI = CoreAPI::GetInstance();
             switch (coreAPI.API())
             {
-            case PlatformBaseAPIs::GLFW:
-            {
-                switch (Renderer::GetAPI())
+                case PlatformBaseAPIs::GLFW:
                 {
-                case RenderingAPI::OpenGL:
-                    ImGui_ImplGlfw_InitForOpenGL((GLFWwindow*)windowPtr->GetNativeWindow(), true);
-                    ImGui_ImplOpenGL3_Init("#version 460 core");
+                    switch (Renderer::GetAPI())
+                    {
+                        case RenderingAPI::OpenGL:
+                        {
+                            ImGui_ImplGlfw_InitForOpenGL((GLFWwindow*)windowPtr->GetNativeWindow(), true);
+                            ImGui_ImplOpenGL3_Init("#version 460 core");
+                            break;
+                        }
+                        case RenderingAPI::Vulkan:   MOTION_ASSERT(false, "Vulkan is not implemented yet!"); break;
+                        case RenderingAPI::DirectX:  MOTION_ASSERT(false, "DirectX is not implemented yet!"); break;
+                        default:                     MOTION_ASSERT(false, "Unknown rendering API!"); break;
+                    }
                     break;
-                case RenderingAPI::Vulkan:   MOTION_ASSERT(false, "Vulkan is not implemented yet!"); break;
-                case RenderingAPI::DirectX:  MOTION_ASSERT(false, "DirectX is not implemented yet!"); break;
-                default:                     MOTION_ASSERT(false, "Unknown rendering API!"); break;
                 }
-                break;
+                case PlatformBaseAPIs::Win32:   MOTION_ASSERT(false, "Win32 is not implemented yet!"); break;
+                default:                        MOTION_ASSERT(false, "Unknown base API!"); break;
             }
-            case PlatformBaseAPIs::Win32:   MOTION_ASSERT(false, "Win32 is not implemented yet!"); break;
-            default:                        MOTION_ASSERT(false, "Unknown base API!"); break;
-            }
-
-            ApplyTheme(Theme::Dark); // your preferred default
 
             MOTION_CORE_INFO("IMGUI initialized successfully. IMGUI VERSION: {0}", IMGUI_VERSION);
             return;
@@ -52,22 +52,22 @@ namespace Motion
         MOTION_ASSERT(false, "Failed to initialize IMGUI");
     }
 
-    void UserInterfaceInitializer::Quit() noexcept
+    void UserInterface::Quit() noexcept
     {
         switch (Renderer::GetAPI())
         {
-        case RenderingAPI::OpenGL:  ImGui_ImplOpenGL3_Shutdown(); break;
-        case RenderingAPI::Vulkan:  MOTION_ASSERT(false, "Vulkan is not implemented yet!"); break;
-        case RenderingAPI::DirectX: MOTION_ASSERT(false, "DirectX is not implemented yet!"); break;
-        default:                    MOTION_ASSERT(false, "Unknown rendering API!"); break;
+            case RenderingAPI::OpenGL:  ImGui_ImplOpenGL3_Shutdown(); break;
+            case RenderingAPI::Vulkan:  MOTION_ASSERT(false, "Vulkan is not implemented yet!"); break;
+            case RenderingAPI::DirectX: MOTION_ASSERT(false, "DirectX is not implemented yet!"); break;
+            default:                    MOTION_ASSERT(false, "Unknown rendering API!"); break;
         }
 
         auto& coreAPI = CoreAPI::GetInstance();
         switch (coreAPI.API())
         {
-        case PlatformBaseAPIs::GLFW:  ImGui_ImplGlfw_Shutdown(); break;
-        case PlatformBaseAPIs::Win32: MOTION_ASSERT(false, "Win32 is not implemented yet!"); break;
-        default:                      MOTION_ASSERT(false, "Unknown base API!"); break;
+            case PlatformBaseAPIs::GLFW:  ImGui_ImplGlfw_Shutdown(); break;
+            case PlatformBaseAPIs::Win32: MOTION_ASSERT(false, "Win32 is not implemented yet!"); break;
+            default:                      MOTION_ASSERT(false, "Unknown base API!"); break;
         }
 
         ImPlot::DestroyContext();
@@ -81,60 +81,70 @@ namespace Motion
         return fullPath.string();
     }
 
-    void UserInterfaceInitializer::LoadDefaultFonts(const char* fontPath, float sizePx) noexcept
+    void UserInterface::LoadDefaultFonts(const char* fontPath, float sizePx) noexcept
     {
         ImGuiIO& io = ImGui::GetIO();
         io.Fonts->Clear();
+        io.Fonts->TexGlyphPadding = 1; 
 
         ImFontConfig textCfg{};
-        textCfg.OversampleH = 3;
+        textCfg.OversampleH = 3;          
         textCfg.OversampleV = 3;
-        textCfg.PixelSnapH  = false;
+        textCfg.PixelSnapH  = false;     
 
         ImFont* base = nullptr;
         if (fontPath && *fontPath)
             base = io.Fonts->AddFontFromFileTTF(fontPath, sizePx, &textCfg);
-        if (!base) base = io.Fonts->AddFontDefault();
 
-        static const ImWchar icon_md_ranges[] = { (ImWchar)ICON_MIN_MD, (ImWchar)ICON_MAX_MD, 0 };
-        static const ImWchar icon_fa_ranges[] = { (ImWchar)ICON_MIN_FA, (ImWchar)ICON_MAX_FA, 0 };
+        if (!base)
+            base = io.Fonts->AddFontDefault();
 
-        const float iconScale   = 1.0f;       
-        const float iconSizePx  = sizePx * iconScale;
-        const float iconYOffset = 1.0f;         
+        static const ImWchar kMaterialIconsRange[] = 
+        {
+            (ImWchar)ICON_MIN_MD, (ImWchar)ICON_MAX_MD, 0
+        };
 
-        ImFontConfig iconCfg{};
-        iconCfg.MergeMode      = true;           
-        iconCfg.PixelSnapH     = true;
-        iconCfg.OversampleH    = 1;              
-        iconCfg.OversampleV    = 1;
-        iconCfg.GlyphMinAdvanceX = iconSizePx;     
-        iconCfg.GlyphOffset    = ImVec2(0.1f, iconYOffset);
+        static const ImWchar kFontAwesomeRange[] = 
+        {
+            (ImWchar)ICON_MIN_FA, (ImWchar)ICON_MAX_FA, 0
+        };
 
-        io.Fonts->AddFontFromFileTTF("Assets/Fonts/IconFonts/MaterialIcons-Regular.ttf", iconSizePx, &iconCfg, icon_md_ranges);
-        io.Fonts->AddFontFromFileTTF("Assets/Fonts/IconFonts/fa-regular-400.ttf", iconSizePx, &iconCfg, icon_fa_ranges);
+
+        const float iconSizePx  = sizePx; 
+        const float iconYOffset = -0.5f;
+
+
+        {
+            ImFontConfig iconCfg{};
+            iconCfg.MergeMode        = true;     
+            iconCfg.PixelSnapH       = true;     
+            iconCfg.OversampleH      = 1;        
+            iconCfg.OversampleV      = 1;
+            iconCfg.GlyphOffset      = ImVec2(0.0f, iconYOffset);
+            iconCfg.GlyphMinAdvanceX = 0.0f;    
+
+            (void)io.Fonts->AddFontFromFileTTF(
+                "Assets/Fonts/IconFonts/MaterialIcons-Regular.ttf",
+                iconSizePx, &iconCfg, kMaterialIconsRange
+            );
+        }
+        {
+            ImFontConfig iconCfg{};
+            iconCfg.MergeMode        = true;
+            iconCfg.PixelSnapH       = true;
+            iconCfg.OversampleH      = 1;
+            iconCfg.OversampleV      = 1;
+            iconCfg.GlyphOffset      = ImVec2(0.0f, iconYOffset);
+            iconCfg.GlyphMinAdvanceX = 0.0f;
+
+            (void)io.Fonts->AddFontFromFileTTF(
+                "Assets/Fonts/IconFonts/fa-regular-400.ttf",
+                iconSizePx, &iconCfg, kFontAwesomeRange
+            );
+        }
+
         (void)io.Fonts->Build();
     }
-
-    void UserInterfaceInitializer::ApplyTheme(Theme t, ImVec4 accent) noexcept
-    {
-        if (t == Theme::Auto)
-            t = Theme::Dark;
-
-        if (t == Theme::Dark) UseColorDarkImpl(accent);
-        else                  UseColorLightImpl(accent);
-
-        ImGuiStyle& style = ImGui::GetStyle();
-        if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
-        {
-            style.WindowRounding = 8.0f;
-            style.Colors[ImGuiCol_WindowBg].w = 1.0f;
-            style.Colors[ImGuiCol_Border].w = 1.0f;
-        }
-    }
-
-    void UserInterfaceInitializer::UseColorDark() noexcept { ApplyTheme(Theme::Dark); }
-    void UserInterfaceInitializer::UseColorLight() noexcept { ApplyTheme(Theme::Light); }
 
     static inline ImVec4 Mix(const ImVec4& a, const ImVec4& b, float t) 
     {
@@ -151,125 +161,139 @@ namespace Motion
         return ImVec4(r / 255.f, g / 255.f, b / 255.f, a);
     }
 
-    void SetImGuizmoStyleForEditor(const ImVec4& accent, float dpiScale = 1.0f)
+    static void SetImGuizmoStyleForEditor(const ImVec4& accent, float dpiScale)
     {
-        // Match your editor neutrals
-        const ImVec4 N00 = ImVec4(14/255.f, 14/255.f, 15/255.f, 1.0f);
-        const ImVec4 N01 = ImVec4(18/255.f, 18/255.f, 19/255.f, 1.0f);
-        const ImVec4 N02 = ImVec4(25/255.f, 26/255.f, 27/255.f, 1.0f);
-        const ImVec4 N03 = ImVec4(32/255.f, 33/255.f, 35/255.f, 1.0f);
-        const ImVec4 N04 = ImVec4(42/255.f, 44/255.f, 47/255.f, 1.0f);
-        const ImVec4 BRD = ImVec4(0.30f, 0.30f, 0.32f, 0.60f);
-        const ImVec4 TXT =  ImVec4(235/255.f, 235/255.f, 235/255.f, 1.0f);
+        const ImVec4 N00 = ImVec4(1.00f, 1.00f, 1.00f, 1.0f); 
+        const ImVec4 N01 = ImVec4(0.98f, 0.98f, 0.98f, 1.0f); 
+        const ImVec4 N02 = ImVec4(0.94f, 0.94f, 0.94f, 1.0f);
+        const ImVec4 N03 = ImVec4(0.88f, 0.88f, 0.88f, 1.0f); 
+        const ImVec4 N04 = ImVec4(0.80f, 0.80f, 0.80f, 1.0f);  
+        const ImVec4 BRD = ImVec4(0.25f, 0.27f, 0.30f, 0.35f);
+        const ImVec4 TXT = ImVec4(0.10f, 0.11f, 0.12f, 1.0f);  
 
-        // Axis base colors (muted to fit your palette)
-        const ImVec4 AX_X = Mix(ImVec4(0.92f, 0.26f, 0.26f, 1.0f), N03, 0.10f);
-        const ImVec4 AX_Y = Mix(ImVec4(0.30f, 0.86f, 0.36f, 1.0f), N03, 0.10f);
-        const ImVec4 AX_Z = Mix(ImVec4(0.27f, 0.60f, 0.98f, 1.0f), N03, 0.10f);
+        const ImVec4 AX_X = Mix(ImVec4(0.92f, 0.26f, 0.26f, 1.0f), N03, 0.08f);
+        const ImVec4 AX_Y = Mix(ImVec4(0.30f, 0.86f, 0.36f, 1.0f), N03, 0.08f);
+        const ImVec4 AX_Z = Mix(ImVec4(0.27f, 0.60f, 0.98f, 1.0f), N03, 0.08f);
 
         ImGuizmo::Style& s = ImGuizmo::GetStyle();
 
-        // Geometry / thickness tuned for your flat theme + HiDPI scaling
-        s.TranslationLineThickness   = 3.0f * dpiScale;
+        s.TranslationLineThickness   = 3.0f  * dpiScale;
         s.TranslationLineArrowSize   = 12.0f * dpiScale;
-        s.RotationLineThickness      = 3.0f * dpiScale;
-        s.RotationOuterLineThickness = 3.5f * dpiScale;
-        s.ScaleLineThickness         = 3.0f * dpiScale;
-        s.ScaleLineCircleSize        = 8.0f * dpiScale;
-        s.HatchedAxisLineThickness   = 2.0f * dpiScale;
-        s.CenterCircleSize           = 5.0f * dpiScale; // present in recent upstream
+        s.RotationLineThickness      = 3.0f  * dpiScale;
+        s.RotationOuterLineThickness = 3.5f  * dpiScale;
+        s.ScaleLineThickness         = 3.0f  * dpiScale;
+        s.ScaleLineCircleSize        = 8.0f  * dpiScale;
+        s.HatchedAxisLineThickness   = 2.0f  * dpiScale;
+        s.CenterCircleSize           = 5.0f  * dpiScale;
 
-        // Colors — only using slots that exist in upstream ImGuizmo
-        s.Colors[ImGuizmo::DIRECTION_X]           = AX_X;
-        s.Colors[ImGuizmo::DIRECTION_Y]           = AX_Y;
-        s.Colors[ImGuizmo::DIRECTION_Z]           = AX_Z;
+        s.Colors[ImGuizmo::DIRECTION_X] = AX_X;
+        s.Colors[ImGuizmo::DIRECTION_Y] = AX_Y;
+        s.Colors[ImGuizmo::DIRECTION_Z] = AX_Z;
 
-        s.Colors[ImGuizmo::PLANE_X]               = ImVec4(AX_X.x, AX_X.y, AX_X.z, 0.35f);
-        s.Colors[ImGuizmo::PLANE_Y]               = ImVec4(AX_Y.x, AX_Y.y, AX_Y.z, 0.35f);
-        s.Colors[ImGuizmo::PLANE_Z]               = ImVec4(AX_Z.x, AX_Z.y, AX_Z.z, 0.35f);
+        s.Colors[ImGuizmo::PLANE_X] = ImVec4(AX_X.x, AX_X.y, AX_X.z, 0.40f);
+        s.Colors[ImGuizmo::PLANE_Y] = ImVec4(AX_Y.x, AX_Y.y, AX_Y.z, 0.40f);
+        s.Colors[ImGuizmo::PLANE_Z] = ImVec4(AX_Z.x, AX_Z.y, AX_Z.z, 0.40f);
 
-        s.Colors[ImGuizmo::SELECTION]             = ImVec4(accent.x, accent.y, accent.z, 0.90f);
-        s.Colors[ImGuizmo::INACTIVE]              = ImVec4(Mix(N03, N04, 0.5f).x, Mix(N03, N04, 0.5f).y, Mix(N03, N04, 0.5f).z, 0.70f);
+        s.Colors[ImGuizmo::SELECTION] = ImVec4(accent.x, accent.y, accent.z, 0.95f);
 
-        s.Colors[ImGuizmo::TRANSLATION_LINE]      = ImVec4(Mix(N03, N04, 0.20f).x, Mix(N03, N04, 0.20f).y, Mix(N03, N04, 0.20f).z, 0.75f);
-        s.Colors[ImGuizmo::SCALE_LINE]            = ImVec4(Mix(N03, ImVec4(1,1,1,1), 0.25f).x,
-                                                        Mix(N03, ImVec4(1,1,1,1), 0.25f).y,
-                                                        Mix(N03, ImVec4(1,1,1,1), 0.25f).z, 0.80f);
+        const ImVec4 inactiveBase = Mix(N02, N04, 0.40f);
+        s.Colors[ImGuizmo::INACTIVE] = ImVec4(inactiveBase.x, inactiveBase.y, inactiveBase.z, 0.70f);
 
-        s.Colors[ImGuizmo::ROTATION_USING_BORDER] = ImVec4(0.95f, 0.95f, 0.95f, 0.85f);
-        s.Colors[ImGuizmo::ROTATION_USING_FILL]   = ImVec4(0.95f, 0.95f, 0.95f, 0.18f);
+        const ImVec4 lineIdle   = Mix(N04, ImVec4(0.0f,0.0f,0.0f,1.0f), 0.25f);
+        const ImVec4 lineBright = Mix(N04, ImVec4(0.0f,0.0f,0.0f,1.0f), 0.40f); 
 
-        s.Colors[ImGuizmo::HATCHED_AXIS_LINES]    = ImVec4(BRD.x, BRD.y, BRD.z, 0.90f);
+        s.Colors[ImGuizmo::TRANSLATION_LINE] = ImVec4(lineIdle.x,   lineIdle.y,   lineIdle.z,   0.85f);
+        s.Colors[ImGuizmo::SCALE_LINE]       = ImVec4(lineBright.x, lineBright.y, lineBright.z, 0.90f);
 
-        // Labels over dark viewports
-        s.Colors[ImGuizmo::TEXT]                  = TXT;
-        s.Colors[ImGuizmo::TEXT_SHADOW]           = ImVec4(0.00f, 0.00f, 0.00f, 0.60f);
+        s.Colors[ImGuizmo::ROTATION_USING_BORDER] = ImVec4(0.10f, 0.10f, 0.10f, 0.85f);
+        s.Colors[ImGuizmo::ROTATION_USING_FILL]   = ImVec4(0.10f, 0.10f, 0.10f, 0.08f);
+
+        s.Colors[ImGuizmo::HATCHED_AXIS_LINES] = ImVec4(BRD.x, BRD.y, BRD.z, 0.85f);
+        s.Colors[ImGuizmo::TEXT]               = TXT;
+        s.Colors[ImGuizmo::TEXT_SHADOW]        = ImVec4(0.00f, 0.00f, 0.00f, 0.20f);
     }
 
-    void UserInterfaceInitializer::UseColorDarkImpl(const ImVec4& accent) noexcept
+
+    void UserInterface::UseColorLight(const ImVec4& accent) noexcept
     {
+        ImGui::StyleColorsLight();
         ImGuiStyle& style = ImGui::GetStyle();
 
-        style.AntiAliasedFill = true;
-        style.AntiAliasedLines = true;
+        style.AntiAliasedFill        = true;
+        style.AntiAliasedLines       = true;
         style.AntiAliasedLinesUseTex = true;
+        style.FontScaleDpi           = 1.18f;
 
-        style.WindowPadding      = ImVec2(10, 10);
-        style.FramePadding       = ImVec2(8, 9);
-        style.ItemSpacing        = ImVec2(8, 6);
-        style.ItemInnerSpacing   = ImVec2(6, 5);
+        // Layout metrics
+        style.WindowPadding      = ImVec2(8, 8);
+        style.FramePadding       = ImVec2(6, 6);
+        style.ItemSpacing        = ImVec2(8, 5);
+        style.ItemInnerSpacing   = ImVec2(6, 4);
+        style.IndentSpacing      = 8.0f;
+        style.GrabMinSize        = 15.0f;
 
-        style.ScrollbarSize      = 12.0f;
-        style.GrabMinSize        = 10.0f;
+        // Borders
+        style.WindowBorderSize   = 1.0f;
+        style.ChildBorderSize    = 1.0f;
+        style.PopupBorderSize    = 1.0f;
+        style.FrameBorderSize    = 1.0f;
 
-        style.WindowRounding     = 10.0f;
-        style.ChildRounding      = 10.0f;
+        // Rounding
+        style.WindowRounding     = 12.0f;
+        style.ChildRounding      = 6.0f;
         style.FrameRounding      = 8.0f;
-        style.PopupRounding      = 8.0f;
-        style.ScrollbarRounding  = 6.0f;
-        style.GrabRounding       = 6.0f;
-        style.TabRounding        = 6.0f;
+        style.PopupRounding      = 5.0f;
+        style.GrabRounding       = 8.0f;
 
-        style.WindowBorderSize   = 0.0f;
-        style.FrameBorderSize    = 0.0f;
-        style.TabBorderSize      = 0.0f;
+        // Scrollbar
+        style.ScrollbarSize      = 12.0f;
+        style.ScrollbarRounding  = 8.0f;
+        style.ScrollbarPadding   = 2.0f;
 
-        style.DisabledAlpha      = 0.45f;
+        // Tabs
+        style.TabBorderSize      = 1.0f;
+        style.TabBarBorderSize   = 1.0f;
+        style.TabRounding        = 5.0f;
 
-        const ImVec4 N00 = RGBA( 14,  14,  15);      
-        const ImVec4 N01 = RGBA( 18,  18,  19);    
-        const ImVec4 N02 = RGBA( 25,  26,  27);    
-        const ImVec4 N03 = RGBA( 32,  33,  35); 
-        const ImVec4 N04 = RGBA( 42,  44,  47);     
-        const ImVec4 BRD = ImVec4(0.30f, 0.30f, 0.32f, 0.60f); 
+        // Tables
+        style.CellPadding        = ImVec2(15, 5);
+        style.DisabledAlpha      = 0.50f;
 
-        const ImVec4 TXT  = RGBA(235, 235, 235);
-        const ImVec4 TXT2 = RGBA(170, 170, 170);
-        const ImVec4 TXT3 = RGBA(120, 120, 120);
+        // Light palette
+        const ImVec4 N00 = ImVec4(1.00f, 1.00f, 1.00f, 1.0f); // white
+        const ImVec4 N01 = ImVec4(0.98f, 0.98f, 0.98f, 1.0f); // window bg
+        const ImVec4 N02 = ImVec4(0.94f, 0.94f, 0.94f, 1.0f); // frame/button bg
+        const ImVec4 N03 = ImVec4(0.88f, 0.88f, 0.88f, 1.0f); // hover
+        const ImVec4 N04 = ImVec4(0.80f, 0.80f, 0.80f, 1.0f); // active
+        const ImVec4 N05 = ImVec4(0.72f, 0.72f, 0.72f, 1.0f); // header bg
+        const ImVec4 BRD = ImVec4(0.25f, 0.27f, 0.30f, 0.35f); // subtle darker border
 
-        const ImVec4 acc        = accent;
-        const ImVec4 accHover   = Mix(acc, ImVec4(1,1,1,1), 0.12f);
-        const ImVec4 accActive  = Mix(acc, ImVec4(0,0,0,1), 0.15f);
+        const ImVec4 TXT  = ImVec4(0.10f, 0.11f, 0.12f, 1.0f); // primary text (near-black)
+        const ImVec4 TXT2 = ImVec4(0.30f, 0.32f, 0.36f, 1.0f); // secondary
+        const ImVec4 TXT3 = ImVec4(0.55f, 0.57f, 0.60f, 1.0f); // disabled
+
+        const ImVec4 acc       = accent;
+        const ImVec4 accHover  = Mix(acc, ImVec4(1,1,1,1), 0.10f);
+        const ImVec4 accActive = Mix(acc, ImVec4(0,0,0,1), 0.20f);
 
         ImVec4* c = style.Colors;
-
         c[ImGuiCol_Text]                 = TXT;
         c[ImGuiCol_TextDisabled]         = TXT3;
 
-        c[ImGuiCol_WindowBg]             = ImVec4(N01.x, N01.y, N01.z, 0.98f);
+        c[ImGuiCol_WindowBg]             = ImVec4(N01.x, N01.y, N01.z, 1.00f);
         c[ImGuiCol_ChildBg]              = N00;
-        c[ImGuiCol_PopupBg]              = ImVec4(N01.x, N01.y, N01.z, 0.98f);
-        c[ImGuiCol_ModalWindowDimBg]     = ImVec4(N00.x, N00.y, N00.z, 0.75f);
+        c[ImGuiCol_PopupBg]              = ImVec4(N00.x, N00.y, N00.z, 0.98f);
+        c[ImGuiCol_ModalWindowDimBg]     = ImVec4(0.10f, 0.10f, 0.10f, 0.20f);
         c[ImGuiCol_DockingEmptyBg]       = N00;
-        c[ImGuiCol_DockingPreview]       = ImVec4(acc.x, acc.y, acc.z, 0.35f);
+        c[ImGuiCol_DockingPreview]       = ImVec4(acc.x, acc.y, acc.z, 0.25f);
 
         c[ImGuiCol_Border]               = BRD;
         c[ImGuiCol_BorderShadow]         = ImVec4(0,0,0,0);
-        c[ImGuiCol_Separator]            = ImVec4(BRD.x, BRD.y, BRD.z, 0.65f);
+        c[ImGuiCol_Separator]            = ImVec4(BRD.x, BRD.y, BRD.z, 0.50f);
         c[ImGuiCol_SeparatorHovered]     = accHover;
         c[ImGuiCol_SeparatorActive]      = accActive;
 
-        c[ImGuiCol_Header]               = ImVec4(N02.x, N02.y, N02.z, 0.95f);
+        c[ImGuiCol_Header]               = N02;
         c[ImGuiCol_HeaderHovered]        = N03;
         c[ImGuiCol_HeaderActive]         = N04;
 
@@ -279,137 +303,46 @@ namespace Motion
 
         c[ImGuiCol_Button]               = N02;
         c[ImGuiCol_ButtonHovered]        = N03;
-        c[ImGuiCol_ButtonActive]         = ImVec4(acc.x, acc.y, acc.z, 0.90f);
+        c[ImGuiCol_ButtonActive]         = Mix(acc, N04, 0.20f);
 
-        c[ImGuiCol_Tab]                  = RGBA(28,29,30);
+        c[ImGuiCol_Tab]                  = ImVec4(0.95f, 0.95f, 0.95f, 1.0f);
         c[ImGuiCol_TabHovered]           = N03;
-        c[ImGuiCol_TabActive]            = RGBA(34,35,37);
-        c[ImGuiCol_TabUnfocused]         = RGBA(24,25,26);
-        c[ImGuiCol_TabUnfocusedActive]   = RGBA(28,29,30);
+        c[ImGuiCol_TabActive]            = ImVec4(0.92f, 0.92f, 0.92f, 1.0f);
+        c[ImGuiCol_TabUnfocused]         = ImVec4(0.97f, 0.97f, 0.97f, 1.0f);
+        c[ImGuiCol_TabUnfocusedActive]   = ImVec4(0.94f, 0.94f, 0.94f, 1.0f);
 
-        c[ImGuiCol_TitleBg]              = N00;
+        c[ImGuiCol_TitleBg]              = N01;
         c[ImGuiCol_TitleBgActive]        = N02;
-        c[ImGuiCol_TitleBgCollapsed]     = ImVec4(N00.x, N00.y, N00.z, 0.70f);
+        c[ImGuiCol_TitleBgCollapsed]     = ImVec4(N01.x, N01.y, N01.z, 0.80f);
 
         c[ImGuiCol_CheckMark]            = acc;
-        c[ImGuiCol_SliderGrab]           = Mix(acc, N02, 0.35f);
+        c[ImGuiCol_SliderGrab]           = Mix(acc, N02, 0.25f);
         c[ImGuiCol_SliderGrabActive]     = accActive;
 
-        c[ImGuiCol_ScrollbarBg]          = ImVec4(N00.x, N00.y, N00.z, 0.55f);
-        c[ImGuiCol_ScrollbarGrab]        = RGBA(48,49,52);
-        c[ImGuiCol_ScrollbarGrabHovered] = RGBA(58,59,63);
-        c[ImGuiCol_ScrollbarGrabActive]  = RGBA(68,69,74);
+        c[ImGuiCol_ScrollbarBg]          = ImVec4(0.96f, 0.96f, 0.96f, 1.0f);
+        c[ImGuiCol_ScrollbarGrab]        = ImVec4(0.86f, 0.86f, 0.86f, 1.0f);
+        c[ImGuiCol_ScrollbarGrabHovered] = ImVec4(0.78f, 0.78f, 0.78f, 1.0f);
+        c[ImGuiCol_ScrollbarGrabActive]  = ImVec4(0.70f, 0.70f, 0.70f, 1.0f);
 
-        c[ImGuiCol_TableHeaderBg]        = RGBA(30,31,33);
-        c[ImGuiCol_TableBorderStrong]    = RGBA(44,46,48);
-        c[ImGuiCol_TableBorderLight]     = RGBA(36,37,39);
+        c[ImGuiCol_TableHeaderBg]        = N05;
+        c[ImGuiCol_TableBorderStrong]    = ImVec4(0.85f, 0.85f, 0.85f, 1.0f);
+        c[ImGuiCol_TableBorderLight]     = ImVec4(0.92f, 0.92f, 0.92f, 1.0f);
         c[ImGuiCol_TableRowBg]           = ImVec4(0,0,0,0);
-        c[ImGuiCol_TableRowBgAlt]        = ImVec4(1,1,1,0.03f);
+        c[ImGuiCol_TableRowBgAlt]        = ImVec4(0,0,0,0.03f);
 
-        c[ImGuiCol_TextSelectedBg]       = ImVec4(acc.x, acc.y, acc.z, 0.35f);
+        c[ImGuiCol_TextSelectedBg]       = ImVec4(acc.x, acc.y, acc.z, 0.25f);
         c[ImGuiCol_DragDropTarget]       = acc;
-        c[ImGuiCol_NavHighlight]         = ImVec4(acc.x, acc.y, acc.z, 0.85f);
-        c[ImGuiCol_NavWindowingHighlight]= ImVec4(acc.x, acc.y, acc.z, 0.30f);
-        c[ImGuiCol_NavWindowingDimBg]    = ImVec4(N00.x, N00.y, N00.z, 0.60f);
+        c[ImGuiCol_NavHighlight]         = ImVec4(acc.x, acc.y, acc.z, 0.70f);
+        c[ImGuiCol_NavWindowingHighlight]= ImVec4(acc.x, acc.y, acc.z, 0.20f);
+        c[ImGuiCol_NavWindowingDimBg]    = ImVec4(0.10f, 0.10f, 0.10f, 0.15f);
 
         c[ImGuiCol_PlotLines]            = acc;
         c[ImGuiCol_PlotLinesHovered]     = accHover;
-        c[ImGuiCol_PlotHistogram]        = Mix(acc, ImVec4(1,1,1,1), 0.05f);
+        c[ImGuiCol_PlotHistogram]        = Mix(acc, ImVec4(1,1,1,1), 0.15f);
         c[ImGuiCol_PlotHistogramHovered] = accHover;
 
-        SetImGuizmoStyleForEditor(accent);
-    }
-
-    void UserInterfaceInitializer::UseColorLightImpl(const ImVec4& accent) noexcept
-    {
-        ImGuiStyle& style = ImGui::GetStyle();
-
-        style.WindowRounding = 6.0f;
-        style.ChildRounding = 6.0f;
-        style.FrameRounding = 5.0f;
-        style.PopupRounding = 5.0f;
-        style.ScrollbarRounding = 5.0f;
-        style.GrabRounding = 4.0f;
-        style.TabRounding = 4.0f;
-
-        style.WindowBorderSize = 1.0f;
-        style.FrameBorderSize = 0.0f;
-        style.TabBorderSize = 0.0f;
-
-        ImVec4* c = style.Colors;
-
-        const ImVec4 bg0 = ImVec4(0.96f, 0.97f, 0.99f, 1.00f);
-        const ImVec4 bg1 = ImVec4(0.98f, 0.98f, 0.99f, 1.00f);
-        const ImVec4 mid = ImVec4(0.87f, 0.92f, 0.97f, 1.00f);
-        const ImVec4 midH = ImVec4(0.81f, 0.86f, 0.94f, 1.00f);
-
-        c[ImGuiCol_Text] = ImVec4(0.10f, 0.12f, 0.14f, 1.00f);
-        c[ImGuiCol_TextDisabled] = ImVec4(0.55f, 0.57f, 0.60f, 1.00f);
-
-        c[ImGuiCol_WindowBg] = bg0;
-        c[ImGuiCol_ChildBg] = bg1;
-        c[ImGuiCol_PopupBg] = ImVec4(0.97f, 0.98f, 1.00f, 1.00f);
-
-        c[ImGuiCol_Border] = ImVec4(0.85f, 0.87f, 0.90f, 1.00f);
-        c[ImGuiCol_BorderShadow] = ImVec4(0, 0, 0, 0);
-
-        c[ImGuiCol_FrameBg] = ImVec4(0.93f, 0.95f, 0.98f, 1.00f);
-        c[ImGuiCol_FrameBgHovered] = ImVec4(0.88f, 0.92f, 0.97f, 1.00f);
-        c[ImGuiCol_FrameBgActive] = ImVec4(0.81f, 0.86f, 0.95f, 1.00f);
-
-        c[ImGuiCol_TitleBg] = ImVec4(0.92f, 0.94f, 0.97f, 1.00f);
-        c[ImGuiCol_TitleBgActive] = ImVec4(0.81f, 0.85f, 0.95f, 1.00f);
-        c[ImGuiCol_TitleBgCollapsed] = bg0;
-        c[ImGuiCol_MenuBarBg] = ImVec4(0.95f, 0.96f, 0.99f, 1.00f);
-
-        c[ImGuiCol_ScrollbarBg] = ImVec4(0.97f, 0.97f, 0.99f, 1.00f);
-        c[ImGuiCol_ScrollbarGrab] = midH;
-        c[ImGuiCol_ScrollbarGrabHovered] = ImVec4(0.72f, 0.80f, 0.91f, 1.00f);
-        c[ImGuiCol_ScrollbarGrabActive] = ImVec4(0.67f, 0.76f, 0.89f, 1.00f);
-
-        c[ImGuiCol_CheckMark] = accent;
-        c[ImGuiCol_SliderGrab] = midH;
-        c[ImGuiCol_SliderGrabActive] = accent;
-
-        c[ImGuiCol_Button] = ImVec4(0.92f, 0.95f, 0.98f, 1.00f);
-        c[ImGuiCol_ButtonHovered] = midH;
-        c[ImGuiCol_ButtonActive] = accent;
-
-        c[ImGuiCol_Header] = mid;
-        c[ImGuiCol_HeaderHovered] = ImVec4(0.72f, 0.80f, 0.91f, 1.00f);
-        c[ImGuiCol_HeaderActive] = accent;
-
-        c[ImGuiCol_Separator] = ImVec4(0.80f, 0.85f, 0.93f, 1.00f);
-        c[ImGuiCol_SeparatorHovered] = ImVec4(accent.x, accent.y, accent.z, 0.65f);
-        c[ImGuiCol_SeparatorActive] = accent;
-
-        c[ImGuiCol_ResizeGrip] = ImVec4(0.72f, 0.80f, 0.91f, 0.25f);
-        c[ImGuiCol_ResizeGripHovered] = ImVec4(accent.x, accent.y, accent.z, 0.65f);
-        c[ImGuiCol_ResizeGripActive] = accent;
-
-        c[ImGuiCol_Tab] = ImVec4(0.92f, 0.94f, 0.97f, 1.00f);
-        c[ImGuiCol_TabHovered] = ImVec4(0.72f, 0.80f, 0.91f, 1.00f);
-        c[ImGuiCol_TabActive] = ImVec4(0.81f, 0.86f, 0.94f, 1.00f);
-        c[ImGuiCol_TabUnfocused] = bg0;
-        c[ImGuiCol_TabUnfocusedActive] = ImVec4(0.92f, 0.94f, 0.97f, 1.00f);
-
-        c[ImGuiCol_PlotLines] = ImVec4(0.32f, 0.35f, 0.38f, 1.00f);
-        c[ImGuiCol_PlotLinesHovered] = accent;
-        c[ImGuiCol_PlotHistogram] = accent;
-        c[ImGuiCol_PlotHistogramHovered] = accent;
-
-        c[ImGuiCol_TableHeaderBg] = ImVec4(0.94f, 0.96f, 0.99f, 1.00f);
-        c[ImGuiCol_TableBorderStrong] = ImVec4(0.80f, 0.85f, 0.93f, 1.00f);
-        c[ImGuiCol_TableBorderLight] = ImVec4(0.87f, 0.92f, 0.97f, 0.35f);
-        c[ImGuiCol_TableRowBg] = ImVec4(1.00f, 1.00f, 1.00f, 0.00f);
-        c[ImGuiCol_TableRowBgAlt] = ImVec4(0.93f, 0.95f, 0.98f, 0.45f);
-
-        c[ImGuiCol_TextSelectedBg] = ImVec4(accent.x, accent.y, accent.z, 0.25f);
-        c[ImGuiCol_DragDropTarget] = accent;
-        c[ImGuiCol_NavHighlight] = accent;
-        c[ImGuiCol_NavWindowingHighlight] = ImVec4(accent.x, accent.y, accent.z, 0.70f);
-        c[ImGuiCol_NavWindowingDimBg] = ImVec4(0.96f, 0.97f, 0.99f, 0.40f);
-        c[ImGuiCol_ModalWindowDimBg] = ImVec4(0.96f, 0.97f, 0.99f, 0.70f);
+        style.MouseCursorScale = 1.4f;
+        SetImGuizmoStyleForEditor(accent, ImGui::GetIO().FontGlobalScale);
     }
 
 }

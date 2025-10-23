@@ -145,7 +145,7 @@ namespace Motion
         glDeleteProgram(programID);
     }
 
-    GL_Shader::GL_Shader(std::unordered_map<ShaderType, std::string>& shaderSources)
+    GL_Shader::GL_Shader(const std::unordered_map<ShaderType, std::string>& shaderSources)
     {
         m_ProgramID = CreateShaderProgram();
 

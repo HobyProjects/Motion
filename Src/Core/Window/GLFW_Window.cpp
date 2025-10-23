@@ -23,35 +23,54 @@ namespace Motion
         }
     }
 
-    GLFW_Window::GLFW_Window(WindowHandle windowHandle, const std::string& title)
+    GLFW_Window::GLFW_Window(WindowHandle windowHandle, const std::string& title, bool isVisible, NativeWindow sharedWindow)
     {
-        const GLFWvidmode* mode = glfwGetVideoMode(glfwGetPrimaryMonitor());
-        if (mode != nullptr)
+        if(isVisible)
         {
-            m_Properties.Width = mode->width;
-            m_Properties.Height = mode->height;
-            m_Properties.FixedWidth = mode->width;
-            m_Properties.FixedHeight = mode->height;
-            m_Properties.MinWidth = 1024;
-            m_Properties.MinHeight = 720;
-            m_Properties.ColorBits.RedBit = mode->redBits;
-            m_Properties.ColorBits.GreenBit = mode->greenBits;
-            m_Properties.ColorBits.BlueBit = mode->blueBits;
-            m_Properties.ColorBits.AlphaBit = 8;
-            m_Properties.ColorBits.DepthStencilBit = 8;
-            m_Properties.ColorBits.DepthBit = 24;
-            m_Properties.RefreshRate = mode->refreshRate;
-
+            const GLFWvidmode* mode = glfwGetVideoMode(glfwGetPrimaryMonitor());
+            if (mode != nullptr)
+            {
+                m_Properties.Width = mode->width;
+                m_Properties.Height = mode->height;
+                m_Properties.FixedWidth = mode->width;
+                m_Properties.FixedHeight = mode->height;
+                m_Properties.MinWidth = 1024;
+                m_Properties.MinHeight = 720;
+                m_Properties.ColorBits.RedBit = mode->redBits;
+                m_Properties.ColorBits.GreenBit = mode->greenBits;
+                m_Properties.ColorBits.BlueBit = mode->blueBits;
+                m_Properties.ColorBits.AlphaBit = 8;
+                m_Properties.ColorBits.DepthStencilBit = 8;
+                m_Properties.ColorBits.DepthBit = 24;
+                m_Properties.RefreshRate = mode->refreshRate;
+    
+            }
+            else
+            {
+                MOTION_CORE_WARN("Failed to get video mode, using default values");
+                m_Properties.Width = 1280;
+                m_Properties.Height = 720;
+                m_Properties.FixedWidth = 0;
+                m_Properties.FixedHeight = 0;
+                m_Properties.MinWidth = 1024;
+                m_Properties.MinHeight = 720;
+                m_Properties.ColorBits.RedBit = 8;
+                m_Properties.ColorBits.GreenBit = 8;
+                m_Properties.ColorBits.BlueBit = 8;
+                m_Properties.ColorBits.AlphaBit = 8;
+                m_Properties.ColorBits.DepthStencilBit = 8;
+                m_Properties.ColorBits.DepthBit = 24;
+                m_Properties.RefreshRate = 60;
+            }
         }
         else
         {
-            MOTION_CORE_WARN("Failed to get video mode, using default values");
-            m_Properties.Width = 1280;
-            m_Properties.Height = 720;
+            m_Properties.Width = 1;
+            m_Properties.Height = 1;
             m_Properties.FixedWidth = 0;
             m_Properties.FixedHeight = 0;
-            m_Properties.MinWidth = 1024;
-            m_Properties.MinHeight = 720;
+            m_Properties.MinWidth = 1;
+            m_Properties.MinHeight = 1;
             m_Properties.ColorBits.RedBit = 8;
             m_Properties.ColorBits.GreenBit = 8;
             m_Properties.ColorBits.BlueBit = 8;
@@ -78,7 +97,17 @@ namespace Motion
 #endif
         }
 
-        glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
+        if(isVisible)
+        {
+            glfwWindowHint(GLFW_VISIBLE, GLFW_TRUE);
+            glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
+        }
+        else
+        {
+            glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
+            glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+        }
+
         glfwWindowHint(GLFW_RED_BITS, m_Properties.ColorBits.RedBit);
         glfwWindowHint(GLFW_GREEN_BITS, m_Properties.ColorBits.GreenBit);
         glfwWindowHint(GLFW_BLUE_BITS, m_Properties.ColorBits.BlueBit);
@@ -87,33 +116,9 @@ namespace Motion
         glfwWindowHint(GLFW_DEPTH_BITS, m_Properties.ColorBits.DepthBit);
         glfwWindowHint(GLFW_STENCIL_BITS, m_Properties.ColorBits.DepthStencilBit);
 
-        m_Window = glfwCreateWindow(m_Properties.Width, m_Properties.Height, m_Properties.Title.c_str(), nullptr, nullptr);
+        m_Window = glfwCreateWindow(m_Properties.Width, m_Properties.Height, m_Properties.Title.c_str(), nullptr, (GLFWwindow*)sharedWindow);
         if (m_Window != nullptr)
         {
-            switch (Renderer::GetAPI())
-            {
-            case RenderingAPI::OpenGL:
-                m_Context = std::make_shared<GLFW_GL_Context>();
-                break;
-            case RenderingAPI::Vulkan:
-                MOTION_ASSERT(false, "Vulkan is not supported yet");
-                break;
-            case RenderingAPI::DirectX:
-                MOTION_ASSERT(false, "DirectX is not supported yet");
-                break;
-            default:
-                MOTION_ASSERT(false, "Unknown Rendering API");
-                break;
-            };
-
-            m_Context->Attach(m_Window);
-            if (!m_Context->Activate())
-            {
-                MOTION_CORE_CRITICAL("Failed to activate graphics context");
-                return;
-            }
-
-
             glfwSetWindowSizeLimits(m_Window, m_Properties.MinWidth, m_Properties.MinHeight, GLFW_DONT_CARE, GLFW_DONT_CARE);
             glfwGetFramebufferSize(m_Window, &m_Properties.PixelWidth, &m_Properties.PixelHeight);
 
@@ -122,8 +127,6 @@ namespace Motion
             m_Properties.IsVSyncEnabled = true;
 
             glfwSetWindowUserPointer(m_Window, this);
-            SetEventsCallBacks();
-            RegisterEventsCallBacks();
         }
         else
         {
@@ -136,9 +139,6 @@ namespace Motion
 
     GLFW_Window::~GLFW_Window()
     {
-        if (m_Context->GetCurrentContext() == m_Window)
-            m_Context->Detach();
-
         glfwDestroyWindow(m_Window);
     }
 
@@ -392,30 +392,14 @@ namespace Motion
         glfwPollEvents();
     }
 
-    void GLFW_Window::SwapBuffers() noexcept
-    {
-        if (m_Context != nullptr)
-        {
-            m_Context->SwapBuffers(m_Window);
-        }
-    }
-
-    void GLFW_Window::SetContext(const std::shared_ptr<IContext>& context) noexcept
-    {
-        m_Context = context;
-        if (m_Context != nullptr)
-        {
-            m_Context->Attach(m_Window);
-        }
-    }
-
-    std::shared_ptr<IContext> GLFW_Window::GetContext() const noexcept
-    {
-        return m_Context;
-    }
-
     void GLFW_Window::SetEventsCallbackFunc(const EventProcessingFunction& callbackFunc) noexcept
     {
         m_CallbackFunc = callbackFunc;
+
+        if(m_CallbackFunc)
+        {
+            SetEventsCallBacks();
+            RegisterEventsCallBacks();
+        }
     }
 }

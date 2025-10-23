@@ -64,6 +64,8 @@ namespace Motion
             
             [[nodiscard]] static std::unordered_map<ShaderType, std::string> ReadFullShaderFile(const std::filesystem::path& filePath);
             [[nodiscard]] static std::unordered_map<ShaderType, std::string> ReadShaderFiles(const std::filesystem::path& vertexPath, const std::filesystem::path& fragmentPath);
+
+            [[nodiscard]] static std::shared_ptr<IShader> CreateShader(const std::unordered_map<ShaderType, std::string>& shaderSources);
     };
 
     enum class ShaderFeatureMask : std::uint32_t

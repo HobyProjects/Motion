@@ -8,22 +8,14 @@
 
 namespace Motion
 {
-    class UserInterfaceInitializer
+    class UserInterface
     {
     public:
-        enum class Theme { Dark, Light, Auto };
-
         static void Init(WindowHandle windowHandle) noexcept;
         static void Quit() noexcept;
 
         static void LoadDefaultFonts(const char* fontPath = nullptr, float sizePx = 16.0f) noexcept;
-        static void ApplyTheme(Theme t = Theme::Dark, ImVec4 accent = ImVec4(0.294f, 0.733f, 0.941f, 1.0f)) noexcept;
-        static void UseColorDark() noexcept;
-        static void UseColorLight() noexcept;
-
-    private:
-        static void UseColorDarkImpl(const ImVec4& accent = ImVec4(0.95f, 0.35f, 0.15f, 1.0f)) noexcept;
-        static void UseColorLightImpl(const ImVec4& accent) noexcept;
+        static void UseColorLight(const ImVec4& accent = ImVec4(0.13f, 0.59f, 0.95f, 1.0f)) noexcept;
     };
 
     inline ImGuiKey GetImGuiKeyCode(KeyCode key)

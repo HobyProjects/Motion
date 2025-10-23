@@ -28,10 +28,10 @@ namespace Motion
             bool OnWindowResize(WindowHandle handle, EventWindowResize& e);
 
         private:
-            std::shared_ptr<IWindow>            m_Window{ nullptr };
-            std::shared_ptr<ImGuiLayer>         m_ImGuiLayer{ nullptr };
-            std::shared_ptr<SceneEditorLayer>   m_EditorLayer{ nullptr };
-            
-            float m_LastFrameTime{ 0.0f };
+            std::shared_ptr<IWindow> m_Window{ nullptr };
+            std::shared_ptr<IContext> m_WindowContext{ nullptr };
+
+            std::shared_ptr<ImGuiLayer> m_ImGuiLayer{ nullptr };
+            std::shared_ptr<SceneEditorLayer> m_EditorLayer{ nullptr };
     };
 }

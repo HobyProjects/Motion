@@ -14,6 +14,7 @@ set(
 		imgui/imstb_rectpack.h
 		imgui/imstb_textedit.h
 		imgui/imstb_truetype.h
+		imgui/misc/cpp/imgui_stdlib.h
         imgui/backends/imgui_impl_glfw.h
         imgui/backends/imgui_impl_opengl3.h
 
@@ -28,6 +29,7 @@ set(
 		imgui/imgui_widgets.cpp
 		imgui/imgui_tables.cpp
 		imgui/imgui_demo.cpp
+		imgui/misc/cpp/imgui_stdlib.cpp
 		imgui/backends/imgui_impl_glfw.cpp
 		imgui/backends/imgui_impl_opengl3.cpp
 

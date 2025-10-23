@@ -17,6 +17,7 @@ find_package(reactphysics3d CONFIG REQUIRED)
 
 # Core library
 add_library(MotionCore STATIC)
+target_compile_definitions(MotionCore PUBLIC NOMINMAX WIN32_LEAN_AND_MEAN)
 target_compile_features(MotionCore PUBLIC cxx_std_20)
 target_include_directories(
     MotionCore 
@@ -32,7 +33,6 @@ target_include_directories(
         ${CMAKE_SOURCE_DIR}/Src/Core/Platform
         ${CMAKE_SOURCE_DIR}/Src/Core/Renderer
         ${CMAKE_SOURCE_DIR}/Src/Core/Renderer/Backends/OpenGL
-        ${CMAKE_SOURCE_DIR}/Src/Core/Scene
 )
 
 file(GLOB_RECURSE CORE_CPP CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/Src/Core/*.cpp")
@@ -60,6 +60,7 @@ target_precompile_headers(MotionCore PUBLIC Src/Core/Base/CorePCH.hpp)
 
 # App
 add_executable(MotionEngine)
+target_compile_definitions(MotionEngine PUBLIC NOMINMAX WIN32_LEAN_AND_MEAN)
 target_compile_features(MotionEngine PRIVATE cxx_std_20)
 target_include_directories(
     MotionEngine 
@@ -67,6 +68,7 @@ target_include_directories(
         ${CMAKE_SOURCE_DIR}/Src/App
         ${CMAKE_SOURCE_DIR}/Src/App/EntryPoint
         ${CMAKE_SOURCE_DIR}/Src/App/Layers
+        ${CMAKE_SOURCE_DIR}/Src/App/Scene
 )
 file(GLOB_RECURSE APP_CPP CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/Src/App/*.cpp")
 file(GLOB_RECURSE APP_HPP CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/Src/App/*.h" "${CMAKE_SOURCE_DIR}/Src/App/*.hpp")

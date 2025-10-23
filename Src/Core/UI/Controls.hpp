@@ -101,6 +101,19 @@ namespace Motion
         }
     }
 
+    inline void ShowMessageBox(const char* title, const std::string& message)
+    {
+        ImGui::OpenPopup(title);
+        if (ImGui::BeginPopupModal(title, nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+        {
+            ImGui::TextWrapped("%s", message.c_str());
+            ImGui::Dummy(ImVec2(0, 6));
+            if (ImGui::Button("OK", ImVec2(80, 0)))
+                ImGui::CloseCurrentPopup();
+            ImGui::EndPopup();
+        }
+    }
+
 
     bool DragFloat(const char* label,  float* v, float speed = 0.1f, float minV = -FLT_MAX, float maxV = FLT_MAX, const char* fmt = "%.3f");
     bool DragFloat2(const char* label, glm::vec2&  v, float speed = 0.1f, float minV = -FLT_MAX, float maxV = FLT_MAX, const char* fmt = "%.3f");
@@ -119,4 +132,59 @@ namespace Motion
     enum class TextureSlotAction : int { Upload = 0, Reload, Clear, None };
     TextureSlotAction TextureSlot(const char* label, std::shared_ptr<ITexture>& tex, TextureType type, std::function<void(TextureSlotAction, std::shared_ptr<ITexture>&)> onAction = nullptr, bool showLabelAbove = false, int previewSize = 150);
     void EmptyTextureSlot(ImDrawList* dl, const ImRect& r, float cell = 10.0f);
+
+    inline bool BeginTopBar(float height, ImU32 bg_col, float rounding, float pad_x)
+    {
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0,0));
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing,   ImVec2(8,4));
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding,  ImVec2(8,4));
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 6.0f);
+
+        ImVec2 avail = ImGui::GetContentRegionAvail();
+        if (avail.y < height) height = avail.y;
+
+        bool opened = ImGui::BeginChild("##TopBarChild", ImVec2(0, height), false,
+                                        ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+        ImDrawList* dl = ImGui::GetWindowDrawList();
+        ImVec2 p0 = ImGui::GetWindowPos();
+        ImVec2 p1 = ImVec2(p0.x + ImGui::GetWindowSize().x, p0.y + height);
+        dl->AddRectFilled(p0, p1, bg_col, rounding);
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + pad_x);
+
+        return opened;
+    }
+
+    inline void EndTopBar()
+    {
+        ImGui::EndChild();
+        ImGui::PopStyleVar(4);
+    }
+
+    template <typename DrawContent>
+    inline bool TopBarDropdown(const char* id, const char* label, DrawContent&& draw)
+    {
+        bool pressed = false;
+        ImGui::PushStyleColor(ImGuiCol_Button,        ImVec4(0,0,0,0));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1,1,1,0.05f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive,  ImVec4(1,1,1,0.08f));
+        if (ImGui::Button(label)) { ImGui::OpenPopup(id); pressed = true; }
+        ImGui::PopStyleColor(3);
+
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8,8));
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 8.0f);
+        ImGui::PushStyleColor(ImGuiCol_PopupBg, ImVec4(0.08f,0.08f,0.10f,0.98f));
+        ImGui::PushStyleColor(ImGuiCol_Border,  ImVec4(0.18f,0.18f,0.22f,1.0f));
+
+        bool open = ImGui::BeginPopup(id);
+        if (open)
+        {
+            draw();
+            ImGui::EndPopup();
+        }
+
+        ImGui::PopStyleColor(2);
+        ImGui::PopStyleVar(2);
+
+        return pressed;
+    }
 }

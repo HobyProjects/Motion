@@ -27,7 +27,6 @@ namespace Motion
             std::shared_ptr<ITexture> m_NormalTexture{nullptr};
 
             std::vector<RenderCommand> m_CommandQueue;
-            std::shared_ptr<IRenderingStage> m_RenderingStage{nullptr};
             std::once_flag m_InitOnce;
     };
 }

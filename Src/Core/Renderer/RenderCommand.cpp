@@ -4,9 +4,10 @@
 
 namespace Motion
 {
-    static void ConfigureRegular(IRenderingStage& rs)
+    static void ConfigureRegular()
     {
-        StageStatus state   = rs.Snapshot();
+        auto rs             = Renderer::GetStageController();
+        StageStatus state   = rs->Snapshot();
 
         state.DepthTest         = true;
         state.DepthWrite        = false;
@@ -26,7 +27,7 @@ namespace Motion
         state.ColorMaskR        = state.ColorMaskG = state.ColorMaskB = state.ColorMaskA = true;
         state.ScissorEnabled    = false;
         
-        rs.Apply(state);
+        rs->Apply(state);
     }
 
     void CommandQueue::Sort()
@@ -42,7 +43,6 @@ namespace Motion
             m_BlackTexture   = ITexture::Create(1, 1, glm::vec3(0.0f, 0.0f, 0.0f));
             m_GrayTexture    = ITexture::Create(1, 1, glm::vec3(0.5f, 0.5f, 0.5f));
             m_NormalTexture  = ITexture::Create(1, 1, glm::vec3(0.5f, 0.5f, 1.0f));
-            m_RenderingStage = IRenderingStage::Create();
         });
     }
 
@@ -194,7 +194,9 @@ namespace Motion
             if (cmd.MeshPointer != lastMesh)
                 lastMesh = cmd.MeshPointer;
 
-            // ConfigureRegular(*m_RenderingStage);
+            
+                
+            ConfigureRegular();
             IssueDrawIndexed(cmd);
         }
     }

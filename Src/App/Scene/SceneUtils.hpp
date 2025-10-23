@@ -64,6 +64,29 @@ namespace Motion
         out.Rotation                = ToQuat(q);
     }
 
+    inline float Wrap180(float a)
+    {
+        a = std::fmod(a + 180.0f, 360.0f);
+        if (a < 0) a += 360.0f;
+        return a - 180.0f;
+    }
+
+    inline glm::vec3 WrapEuler(glm::vec3 deg)
+    {
+        return { Wrap180(deg.x), Wrap180(deg.y), Wrap180(deg.z) };
+    }
+
+    inline bool ApplyRotationIfChanged(glm::quat& dst, const glm::vec3& eulerDeg)
+    {
+        const glm::vec3 rad = glm::radians(eulerDeg);
+        glm::quat q = glm::normalize(glm::quat(rad));
+        if (glm::any(glm::epsilonNotEqual(q, dst, 1e-6f)))
+        {
+            dst = q;
+            return true;
+        }
+        return false;
+    }
 
     inline rp3d::BodyType GetBodyType(BodyType t)
     {
@@ -821,7 +844,7 @@ namespace Motion
         auto* collider      = RB->addCollider(shape, rp3d::Transform::identity());
         rp3d::Material& mat = collider->getMaterial();
 
-        collider->setUserData((void*)entt::to_integral(e));
+        collider->setUserData(reinterpret_cast<void*>(static_cast<intptr_t>(entt::to_integral(e))));
         collider->setIsSimulationCollider(true);
         mat.setFrictionCoefficient(CC.Friction);
         mat.setBounciness(CC.Restitution);
@@ -850,7 +873,7 @@ namespace Motion
         auto* collider          = RB->addCollider(shape, rp3d::Transform::identity());
         rp3d::Material& mat     = collider->getMaterial();
 
-        collider->setUserData((void*)entt::to_integral(e));
+        collider->setUserData(reinterpret_cast<void*>(static_cast<intptr_t>(entt::to_integral(e))));
         collider->setIsSimulationCollider(true);
         mat.setFrictionCoefficient(CC.Friction);
         mat.setBounciness(CC.Restitution);
@@ -891,7 +914,7 @@ namespace Motion
         auto* collider          = RB->addCollider(shape, rp3d::Transform::identity());
         rp3d::Material& mat     = collider->getMaterial();
 
-        collider->setUserData((void*)entt::to_integral(e));
+        collider->setUserData(reinterpret_cast<void*>(static_cast<intptr_t>(entt::to_integral(e))));
         collider->setIsSimulationCollider(true);
         mat.setFrictionCoefficient(CC.Friction);
         mat.setBounciness(CC.Restitution);
@@ -953,7 +976,7 @@ namespace Motion
         auto* RB        = RBC.PhysicsBody;
 
         auto* collider = RB->addCollider(shape, rp3d::Transform::identity());
-        collider->setUserData((void*)entt::to_integral(e));
+        collider->setUserData(reinterpret_cast<void*>(static_cast<intptr_t>(entt::to_integral(e))));
         collider->setIsSimulationCollider(true);
 
         rp3d::Material& mat = collider->getMaterial();

@@ -156,6 +156,19 @@ namespace Motion
         return shaderSources;
     }
 
+    std::shared_ptr<IShader> IShader::CreateShader(const std::unordered_map<ShaderType,std::string>& shaderSources)
+    {
+        switch (Renderer::GetAPI())
+        {
+            case RenderingAPI::OpenGL:         return std::make_shared<GL_Shader>(shaderSources);
+            case RenderingAPI::Vulkan:         MOTION_ASSERT(false, "Vulkan is not implemented yet!");  return nullptr;
+            case RenderingAPI::DirectX:        MOTION_ASSERT(false, "DirectX is not implemented yet!"); return nullptr;
+            default:                           MOTION_ASSERT(false, "Unknown rendering API!");          return nullptr;
+        };
+
+        return nullptr;
+    }
+
     static std::string CreateDefinitions(ShaderFeatureMask features)
     {
         using SFM = ShaderFeatureMask;

@@ -6,13 +6,21 @@ namespace Motion
     Application::Application()
     {
         auto& windowManager = WindowManager::GetInstance();
-        m_Window = windowManager.Create("Motion Engine");
-        m_Window->SetEventsCallbackFunc(EVENT_CALLBACK(OnEvent));
+
+        m_Window = windowManager.Create("Motion Engine", true);
+        m_Window->SetEventsCallbackFunc(EventCallbackFn(&Application::OnEvent, this));
+
+        m_WindowContext = IContext::GetContext();
+        m_WindowContext->MakeCurrent(m_Window->GetNativeWindow());
+        m_WindowContext->Create();
 
         Renderer::Init();
-        UserInterfaceInitializer::Init(m_Window->GetHandle());
+        UserInterface::Init(m_Window->GetHandle());
 
-        m_ImGuiLayer    = std::make_shared<ImGuiLayer>(m_Window->GetHandle(), ImGuiColorScheme::Dark);
+        LOADER::Create(m_Window->GetNativeWindow());
+        LOADER::Start();
+
+        m_ImGuiLayer    = std::make_shared<ImGuiLayer>(m_Window->GetHandle());
         m_EditorLayer   = std::make_shared<SceneEditorLayer>();
 
         PushOverlay(m_ImGuiLayer);
@@ -21,8 +29,9 @@ namespace Motion
 
     Application::~Application()
     {
-        UserInterfaceInitializer::Quit();
+        UserInterface::Quit();
         Renderer::Quit();
+        LOADER::Stop();
 
         auto& windowManager = WindowManager::GetInstance();
         windowManager.Destroy(m_Window->GetHandle());
@@ -30,36 +39,38 @@ namespace Motion
 
     void Application::Start()
     {
-        using clock     = std::chrono::steady_clock;
-        using secondsf  = std::chrono::duration<float>;
-        auto lastFrame  = clock::now();
+        using clock = std::chrono::steady_clock;
+        using secondsf = std::chrono::duration<float>;
+        auto lastFrame = clock::now();
 
-        auto& LM = LayersManager::GetInstance();
+        auto& lm = LayersManager::GetInstance();
 
-        while (m_Window->IsActive() && m_Window->IsFocused() && m_Window->GetProperties().State != WindowState::Minimized)
+        m_WindowContext->MakeCurrent(m_Window->GetNativeWindow());
+
+        while (m_Window->IsActive())
         {
             m_Window->PollEvents();
+            LOADER::FeedBack();
 
-            auto now    = clock::now();
-            float dt    = std::chrono::duration_cast<secondsf>(now - lastFrame).count();
-            lastFrame   = now;
+            if (!m_Window->IsFocused() || m_Window->GetProperties().State == WindowState::Minimized)
+                continue;
 
-            for (auto& layer : LM)
-            {
-                layer->OnUpdate(m_Window->GetHandle(), dt);
-            }
+            auto now = clock::now();
+            float dt = std::chrono::duration_cast<secondsf>(now - lastFrame).count();
+            lastFrame = now;
+
+            for (auto& layer : lm) layer->OnUpdate(m_Window->GetHandle(), dt);
 
             m_ImGuiLayer->Begin();
-
-            for (auto& layer : LM)
-            {
-                layer->OnUIRender(m_Window->GetHandle());
-            }
-
+            for (auto& layer : lm) layer->OnUIRender(m_Window->GetHandle());
             m_ImGuiLayer->End();
-            m_Window->SwapBuffers();
+
+            m_WindowContext->SwapBuffers(m_Window->GetNativeWindow());
         }
+        
+        m_WindowContext->ClearCurrent();
     }
+
 
     void Application::PushLayer(const std::shared_ptr<Layer>& layer)
     {
@@ -79,8 +90,8 @@ namespace Motion
         handler.Dispatch<EventWindowClose>(EVENT_CALLBACK(OnWindowClose));
         handler.Dispatch<EventWindowResize>(EVENT_CALLBACK(OnWindowResize));
 
-        auto& LM = LayersManager::GetInstance();
-        for (std::vector<std::shared_ptr<Layer>>::reverse_iterator it = LM.rbegin(); it != LM.rend(); ++it)
+        auto& lm = LayersManager::GetInstance();
+        for (std::vector<std::shared_ptr<Layer>>::reverse_iterator it = lm.rbegin(); it != lm.rend(); ++it)
         {
             (*it)->OnEvent(handle, e);
         }
@@ -89,7 +100,10 @@ namespace Motion
     bool Application::OnWindowClose(WindowHandle handle, EventWindowClose& e)
     {
         if (m_Window->IsActive())
+        {
+            LOADER::Stop();
             m_Window->GetProperties().IsActive = false;
+        }
 
         return false;
     }

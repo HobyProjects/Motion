@@ -1,24 +1,38 @@
 #include "CorePCH.hpp"
+#include "DialogBoxes.hpp"
+
 #include <system_error>
 #include <cassert>
 
-#ifdef _WIN32
+#ifdef MOTION_PLATFORM_WINDOWS
+
+#ifndef NOMINMAX
+#  define NOMINMAX
+#endif
+#ifndef WIN32_LEAN_AND_MEAN
+#  define WIN32_LEAN_AND_MEAN
+#endif
+
+#include <Windows.h>
+#include <knownfolders.h>   // for FOLDERID_Documents
+#include <shlobj.h>         // SHGetKnownFolderPath
+#include <shellapi.h>
+#include <wrl/client.h>
+#include <combaseapi.h>
+
 #define GLFW_EXPOSE_NATIVE_WIN32
 #include <glfw/glfw3native.h>
-#include <wrl/client.h>
-#include <shellapi.h>
-#include <shlobj.h>
-#include <commdlg.h>
-#include <combaseapi.h>
-#include "DialogBoxes.hpp"
 
 #pragma comment(lib, "ole32.lib")
 #pragma comment(lib, "shell32.lib")
+
 #endif
 
 namespace Motion 
 {
-    #ifdef _WIN32
+
+#ifdef MOTION_PLATFORM_WINDOWS
+
     using Microsoft::WRL::ComPtr;
 
     namespace 
@@ -27,7 +41,7 @@ namespace Motion
         ComPtr<IFileOpenDialog> g_openDlg;
         ComPtr<IFileSaveDialog> g_saveDlg;
 
-        inline std::wstring ToWide(const std::string& s) 
+        static std::wstring ToWide(const std::string& s) 
         {
             if (s.empty()) return L"";
             int n = MultiByteToWideChar(CP_UTF8, 0, s.c_str(), -1, nullptr, 0);
@@ -36,7 +50,7 @@ namespace Motion
             return out;
         }
 
-        inline std::string ToUTF8(const std::wstring& ws) 
+        static std::string ToUTF8(const std::wstring& ws) 
         {
             if (ws.empty()) return {};
             int n = WideCharToMultiByte(CP_UTF8, 0, ws.c_str(), -1, nullptr, 0, nullptr, nullptr);
@@ -45,7 +59,32 @@ namespace Motion
             return out;
         }
 
-        inline void ApplyFilters(IFileDialog* dlg, const std::vector<FileFilter>& filters, const std::wstring& defExt) {
+        static std::filesystem::path FromShellPWSTR(PWSTR p)
+        {
+            if (!p) return {};
+            size_t n = wcslen(p);
+            std::wstring ws;
+            ws.assign(p, p + n);
+
+            const bool isUNC      = ws.rfind(L"\\\\", 0) == 0 && ws.rfind(L"\\\\?\\", 0) != 0;
+            const bool hasPrefix  = ws.rfind(L"\\\\?\\", 0) == 0;
+            if (!hasPrefix) 
+            {
+                if (isUNC) 
+                {
+                    std::wstring tail = ws.substr(2);
+                    ws = L"\\\\?\\UNC\\" + tail;
+                } else if (ws.size() >= 248 ) 
+                {
+                    ws = L"\\\\?\\" + ws;
+                }
+            }
+
+            return std::filesystem::path(ws);
+        }
+
+        static void ApplyFilters(IFileDialog* dlg, const std::vector<FileFilter>& filters, const std::wstring& defExt) 
+        {
             if (filters.empty()) 
             {
                 if (!defExt.empty()) dlg->SetDefaultExtension(defExt.c_str());
@@ -60,11 +99,11 @@ namespace Motion
             }
 
             dlg->SetFileTypes(static_cast<UINT>(specs.size()), specs.data());
-            dlg->SetFileTypeIndex(1); // 1-based index
+            dlg->SetFileTypeIndex(1); 
             if (!defExt.empty()) dlg->SetDefaultExtension(defExt.c_str());
         }
 
-        inline void ApplyCommonOptions(IFileDialog* dlg, const std::wstring& title, const std::filesystem::path& initialDir) 
+        static void ApplyCommonOptions(IFileDialog* dlg, const std::wstring& title, const std::filesystem::path& initialDir) 
         {
             if (!title.empty()) dlg->SetTitle(title.c_str());
 
@@ -80,7 +119,7 @@ namespace Motion
             }
         }
 
-        inline HWND TryGetParentHwnd() 
+        static HWND TryGetParentHwnd() 
         {
             auto& WM = WindowManager::GetInstance();
             auto wnd = WM.GetActiveWindow();
@@ -96,13 +135,26 @@ namespace Motion
             return nullptr;
         }
 
+        static GUID GetFolderID(SystemFolder folder)
+        {
+            switch(folder)
+            {
+                case SystemFolder::Desktop:         return FOLDERID_Desktop;
+                case SystemFolder::Documents:       return FOLDERID_Documents;
+                case SystemFolder::Downloads:       return FOLDERID_LocalDownloads;
+                case SystemFolder::UserFolder:      return FOLDERID_UsersFiles;
+                default:                            return FOLDERID_Documents;
+            };
+
+            return FOLDERID_Documents;
+        }
     } 
 
-    #endif // _WIN32
+#endif 
 
     bool DialogBoxes::InitializeCOM() 
     {
-#ifdef _WIN32
+#ifdef MOTION_PLATFORM_WINDOWS
         if (g_comInitialized) return true;
         HRESULT hr = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
         g_comInitialized = SUCCEEDED(hr);
@@ -114,7 +166,7 @@ namespace Motion
 
     void DialogBoxes::UninitializeCOM() 
     {
-#ifdef _WIN32
+#ifdef MOTION_PLATFORM_WINDOWS
         if (g_comInitialized) 
         {
             g_openDlg.Reset();
@@ -125,8 +177,13 @@ namespace Motion
 #endif
     }
 
-#ifdef _WIN32
+#ifdef MOTION_PLATFORM_WINDOWS
 
+    /**
+     * @brief Ensures that a IFileDialog* instance for file opening is available.
+     * This function should be called before attempting to open a file dialog.
+     * @return true if the instance is available, false otherwise.
+     */
     bool DialogBoxes::EnsureOpenDialog() 
     {
         if (g_openDlg) return true;
@@ -134,6 +191,13 @@ namespace Motion
         return SUCCEEDED(hr);
     }
 
+    /**
+     * @brief Ensures that a IFileDialog* instance for file saving is available.
+     * @return true if the instance is available, false otherwise.
+     * @note This function is only applicable on Windows and is a no-op on other platforms.
+     * @warning The function does not check if the instance is valid or if it has already been released.
+     *         It is the responsibility of the caller to ensure that the instance is properly cleaned up.
+     */
     bool DialogBoxes::EnsureSaveDialog() 
     {
         if (g_saveDlg) return true;
@@ -143,13 +207,19 @@ namespace Motion
 
 #endif
 
-    std::filesystem::path DialogBoxes::GetDocumentsFolder()
+    /**
+     * @brief Returns the path of the specified system folder.
+     * @param folder The system folder to get the path of.
+     * @return The path of the specified system folder, or an empty path if the function fails.
+     * @note This function is currently only implemented for Windows.
+     */
+    std::filesystem::path DialogBoxes::GetSystemFolder(SystemFolder folder)
     {
-#ifdef _WIN32
+#ifdef MOTION_PLATFORM_WINDOWS
         PWSTR path = nullptr;
-        if (SUCCEEDED(SHGetKnownFolderPath(FOLDERID_Documents, 0, nullptr, &path))) 
+        if (SUCCEEDED(SHGetKnownFolderPath(GetFolderID(folder), 0, nullptr, &path))) 
         {
-            std::filesystem::path p(path);
+            std::filesystem::path p = FromShellPWSTR(path);
             CoTaskMemFree(path);
             return p;
         }
@@ -157,9 +227,19 @@ namespace Motion
         return {};
     }
 
+    /**
+     * @brief Opens a file dialog box for selecting one or more files.
+     *
+     * On Windows, this function will use the IFileOpenDialog COM interface to open a file dialog box.
+     * On other platforms, this function will return an empty std::filesystem::path.
+     *
+     * @param opt The options for the file dialog box.
+     * @return The path of the selected file(s) or an empty path if the dialog was cancelled.
+     */
     std::filesystem::path DialogBoxes::OpenFileDialog(const OpenDialogOptions& opt) 
     {
-#ifdef _WIN32
+#ifdef MOTION_PLATFORM_WINDOWS
+
         std::filesystem::path results{};
         if (!g_comInitialized) InitializeCOM();
         if (!EnsureOpenDialog()) return results;
@@ -195,7 +275,7 @@ namespace Motion
                         PWSTR p = nullptr;
                         if (SUCCEEDED(it->GetDisplayName(SIGDN_FILESYSPATH, &p)) && p) 
                         {
-                            results = std::filesystem::path(p);
+                            results = FromShellPWSTR(p);
                             CoTaskMemFree(p);
                         }
                     }
@@ -210,7 +290,7 @@ namespace Motion
                 PWSTR p = nullptr;
                 if (SUCCEEDED(it->GetDisplayName(SIGDN_FILESYSPATH, &p)) && p) 
                 {
-                    results = std::filesystem::path(p);
+                    results = FromShellPWSTR(p);
                     CoTaskMemFree(p);
                 }
             }
@@ -223,9 +303,17 @@ namespace Motion
 
     }
 
+    /**
+     * @brief Show a save file dialog box
+     * @param opt Options for the save dialog box
+     * @return A std::optional containing the path of the chosen file, or std::nullopt if the dialog was cancelled
+     * @remarks
+     * On Windows, this function uses the IFileSaveDialog COM interface to show the dialog box.
+     * On other platforms, this function always returns std::nullopt.
+     */
     std::optional<std::filesystem::path> DialogBoxes::SaveFileDialog(const SaveDialogOptions& opt) 
     {
-#ifdef _WIN32
+#ifdef MOTION_PLATFORM_WINDOWS
 
         if (!g_comInitialized) InitializeCOM();
         if (!EnsureSaveDialog()) return std::nullopt;
@@ -249,7 +337,7 @@ namespace Motion
             PWSTR p = nullptr;
             if (SUCCEEDED(it->GetDisplayName(SIGDN_FILESYSPATH, &p)) && p) 
             {
-                std::filesystem::path chosen(p);
+                std::filesystem::path chosen = FromShellPWSTR(p);
                 CoTaskMemFree(p);
                 if (!opt.DefaultExtension.empty() && chosen.has_extension() == false) 
                 {
@@ -268,4 +356,24 @@ namespace Motion
 #endif
 
     }
-} // namespace Motion
+
+    /**
+     * @brief Opens a folder dialog.
+     * @param title The title of the dialog.
+     * @param initialDir The initial directory of the dialog.
+     * @return The path of the selected folder.
+     * @note This function is only available on Windows.
+     */
+    std::filesystem::path DialogBoxes::OpenFolderDialog(const std::wstring & title, const std::filesystem::path & initialDir)
+    {
+#ifdef MOTION_PLATFORM_WINDOWS
+        OpenDialogOptions opt{};
+        opt.Title            = title;
+        opt.InitialDirectory = initialDir;
+        opt.PickFolders      = true;  
+        return OpenFileDialog(opt);
+#else
+        return {};
+#endif
+    }
+} 

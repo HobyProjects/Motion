@@ -3,14 +3,14 @@
 
 namespace Motion
 {
-    ImGuiLayer::ImGuiLayer(WindowHandle handle, ImGuiColorScheme colorScheme)
-        : m_WindowHandle(handle), m_ColorScheme(colorScheme), Layer("ImGuiLayer") {
+    ImGuiLayer::ImGuiLayer(WindowHandle handle) : m_WindowHandle(handle), Layer("ImGuiLayer") 
+    {
     }
 
     void ImGuiLayer::OnAttach()
     {
-        UserInterfaceInitializer::LoadDefaultFonts("Assets/Fonts/JetBrainsMono/JetBrainsMono-Regular.ttf", 17.5f);
-        (m_ColorScheme == ImGuiColorScheme::Dark) ? UserInterfaceInitializer::UseColorDark() : UserInterfaceInitializer::UseColorLight();
+        UserInterface::LoadDefaultFonts("Assets/Fonts/JetBrainsMono/JetBrainsMono-Regular.ttf", 17.5f);
+        UserInterface::UseColorLight();
     }
 
     void ImGuiLayer::OnDetach()
@@ -66,11 +66,5 @@ namespace Motion
                 glfwMakeContextCurrent(backup_current_context);
             }
         }
-    }
-
-    void ImGuiLayer::UseColorScheme(ImGuiColorScheme colorScheme)
-    {
-        (colorScheme == ImGuiColorScheme::Dark) ? UserInterfaceInitializer::UseColorDark() : UserInterfaceInitializer::UseColorLight();
-        m_ColorScheme = colorScheme;
     }
 }

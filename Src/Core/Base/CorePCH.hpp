@@ -64,6 +64,7 @@
 #include <imgui/imgui_impl_opengl3.h>
 #include <imgui/imgui_impl_glfw.h>
 #include <imgui/imgui_internal.h>
+#include <imgui/imgui_stdlib.h>
 #include <imguizmo/ImGuizmo.h>
 #include <imgui/implot.h>
 #include <imgui/implot_internal.h>
@@ -123,22 +124,11 @@
 //Window
 #include "Window.hpp"
 #include "GLFW_Window.hpp"
+#include "WindowThread.hpp"
 
 //User Interface Initializer
 #include "UI.hpp"
 #include "Controls.hpp"
 
-//ECS
-#include "Components.hpp"
-
 //Platform
 #include "DialogBoxes.hpp"
-
-//Scene
-#include "SceneUtils.hpp"
-#include "Scene.hpp"
-#include "ScenePanel.hpp"
-#include "SceneViewport.hpp"
-#include "SceneProperty.hpp"
-#include "SimulationControl.hpp"
-#include "SceneSerializer.hpp"

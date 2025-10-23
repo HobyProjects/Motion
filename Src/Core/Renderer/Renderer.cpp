@@ -15,6 +15,8 @@ namespace Motion
 
     static GPUCaptures s_Caps{};
     static CommandQueue s_CommandQueue{};
+    static std::shared_ptr<IRenderingStage> s_RendererStageController{nullptr};
+
 
     void Renderer::Init()
     {
@@ -25,7 +27,30 @@ namespace Motion
             case RenderingAPI::DirectX: MOTION_ASSERT(false, "DirectX not implemented!"); break;
             default:                    MOTION_ASSERT(false, "Unknown rendering API!"); break;
         }
+
         QueryCaps_();
+        s_RendererStageController = IRenderingStage::Create();
+        StageStatus state   = s_RendererStageController->Snapshot();
+
+        state.DepthTest         = true;
+        state.DepthWrite        = false;
+        state.DepthFunc         = DepthFunction::LessEqual;
+
+        state.CullEnabled       = false;
+        state.Wireframe         = false;
+
+        state.BlendEnabled      = true;
+        state.SrcRGB            = BlendFactor::SrcAlpha;
+        state.DstRGB            = BlendFactor::OneMinusSrcAlpha;
+        state.SrcA              = BlendFactor::One;
+        state.DstA              = BlendFactor::OneMinusSrcAlpha;
+        state.BlendEqRGB        = BlendEquation::Add;
+        state.BlendEqA          = BlendEquation::Add;
+
+        state.ColorMaskR        = state.ColorMaskG = state.ColorMaskB = state.ColorMaskA = true;
+        state.ScissorEnabled    = false;
+        
+        s_RendererStageController->Apply(state);
     }
 
     void Renderer::Quit()
@@ -83,6 +108,17 @@ namespace Motion
         }
     }
 
+    void Renderer::DrawArrays(PrimitiveTopology topology, std::uint32_t count)
+    {
+        switch (s_RenderingAPI)
+        {
+            case RenderingAPI::OpenGL:  GL_DrawArrays(topology, count); break;
+            case RenderingAPI::Vulkan:  MOTION_ASSERT(false, "Vulkan not implemented!"); break;
+            case RenderingAPI::DirectX: MOTION_ASSERT(false, "DirectX not implemented!"); break;
+            default:                    MOTION_ASSERT(false, "Unknown rendering API!"); break;
+        }
+    }
+
     void Renderer::DrawIndexed(std::int32_t indicesCount)
     {
         switch (s_RenderingAPI)
@@ -124,6 +160,11 @@ namespace Motion
     void Renderer::Flush()
     {
         s_CommandQueue.Execute();
+    }
+
+    std::shared_ptr<IRenderingStage> Renderer::GetStageController()
+    {
+        return s_RendererStageController;
     }   
 
     std::int32_t Renderer::GetMaxTextureSlots() noexcept

@@ -7,8 +7,10 @@
 #include "Window.hpp"
 #include "Texture.hpp"
 #include "RenderCommand.hpp"
+#include "RenderingStage.hpp"
 
-namespace Motion {
+namespace Motion 
+{
 
     enum class RenderingAPI : std::uint32_t 
     {
@@ -78,6 +80,7 @@ namespace Motion {
 
             static void SetViewport(std::int32_t x, std::int32_t y, std::int32_t width, std::int32_t height);
 
+            static void DrawArrays(PrimitiveTopology topology, std::uint32_t count);
             static void DrawIndexed(std::int32_t indicesCount);   
             static void DrawIndexed(const DrawIndexedArgs& args);
 
@@ -85,6 +88,8 @@ namespace Motion {
             static void End();
             static void Submit(const RenderCommand& command); 
             static void Flush();
+
+            static std::shared_ptr<IRenderingStage> GetStageController();
 
             static std::int32_t GetMaxTextureSlots() noexcept;
             static void BindTextureUnit(std::int32_t slot, std::uint32_t textureID);

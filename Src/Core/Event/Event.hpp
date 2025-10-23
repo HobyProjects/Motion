@@ -137,4 +137,28 @@ namespace Motion
      * and returns void. It is used to process events in the event system.
      */
     using EventProcessingFunction = std::function<void(std::uint64_t, IEvent&)>;
+
+    /**
+     * @brief Returns a new function that binds the provided function and arguments to it.
+     *
+     * This function takes a function `f` and a set of arguments `bound` and returns a new
+     * function that binds the provided arguments to the function `f`. The returned function
+     * takes a variable number of arguments (represented by the parameter pack `rest`) and
+     * invokes the function `f` with the provided bound arguments followed by the arguments from
+     * the parameter pack `rest`.
+     *
+     * @tparam F The type of the function to bind.
+     * @tparam Bound The types of the arguments to bind to the function.
+     * @param f The function to bind.
+     * @param bound The arguments to bind to the function.
+     * @return A new function that binds the provided arguments to the function `f`.
+     */
+    template <class F, class... Bound>
+    auto EventCallbackFn(F&& f, Bound&&... bound) 
+    {
+        return [f = std::forward<F>(f), ... b = std::forward<Bound>(bound)]
+               (auto&&... rest) -> decltype(auto) {
+            return std::invoke(f, b..., std::forward<decltype(rest)>(rest)...);
+        };
+    }
 }

@@ -49,8 +49,7 @@ namespace Motion
 
     void SceneEditorLayer::OnUpdate(WindowHandle handle, Timer deltaTime)
     {
-        if (!m_Scene) 
-            return;
+        if (!m_Scene) return;
 
         m_Scene->OnUpdate(handle, deltaTime);
         m_Scene->Submit();
@@ -58,8 +57,7 @@ namespace Motion
 
     void SceneEditorLayer::OnEvent(WindowHandle handle, IEvent& e)
     {
-        if (m_Scene) 
-            m_Scene->OnEvent(handle, e);
+        if (m_Scene) m_Scene->OnEvent(handle, e);
     }
 
     void SceneEditorLayer::OnUIRender(WindowHandle handle)
@@ -316,7 +314,6 @@ namespace Motion
                 {
                     // Load scene from disk on background thread
                     auto scene = SceneSerializer::Deserialize(path);
-                    
                     if (!scene)
                         throw std::runtime_error("Failed to deserialize scene file");
                     
@@ -622,12 +619,9 @@ namespace Motion
             ImGui::Spacing();
             
             std::string errorMsg;
-            if (m_SceneCreationOp.State == AsyncOperationState::Failed)
-                errorMsg = m_SceneCreationOp.ErrorMessage;
-            else if (m_SceneLoadOp.State == AsyncOperationState::Failed)
-                errorMsg = m_SceneLoadOp.ErrorMessage;
-            else if (m_EntityImportOp.State == AsyncOperationState::Failed)
-                errorMsg = m_EntityImportOp.ErrorMessage;
+            if (m_SceneCreationOp.State == AsyncOperationState::Failed) errorMsg = m_SceneCreationOp.ErrorMessage;
+            else if (m_SceneLoadOp.State == AsyncOperationState::Failed) errorMsg = m_SceneLoadOp.ErrorMessage;
+            else if (m_EntityImportOp.State == AsyncOperationState::Failed) errorMsg = m_EntityImportOp.ErrorMessage;
             
             ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + 400);
             ImGui::TextWrapped("%s", errorMsg.c_str());

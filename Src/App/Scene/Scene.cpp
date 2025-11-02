@@ -373,9 +373,8 @@ namespace Motion
         m_Viewport.Framebuffer->Bind();
 
         Renderer::SetViewport(0, 0, m_Viewport.FrameSpecification.Width, m_Viewport.FrameSpecification.Height);
-        Renderer::ClearColor({ 0.243f, 0.243f, 0.243f, 1.0f });
+        Renderer::ClearColor({ 0.85f, 0.85f, 0.88f, 1.0f });
         Renderer::Clear();
-
         Renderer::Begin();
 
         const CameraViewProjection cam

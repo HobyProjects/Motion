@@ -7,7 +7,6 @@
 #include "Window.hpp"
 #include "Texture.hpp"
 #include "RenderCommand.hpp"
-#include "RenderingStage.hpp"
 
 namespace Motion 
 {
@@ -88,8 +87,6 @@ namespace Motion
             static void End();
             static void Submit(const RenderCommand& command); 
             static void Flush();
-
-            static std::shared_ptr<IRenderingStage> GetStageController();
 
             static std::int32_t GetMaxTextureSlots() noexcept;
             static void BindTextureUnit(std::int32_t slot, std::uint32_t textureID);

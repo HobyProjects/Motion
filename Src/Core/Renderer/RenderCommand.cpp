@@ -4,32 +4,6 @@
 
 namespace Motion
 {
-    static void ConfigureRegular()
-    {
-        auto rs             = Renderer::GetStageController();
-        StageStatus state   = rs->Snapshot();
-
-        state.DepthTest         = true;
-        state.DepthWrite        = false;
-        state.DepthFunc         = DepthFunction::LessEqual;
-
-        state.CullEnabled       = false;
-        state.Wireframe         = false;
-
-        state.BlendEnabled      = true;
-        state.SrcRGB            = BlendFactor::SrcAlpha;
-        state.DstRGB            = BlendFactor::OneMinusSrcAlpha;
-        state.SrcA              = BlendFactor::One;
-        state.DstA              = BlendFactor::OneMinusSrcAlpha;
-        state.BlendEqRGB        = BlendEquation::Add;
-        state.BlendEqA          = BlendEquation::Add;
-
-        state.ColorMaskR        = state.ColorMaskG = state.ColorMaskB = state.ColorMaskA = true;
-        state.ScissorEnabled    = false;
-        
-        rs->Apply(state);
-    }
-
     void CommandQueue::Sort()
     {
         auto frontToBack = [](const RenderCommand& a, const RenderCommand& b) { return a < b; };
@@ -193,10 +167,7 @@ namespace Motion
             ApplyModelData(shader.get(), cmd);
             if (cmd.MeshPointer != lastMesh)
                 lastMesh = cmd.MeshPointer;
-
-            
-                
-            ConfigureRegular();
+    
             IssueDrawIndexed(cmd);
         }
     }

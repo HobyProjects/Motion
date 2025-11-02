@@ -106,7 +106,6 @@
 #include "Camera3D.hpp"
 #include "Mesh.hpp"
 #include "ModelImporter.hpp"
-#include "RenderingStage.hpp"
 #include "RenderCommand.hpp"
 #include "CommandQueue.hpp"
 #include "Renderer.hpp"
@@ -119,7 +118,6 @@
 #include "GL_Texture.hpp"
 #include "GL_Arrays.hpp"
 #include "GLFW_GL_Context.hpp"
-#include "GL_RenderingStage.hpp"
 
 //Window
 #include "Window.hpp"

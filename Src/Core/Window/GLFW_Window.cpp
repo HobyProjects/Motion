@@ -126,6 +126,23 @@ namespace Motion
             m_Properties.IsFocused = glfwGetWindowAttrib(m_Window, GLFW_FOCUSED);
             m_Properties.IsVSyncEnabled = true;
 
+            std::int32_t width{0}, height{0}, channels{0};
+            std::uint8_t* pixels = stbi_load("Assets/Icon/MotionEngine.png", &width, &height, &channels, 4); 
+            if(pixels)
+            {
+                GLFWimage image[1];
+                image[0].width = width;
+                image[0].height = height;
+                image[0].pixels = pixels;
+
+                glfwSetWindowIcon(m_Window, 1, image);
+                stbi_image_free(pixels);
+            }
+            else
+            {
+                MOTION_CORE_ERROR("Unable to load the window Icon");
+            }
+
             glfwSetWindowUserPointer(m_Window, this);
         }
         else

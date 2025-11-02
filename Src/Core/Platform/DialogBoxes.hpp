@@ -50,7 +50,7 @@ namespace Motion
             static std::filesystem::path GetSystemFolder(SystemFolder folder = SystemFolder::Documents);
             static std::filesystem::path OpenFileDialog(const OpenDialogOptions& opt);
             static std::optional<std::filesystem::path> SaveFileDialog(const SaveDialogOptions& opt);
-            static std::filesystem::path OpenFolderDialog(const std::wstring& title = L"Select a folder", const std::filesystem::path& initialDir = {});
+            static std::filesystem::path SelectFolderDialog(const std::wstring& title = L"Select a folder", const std::filesystem::path& initialDir = {});
 
         private:
 

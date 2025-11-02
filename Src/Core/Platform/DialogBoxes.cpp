@@ -364,7 +364,7 @@ namespace Motion
      * @return The path of the selected folder.
      * @note This function is only available on Windows.
      */
-    std::filesystem::path DialogBoxes::OpenFolderDialog(const std::wstring & title, const std::filesystem::path & initialDir)
+    std::filesystem::path DialogBoxes::SelectFolderDialog(const std::wstring & title, const std::filesystem::path & initialDir)
     {
 #ifdef MOTION_PLATFORM_WINDOWS
         OpenDialogOptions opt{};

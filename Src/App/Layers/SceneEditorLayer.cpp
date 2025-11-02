@@ -5,6 +5,10 @@
 
 namespace Motion
 {
+    // ========================================================================
+    // LIFECYCLE
+    // ========================================================================
+    
     void SceneEditorLayer::OnAttach()
     {
         static const std::array<const char*, 5> kPaths = 
@@ -18,18 +22,35 @@ namespace Motion
 
         m_BaseMaterial.reserve(kPaths.size());
         
-        for (auto* p : kPaths) m_BaseMaterial.push_back(Material::CreateBase(p));
+        for (auto* p : kPaths) 
+            m_BaseMaterial.push_back(Material::CreateBase(p));
+        
         std::memset(m_SearchBuf, 0, sizeof(m_SearchBuf));
     }
 
     void SceneEditorLayer::OnDetach()
     {
-
+        // Clean up any pending async operations
+        if (m_SceneCreationOp.State == AsyncOperationState::InProgress)
+        {
+            m_SceneCreationOp.Reset();
+        }
+        
+        if (m_SceneLoadOp.State == AsyncOperationState::InProgress)
+        {
+            m_SceneLoadOp.Reset();
+        }
+        
+        if (m_EntityImportOp.State == AsyncOperationState::InProgress)
+        {
+            m_EntityImportOp.Reset();
+        }
     }
 
     void SceneEditorLayer::OnUpdate(WindowHandle handle, Timer deltaTime)
     {
-        if(!m_Scene) return;
+        if (!m_Scene) 
+            return;
 
         m_Scene->OnUpdate(handle, deltaTime);
         m_Scene->Submit();
@@ -37,42 +58,651 @@ namespace Motion
 
     void SceneEditorLayer::OnEvent(WindowHandle handle, IEvent& e)
     {
-        if(m_Scene) m_Scene->OnEvent(handle, e);
+        if (m_Scene) 
+            m_Scene->OnEvent(handle, e);
     }
 
     void SceneEditorLayer::OnUIRender(WindowHandle handle)
     {
         BuildDockspace();
-        CreateScene();
-        LoadScene();
+        
+        // Handle async operations (non-blocking checks every frame)
+        HandleSceneCreation();
+        HandleSceneLoading();
+        HandleEntityImport();
 
-        if(m_Scene) RenderScene();
+        // Render scene if loaded
+        if (m_Scene) 
+            RenderScene();
+
+        // Show loading overlay for any in-progress operations
+        if (m_SceneCreationOp.State == AsyncOperationState::InProgress ||
+            m_SceneLoadOp.State == AsyncOperationState::InProgress ||
+            m_EntityImportOp.State == AsyncOperationState::InProgress)
+        {
+            RenderLoadingOverlay();
+        }
+
+        // Show error modal if any operation failed
+        if (m_SceneCreationOp.State == AsyncOperationState::Failed ||
+            m_SceneLoadOp.State == AsyncOperationState::Failed ||
+            m_EntityImportOp.State == AsyncOperationState::Failed)
+        {
+            RenderErrorModal();
+        }
     }
 
+    // ========================================================================
+    // ASYNC SCENE CREATION (IMPROVED)
+    // ========================================================================
+    
+    void SceneEditorLayer::HandleSceneCreation()
+    {
+        // Show dialog if requested
+        if (m_SceneCreationRequest.ShowDialog)
+        {
+            ImGui::OpenPopup("Create New Scene");
+            m_SceneCreationRequest.ShowDialog = false;
+        }
+
+        // Render creation dialog with validation
+        ImVec2 center = ImGui::GetMainViewport()->GetCenter();
+        ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+        
+        if (ImGui::BeginPopupModal("Create New Scene", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+        {
+            std::vector<std::string> errors;
+
+            // Helper functions
+            auto trim = [](std::string& s)
+            {
+                const auto wsfront = s.find_first_not_of(" \t\r\n");
+                const auto wsback  = s.find_last_not_of(" \t\r\n");
+                if (wsfront == std::string::npos) { s.clear(); return; }
+                s = s.substr(wsfront, wsback - wsfront + 1);
+            };
+
+            auto has_invalid_win_chars = [](const std::string& s)
+            {
+#ifdef MOTION_PLATFORM_WINDOWS
+                static const char* bad = "<>:\"/\\|?*";
+                return s.find_first_of(bad) != std::string::npos;
+#else
+                (void)s;
+                return false;
+#endif
+            };
+
+            ImGui::Text("Enter scene details:");
+            ImGui::Spacing();
+            ImGui::Separator();
+            ImGui::Spacing();
+
+            // Scene name input
+            ImGui::Text("Scene Name:");
+            ImGui::SetNextItemWidth(360.0f);
+            ImGui::InputText("##scenename", m_SceneCreationRequest.Name, sizeof(m_SceneCreationRequest.Name));
+            
+            ImGui::Spacing();
+
+            // Location picker
+            ImGui::Text("Save Location:");
+            std::string pathStr = m_SceneCreationRequest.FilePath.string();
+            ImGui::SetNextItemWidth(300.0f);
+            if (ImGui::InputText("##path", &pathStr, ImGuiInputTextFlags_ReadOnly))
+            {
+                m_SceneCreationRequest.FilePath = std::filesystem::path(pathStr);
+            }
+            
+            ImGui::SameLine();
+            if (ImGui::Button("Browse..."))
+            {
+                DialogBoxes::InitializeCOM();
+                if (auto folder = DialogBoxes::SelectFolderDialog(); !folder.empty())
+                {
+                    m_SceneCreationRequest.FilePath = folder;
+                }
+                DialogBoxes::UninitializeCOM();
+            }
+
+            ImGui::Spacing();
+
+            // Validation
+            std::string name = m_SceneCreationRequest.Name;
+            trim(name);
+
+            if (name.empty())
+                errors.emplace_back("Name cannot be empty.");
+            else 
+            {
+                if (has_invalid_win_chars(name))
+                    errors.emplace_back("Name contains invalid characters (< > : \" / \\ | ? *).");
+
+#ifdef MOTION_PLATFORM_WINDOWS
+                if (!name.empty() && (name.back() == ' ' || name.back() == '.'))
+                    errors.emplace_back("Name cannot end with a space or period on Windows.");
+#endif
+            }
+
+            if (m_SceneCreationRequest.FilePath.empty())
+                errors.emplace_back("File path cannot be empty.");
+            else if (!std::filesystem::exists(m_SceneCreationRequest.FilePath))
+                errors.emplace_back("Parent directory does not exist.");
+
+            // Show errors
+            if (!errors.empty())
+            {
+                ImGui::Separator();
+                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.9f, 0.3f, 0.3f, 1.0f));
+                for (const auto& e : errors)
+                    ImGui::TextWrapped("%s", e.c_str());
+                ImGui::PopStyleColor();
+            }
+
+            ImGui::Spacing();
+            ImGui::Separator();
+            ImGui::Spacing();
+
+            // Buttons
+            bool canCreate = errors.empty();
+            
+            if (!canCreate) ImGui::BeginDisabled();
+            if (ImGui::Button("Create", ImVec2(120, 0)))
+            {
+                // Submit scene creation to LOADER thread
+                std::string sceneName = name;
+                auto scenePath = m_SceneCreationRequest.FilePath / sceneName;
+                
+                m_SceneCreationOp.Start(LOADER::Submit([sceneName, scenePath]() -> std::shared_ptr<Scene>
+                {
+                    // Create specification
+                    SceneSpecification spec;
+                    spec.ID = UniqueIdentity::GetUniqueID();
+                    spec.Name = sceneName;
+                    spec.SavedPath = scenePath;
+
+                    // Create scene on background thread
+                    auto scene = std::make_shared<Scene>(spec);
+                    
+                    if (!scene)
+                        throw std::runtime_error("Failed to create scene object");
+
+                    // Create directories
+                    std::filesystem::create_directories(scenePath);
+                    std::filesystem::create_directory(scenePath / "Assets");
+                    std::filesystem::create_directory(scenePath / ".motion_temp");
+                    
+                    return scene;
+                }));
+
+                m_ScenePath = scenePath;
+                m_SceneCreationRequest.Reset();
+                ImGui::CloseCurrentPopup();
+            }
+            if (!canCreate) ImGui::EndDisabled();
+            
+            ImGui::SameLine();
+            if (ImGui::Button("Cancel", ImVec2(120, 0)))
+            {
+                m_SceneCreationRequest.Reset();
+                ImGui::CloseCurrentPopup();
+            }
+
+            ImGui::EndPopup();
+        }
+
+        // Check if creation completed (non-blocking check)
+        if (m_SceneCreationOp.IsReady())
+        {
+            try
+            {
+                m_Scene = m_SceneCreationOp.GetResult();
+                
+                if (m_Scene)
+                {
+                    // Save ImGui layout
+                    ImGuiIO& io = ImGui::GetIO();
+                    io.IniFilename = nullptr;
+                    std::string layoutFile = std::format("{}/mes-config.ini", m_ScenePath.string());
+                    ImGui::SaveIniSettingsToDisk(layoutFile.c_str());
+                    
+                    MOTION_CORE_INFO("Scene created successfully: {}", m_ScenePath.string());
+                }
+                else
+                {
+                    throw std::runtime_error("Scene creation returned null");
+                }
+            }
+            catch (const std::exception& e)
+            {
+                MOTION_CORE_ERROR("Failed to create scene: {}", e.what());
+            }
+        }
+    }
+
+    // ========================================================================
+    // ASYNC SCENE LOADING (IMPROVED)
+    // ========================================================================
+    
+    void SceneEditorLayer::HandleSceneLoading()
+    {
+        // Show file dialog if requested
+        if (m_SceneLoadRequest.ShowDialog)
+        {
+            OpenDialogOptions options{};
+            options.Title = L"Open Scene";
+            options.DefaultExtension = L"mes";
+            options.AllowMultiSelect = false;
+            options.InitialDirectory = DialogBoxes::GetSystemFolder(SystemFolder::Desktop);
+            options.Filters = { {L"Scene File", L"*.mes"} };
+            
+            DialogBoxes::InitializeCOM();
+            
+            if (auto path = DialogBoxes::OpenFileDialog(options); !path.empty())
+            {
+                m_SceneLoadRequest.FilePath = path;
+                
+                // Validate file exists
+                if (!std::filesystem::exists(path))
+                {
+                    DialogBoxes::UninitializeCOM();
+                    MOTION_CORE_ERROR("Scene file does not exist: {}", path.string());
+                    m_SceneLoadRequest.ShowDialog = false;
+                    return;
+                }
+                
+                // Submit scene loading to LOADER thread
+                m_SceneLoadOp.Start(LOADER::Submit([path]() -> std::shared_ptr<Scene>
+                {
+                    // Load scene from disk on background thread
+                    auto scene = SceneSerializer::Deserialize(path);
+                    
+                    if (!scene)
+                        throw std::runtime_error("Failed to deserialize scene file");
+                    
+                    return scene;
+                }));
+
+                m_ScenePath = path.parent_path();
+            }
+            
+            DialogBoxes::UninitializeCOM();
+            m_SceneLoadRequest.ShowDialog = false;
+        }
+
+        // Check if loading completed (non-blocking check)
+        if (m_SceneLoadOp.IsReady())
+        {
+            try
+            {
+                m_Scene = m_SceneLoadOp.GetResult();
+                
+                if (m_Scene)
+                {
+                    // Load ImGui layout
+                    ImGuiIO& io = ImGui::GetIO();
+                    io.IniFilename = nullptr;
+                    std::string layoutFile = std::format("{}/mes-config.ini", m_SceneLoadRequest.FilePath.string());
+                    ImGui::LoadIniSettingsFromDisk(layoutFile.c_str());
+                    
+                    MOTION_CORE_INFO("Scene loaded successfully: {}", m_SceneLoadRequest.FilePath.string());
+                }
+                else
+                {
+                    throw std::runtime_error("Scene loading returned null");
+                }
+            }
+            catch (const std::exception& e)
+            {
+                MOTION_CORE_ERROR("Failed to load scene: {}", e.what());
+            }
+        }
+    }
+
+    // ========================================================================
+    // ASYNC ENTITY IMPORT (IMPROVED)
+    // ========================================================================
+    
+    bool SceneEditorLayer::RequestEntityImport(bool showDialog, bool shouldExport, std::filesystem::path path)
+    {
+        if (!m_Scene) 
+            return false;
+
+        m_EntityImportRequest.ShowDialog = showDialog;
+        m_EntityImportRequest.ShouldExport = shouldExport;
+        m_EntityImportRequest.FilePath = path;
+
+        if (showDialog)
+        {
+            OpenDialogOptions options{};
+            options.Title = L"Import Model";
+            options.DefaultExtension = L"obj";
+            options.AllowMultiSelect = false;
+            options.InitialDirectory = std::filesystem::current_path();
+            options.Filters = { {L"Mesh Files", L"*.fbx;*.obj;*.gltf;*.glb"} };
+            
+            DialogBoxes::InitializeCOM();
+            
+            if (auto filePath = DialogBoxes::OpenFileDialog(options); !filePath.empty())
+            {
+                m_EntityImportRequest.FilePath = filePath;
+            }
+            else
+            {
+                DialogBoxes::UninitializeCOM();
+                return false;
+            }
+            
+            DialogBoxes::UninitializeCOM();
+        }
+
+        // Validate file exists
+        if (!std::filesystem::exists(m_EntityImportRequest.FilePath))
+        {
+            MOTION_CORE_ERROR("Import file does not exist: {}", m_EntityImportRequest.FilePath.string());
+            return false;
+        }
+
+        // Submit import to LOADER thread
+        ImportSettings settings{};
+        settings.FilePath = m_EntityImportRequest.FilePath;
+        settings.ShouldExport = m_EntityImportRequest.ShouldExport;
+        settings.ExportPath = m_ScenePath;
+
+        m_EntityImportOp.Start(LOADER::Submit([settings]() -> std::shared_ptr<ImportedResults>
+        {
+            // Import on background thread
+            return Importer::ImportEntity(settings);
+        }));
+
+        return true;
+    }
+
+    void SceneEditorLayer::HandleEntityImport()
+    {
+        // Check if import completed (non-blocking check)
+        if (m_EntityImportOp.IsReady())
+        {
+            try
+            {
+                auto results = m_EntityImportOp.GetResult();
+                
+                if (results && m_Scene)
+                {
+                    // Add imported entities to scene (on main thread)
+                    auto& context = m_Scene->GetContext();
+                    
+                    const BufferLayout layout
+                    {
+                        { "a_Position",   BufferComponents::XYZ,  BufferStride::F3, false, offsetof(Vertex, Position)    },
+                        { "a_TexCoords",  BufferComponents::UV,   BufferStride::F2, false, offsetof(Vertex, TexCoord)    },
+                        { "a_Normals",    BufferComponents::XYZ,  BufferStride::F3, false, offsetof(Vertex, Normal)      },
+                        { "a_Tangents",   BufferComponents::XYZW, BufferStride::F4, false, offsetof(Vertex, Tangent)     },
+                        { "a_Bitangents", BufferComponents::XYZ,  BufferStride::F3, false, offsetof(Vertex, Bitangent)   },
+                    };
+
+                    entt::entity root = context.Entities->Registry.create();
+                    context.Entities->Registry.emplace<TagComponent>(root, results->Name);
+                    context.Entities->Registry.emplace<TransformComponent>(root);
+
+                    auto& modelCompo     = context.Entities->Registry.emplace<ModelComponent>(root);
+                    modelCompo.FilePath  = results->FilePath;
+                    modelCompo.MeshCount = results->MeshCount;
+                    modelCompo.MaxBounds = results->MAX;
+                    modelCompo.MinBounds = results->MIN;
+
+                    std::vector<entt::entity> children;
+                    children.reserve(results->MeshCount);
+
+                    for (const auto& [index, mesh] : results->Meshes)
+                    {
+                        entt::entity e = context.Entities->Registry.create();
+                        context.Entities->Registry.emplace<TagComponent>(e, mesh.Name);
+                        context.Entities->Registry.emplace<TransformComponent>(e);
+                        context.Entities->Registry.emplace<RigidBodyComponent>(e);
+                        context.Entities->Registry.emplace<ColliderComponent>(e);
+
+                        auto& meshCompo = context.Entities->Registry.emplace<MeshComponent>(e);
+                        meshCompo.MeshPointer = Mesh::Create(mesh.Vertices.data(), mesh.Vertices.size(), 
+                                                             mesh.Indices.data(), mesh.Indices.size(), layout);
+                        
+                        meshCompo.MeshIndex = index;
+                        meshCompo.Name      = mesh.Name;
+                        meshCompo.MaxBounds = mesh.MAX;
+                        meshCompo.MinBounds = mesh.MIN;
+
+                        auto& materialCompo = context.Entities->Registry.emplace<MaterialComponent>(e);
+                        materialCompo.MaterialPointer = Material::Create();
+
+                        CreateRigidBody(context.Physics->World, &context.Entities->Registry, e);
+
+                        std::vector<glm::vec3> verts;
+                        verts.reserve(mesh.Vertices.size());
+                        std::transform(mesh.Vertices.begin(), mesh.Vertices.end(), std::back_inserter(verts),
+                                      [](const Vertex& v) { return v.Position; });
+
+                        CreateConvexCollider(&context.Physics->Properties, &context.Entities->Registry, e, verts);
+                        children.push_back(e);
+                    }
+
+                    entt::entity prev = entt::null;
+                    for (std::size_t i = 0; i < children.size(); ++i)
+                    {
+                        auto e = children[i];
+                        context.Entities->Registry.emplace<HierarchyComponent>(e, root, entt::null, entt::null);
+                        if (i > 0) context.Entities->Registry.get<HierarchyComponent>(prev).NextSibling = e;
+                        prev = e;
+                    }
+
+                    context.Entities->Registry.emplace<HierarchyComponent>(root, entt::null,
+                        children.empty() ? entt::null : children.front(), entt::null);
+
+                    m_Scene->EmplaceEntity(root);
+                    
+                    MOTION_CORE_INFO("Entity imported successfully: {}", 
+                                    m_EntityImportRequest.FilePath.string());
+                }
+            }
+            catch (const std::exception& e)
+            {
+                MOTION_CORE_ERROR("Failed to import entity: {}", e.what());
+            }
+        }
+    }
+
+    // ========================================================================
+    // UI RENDERING - LOADING & ERROR STATES
+    // ========================================================================
+    
+    void SceneEditorLayer::RenderLoadingOverlay()
+    {
+        ImGuiViewport* viewport = ImGui::GetMainViewport();
+        ImGui::SetNextWindowPos(viewport->WorkPos);
+        ImGui::SetNextWindowSize(viewport->WorkSize);
+        ImGui::SetNextWindowViewport(viewport->ID);
+        
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
+        ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.0f, 0.0f, 0.0f, 0.5f));
+        
+        ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
+                                 ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar |
+                                 ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoInputs;
+        
+        if (ImGui::Begin("LoadingOverlay", nullptr, flags))
+        {
+            ImVec2 center = ImGui::GetMainViewport()->GetCenter();
+            ImGui::SetNextWindowPos(center, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+            
+            ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(40, 40));
+            ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 16.0f);
+            ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.98f, 0.98f, 0.98f, 0.95f));
+            
+            if (ImGui::BeginChild("LoadingContent", ImVec2(400, 200), true, 
+                                 ImGuiWindowFlags_NoScrollbar))
+            {
+                // Animated loading spinner
+                const float time = ImGui::GetTime();
+                const float radius = 30.0f;
+                const ImVec2 pos = ImGui::GetCursorScreenPos();
+                ImDrawList* draw_list = ImGui::GetWindowDrawList();
+                
+                const int num_segments = 30;
+                const float angle_offset = time * 8.0f;
+                
+                for (int i = 0; i < num_segments; i++)
+                {
+                    const float a = ((float)i / (float)num_segments) * 2.0f * 3.14159f + angle_offset;
+                    const float alpha = 1.0f - ((float)i / (float)num_segments);
+                    const ImU32 segment_col = ImGui::GetColorU32(ImVec4(0.13f, 0.59f, 0.95f, alpha));
+                    
+                    draw_list->AddCircleFilled(
+                        ImVec2(pos.x + 200 + cosf(a) * radius, pos.y + 60 + sinf(a) * radius),
+                        3.0f, segment_col
+                    );
+                }
+                
+                ImGui::Dummy(ImVec2(0, 100));
+                
+                // Loading text
+                const char* loadingText = "Loading...";
+                float elapsedTime = 0.0f;
+                
+                if (m_SceneCreationOp.State == AsyncOperationState::InProgress)
+                {
+                    loadingText = "Creating Scene...";
+                    elapsedTime = m_SceneCreationOp.GetElapsedSeconds();
+                }
+                else if (m_SceneLoadOp.State == AsyncOperationState::InProgress)
+                {
+                    loadingText = "Loading Scene...";
+                    elapsedTime = m_SceneLoadOp.GetElapsedSeconds();
+                }
+                else if (m_EntityImportOp.State == AsyncOperationState::InProgress)
+                {
+                    loadingText = "Importing Model...";
+                    elapsedTime = m_EntityImportOp.GetElapsedSeconds();
+                }
+                
+                ImGui::SetCursorPosX((400 - ImGui::CalcTextSize(loadingText).x) * 0.5f);
+                ImGui::Text("%s", loadingText);
+                
+                char timeBuffer[32];
+                snprintf(timeBuffer, sizeof(timeBuffer), "%.1f seconds", elapsedTime);
+                ImGui::SetCursorPosX((400 - ImGui::CalcTextSize(timeBuffer).x) * 0.5f);
+                ImGui::TextDisabled("%s", timeBuffer);
+            }
+            ImGui::EndChild();
+            
+            ImGui::PopStyleColor();
+            ImGui::PopStyleVar(2);
+        }
+        ImGui::End();
+        
+        ImGui::PopStyleColor();
+        ImGui::PopStyleVar(3);
+    }
+
+    void SceneEditorLayer::RenderErrorModal()
+    {
+        ImGui::OpenPopup("Operation Failed");
+        
+        ImVec2 center = ImGui::GetMainViewport()->GetCenter();
+        ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+        
+        if (ImGui::BeginPopupModal("Operation Failed", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+        {
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.9f, 0.3f, 0.3f, 1.0f));
+            ImGui::Text("Error");
+            ImGui::PopStyleColor();
+            
+            ImGui::Spacing();
+            ImGui::Separator();
+            ImGui::Spacing();
+            
+            std::string errorMsg;
+            if (m_SceneCreationOp.State == AsyncOperationState::Failed)
+                errorMsg = m_SceneCreationOp.ErrorMessage;
+            else if (m_SceneLoadOp.State == AsyncOperationState::Failed)
+                errorMsg = m_SceneLoadOp.ErrorMessage;
+            else if (m_EntityImportOp.State == AsyncOperationState::Failed)
+                errorMsg = m_EntityImportOp.ErrorMessage;
+            
+            ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + 400);
+            ImGui::TextWrapped("%s", errorMsg.c_str());
+            ImGui::PopTextWrapPos();
+            
+            ImGui::Spacing();
+            ImGui::Separator();
+            ImGui::Spacing();
+            
+            if (ImGui::Button("OK", ImVec2(120, 0)))
+            {
+                // Reset failed operations
+                if (m_SceneCreationOp.State == AsyncOperationState::Failed)
+                    m_SceneCreationOp.Reset();
+                if (m_SceneLoadOp.State == AsyncOperationState::Failed)
+                    m_SceneLoadOp.Reset();
+                if (m_EntityImportOp.State == AsyncOperationState::Failed)
+                    m_EntityImportOp.Reset();
+                
+                ImGui::CloseCurrentPopup();
+            }
+            
+            ImGui::EndPopup();
+        }
+    }
+
+    // ========================================================================
+    // MENU BAR (IMPROVED)
+    // ========================================================================
+    
     void SceneEditorLayer::DrawMenuBar()
     {
         if (!ImGui::BeginMenuBar())
             return;
 
         ImGuiStyle& style = ImGui::GetStyle();
+        
         if (ImGui::BeginMenu("Files"))
         {
             if (ImGui::MenuItem("  New Scene ", "Ctrl+N"))
-                m_SC.Requested = true;
+            {
+                m_SceneCreationRequest.ShowDialog = true;
+            }
 
             if (ImGui::MenuItem("  Open... ", "Ctrl+O"))
-                m_SL.Requested = true;
-
-            ImGui::Separator();
-            if (ImGui::MenuItem("  Save ", "Ctrl+S", nullptr, (m_Scene != nullptr)))
             {
-                // TODO: Implement save logic
+                m_SceneLoadRequest.ShowDialog = true;
             }
 
             ImGui::Separator();
+            
+            ImGui::BeginDisabled(m_Scene == nullptr);
+            if (ImGui::MenuItem("  Save ", "Ctrl+S"))
+            {
+                if (m_Scene && !m_ScenePath.empty())
+                {
+                    // Fire-and-forget save to LOADER thread
+                    auto scene = m_Scene.get();
+                    auto path = m_ScenePath;
+                    auto sceneName = m_Scene->GetContext().Specification->Name;
+                    
+                    LOADER::Submit([scene, path, sceneName]()
+                    {
+                        std::string filename = std::format("{}.mes", sceneName);
+                        SceneSerializer::Serialize(scene, path / filename);
+                    });
+                }
+            }
+            ImGui::EndDisabled();
+
+            ImGui::Separator();
+            
             if (ImGui::MenuItem("  Quit ", "Alt+F4"))
             {
-                // TODO: Implement quit logic
+                // Request application quit
             }
 
             ImGui::EndMenu();
@@ -81,24 +711,29 @@ namespace Motion
         ImGui::BeginDisabled(m_Scene == nullptr);
         if (ImGui::BeginMenu("Shapes"))
         {
-            if (ImGui::MenuItem("  Cube"))     ImportEntity(false, true, "Assets/Primitives/Cube.obj");
-            if (ImGui::MenuItem("  Cone"))     ImportEntity(false, true, "Assets/Primitives/Cone.obj");
-            if (ImGui::MenuItem("  Cylinder")) ImportEntity(false, true, "Assets/Primitives/Cylinder.obj");
-            if (ImGui::MenuItem("  Plane"))    ImportEntity(false, true, "Assets/Primitives/Plane.obj");
-            if (ImGui::MenuItem("  Sphere"))   ImportEntity(false, true, "Assets/Primitives/Sphere.obj");
-            if (ImGui::MenuItem("  Torus"))    ImportEntity(false, true, "Assets/Primitives/Torus.obj");
+            if (ImGui::MenuItem("  Cube"))
+                RequestEntityImport(false, true, "Assets/Primitives/Cube.obj");
+            if (ImGui::MenuItem("  Cone"))
+                RequestEntityImport(false, true, "Assets/Primitives/Cone.obj");
+            if (ImGui::MenuItem("  Cylinder"))
+                RequestEntityImport(false, true, "Assets/Primitives/Cylinder.obj");
+            if (ImGui::MenuItem("  Plane"))
+                RequestEntityImport(false, true, "Assets/Primitives/Plane.obj");
+            if (ImGui::MenuItem("  Sphere"))
+                RequestEntityImport(false, true, "Assets/Primitives/Sphere.obj");
+            if (ImGui::MenuItem("  Torus"))
+                RequestEntityImport(false, true, "Assets/Primitives/Torus.obj");
             ImGui::EndMenu();
         }
         ImGui::EndDisabled();
 
-        // --- CENTER SECTION: TRANSPORT CONTROLS ---
+        // === SIMULATION CONTROLS (from original) ===
         const float pad_x = style.ItemSpacing.x;
         const float content_min_x = ImGui::GetWindowContentRegionMin().x;
         const float content_max_x = ImGui::GetWindowContentRegionMax().x;
         const float bar_w = content_max_x - content_min_x;
         const float cur_x = ImGui::GetCursorPosX();
 
-        // Dynamic, consistent button sizing (DPI-aware)
         const char* kPlay  = "Play";
         const char* kPause = "Pause";
         const char* kStop  = "Stop";
@@ -111,10 +746,8 @@ namespace Motion
 
         const float min_w   = 72.0f;
         const float button_w = ImMax(min_w, ImMax(w_play, ImMax(w_pause, w_stop)));
-
         const ImVec2 btnSz(button_w, button_h);
 
-        // Compute center alignment
         const float label_w       = ImGui::CalcTextSize("Simulation:").x + pad_x * 0.5f;
         const float state_w       = ImGui::CalcTextSize("RUNNING").x;
         const float sim_buttons_w = (btnSz.x * 3.0f) + (pad_x * 2.0f);
@@ -126,16 +759,16 @@ namespace Motion
         ImGui::SameLine(0, 0);
         ImGui::SetCursorPosX(desired_center_x);
 
-        // --- SIMULATION STATE ---
         SceneSimulation::SimulationState simState = SceneSimulation::SimulationState::IDLE;
         auto* sim = (m_Scene ? m_Scene->GetContext().Simulation : nullptr);
         if (sim) simState = sim->State;
 
-        bool canPlay  = (sim != nullptr) && (simState == SceneSimulation::SimulationState::IDLE || simState == SceneSimulation::SimulationState::PAUSED);
+        bool canPlay  = (sim != nullptr) && (simState == SceneSimulation::SimulationState::IDLE || 
+                                              simState == SceneSimulation::SimulationState::PAUSED);
         bool canPause = (sim != nullptr) && (simState == SceneSimulation::SimulationState::RUNNING);
-        bool canStop  = (sim != nullptr) && (simState == SceneSimulation::SimulationState::RUNNING || simState == SceneSimulation::SimulationState::PAUSED);
+        bool canStop  = (sim != nullptr) && (simState == SceneSimulation::SimulationState::RUNNING || 
+                                              simState == SceneSimulation::SimulationState::PAUSED);
 
-        // --- TRANSPORT BUTTONS ---
         ImGui::PushID("transport");
 
         ImGui::BeginDisabled(!canPlay);
@@ -171,7 +804,6 @@ namespace Motion
 
         ImGui::PopID();
 
-        // --- SIMULATION STATUS TEXT ---
         ImGui::SameLine(0.0f, style.ItemSpacing.x * 1.5f);
         ImGui::TextUnformatted("Simulation:");
         ImGui::SameLine();
@@ -195,369 +827,10 @@ namespace Motion
         ImGui::EndMenuBar();
     }
 
-
-    void SceneEditorLayer::CreateScene()
-    {
-        using namespace std::chrono_literals;
-
-        if(m_SC.Requested && !ImGui::IsPopupOpen("Create Scene##1"))
-        {
-            ImGui::OpenPopup("Create Scene##1");
-            m_SC.Requested = false;
-        }
-
-        ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
-        if (ImGui::BeginPopupModal("Create Scene##1", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
-        {
-            std::vector<std::string> errors;
-            auto trim = [](std::string& s)
-            {
-                const auto wsfront = s.find_first_not_of(" \t\r\n");
-                const auto wsback  = s.find_last_not_of(" \t\r\n");
-                if (wsfront == std::string::npos) { s.clear(); return; }
-                s = s.substr(wsfront, wsback - wsfront + 1);
-            };
-
-            auto has_invalid_win_chars = [](const std::string& s)
-            {
-    #ifdef MOTION_PLATFORM_WINDOWS
-                static const char* bad = "<>:\"/\\|?*";
-                return s.find_first_of(bad) != std::string::npos;
-    #else
-                (void)s;
-                return false;
-    #endif
-            };
-
-            auto filename_from = [](const std::string& p) -> std::string
-            {
-                std::filesystem::path fp = std::filesystem::path(p);
-                return fp.filename().stem().string();
-            };
-
-            ImGui::TextUnformatted("Fill in the scene details.");
-            ImGui::Separator();
-
-            ImGui::TextUnformatted("Name");
-            ImGui::InputText("##scene_name", &m_SC.Name);
-
-            ImGui::Spacing();
-
-            ImGui::TextUnformatted("File");
-            ImGui::PushItemWidth(360.0f);
-            std::string path = m_SC.FilePath.string();
-            if(ImGui::InputText("##scene_file", &path))
-            {
-                m_SC.FilePath = std::filesystem::path(path);
-            }
-
-            ImGui::PopItemWidth();
-            ImGui::SameLine();
-            
-            if (ImGui::Button("...")) 
-            {
-                DialogBoxes::InitializeCOM();
-                m_SC.FilePath = DialogBoxes::OpenFolderDialog();
-                if (m_SC.FilePath.empty() || !std::filesystem::exists(m_SC.FilePath))
-                    errors.emplace_back("Selected path does not exist!");
-                DialogBoxes::UninitializeCOM();
-            }
-            if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("Choose a file path (e.g., /projects/levels/MyScene.scene)");
-
-            ImGui::Spacing();
-
-            if (m_SC.Name.empty())
-                errors.emplace_back("Name cannot be empty.");
-            else 
-            {
-                if (has_invalid_win_chars(m_SC.Name))
-                    errors.emplace_back("Name contains characters not allowed on Windows (< > : \" / \\ | ? *).");
-
-    #ifdef MOTION_PLATFORM_WINDOWS
-                if (!m_SC.Name.empty() && (m_SC.Name.back() == ' ' || m_SC.Name.back() == '.'))
-                    errors.emplace_back("Name cannot end with a space or period on Windows.");
-    #endif
-            }
-
-            if (m_SC.FilePath.empty()) 
-            {
-                errors.emplace_back("File path cannot be empty.");
-            }
-            else 
-            {
-                std::filesystem::path p = m_SC.FilePath;
-                if (p.has_filename() == false || filename_from(p.string()).empty())
-                    errors.emplace_back("File path must include a file name (e.g., MyScene.scene).");
-
-                std::error_code ec;
-                auto parent = p.parent_path();
-                if (!parent.empty() && !std::filesystem::exists(parent, ec)) 
-                {
-                    errors.emplace_back("Parent directory does not exist.");
-                }
-
-                if (p.has_filename() && p.extension().empty()) {
-                    ImGui::TextWrapped("Hint: Consider adding an extension like \".scene\".");
-                }
-            }
-
-            if (!errors.empty()) 
-            {
-                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1, 0.35f, 0.35f, 1));
-                for (const auto& e : errors)
-                    ImGui::TextWrapped("%s", e.c_str());
-                ImGui::PopStyleColor();
-            }
-
-            ImGui::Dummy(ImVec2(0, 6));
-            ImGui::Separator();
-            ImGui::SameLine();
-            ImGui::Dummy(ImVec2(12, 0));
-            ImGui::SameLine();
-
-            bool can_create = errors.empty();
-            float right_w = 0.0f
-                + ImGui::CalcTextSize("Cancel").x + ImGui::GetStyle().FramePadding.x * 2.0f
-                + ImGui::GetStyle().ItemSpacing.x
-                + ImGui::CalcTextSize("Create").x + ImGui::GetStyle().FramePadding.x * 2.0f;
-            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x - right_w);
-
-            if (ImGui::Button("Cancel")) 
-            {
-                m_SC.Reset();
-                ImGui::CloseCurrentPopup(); 
-            }
-
-            ImGui::SameLine();
-            if (!can_create) ImGui::BeginDisabled();
-            if (ImGui::Button("Create")) 
-            {
-                //Actual path
-                m_SC.FilePath = m_SC.FilePath / m_SC.Name;
-
-                SceneSpecification spec;
-                spec.ID = UniqueIdentity::GetUniqueID();
-                spec.Name = m_SC.Name;
-                spec.SavedPath = m_SC.FilePath;
-
-                if (m_Scene) 
-                {
-                    auto& context = m_Scene->GetContext();
-                    std::string oldSceneFilename = std::format("{}.mes", context.Specification->Name);
-                    SceneSerializer::Serialize(m_Scene.get(), m_ScenePath / oldSceneFilename);
-                    m_Scene.reset(); 
-                }
-                
-                m_NewScene = LOADER::Submit([specification = spec]() -> std::shared_ptr<Scene>
-                {
-                    auto scene = std::make_shared<Scene>(specification);
-                    
-                    if (!scene) 
-                    {
-                        return nullptr;
-                    }
-                    else
-                    {
-                        std::filesystem::create_directories(specification.SavedPath);
-                        std::filesystem::create_directory(specification.SavedPath / "Assets");
-                        std::filesystem::create_directory(specification.SavedPath / ".motion_temp");
-                        return scene;
-                    }
-                    
-                    return nullptr;
-                });
-                
-                ImGui::OpenPopup("Creating##1-1");
-                ImGui::CloseCurrentPopup();  
-                if (!can_create) ImGui::EndDisabled();
-            }
-            ImGui::EndPopup(); 
-        }
-
-        ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
-        if (ImGui::BeginPopupModal("Creating##1-1", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
-        {
-            std::string label = std::format("Creating scene: {}, please wait...", m_SC.Name);
-            ImGui::Text("%s", label.c_str());
-            
-            if (m_NewScene.valid() && m_NewScene.wait_for(0ms) == std::future_status::ready)  
-                ImGui::CloseCurrentPopup();
-            
-            ImGui::EndPopup(); 
-        }
-
-        if (m_NewScene.valid() && m_NewScene.wait_for(0ms) == std::future_status::ready)
-        {
-            try
-            {
-                m_Scene = std::move(m_NewScene.get());
-                if(m_Scene)
-                {
-                    m_ScenePath = m_SC.FilePath;
+    // ========================================================================
+    // DOCKSPACE
+    // ========================================================================
     
-                    ImGuiIO& io = ImGui::GetIO();
-                    io.IniFilename = nullptr;
-                    std::string layoutFile = std::format("{}/mes-config.ini", m_SC.FilePath.string());
-                    ImGui::SaveIniSettingsToDisk(layoutFile.c_str());
-                }
-                else
-                {
-                    ShowMessageBox("Error", "Failed to create scene.");
-                } 
-            }
-            catch(const std::exception& e)
-            {
-                ShowMessageBox("Error", e.what());
-            }
-
-            m_SC.Reset();
-            m_NewScene = std::future<std::shared_ptr<Scene>>(); 
-        }
-    }
-
-    void SceneEditorLayer::LoadScene()
-    {
-        using namespace std::chrono_literals;
-
-        if(m_SL.Requested && !ImGui::IsPopupOpen("Load Scene##2"))
-        {
-            ImGui::OpenPopup("Load Scene##2");
-            m_SL.Requested = false;
-        }
-
-        ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
-        if (ImGui::BeginPopupModal("Load Scene##2", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
-        {
-            std::vector<std::string> errors;
-
-            ImGui::TextUnformatted("Select the scene file to load.");
-            ImGui::Separator();
-
-            ImGui::Spacing();
-
-            ImGui::TextUnformatted("Scene File Path");
-            ImGui::PushItemWidth(360.0f);
-
-            std::string path = m_SL.FilePath.string();
-            if(ImGui::InputText("##scene_load_path", &path))
-            {
-                m_SL.FilePath = std::filesystem::path(path);
-            }
-
-            ImGui::PopItemWidth();
-            ImGui::SameLine();
-
-            if (ImGui::Button("..."))
-            {
-                DialogBoxes::InitializeCOM();
-
-                OpenDialogOptions options{};
-                options.Title = L"Open Scene";
-                options.DefaultExtension = L"mes";
-                options.AllowMultiSelect = false;
-                options.InitialDirectory = DialogBoxes::GetSystemFolder(SystemFolder::Desktop);
-                options.Filters = { {L"Scene File", L"*.mes;"} };
-
-                m_SL.FilePath = DialogBoxes::OpenFileDialog(options);
-                if (m_SL.FilePath.empty() || !std::filesystem::exists(m_SL.FilePath))
-                    errors.emplace_back("Selected file does not exist!");
-
-                DialogBoxes::UninitializeCOM();
-            }
-
-            if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("Browse and select a scene file (e.g., MyScene/scene.mes)");
-
-            ImGui::Spacing();
-
-            if (m_SL.FilePath.empty())
-                errors.emplace_back("Scene path cannot be empty.");
-            else if (!std::filesystem::exists(m_SL.FilePath))
-                errors.emplace_back("Scene file does not exist.");
-
-            if (!errors.empty())
-            {
-                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.35f, 0.35f, 1.0f));
-                for (const auto& e : errors)
-                    ImGui::TextWrapped("%s", e.c_str());
-                ImGui::PopStyleColor();
-            }
-
-            ImGui::Dummy(ImVec2(0, 6));
-            ImGui::Separator();
-            ImGui::SameLine();
-            ImGui::Dummy(ImVec2(12, 0));
-            ImGui::SameLine();
-
-            bool can_load = errors.empty();
-            float right_w = 0.0f
-                + ImGui::CalcTextSize("Cancel").x + ImGui::GetStyle().FramePadding.x * 2.0f
-                + ImGui::GetStyle().ItemSpacing.x
-                + ImGui::CalcTextSize("Load").x + ImGui::GetStyle().FramePadding.x * 2.0f;
-            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x - right_w);
-
-            if (ImGui::Button("Cancel"))
-            {
-                m_SL.Reset();
-                ImGui::CloseCurrentPopup();
-            }
-
-            ImGui::SameLine();
-
-            if (!can_load) ImGui::BeginDisabled();
-            if (ImGui::Button("Load"))
-            {
-                ImGui::OpenPopup("Loading##2-1");
-                m_NewScene = LOADER::Submit([sceneFile = m_SL.FilePath]() -> std::shared_ptr<Scene>
-                {
-                    return SceneSerializer::Deserialize(sceneFile);
-                });
-
-                ImGui::CloseCurrentPopup();
-            }
-            if (!can_load) ImGui::EndDisabled();
-
-            ImGui::EndPopup();
-        }
-
-        ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
-        if (ImGui::BeginPopupModal("Loading##2-1", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
-        {
-            ImGui::Text("Loading scene, please wait...");
-            if (m_NewScene.valid() && m_NewScene.wait_for(0ms) == std::future_status::ready)
-                ImGui::CloseCurrentPopup();
-            ImGui::EndPopup();
-        }
-
-        if (m_NewScene.valid() && m_NewScene.wait_for(0ms) == std::future_status::ready)
-        {
-            try
-            {
-                m_Scene = std::move(m_NewScene.get());
-                if(m_Scene)
-                {
-                    m_ScenePath = m_SL.FilePath.parent_path();
-                    
-                    ImGuiIO& io = ImGui::GetIO();
-                    io.IniFilename = nullptr;
-                    std::string layoutFile = std::format("{}/mes-config.ini", m_SL.FilePath.string());
-                    ImGui::LoadIniSettingsFromDisk(layoutFile.c_str());
-                }
-                else
-                {
-                    ShowMessageBox("Error", "Failed to load scene!");
-                }
-            }
-            catch(const std::exception& e)
-            {
-                ShowMessageBox("Error", e.what());
-            }
-            
-            m_SL.Reset();
-        }
-    }
-
     void SceneEditorLayer::BuildDockspace()
     {
         ImGuiWindowFlags host =
@@ -610,6 +883,10 @@ namespace Motion
         ImGui::End();
     }
 
+    // ========================================================================
+    // SCENE RENDERING
+    // ========================================================================
+    
     void SceneEditorLayer::RenderScene()
     {
         if(!m_Scene) return;
@@ -618,7 +895,6 @@ namespace Motion
         ImGui::Begin("Scene Properties");
         {
             RenderToolbarAndSearch();
-            RenderImportPopup(context);
             RenderEntityHierarchy(context);
             RenderEnvironmentSettings(context);
         }
@@ -627,6 +903,10 @@ namespace Motion
         RenderViewport(context);
     }
 
+    // ========================================================================
+    // MATERIAL UI
+    // ========================================================================
+    
     void SceneEditorLayer::DrawMaterialUI(std::shared_ptr<Material>& mat)
     {
         if (!mat) return;
@@ -696,7 +976,7 @@ namespace Motion
         }
         else
         {
-            ImGui::TextDisabled("No textures assigned");
+            ImGui::TextDisabled("No materials assigned");
         }
     }
 
@@ -733,6 +1013,10 @@ namespace Motion
         }
     }
 
+    // ========================================================================
+    // ENTITY RENDERING
+    // ========================================================================
+    
     void SceneEditorLayer::RenderNodeEntities(SceneContext& context, entt::entity root)
     {
         m_Scene->ForEachNodeEntity(root, [&](entt::entity e)
@@ -746,7 +1030,8 @@ namespace Motion
             const ImGuiTreeNodeFlags flags =
                 ImGuiTreeNodeFlags_SpanAvailWidth |ImGuiTreeNodeFlags_AllowItemOverlap | ImGuiTreeNodeFlags_FramePadding;
 
-            const bool open = ImGui::TreeNodeEx("##node", flags, "%s %s", label, (e == context.Entities->SelectedEntity) ? ICON_MD_STAR : "");
+            const bool open = ImGui::TreeNodeEx("##node", flags, "%s %s", label, 
+                (e == context.Entities->SelectedEntity) ? "*" : "");
             if (ImGui::IsItemClicked(ImGuiMouseButton_Left)) m_Scene->SelectedEntity(e);
 
             if (open)
@@ -785,13 +1070,11 @@ namespace Motion
             const auto& model = context.Entities->Registry.get<ModelComponent>(e);
 
             std::string file  = model.FilePath.filename().string();
-            std::string path  = model.FilePath.parent_path().string();
-            std::string count = std::to_string(model.MeshCount);
-
-            TextBox("Model File", file, true);
-            TextBox("Model Path", path, true);
-            TextBox("Mesh Count", count, true);
+            std::string mesh  = std::to_string(model.MeshCount);
+            TextBox("File Path", file, true);
+            TextBox("Mesh Count", mesh, true);
         }
+
         EndPropertyGrid();
     }
 
@@ -802,15 +1085,12 @@ namespace Motion
             BeginPropertyGrid("##transform-grid");
 
             glm::vec3 t = tr->Translation;
-            if (DragFloat3("Translation (m)", t, 0.1f))
+            if (DragFloat3("Position (m)", t, 0.1f))
                 tr->Translation = t;
 
             glm::vec3 eulerDeg = glm::degrees(glm::eulerAngles(tr->Rotation));
-            eulerDeg = WrapEuler(eulerDeg);
-
-            glm::vec3 edited = eulerDeg;
-            if (DragFloat3("Rotation (deg)", edited, 0.1f))
-                ApplyRotationIfChanged(tr->Rotation, edited);
+            if (DragFloat3("Rotation (deg)", eulerDeg, 1.0f))
+                tr->Rotation = glm::normalize(glm::quat(glm::radians(eulerDeg)));
 
             glm::vec3 s = tr->Scale;
             if (DragFloat3("Scale (m)", s, 0.1f))
@@ -839,13 +1119,13 @@ namespace Motion
         if (auto* material = context.Entities->Registry.try_get<MaterialComponent>(e))
         {
             static bool isEditorOpen = false;
-            if (ImGui::Button(ICON_MD_IMAGE " Material Editor"))
+            if (ImGui::Button("Material Editor"))
                 isEditorOpen = !isEditorOpen;
 
             if (isEditorOpen)
             {
                 ImGui::SetNextWindowSize(ImVec2(600.0f, 400.0f), ImGuiCond_FirstUseEver);
-                std::string w = std::string(ICON_MD_IMAGE " Material Editor##") + std::to_string((uintptr_t)material->ID);
+                std::string w = std::string("Material Editor##") + std::to_string((uintptr_t)material->ID);
                 if (ImGui::Begin(w.c_str(), &isEditorOpen, ImGuiWindowFlags_NoDocking))
                 {
                     if (ImGui::BeginChild("##inspector-area", ImVec2(0.0f, 0.0f)))
@@ -853,7 +1133,7 @@ namespace Motion
                         if (material->MaterialPointer)
                             DrawMaterialUI(material->MaterialPointer);
                         else
-                            ImGui::TextDisabled(ICON_MD_INFO " No material assigned");
+                            ImGui::TextDisabled("No material assigned");
                         ImGui::EndChild();
                     }
                     ImGui::End();
@@ -911,119 +1191,16 @@ namespace Motion
     void SceneEditorLayer::RenderToolbarAndSearch()
     {
         ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 50.0f);
-        ImGui::InputTextWithHint("##SearchScenes", ICON_MD_SEARCH " Search scenes...", m_SearchBuf, sizeof(m_SearchBuf));
+        ImGui::InputTextWithHint("##SearchScenes", "Search scenes...", m_SearchBuf, sizeof(m_SearchBuf));
         ImGui::PopItemWidth();
 
         ImGui::SameLine();
         if (ImGui::Button("Import##Button", ImVec2(50.0f, 0.0f)))
         {
-            (void)ImportEntity(true, true);
-            m_Import.Requested = true;
+            RequestEntityImport(true, true);
         }
-
 
         ImGui::Separator();
-    }
-
-    void SceneEditorLayer::RenderImportPopup(SceneContext& context)
-    {
-        using namespace std::chrono_literals;
-
-        if(m_Import.Requested && !ImGui::IsPopupOpen("ImportEntity##Popup"))
-            ImGui::OpenPopup("ImportEntity##Popup");
-
-        if (ImGui::BeginPopupModal("ImportEntity##Popup", nullptr,
-            ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings))
-        {
-            float t = float(fmod(ImGui::GetTime(), 1.0));
-            float p = 0.25f + 0.5f * (0.5f - std::abs(t - 0.5f)) * 2.0f;
-            ImGui::TextUnformatted("Crunching triangles and untangling meshes…");
-            ImGui::Dummy(ImVec2(0, 8));
-            ImGui::ProgressBar(p, ImVec2(320, 0), "Working");
-
-            if (m_Import.Results.valid() && m_Import.Results.wait_for(1s) == std::future_status::ready)
-            {
-                try
-                {
-                    const auto& results = m_Import.Results.get();
-                    const BufferLayout layout
-                    {
-                        { "a_Position",   BufferComponents::XYZ,  BufferStride::F3, false, offsetof(Vertex, Position)    },
-                        { "a_TexCoords",  BufferComponents::UV,   BufferStride::F2, false, offsetof(Vertex, TexCoord)    },
-                        { "a_Normals",    BufferComponents::XYZ,  BufferStride::F3, false, offsetof(Vertex, Normal)      },
-                        { "a_Tangents",   BufferComponents::XYZW, BufferStride::F4, false, offsetof(Vertex, Tangent)     },
-                        { "a_Bitangents", BufferComponents::XYZ,  BufferStride::F3, false, offsetof(Vertex, Bitangent)   },
-                    };
-    
-                    entt::entity root = context.Entities->Registry.create();
-                    context.Entities->Registry.emplace<TagComponent>(root, results->Name);
-                    context.Entities->Registry.emplace<TransformComponent>(root);
-    
-                    auto& modelCompo     = context.Entities->Registry.emplace<ModelComponent>(root);
-                    modelCompo.FilePath  = results->FilePath;
-                    modelCompo.MeshCount = results->MeshCount;
-                    modelCompo.MaxBounds = results->MAX;
-                    modelCompo.MinBounds = results->MIN;
-    
-                    std::vector<entt::entity> children;
-                    children.reserve(results->MeshCount);
-    
-                    for (const auto& [index, mesh] : results->Meshes)
-                    {
-                        entt::entity e = context.Entities->Registry.create();
-                        context.Entities->Registry.emplace<TagComponent>(e, mesh.Name);
-                        context.Entities->Registry.emplace<TransformComponent>(e);
-                        context.Entities->Registry.emplace<RigidBodyComponent>(e);
-                        context.Entities->Registry.emplace<ColliderComponent>(e);
-    
-                        auto& meshCompo = context.Entities->Registry.emplace<MeshComponent>(e);
-                        meshCompo.MeshPointer = Mesh::Create(mesh.Vertices.data(), mesh.Vertices.size(), mesh.Indices.data(), mesh.Indices.size(), layout);
-                        
-                        meshCompo.MeshIndex = index;
-                        meshCompo.Name      = mesh.Name;
-                        meshCompo.MaxBounds = mesh.MAX;
-                        meshCompo.MinBounds = mesh.MIN;
-    
-                        auto& materialCompo = context.Entities->Registry.emplace<MaterialComponent>(e);
-                        materialCompo.MaterialPointer = Material::Create();
-    
-                        CreateRigidBody(context.Physics->World, &context.Entities->Registry, e);
-    
-                        std::vector<glm::vec3> verts;
-                        verts.reserve(mesh.Vertices.size());
-                        std::transform(mesh.Vertices.begin(), mesh.Vertices.end(), std::back_inserter(verts),
-                                        [](const Vertex& v) { return v.Position; });
-    
-                        CreateConvexCollider(&context.Physics->Properties, &context.Entities->Registry, e, verts);
-                        children.push_back(e);
-                    }
-    
-                    entt::entity prev = entt::null;
-                    for (std::size_t i = 0; i < children.size(); ++i)
-                    {
-                        auto e = children[i];
-                        context.Entities->Registry.emplace<HierarchyComponent>(e, root, entt::null, entt::null);
-                        if (i > 0) context.Entities->Registry.get<HierarchyComponent>(prev).NextSibling = e;
-                        prev = e;
-                    }
-    
-                    context.Entities->Registry.emplace<HierarchyComponent>(root, entt::null,
-                        children.empty() ? entt::null : children.front(), entt::null);
-    
-                    m_Scene->EmplaceEntity(root);
-                    m_Import.Reset();  
-    
-                }
-                catch (const std::exception& e)
-                {
-                    ShowMessageBox("Error", e.what());
-                }
-
-                ImGui::CloseCurrentPopup();
-            }
-                
-            ImGui::EndPopup();
-        }
     }
 
     void SceneEditorLayer::RenderEntityHierarchy(SceneContext& context)
@@ -1440,49 +1617,4 @@ namespace Motion
         ImGui::End();
         ImGui::PopStyleVar();
     }
-
-    bool SceneEditorLayer::ImportEntity(bool showImportDialogs, bool shouldExport, std::filesystem::path path)
-    {
-        if(!m_Scene) return false;
-
-        ImportSettings settings{};
-        settings.FilePath       = path;
-        settings.ShouldExport   = shouldExport;
-        settings.ExportPath     = m_ScenePath;
-
-        if(showImportDialogs)
-        {
-            
-            OpenDialogOptions options{};
-            options.Title = L"Import Model";
-            options.DefaultExtension = L"obj";
-            options.AllowMultiSelect = false;
-            options.InitialDirectory = std::filesystem::current_path();
-            options.Filters = { {L"Mesh Files", L"*.fbx;*.obj;*.gltf;*.glb"} };
-            DialogBoxes::InitializeCOM();
-
-            if (settings.FilePath = DialogBoxes::OpenFileDialog(options); !settings.FilePath.empty())
-            {
-                m_Import.Results = LOADER::Submit([importSettings = settings]() -> std::shared_ptr<ImportedResults>
-                {
-                    return Importer::ImportEntity(importSettings);
-                });
-            }
-
-            DialogBoxes::UninitializeCOM();
-            return !settings.FilePath.empty();
-        }
-        else
-        {
-            m_Import.Results = LOADER::Submit([importSettings = settings]() -> std::shared_ptr<ImportedResults>
-            {
-                return Importer::ImportEntity(importSettings);
-            });
-
-            return true;
-        }
-
-        return false;
-    }
-
 }

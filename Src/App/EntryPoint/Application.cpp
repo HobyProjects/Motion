@@ -20,8 +20,8 @@ namespace Motion
         LOADER::Create(m_Window->GetNativeWindow());
         LOADER::Start();
 
-        m_ImGuiLayer    = std::make_shared<ImGuiLayer>(m_Window->GetHandle());
-        m_EditorLayer   = std::make_shared<SceneEditorLayer>();
+        m_ImGuiLayer = std::make_shared<ImGuiLayer>(m_Window->GetHandle());
+        m_EditorLayer = std::make_shared<SceneEditorLayer>();
 
         PushOverlay(m_ImGuiLayer);
         PushLayer(m_EditorLayer);
@@ -29,9 +29,10 @@ namespace Motion
 
     Application::~Application()
     {
+
+        LOADER::Stop();
         UserInterface::Quit();
         Renderer::Quit();
-        LOADER::Stop();
 
         auto& windowManager = WindowManager::GetInstance();
         windowManager.Destroy(m_Window->GetHandle());
@@ -52,6 +53,7 @@ namespace Motion
             m_Window->PollEvents();
             LOADER::FeedBack();
 
+            // Skip rendering if window is not focused or minimized
             if (!m_Window->IsFocused() || m_Window->GetProperties().State == WindowState::Minimized)
                 continue;
 
@@ -59,10 +61,12 @@ namespace Motion
             float dt = std::chrono::duration_cast<secondsf>(now - lastFrame).count();
             lastFrame = now;
 
-            for (auto& layer : lm) layer->OnUpdate(m_Window->GetHandle(), dt);
+            for (auto& layer : lm) 
+                layer->OnUpdate(m_Window->GetHandle(), dt);
 
             m_ImGuiLayer->Begin();
-            for (auto& layer : lm) layer->OnUIRender(m_Window->GetHandle());
+            for (auto& layer : lm) 
+                layer->OnUIRender(m_Window->GetHandle());
             m_ImGuiLayer->End();
 
             m_WindowContext->SwapBuffers(m_Window->GetNativeWindow());
@@ -70,7 +74,6 @@ namespace Motion
         
         m_WindowContext->ClearCurrent();
     }
-
 
     void Application::PushLayer(const std::shared_ptr<Layer>& layer)
     {
@@ -91,7 +94,7 @@ namespace Motion
         handler.Dispatch<EventWindowResize>(EVENT_CALLBACK(OnWindowResize));
 
         auto& lm = LayersManager::GetInstance();
-        for (std::vector<std::shared_ptr<Layer>>::reverse_iterator it = lm.rbegin(); it != lm.rend(); ++it)
+        for (auto it = lm.rbegin(); it != lm.rend(); ++it)
         {
             (*it)->OnEvent(handle, e);
         }
@@ -101,7 +104,6 @@ namespace Motion
     {
         if (m_Window->IsActive())
         {
-            LOADER::Stop();
             m_Window->GetProperties().IsActive = false;
         }
 

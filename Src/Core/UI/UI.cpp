@@ -14,12 +14,13 @@ namespace Motion
             ImPlot::CreateContext();
             ImGuiIO& io = ImGui::GetIO(); (void)io;
 
-            // sensible defaults
+            // Enable features for modern UI
             io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
             io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
             io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
             io.ConfigWindowsMoveFromTitleBarOnly = true;
             io.ConfigDockingAlwaysTabBar = true;
+            io.ConfigViewportsNoDecoration = false;  // Allow platform decorations
 
             // Backends
             auto& coreAPI = CoreAPI::GetInstance();
@@ -74,78 +75,83 @@ namespace Motion
         ImGui::DestroyContext();
     }
 
-    static std::string GetFullPath(const char* path)
-    {
-        std::filesystem::path fullPath = std::filesystem::absolute(path);
-        MOTION_CORE_INFO("Full path resolved: {0}", fullPath.string());
-        return fullPath.string();
-    }
-
     void UserInterface::LoadDefaultFonts(const char* fontPath, float sizePx) noexcept
     {
         ImGuiIO& io = ImGui::GetIO();
         io.Fonts->Clear();
-        io.Fonts->TexGlyphPadding = 1; 
+        io.Fonts->TexGlyphPadding = 2;  // Extra padding for better rendering
 
         ImFontConfig textCfg{};
-        textCfg.OversampleH = 3;          
-        textCfg.OversampleV = 3;
-        textCfg.PixelSnapH  = false;     
+        textCfg.OversampleH = 4;  // Higher quality
+        textCfg.OversampleV = 4;
+        textCfg.PixelSnapH  = false;
 
+        // Load main font with better hinting
         ImFont* base = nullptr;
         if (fontPath && *fontPath)
+        {
             base = io.Fonts->AddFontFromFileTTF(fontPath, sizePx, &textCfg);
+        }
 
         if (!base)
+        {
             base = io.Fonts->AddFontDefault();
+        }
 
+        // Material Design Icons range
         static const ImWchar kMaterialIconsRange[] = 
         {
             (ImWchar)ICON_MIN_MD, (ImWchar)ICON_MAX_MD, 0
         };
 
+        // Font Awesome range
         static const ImWchar kFontAwesomeRange[] = 
         {
             (ImWchar)ICON_MIN_FA, (ImWchar)ICON_MAX_FA, 0
         };
 
+        const float iconSizePx  = sizePx;
+        const float iconYOffset = 0.0f;  // Better vertical alignment
 
-        const float iconSizePx  = sizePx; 
-        const float iconYOffset = -0.5f;
-
-
-        {
-            ImFontConfig iconCfg{};
-            iconCfg.MergeMode        = true;     
-            iconCfg.PixelSnapH       = true;     
-            iconCfg.OversampleH      = 1;        
-            iconCfg.OversampleV      = 1;
-            iconCfg.GlyphOffset      = ImVec2(0.0f, iconYOffset);
-            iconCfg.GlyphMinAdvanceX = 0.0f;    
-
-            (void)io.Fonts->AddFontFromFileTTF(
-                "Assets/Fonts/IconFonts/MaterialIcons-Regular.ttf",
-                iconSizePx, &iconCfg, kMaterialIconsRange
-            );
-        }
+        // Merge Material Design Icons
         {
             ImFontConfig iconCfg{};
             iconCfg.MergeMode        = true;
             iconCfg.PixelSnapH       = true;
-            iconCfg.OversampleH      = 1;
-            iconCfg.OversampleV      = 1;
+            iconCfg.OversampleH      = 2;
+            iconCfg.OversampleV      = 2;
             iconCfg.GlyphOffset      = ImVec2(0.0f, iconYOffset);
-            iconCfg.GlyphMinAdvanceX = 0.0f;
+            iconCfg.GlyphMinAdvanceX = iconSizePx;
 
-            (void)io.Fonts->AddFontFromFileTTF(
+            io.Fonts->AddFontFromFileTTF(
+                "Assets/Fonts/IconFonts/MaterialIcons-Regular.ttf",
+                iconSizePx, &iconCfg, kMaterialIconsRange
+            );
+        }
+
+        // Merge Font Awesome
+        {
+            ImFontConfig iconCfg{};
+            iconCfg.MergeMode        = true;
+            iconCfg.PixelSnapH       = true;
+            iconCfg.OversampleH      = 2;
+            iconCfg.OversampleV      = 2;
+            iconCfg.GlyphOffset      = ImVec2(0.0f, iconYOffset);
+            iconCfg.GlyphMinAdvanceX = iconSizePx;
+
+            io.Fonts->AddFontFromFileTTF(
                 "Assets/Fonts/IconFonts/fa-regular-400.ttf",
                 iconSizePx, &iconCfg, kFontAwesomeRange
             );
         }
 
-        (void)io.Fonts->Build();
+        io.Fonts->Build();
     }
 
+    // ========================================================================
+    // FLUENT DESIGN HELPERS
+    // ========================================================================
+    
     static inline ImVec4 Mix(const ImVec4& a, const ImVec4& b, float t) 
     {
         return ImVec4(
@@ -161,188 +167,319 @@ namespace Motion
         return ImVec4(r / 255.f, g / 255.f, b / 255.f, a);
     }
 
-    static void SetImGuizmoStyleForEditor(const ImVec4& accent, float dpiScale)
+    // Fluent Design acrylic effect color
+    static inline ImVec4 Acrylic(const ImVec4& base, float opacity = 0.85f)
     {
-        const ImVec4 N00 = ImVec4(1.00f, 1.00f, 1.00f, 1.0f); 
-        const ImVec4 N01 = ImVec4(0.98f, 0.98f, 0.98f, 1.0f); 
-        const ImVec4 N02 = ImVec4(0.94f, 0.94f, 0.94f, 1.0f);
-        const ImVec4 N03 = ImVec4(0.88f, 0.88f, 0.88f, 1.0f); 
-        const ImVec4 N04 = ImVec4(0.80f, 0.80f, 0.80f, 1.0f);  
-        const ImVec4 BRD = ImVec4(0.25f, 0.27f, 0.30f, 0.35f);
-        const ImVec4 TXT = ImVec4(0.10f, 0.11f, 0.12f, 1.0f);  
+        return ImVec4(base.x, base.y, base.z, opacity);
+    }
 
-        const ImVec4 AX_X = Mix(ImVec4(0.92f, 0.26f, 0.26f, 1.0f), N03, 0.08f);
-        const ImVec4 AX_Y = Mix(ImVec4(0.30f, 0.86f, 0.36f, 1.0f), N03, 0.08f);
-        const ImVec4 AX_Z = Mix(ImVec4(0.27f, 0.60f, 0.98f, 1.0f), N03, 0.08f);
+    // Fluent Design reveal effect (brightens on hover)
+    static inline ImVec4 Reveal(const ImVec4& base, float amount = 0.15f)
+    {
+        return Mix(base, ImVec4(1, 1, 1, base.w), amount);
+    }
+
+    // Shadow for depth
+    static inline void DrawShadow(ImDrawList* drawList, const ImVec2& min, const ImVec2& max, 
+                                  float rounding, float shadowSize = 8.0f, float opacity = 0.3f)
+    {
+        const ImU32 shadowCol = ImGui::GetColorU32(ImVec4(0, 0, 0, opacity));
+        const int segments = 12;
+        
+        for (int i = 0; i < segments; ++i)
+        {
+            float t = (float)i / segments;
+            float alpha = (1.0f - t) * opacity;
+            float offset = t * shadowSize;
+            
+            ImU32 col = ImGui::GetColorU32(ImVec4(0, 0, 0, alpha));
+            drawList->AddRect(
+                ImVec2(min.x - offset, min.y - offset),
+                ImVec2(max.x + offset, max.y + offset),
+                col, rounding + offset, 0, 1.0f
+            );
+        }
+    }
+
+    static void SetImGuizmoStyleForFluent(const ImVec4& accent, float dpiScale)
+    {
+        // Modern light theme colors
+        const ImVec4 N00 = ImVec4(1.00f, 1.00f, 1.00f, 1.0f);
+        const ImVec4 N01 = RGBA(249, 249, 249);  // Mica background
+        const ImVec4 N02 = RGBA(243, 243, 243);  // Card background
+        const ImVec4 N03 = RGBA(237, 237, 237);  // Hover
+        const ImVec4 N04 = RGBA(230, 230, 230);  // Active
+        const ImVec4 BRD = RGBA(229, 229, 229, 0.4f);  // Subtle border
+        const ImVec4 TXT = RGBA(32, 33, 36);  // Rich text
+
+        // Modern axis colors (more saturated for Fluent)
+        const ImVec4 AX_X = RGBA(232, 17, 35);   // Windows red
+        const ImVec4 AX_Y = RGBA(16, 137, 62);   // Windows green
+        const ImVec4 AX_Z = RGBA(0, 120, 215);   // Windows blue
 
         ImGuizmo::Style& s = ImGuizmo::GetStyle();
 
-        s.TranslationLineThickness   = 3.0f  * dpiScale;
-        s.TranslationLineArrowSize   = 12.0f * dpiScale;
-        s.RotationLineThickness      = 3.0f  * dpiScale;
-        s.RotationOuterLineThickness = 3.5f  * dpiScale;
-        s.ScaleLineThickness         = 3.0f  * dpiScale;
-        s.ScaleLineCircleSize        = 8.0f  * dpiScale;
-        s.HatchedAxisLineThickness   = 2.0f  * dpiScale;
-        s.CenterCircleSize           = 5.0f  * dpiScale;
+        // Thicker, more visible lines for modern look
+        s.TranslationLineThickness   = 4.0f  * dpiScale;
+        s.TranslationLineArrowSize   = 14.0f * dpiScale;
+        s.RotationLineThickness      = 4.0f  * dpiScale;
+        s.RotationOuterLineThickness = 4.5f  * dpiScale;
+        s.ScaleLineThickness         = 4.0f  * dpiScale;
+        s.ScaleLineCircleSize        = 10.0f * dpiScale;
+        s.HatchedAxisLineThickness   = 3.0f  * dpiScale;
+        s.CenterCircleSize           = 6.0f  * dpiScale;
 
+        // Vibrant axis colors
         s.Colors[ImGuizmo::DIRECTION_X] = AX_X;
         s.Colors[ImGuizmo::DIRECTION_Y] = AX_Y;
         s.Colors[ImGuizmo::DIRECTION_Z] = AX_Z;
 
-        s.Colors[ImGuizmo::PLANE_X] = ImVec4(AX_X.x, AX_X.y, AX_X.z, 0.40f);
-        s.Colors[ImGuizmo::PLANE_Y] = ImVec4(AX_Y.x, AX_Y.y, AX_Y.z, 0.40f);
-        s.Colors[ImGuizmo::PLANE_Z] = ImVec4(AX_Z.x, AX_Z.y, AX_Z.z, 0.40f);
+        // Plane colors with higher opacity
+        s.Colors[ImGuizmo::PLANE_X] = ImVec4(AX_X.x, AX_X.y, AX_X.z, 0.50f);
+        s.Colors[ImGuizmo::PLANE_Y] = ImVec4(AX_Y.x, AX_Y.y, AX_Y.z, 0.50f);
+        s.Colors[ImGuizmo::PLANE_Z] = ImVec4(AX_Z.x, AX_Z.y, AX_Z.z, 0.50f);
 
-        s.Colors[ImGuizmo::SELECTION] = ImVec4(accent.x, accent.y, accent.z, 0.95f);
+        // Accent color for selection
+        s.Colors[ImGuizmo::SELECTION] = ImVec4(accent.x, accent.y, accent.z, 1.0f);
 
-        const ImVec4 inactiveBase = Mix(N02, N04, 0.40f);
-        s.Colors[ImGuizmo::INACTIVE] = ImVec4(inactiveBase.x, inactiveBase.y, inactiveBase.z, 0.70f);
+        // Inactive elements
+        const ImVec4 inactiveBase = Mix(N02, N04, 0.50f);
+        s.Colors[ImGuizmo::INACTIVE] = ImVec4(inactiveBase.x, inactiveBase.y, inactiveBase.z, 0.60f);
 
-        const ImVec4 lineIdle   = Mix(N04, ImVec4(0.0f,0.0f,0.0f,1.0f), 0.25f);
-        const ImVec4 lineBright = Mix(N04, ImVec4(0.0f,0.0f,0.0f,1.0f), 0.40f); 
+        // Lines
+        const ImVec4 lineColor = Mix(N04, TXT, 0.20f);
+        s.Colors[ImGuizmo::TRANSLATION_LINE] = ImVec4(lineColor.x, lineColor.y, lineColor.z, 0.90f);
+        s.Colors[ImGuizmo::SCALE_LINE]       = ImVec4(lineColor.x, lineColor.y, lineColor.z, 0.95f);
 
-        s.Colors[ImGuizmo::TRANSLATION_LINE] = ImVec4(lineIdle.x,   lineIdle.y,   lineIdle.z,   0.85f);
-        s.Colors[ImGuizmo::SCALE_LINE]       = ImVec4(lineBright.x, lineBright.y, lineBright.z, 0.90f);
+        // Rotation
+        s.Colors[ImGuizmo::ROTATION_USING_BORDER] = ImVec4(TXT.x, TXT.y, TXT.z, 0.90f);
+        s.Colors[ImGuizmo::ROTATION_USING_FILL]   = ImVec4(accent.x, accent.y, accent.z, 0.15f);
 
-        s.Colors[ImGuizmo::ROTATION_USING_BORDER] = ImVec4(0.10f, 0.10f, 0.10f, 0.85f);
-        s.Colors[ImGuizmo::ROTATION_USING_FILL]   = ImVec4(0.10f, 0.10f, 0.10f, 0.08f);
-
-        s.Colors[ImGuizmo::HATCHED_AXIS_LINES] = ImVec4(BRD.x, BRD.y, BRD.z, 0.85f);
+        // Text
+        s.Colors[ImGuizmo::HATCHED_AXIS_LINES] = ImVec4(BRD.x, BRD.y, BRD.z, 0.90f);
         s.Colors[ImGuizmo::TEXT]               = TXT;
-        s.Colors[ImGuizmo::TEXT_SHADOW]        = ImVec4(0.00f, 0.00f, 0.00f, 0.20f);
+        s.Colors[ImGuizmo::TEXT_SHADOW]        = ImVec4(1.0f, 1.0f, 1.0f, 0.5f);  // Light shadow for contrast
     }
 
-
-    void UserInterface::UseColorLight(const ImVec4& accent) noexcept
+    void UserInterface::UseColor(const ImVec4& accent) noexcept
     {
         ImGui::StyleColorsLight();
         ImGuiStyle& style = ImGui::GetStyle();
 
+        // High-quality rendering
         style.AntiAliasedFill        = true;
         style.AntiAliasedLines       = true;
         style.AntiAliasedLinesUseTex = true;
-        style.FontScaleDpi           = 1.18f;
+        style.FontScaleDpi           = 1.2f;  // Slightly larger for modern look
 
-        // Layout metrics
-        style.WindowPadding      = ImVec2(8, 8);
-        style.FramePadding       = ImVec2(6, 6);
-        style.ItemSpacing        = ImVec2(8, 5);
-        style.ItemInnerSpacing   = ImVec2(6, 4);
-        style.IndentSpacing      = 8.0f;
-        style.GrabMinSize        = 15.0f;
+        // ====================================================================
+        // FLUENT DESIGN SPACING & SIZING
+        // ====================================================================
+        
+        style.WindowPadding      = ImVec2(12, 12);
+        style.FramePadding       = ImVec2(8, 6);
+        style.ItemSpacing        = ImVec2(8, 6);
+        style.ItemInnerSpacing   = ImVec2(6, 6);
+        style.IndentSpacing      = 12.0f;
+        style.GrabMinSize        = 16.0f;
+        style.TouchExtraPadding  = ImVec2(0, 0);
 
-        // Borders
+        // ====================================================================
+        // FLUENT DESIGN BORDERS
+        // ====================================================================
+        
         style.WindowBorderSize   = 1.0f;
         style.ChildBorderSize    = 1.0f;
         style.PopupBorderSize    = 1.0f;
-        style.FrameBorderSize    = 1.0f;
+        style.FrameBorderSize    = 0.0f;  // Borderless for modern look
+        style.TabBorderSize      = 0.0f;
+        style.TabBarBorderSize   = 0.0f;
 
-        // Rounding
-        style.WindowRounding     = 12.0f;
-        style.ChildRounding      = 6.0f;
-        style.FrameRounding      = 8.0f;
-        style.PopupRounding      = 5.0f;
-        style.GrabRounding       = 8.0f;
+        // ====================================================================
+        // FLUENT DESIGN ROUNDING (More pronounced)
+        // ====================================================================
+        
+        style.WindowRounding     = 8.0f;   // Modern window corners
+        style.ChildRounding      = 8.0f;
+        style.FrameRounding      = 6.0f;   // Rounded controls
+        style.PopupRounding      = 8.0f;
+        style.ScrollbarRounding  = 10.0f;
+        style.GrabRounding       = 6.0f;
+        style.TabRounding        = 6.0f;
 
-        // Scrollbar
-        style.ScrollbarSize      = 12.0f;
-        style.ScrollbarRounding  = 8.0f;
-        style.ScrollbarPadding   = 2.0f;
+        // ====================================================================
+        // SCROLLBAR
+        // ====================================================================
+        
+        style.ScrollbarSize      = 14.0f;
 
-        // Tabs
-        style.TabBorderSize      = 1.0f;
-        style.TabBarBorderSize   = 1.0f;
-        style.TabRounding        = 5.0f;
+        // ====================================================================
+        // TABLES
+        // ====================================================================
+        
+        style.CellPadding        = ImVec2(8, 6);
 
-        // Tables
-        style.CellPadding        = ImVec2(15, 5);
+        // ====================================================================
+        // WINDOWS
+        // ====================================================================
+        
+        style.WindowTitleAlign   = ImVec2(0.5f, 0.5f);  // Center title
+        style.WindowMenuButtonPosition = ImGuiDir_None;  // No collapse button
+        
+        // ====================================================================
+        // ALPHA & TRANSPARENCY
+        // ====================================================================
+        
+        style.Alpha              = 1.0f;
         style.DisabledAlpha      = 0.50f;
 
-        // Light palette
-        const ImVec4 N00 = ImVec4(1.00f, 1.00f, 1.00f, 1.0f); // white
-        const ImVec4 N01 = ImVec4(0.98f, 0.98f, 0.98f, 1.0f); // window bg
-        const ImVec4 N02 = ImVec4(0.94f, 0.94f, 0.94f, 1.0f); // frame/button bg
-        const ImVec4 N03 = ImVec4(0.88f, 0.88f, 0.88f, 1.0f); // hover
-        const ImVec4 N04 = ImVec4(0.80f, 0.80f, 0.80f, 1.0f); // active
-        const ImVec4 N05 = ImVec4(0.72f, 0.72f, 0.72f, 1.0f); // header bg
-        const ImVec4 BRD = ImVec4(0.25f, 0.27f, 0.30f, 0.35f); // subtle darker border
+        // ====================================================================
+        // FLUENT DESIGN COLOR PALETTE
+        // ====================================================================
+        
+        // Base colors - Mica-inspired
+        const ImVec4 MICA_BG     = RGBA(249, 249, 249, 0.95f);  // Slightly transparent
+        const ImVec4 CARD_BG     = RGBA(255, 255, 255, 0.90f);  // Cards/panels
+        const ImVec4 CONTROL_BG  = RGBA(251, 251, 251);         // Input backgrounds
+        const ImVec4 HOVER_BG    = RGBA(246, 246, 246);         // Hover states
+        const ImVec4 ACTIVE_BG   = RGBA(243, 243, 243);         // Active/pressed
+        const ImVec4 SELECTED_BG = RGBA(240, 240, 240);         // Selected items
 
-        const ImVec4 TXT  = ImVec4(0.10f, 0.11f, 0.12f, 1.0f); // primary text (near-black)
-        const ImVec4 TXT2 = ImVec4(0.30f, 0.32f, 0.36f, 1.0f); // secondary
-        const ImVec4 TXT3 = ImVec4(0.55f, 0.57f, 0.60f, 1.0f); // disabled
+        // Text colors - Windows 11 style
+        const ImVec4 TEXT_PRIMARY    = RGBA(32, 33, 36);        // Primary text
+        const ImVec4 TEXT_SECONDARY  = RGBA(96, 94, 92);        // Secondary text
+        const ImVec4 TEXT_DISABLED   = RGBA(161, 159, 157);     // Disabled text
+        const ImVec4 TEXT_ON_ACCENT  = RGBA(255, 255, 255);     // Text on accent color
 
-        const ImVec4 acc       = accent;
-        const ImVec4 accHover  = Mix(acc, ImVec4(1,1,1,1), 0.10f);
-        const ImVec4 accActive = Mix(acc, ImVec4(0,0,0,1), 0.20f);
+        // Border colors
+        const ImVec4 BORDER         = RGBA(229, 229, 229, 0.50f);
+        const ImVec4 BORDER_LIGHT   = RGBA(237, 237, 237, 0.30f);
+        const ImVec4 DIVIDER        = RGBA(229, 229, 229, 0.60f);
 
+        // Accent colors (based on provided accent or Windows blue)
+        const ImVec4 ACCENT        = accent;
+        const ImVec4 ACCENT_HOVER  = Reveal(accent, 0.12f);
+        const ImVec4 ACCENT_ACTIVE = Mix(accent, ImVec4(0, 0, 0, 1), 0.15f);
+        const ImVec4 ACCENT_DIM    = Mix(accent, CARD_BG, 0.85f);  // Very subtle
+
+        // Semantic colors
+        const ImVec4 SUCCESS = RGBA(16, 137, 62);
+        const ImVec4 WARNING = RGBA(255, 185, 0);
+        const ImVec4 ERROR_   = RGBA(232, 17, 35);
+
+        // Shadow and overlay
+        const ImVec4 SHADOW  = ImVec4(0.0f, 0.0f, 0.0f, 0.08f);
+        const ImVec4 OVERLAY = ImVec4(0.0f, 0.0f, 0.0f, 0.50f);
+
+        // ====================================================================
+        // APPLY COLOR SCHEME
+        // ====================================================================
+        
         ImVec4* c = style.Colors;
-        c[ImGuiCol_Text]                 = TXT;
-        c[ImGuiCol_TextDisabled]         = TXT3;
 
-        c[ImGuiCol_WindowBg]             = ImVec4(N01.x, N01.y, N01.z, 1.00f);
-        c[ImGuiCol_ChildBg]              = N00;
-        c[ImGuiCol_PopupBg]              = ImVec4(N00.x, N00.y, N00.z, 0.98f);
-        c[ImGuiCol_ModalWindowDimBg]     = ImVec4(0.10f, 0.10f, 0.10f, 0.20f);
-        c[ImGuiCol_DockingEmptyBg]       = N00;
-        c[ImGuiCol_DockingPreview]       = ImVec4(acc.x, acc.y, acc.z, 0.25f);
+        // Text
+        c[ImGuiCol_Text]                 = TEXT_PRIMARY;
+        c[ImGuiCol_TextDisabled]         = TEXT_DISABLED;
+        c[ImGuiCol_TextSelectedBg]       = ImVec4(ACCENT.x, ACCENT.y, ACCENT.z, 0.30f);
 
-        c[ImGuiCol_Border]               = BRD;
-        c[ImGuiCol_BorderShadow]         = ImVec4(0,0,0,0);
-        c[ImGuiCol_Separator]            = ImVec4(BRD.x, BRD.y, BRD.z, 0.50f);
-        c[ImGuiCol_SeparatorHovered]     = accHover;
-        c[ImGuiCol_SeparatorActive]      = accActive;
+        // Backgrounds
+        c[ImGuiCol_WindowBg]             = MICA_BG;
+        c[ImGuiCol_ChildBg]              = CARD_BG;
+        c[ImGuiCol_PopupBg]              = Acrylic(CARD_BG, 0.98f);
+        c[ImGuiCol_MenuBarBg]            = Acrylic(CONTROL_BG, 0.95f);
 
-        c[ImGuiCol_Header]               = N02;
-        c[ImGuiCol_HeaderHovered]        = N03;
-        c[ImGuiCol_HeaderActive]         = N04;
+        // Borders
+        c[ImGuiCol_Border]               = BORDER;
+        c[ImGuiCol_BorderShadow]         = ImVec4(0, 0, 0, 0);
 
-        c[ImGuiCol_FrameBg]              = N02;
-        c[ImGuiCol_FrameBgHovered]       = N03;
-        c[ImGuiCol_FrameBgActive]        = N04;
+        // Frames (inputs, buttons, etc.)
+        c[ImGuiCol_FrameBg]              = CONTROL_BG;
+        c[ImGuiCol_FrameBgHovered]       = HOVER_BG;
+        c[ImGuiCol_FrameBgActive]        = ACTIVE_BG;
 
-        c[ImGuiCol_Button]               = N02;
-        c[ImGuiCol_ButtonHovered]        = N03;
-        c[ImGuiCol_ButtonActive]         = Mix(acc, N04, 0.20f);
+        // Title bar
+        c[ImGuiCol_TitleBg]              = CONTROL_BG;
+        c[ImGuiCol_TitleBgActive]        = MICA_BG;
+        c[ImGuiCol_TitleBgCollapsed]     = Acrylic(CONTROL_BG, 0.80f);
 
-        c[ImGuiCol_Tab]                  = ImVec4(0.95f, 0.95f, 0.95f, 1.0f);
-        c[ImGuiCol_TabHovered]           = N03;
-        c[ImGuiCol_TabActive]            = ImVec4(0.92f, 0.92f, 0.92f, 1.0f);
-        c[ImGuiCol_TabUnfocused]         = ImVec4(0.97f, 0.97f, 0.97f, 1.0f);
-        c[ImGuiCol_TabUnfocusedActive]   = ImVec4(0.94f, 0.94f, 0.94f, 1.0f);
+        // Scrollbar
+        c[ImGuiCol_ScrollbarBg]          = Acrylic(CONTROL_BG, 0.50f);
+        c[ImGuiCol_ScrollbarGrab]        = Mix(CONTROL_BG, TEXT_DISABLED, 0.30f);
+        c[ImGuiCol_ScrollbarGrabHovered] = Mix(CONTROL_BG, TEXT_SECONDARY, 0.40f);
+        c[ImGuiCol_ScrollbarGrabActive]  = Mix(CONTROL_BG, TEXT_PRIMARY, 0.50f);
 
-        c[ImGuiCol_TitleBg]              = N01;
-        c[ImGuiCol_TitleBgActive]        = N02;
-        c[ImGuiCol_TitleBgCollapsed]     = ImVec4(N01.x, N01.y, N01.z, 0.80f);
+        // Sliders & grab
+        c[ImGuiCol_SliderGrab]           = ACCENT;
+        c[ImGuiCol_SliderGrabActive]     = ACCENT_ACTIVE;
 
-        c[ImGuiCol_CheckMark]            = acc;
-        c[ImGuiCol_SliderGrab]           = Mix(acc, N02, 0.25f);
-        c[ImGuiCol_SliderGrabActive]     = accActive;
+        // Buttons
+        c[ImGuiCol_Button]               = CONTROL_BG;
+        c[ImGuiCol_ButtonHovered]        = HOVER_BG;
+        c[ImGuiCol_ButtonActive]         = Mix(ACCENT, ACTIVE_BG, 0.80f);
 
-        c[ImGuiCol_ScrollbarBg]          = ImVec4(0.96f, 0.96f, 0.96f, 1.0f);
-        c[ImGuiCol_ScrollbarGrab]        = ImVec4(0.86f, 0.86f, 0.86f, 1.0f);
-        c[ImGuiCol_ScrollbarGrabHovered] = ImVec4(0.78f, 0.78f, 0.78f, 1.0f);
-        c[ImGuiCol_ScrollbarGrabActive]  = ImVec4(0.70f, 0.70f, 0.70f, 1.0f);
+        // Headers (collapsing headers, tree nodes)
+        c[ImGuiCol_Header]               = HOVER_BG;
+        c[ImGuiCol_HeaderHovered]        = Mix(ACCENT, HOVER_BG, 0.90f);
+        c[ImGuiCol_HeaderActive]         = Mix(ACCENT, ACTIVE_BG, 0.85f);
 
-        c[ImGuiCol_TableHeaderBg]        = N05;
-        c[ImGuiCol_TableBorderStrong]    = ImVec4(0.85f, 0.85f, 0.85f, 1.0f);
-        c[ImGuiCol_TableBorderLight]     = ImVec4(0.92f, 0.92f, 0.92f, 1.0f);
-        c[ImGuiCol_TableRowBg]           = ImVec4(0,0,0,0);
-        c[ImGuiCol_TableRowBgAlt]        = ImVec4(0,0,0,0.03f);
+        // Separators
+        c[ImGuiCol_Separator]            = DIVIDER;
+        c[ImGuiCol_SeparatorHovered]     = ACCENT_HOVER;
+        c[ImGuiCol_SeparatorActive]      = ACCENT_ACTIVE;
 
-        c[ImGuiCol_TextSelectedBg]       = ImVec4(acc.x, acc.y, acc.z, 0.25f);
-        c[ImGuiCol_DragDropTarget]       = acc;
-        c[ImGuiCol_NavHighlight]         = ImVec4(acc.x, acc.y, acc.z, 0.70f);
-        c[ImGuiCol_NavWindowingHighlight]= ImVec4(acc.x, acc.y, acc.z, 0.20f);
-        c[ImGuiCol_NavWindowingDimBg]    = ImVec4(0.10f, 0.10f, 0.10f, 0.15f);
+        // Resize grip
+        c[ImGuiCol_ResizeGrip]           = ImVec4(ACCENT.x, ACCENT.y, ACCENT.z, 0.25f);
+        c[ImGuiCol_ResizeGripHovered]    = ImVec4(ACCENT.x, ACCENT.y, ACCENT.z, 0.50f);
+        c[ImGuiCol_ResizeGripActive]     = ACCENT;
 
-        c[ImGuiCol_PlotLines]            = acc;
-        c[ImGuiCol_PlotLinesHovered]     = accHover;
-        c[ImGuiCol_PlotHistogram]        = Mix(acc, ImVec4(1,1,1,1), 0.15f);
-        c[ImGuiCol_PlotHistogramHovered] = accHover;
+        // Tabs
+        c[ImGuiCol_Tab]                  = CONTROL_BG;
+        c[ImGuiCol_TabHovered]           = HOVER_BG;
+        c[ImGuiCol_TabActive]            = CARD_BG;
+        c[ImGuiCol_TabUnfocused]         = Mix(CONTROL_BG, MICA_BG, 0.50f);
+        c[ImGuiCol_TabUnfocusedActive]   = Mix(CARD_BG, MICA_BG, 0.70f);
 
-        style.MouseCursorScale = 1.4f;
-        SetImGuizmoStyleForEditor(accent, ImGui::GetIO().FontGlobalScale);
+        // Docking
+        c[ImGuiCol_DockingPreview]       = ImVec4(ACCENT.x, ACCENT.y, ACCENT.z, 0.35f);
+        c[ImGuiCol_DockingEmptyBg]       = MICA_BG;
+
+        // Tables
+        c[ImGuiCol_TableHeaderBg]        = CONTROL_BG;
+        c[ImGuiCol_TableBorderStrong]    = BORDER;
+        c[ImGuiCol_TableBorderLight]     = BORDER_LIGHT;
+        c[ImGuiCol_TableRowBg]           = ImVec4(0, 0, 0, 0);
+        c[ImGuiCol_TableRowBgAlt]        = ImVec4(HOVER_BG.x, HOVER_BG.y, HOVER_BG.z, 0.50f);
+
+        // Checkboxes and other controls
+        c[ImGuiCol_CheckMark]            = ACCENT;
+
+        // Drag & drop
+        c[ImGuiCol_DragDropTarget]       = ACCENT;
+
+        // Navigation
+        c[ImGuiCol_NavHighlight]         = ImVec4(ACCENT.x, ACCENT.y, ACCENT.z, 0.80f);
+        c[ImGuiCol_NavWindowingHighlight]= ImVec4(ACCENT.x, ACCENT.y, ACCENT.z, 0.30f);
+        c[ImGuiCol_NavWindowingDimBg]    = OVERLAY;
+
+        // Modal backgrounds
+        c[ImGuiCol_ModalWindowDimBg]     = OVERLAY;
+
+        // Plots
+        c[ImGuiCol_PlotLines]            = ACCENT;
+        c[ImGuiCol_PlotLinesHovered]     = ACCENT_HOVER;
+        c[ImGuiCol_PlotHistogram]        = Mix(ACCENT, CARD_BG, 0.30f);
+        c[ImGuiCol_PlotHistogramHovered] = ACCENT_HOVER;
+
+        // ====================================================================
+        // CURSOR & MOUSE
+        // ====================================================================
+        
+        style.MouseCursorScale = 1.0f;
+
+        // ====================================================================
+        // APPLY IMGUIZMO STYLE
+        // ====================================================================
+        
+        SetImGuizmoStyleForFluent(accent, ImGui::GetIO().FontGlobalScale);
     }
-
 }

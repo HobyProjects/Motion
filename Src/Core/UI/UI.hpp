@@ -15,7 +15,7 @@ namespace Motion
         static void Quit() noexcept;
 
         static void LoadDefaultFonts(const char* fontPath = nullptr, float sizePx = 16.0f) noexcept;
-        static void UseColorLight(const ImVec4& accent = ImVec4(0.13f, 0.59f, 0.95f, 1.0f)) noexcept;
+        static void UseColor(const ImVec4& accent = ImVec4(0.13f, 0.59f, 0.95f, 1.0f)) noexcept;
     };
 
     inline ImGuiKey GetImGuiKeyCode(KeyCode key)

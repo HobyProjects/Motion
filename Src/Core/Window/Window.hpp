@@ -91,6 +91,7 @@ namespace Motion
             virtual void MakeCurrent(NativeWindow) noexcept = 0;
             virtual void ClearCurrent() noexcept = 0;
             virtual void SwapBuffers(NativeWindow) noexcept = 0;
+            virtual bool IsVersionSupported(int major, int minor) const noexcept = 0;
 
             static std::shared_ptr<IContext> GetContext();
     };

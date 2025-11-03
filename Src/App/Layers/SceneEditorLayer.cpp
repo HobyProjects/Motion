@@ -5,10 +5,12 @@
 
 namespace Motion
 {
-    // ========================================================================
-    // LIFECYCLE
-    // ========================================================================
-    
+    /**
+     * @brief Called when the layer is attached to the application.
+     * @details This method is used to load the base materials of the scene.
+     * @note It is not recommended to load assets in this method, but rather in the OnUpdate method.
+     * @see OnUpdate
+     */
     void SceneEditorLayer::OnAttach()
     {
         static const std::array<const char*, 5> kPaths = 
@@ -28,9 +30,14 @@ namespace Motion
         std::memset(m_SearchBuf, 0, sizeof(m_SearchBuf));
     }
 
+    /**
+     * @brief Called when the layer is detached from the application.
+     * @details This method is used to reset any in-progress operations when the layer is detached.
+     * @note It is not recommended to load assets in this method, but rather in the OnUpdate method.
+     * @see OnUpdate
+     */
     void SceneEditorLayer::OnDetach()
     {
-        // Clean up any pending async operations
         if (m_SceneCreationOp.State == AsyncOperationState::InProgress)
         {
             m_SceneCreationOp.Reset();
@@ -47,6 +54,15 @@ namespace Motion
         }
     }
 
+    /**
+     * @brief Called on every frame update.
+     *
+     * This function is responsible for updating the scene and submitting any changes to the rendering pipeline.
+     *
+     * @param handle The window handle of the application.
+     * @param deltaTime The time elapsed since the last frame.
+     * @note This function will return immediately if the scene is not valid.
+     */
     void SceneEditorLayer::OnUpdate(WindowHandle handle, Timer deltaTime)
     {
         if (!m_Scene) return;
@@ -55,25 +71,39 @@ namespace Motion
         m_Scene->Submit();
     }
 
+    /**
+     * @brief Called when an event happens on the scene editor layer.
+     *
+     * This function is responsible for passing the event to the scene object, if it exists.
+     *
+     * @param handle The window handle of the application.
+     * @param e The event that happened.
+     * @note This function will return immediately if the scene is not valid.
+     */
     void SceneEditorLayer::OnEvent(WindowHandle handle, IEvent& e)
     {
         if (m_Scene) m_Scene->OnEvent(handle, e);
     }
 
+    /**
+     * @brief Called when the scene editor layer needs to render its UI components.
+     *
+     * This function is responsible for rendering the dockspace, handling scene creation, scene loading, and entity importing.
+     * It also renders a loading overlay if any of the operations above are in progress, and an error modal if any of them have failed.
+     *
+     * @param handle The window handle of the application.
+     */
     void SceneEditorLayer::OnUIRender(WindowHandle handle)
     {
         BuildDockspace();
         
-        // Handle async operations (non-blocking checks every frame)
         HandleSceneCreation();
         HandleSceneLoading();
         HandleEntityImport();
 
-        // Render scene if loaded
         if (m_Scene) 
             RenderScene();
 
-        // Show loading overlay for any in-progress operations
         if (m_SceneCreationOp.State == AsyncOperationState::InProgress ||
             m_SceneLoadOp.State == AsyncOperationState::InProgress ||
             m_EntityImportOp.State == AsyncOperationState::InProgress)
@@ -81,7 +111,6 @@ namespace Motion
             RenderLoadingOverlay();
         }
 
-        // Show error modal if any operation failed
         if (m_SceneCreationOp.State == AsyncOperationState::Failed ||
             m_SceneLoadOp.State == AsyncOperationState::Failed ||
             m_EntityImportOp.State == AsyncOperationState::Failed)
@@ -90,28 +119,32 @@ namespace Motion
         }
     }
 
-    // ========================================================================
-    // ASYNC SCENE CREATION (IMPROVED)
-    // ========================================================================
-    
+    /**
+     * @brief Handles the scene creation operation.
+     *
+     * This function is responsible for rendering the scene creation dialog, and handling the scene creation operation.
+     *
+     * It will open the scene creation dialog if m_SceneCreationRequest.ShowDialog is true, and will reset it after the dialog is closed.
+     *
+     * It will also start the scene creation operation if the user has entered a valid scene name and path, and will set the scene object to the result of the operation.
+     *
+     * If the scene creation operation is in progress, it will render a loading overlay.
+     * If the scene creation operation has failed, it will render an error modal.
+     */
     void SceneEditorLayer::HandleSceneCreation()
     {
-        // Show dialog if requested
         if (m_SceneCreationRequest.ShowDialog)
         {
             ImGui::OpenPopup("Create New Scene");
             m_SceneCreationRequest.ShowDialog = false;
         }
 
-        // Render creation dialog with validation
         ImVec2 center = ImGui::GetMainViewport()->GetCenter();
         ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
         
         if (ImGui::BeginPopupModal("Create New Scene", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
         {
             std::vector<std::string> errors;
-
-            // Helper functions
             auto trim = [](std::string& s)
             {
                 const auto wsfront = s.find_first_not_of(" \t\r\n");
@@ -136,14 +169,12 @@ namespace Motion
             ImGui::Separator();
             ImGui::Spacing();
 
-            // Scene name input
             ImGui::Text("Scene Name:");
             ImGui::SetNextItemWidth(360.0f);
             ImGui::InputText("##scenename", m_SceneCreationRequest.Name, sizeof(m_SceneCreationRequest.Name));
             
             ImGui::Spacing();
 
-            // Location picker
             ImGui::Text("Save Location:");
             std::string pathStr = m_SceneCreationRequest.FilePath.string();
             ImGui::SetNextItemWidth(300.0f);
@@ -165,7 +196,6 @@ namespace Motion
 
             ImGui::Spacing();
 
-            // Validation
             std::string name = m_SceneCreationRequest.Name;
             trim(name);
 
@@ -187,7 +217,6 @@ namespace Motion
             else if (!std::filesystem::exists(m_SceneCreationRequest.FilePath))
                 errors.emplace_back("Parent directory does not exist.");
 
-            // Show errors
             if (!errors.empty())
             {
                 ImGui::Separator();
@@ -201,31 +230,25 @@ namespace Motion
             ImGui::Separator();
             ImGui::Spacing();
 
-            // Buttons
             bool canCreate = errors.empty();
             
             if (!canCreate) ImGui::BeginDisabled();
             if (ImGui::Button("Create", ImVec2(120, 0)))
             {
-                // Submit scene creation to LOADER thread
                 std::string sceneName = name;
                 auto scenePath = m_SceneCreationRequest.FilePath / sceneName;
                 
                 m_SceneCreationOp.Start(LOADER::Submit([sceneName, scenePath]() -> std::shared_ptr<Scene>
                 {
-                    // Create specification
                     SceneSpecification spec;
                     spec.ID = UniqueIdentity::GetUniqueID();
                     spec.Name = sceneName;
                     spec.SavedPath = scenePath;
-
-                    // Create scene on background thread
                     auto scene = std::make_shared<Scene>(spec);
                     
                     if (!scene)
                         throw std::runtime_error("Failed to create scene object");
 
-                    // Create directories
                     std::filesystem::create_directories(scenePath);
                     std::filesystem::create_directory(scenePath / "Assets");
                     std::filesystem::create_directory(scenePath / ".motion_temp");
@@ -249,7 +272,6 @@ namespace Motion
             ImGui::EndPopup();
         }
 
-        // Check if creation completed (non-blocking check)
         if (m_SceneCreationOp.IsReady())
         {
             try
@@ -258,11 +280,14 @@ namespace Motion
                 
                 if (m_Scene)
                 {
-                    // Save ImGui layout
                     ImGuiIO& io = ImGui::GetIO();
                     io.IniFilename = nullptr;
                     std::string layoutFile = std::format("{}/mes-config.ini", m_ScenePath.string());
                     ImGui::SaveIniSettingsToDisk(layoutFile.c_str());
+
+                    std::string sceneName = m_Scene->GetContext().Specification->Name;
+                    std::filesystem::path savePath = m_ScenePath / std::format("{}.mes", sceneName);
+                    SceneSerializer::Serialize(m_Scene.get(), savePath);
                     
                     MOTION_CORE_INFO("Scene created successfully: {}", m_ScenePath.string());
                 }
@@ -278,13 +303,14 @@ namespace Motion
         }
     }
 
-    // ========================================================================
-    // ASYNC SCENE LOADING (IMPROVED)
-    // ========================================================================
-    
+    /**
+     * @brief Handles the scene loading process.
+     *
+     * This function shows an open dialog when the user wants to load a scene, and then loads the scene using the file path returned from the dialog.
+     * If the scene loading process fails, it sets the show dialog flag to false and shows an error message.
+     */
     void SceneEditorLayer::HandleSceneLoading()
     {
-        // Show file dialog if requested
         if (m_SceneLoadRequest.ShowDialog)
         {
             OpenDialogOptions options{};
@@ -298,9 +324,7 @@ namespace Motion
             
             if (auto path = DialogBoxes::OpenFileDialog(options); !path.empty())
             {
-                m_SceneLoadRequest.FilePath = path;
-                
-                // Validate file exists
+                m_SceneLoadRequest.FilePath = path;       
                 if (!std::filesystem::exists(path))
                 {
                     DialogBoxes::UninitializeCOM();
@@ -309,10 +333,8 @@ namespace Motion
                     return;
                 }
                 
-                // Submit scene loading to LOADER thread
                 m_SceneLoadOp.Start(LOADER::Submit([path]() -> std::shared_ptr<Scene>
                 {
-                    // Load scene from disk on background thread
                     auto scene = SceneSerializer::Deserialize(path);
                     if (!scene)
                         throw std::runtime_error("Failed to deserialize scene file");
@@ -327,7 +349,6 @@ namespace Motion
             m_SceneLoadRequest.ShowDialog = false;
         }
 
-        // Check if loading completed (non-blocking check)
         if (m_SceneLoadOp.IsReady())
         {
             try
@@ -336,13 +357,12 @@ namespace Motion
                 
                 if (m_Scene)
                 {
-                    // Load ImGui layout
                     ImGuiIO& io = ImGui::GetIO();
                     io.IniFilename = nullptr;
                     std::string layoutFile = std::format("{}/mes-config.ini", m_SceneLoadRequest.FilePath.string());
                     ImGui::LoadIniSettingsFromDisk(layoutFile.c_str());
                     
-                    MOTION_CORE_INFO("Scene loaded successfully: {}", m_SceneLoadRequest.FilePath.string());
+                    MOTION_CORE_INFO("{} loaded successfully", m_SceneLoadRequest.FilePath.string());
                 }
                 else
                 {
@@ -355,11 +375,18 @@ namespace Motion
             }
         }
     }
-
-    // ========================================================================
-    // ASYNC ENTITY IMPORT (IMPROVED)
-    // ========================================================================
-    
+  
+    /**
+     * @brief Requests the scene editor layer to import an entity from a file.
+     * @param showDialog Whether to show an open dialog to select the file to import.
+     * @param shouldExport Whether the imported entity should be exported to a file.
+     * @param path The path to the file to import.
+     * @return True if the request was successful, false otherwise.
+     *
+     * If showDialog is true, an open dialog will be shown to select the file to import.
+     * If shouldExport is true, the imported entity will be exported to a file at the scene's assets path.
+     * If the file does not exist or the import process fails, an error message will be logged and false will be returned.
+     */
     bool SceneEditorLayer::RequestEntityImport(bool showDialog, bool shouldExport, std::filesystem::path path)
     {
         if (!m_Scene) 
@@ -393,31 +420,34 @@ namespace Motion
             DialogBoxes::UninitializeCOM();
         }
 
-        // Validate file exists
         if (!std::filesystem::exists(m_EntityImportRequest.FilePath))
         {
             MOTION_CORE_ERROR("Import file does not exist: {}", m_EntityImportRequest.FilePath.string());
             return false;
         }
 
-        // Submit import to LOADER thread
         ImportSettings settings{};
         settings.FilePath = m_EntityImportRequest.FilePath;
         settings.ShouldExport = m_EntityImportRequest.ShouldExport;
-        settings.ExportPath = m_ScenePath;
+        settings.ExportPath = m_ScenePath / "Assets";
 
         m_EntityImportOp.Start(LOADER::Submit([settings]() -> std::shared_ptr<ImportedResults>
         {
-            // Import on background thread
             return Importer::ImportEntity(settings);
         }));
 
         return true;
     }
 
+    /**
+     * @brief Handles the result of an entity import operation.
+     *
+     * This function is called when the entity import operation is complete.
+     * It retrieves the result of the import operation and adds the imported entity to the scene.
+     * If the import operation fails, an error message is logged.
+     */
     void SceneEditorLayer::HandleEntityImport()
     {
-        // Check if import completed (non-blocking check)
         if (m_EntityImportOp.IsReady())
         {
             try
@@ -426,7 +456,6 @@ namespace Motion
                 
                 if (results && m_Scene)
                 {
-                    // Add imported entities to scene (on main thread)
                     auto& context = m_Scene->GetContext();
                     
                     const BufferLayout layout
@@ -507,10 +536,6 @@ namespace Motion
         }
     }
 
-    // ========================================================================
-    // UI RENDERING - LOADING & ERROR STATES
-    // ========================================================================
-    
     void SceneEditorLayer::RenderLoadingOverlay()
     {
         ImGuiViewport* viewport = ImGui::GetMainViewport();
@@ -539,7 +564,6 @@ namespace Motion
             if (ImGui::BeginChild("LoadingContent", ImVec2(400, 200), true, 
                                  ImGuiWindowFlags_NoScrollbar))
             {
-                // Animated loading spinner
                 const float time = ImGui::GetTime();
                 const float radius = 30.0f;
                 const ImVec2 pos = ImGui::GetCursorScreenPos();
@@ -562,7 +586,6 @@ namespace Motion
                 
                 ImGui::Dummy(ImVec2(0, 100));
                 
-                // Loading text
                 const char* loadingText = "Loading...";
                 float elapsedTime = 0.0f;
                 
@@ -633,7 +656,6 @@ namespace Motion
             
             if (ImGui::Button("OK", ImVec2(120, 0)))
             {
-                // Reset failed operations
                 if (m_SceneCreationOp.State == AsyncOperationState::Failed)
                     m_SceneCreationOp.Reset();
                 if (m_SceneLoadOp.State == AsyncOperationState::Failed)
@@ -647,11 +669,7 @@ namespace Motion
             ImGui::EndPopup();
         }
     }
-
-    // ========================================================================
-    // MENU BAR (IMPROVED)
-    // ========================================================================
-    
+ 
     void SceneEditorLayer::DrawMenuBar()
     {
         if (!ImGui::BeginMenuBar())
@@ -678,7 +696,6 @@ namespace Motion
             {
                 if (m_Scene && !m_ScenePath.empty())
                 {
-                    // Fire-and-forget save to LOADER thread
                     auto scene = m_Scene.get();
                     auto path = m_ScenePath;
                     auto sceneName = m_Scene->GetContext().Specification->Name;
@@ -696,7 +713,7 @@ namespace Motion
             
             if (ImGui::MenuItem("  Quit ", "Alt+F4"))
             {
-                // Request application quit
+
             }
 
             ImGui::EndMenu();
@@ -721,7 +738,6 @@ namespace Motion
         }
         ImGui::EndDisabled();
 
-        // === SIMULATION CONTROLS (from original) ===
         const float pad_x = style.ItemSpacing.x;
         const float content_min_x = ImGui::GetWindowContentRegionMin().x;
         const float content_max_x = ImGui::GetWindowContentRegionMax().x;
@@ -768,7 +784,9 @@ namespace Motion
         ImGui::BeginDisabled(!canPlay);
         if (ImGui::Button(kPlay, btnSz) && sim && canPlay)
         {
-            // TODO: sim->Start() or sim->Resume()
+            SceneSerializer::SerializeRuntime(m_Scene.get(), m_ScenePath / ".motion_temp"/ "scene_sim.mes");
+            sim->State = SceneSimulation::SimulationState::RUNNING;
+            sim->InSimulation = true;
         }
         if (ImGui::IsItemHovered())
             ImGui::SetTooltip(canPlay ? "Play / Resume" : "Play (disabled)");
@@ -779,7 +797,8 @@ namespace Motion
         ImGui::BeginDisabled(!canPause);
         if (ImGui::Button(kPause, btnSz) && sim && canPause)
         {
-            // TODO: sim->Pause()
+            sim->State = SceneSimulation::SimulationState::PAUSED;
+            sim->InSimulation = true;
         }
         if (ImGui::IsItemHovered())
             ImGui::SetTooltip(canPause ? "Pause" : "Pause (disabled)");
@@ -790,7 +809,9 @@ namespace Motion
         ImGui::BeginDisabled(!canStop);
         if (ImGui::Button(kStop, btnSz) && sim && canStop)
         {
-            // TODO: sim->Stop()
+            sim->InSimulation = false;
+            sim->State = SceneSimulation::SimulationState::IDLE;
+            SceneSerializer::DeserializeRuntime(m_Scene.get(), m_ScenePath / ".motion_temp" / "scene_sim.mes");
         }
         if (ImGui::IsItemHovered())
             ImGui::SetTooltip(canStop ? "Stop" : "Stop (disabled)");
@@ -821,10 +842,6 @@ namespace Motion
         ImGui::EndMenuBar();
     }
 
-    // ========================================================================
-    // DOCKSPACE
-    // ========================================================================
-    
     void SceneEditorLayer::BuildDockspace()
     {
         ImGuiWindowFlags host =
@@ -877,10 +894,6 @@ namespace Motion
         ImGui::End();
     }
 
-    // ========================================================================
-    // SCENE RENDERING
-    // ========================================================================
-    
     void SceneEditorLayer::RenderScene()
     {
         if(!m_Scene) return;
@@ -897,10 +910,6 @@ namespace Motion
         RenderViewport(context);
     }
 
-    // ========================================================================
-    // MATERIAL UI
-    // ========================================================================
-    
     void SceneEditorLayer::DrawMaterialUI(std::shared_ptr<Material>& mat)
     {
         if (!mat) return;
@@ -1006,10 +1015,6 @@ namespace Motion
             ImGui::TextDisabled("No textures assigned");
         }
     }
-
-    // ========================================================================
-    // ENTITY RENDERING
-    // ========================================================================
     
     void SceneEditorLayer::RenderNodeEntities(SceneContext& context, entt::entity root)
     {
@@ -1184,7 +1189,7 @@ namespace Motion
 
     void SceneEditorLayer::RenderToolbarAndSearch()
     {
-        ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 50.0f);
+        ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 25.0f);
         ImGui::InputTextWithHint("##SearchScenes", "Search scenes...", m_SearchBuf, sizeof(m_SearchBuf));
         ImGui::PopItemWidth();
 

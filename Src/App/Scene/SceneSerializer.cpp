@@ -324,7 +324,6 @@ namespace YAML
                     case Motion::ShapeType::Capsule:        return "Capsule"; 
                     case Motion::ShapeType::Convex:         return "Convex";
                     case Motion::ShapeType::Concave:        return "Concave"; 
-                    case Motion::ShapeType::HightField:     return "HightField";
                     default:                                return "Undefined";
                 }
             };
@@ -352,11 +351,10 @@ namespace YAML
         {
             auto toType=[](const std::string& s)
             { 
-                if(s=="Sphere")     return Motion::ShapeType::Sphere; 
-                if(s=="Capsule")    return Motion::ShapeType::Capsule;
-                if(s=="Convex")     return Motion::ShapeType::Convex; 
-                if(s=="Concave")    return Motion::ShapeType::Concave;
-                if(s=="HightField") return Motion::ShapeType::HightField;
+                if(s=="Sphere")      return Motion::ShapeType::Sphere; 
+                if(s=="Capsule")     return Motion::ShapeType::Capsule;
+                if(s=="Convex")      return Motion::ShapeType::Convex; 
+                if(s=="Concave")     return Motion::ShapeType::Concave;
 
                 return Motion::ShapeType::Box; 
             };
@@ -732,6 +730,7 @@ namespace Motion
             std::filesystem::path abs = std::filesystem::absolute(path);
             std::ofstream file(abs, std::ios::out | std::ios::trunc);
             file << root << std::endl;
+            file.close();  // FIXED: Explicitly close file
 
         } catch (const std::exception& e) 
         {
@@ -986,7 +985,8 @@ namespace Motion
         try {
             std::filesystem::path abs = std::filesystem::absolute(path);
             std::ofstream f(abs, std::ios::out | std::ios::trunc);
-            f << root << std::endl; f.close();
+            f << root << std::endl; 
+            f.close();  // FIXED: Explicitly close file
         } catch(const std::exception& e) {
             MOTION_CORE_CRITICAL("Failed to serialize runtime scene: {}", e.what());
             return false;

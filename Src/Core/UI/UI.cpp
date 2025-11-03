@@ -79,14 +79,13 @@ namespace Motion
     {
         ImGuiIO& io = ImGui::GetIO();
         io.Fonts->Clear();
-        io.Fonts->TexGlyphPadding = 2;  // Extra padding for better rendering
+        io.Fonts->TexGlyphPadding = 2; 
 
         ImFontConfig textCfg{};
-        textCfg.OversampleH = 4;  // Higher quality
+        textCfg.OversampleH = 4;  
         textCfg.OversampleV = 4;
         textCfg.PixelSnapH  = false;
 
-        // Load main font with better hinting
         ImFont* base = nullptr;
         if (fontPath && *fontPath)
         {
@@ -98,22 +97,17 @@ namespace Motion
             base = io.Fonts->AddFontDefault();
         }
 
-        // Material Design Icons range
         static const ImWchar kMaterialIconsRange[] = 
         {
             (ImWchar)ICON_MIN_MD, (ImWchar)ICON_MAX_MD, 0
         };
-
-        // Font Awesome range
         static const ImWchar kFontAwesomeRange[] = 
         {
             (ImWchar)ICON_MIN_FA, (ImWchar)ICON_MAX_FA, 0
         };
 
         const float iconSizePx  = sizePx;
-        const float iconYOffset = 0.0f;  // Better vertical alignment
-
-        // Merge Material Design Icons
+        const float iconYOffset = 0.0f;  
         {
             ImFontConfig iconCfg{};
             iconCfg.MergeMode        = true;
@@ -128,8 +122,6 @@ namespace Motion
                 iconSizePx, &iconCfg, kMaterialIconsRange
             );
         }
-
-        // Merge Font Awesome
         {
             ImFontConfig iconCfg{};
             iconCfg.MergeMode        = true;
@@ -148,10 +140,6 @@ namespace Motion
         io.Fonts->Build();
     }
 
-    // ========================================================================
-    // FLUENT DESIGN HELPERS
-    // ========================================================================
-    
     static inline ImVec4 Mix(const ImVec4& a, const ImVec4& b, float t) 
     {
         return ImVec4(
@@ -167,19 +155,16 @@ namespace Motion
         return ImVec4(r / 255.f, g / 255.f, b / 255.f, a);
     }
 
-    // Fluent Design acrylic effect color
     static inline ImVec4 Acrylic(const ImVec4& base, float opacity = 0.85f)
     {
         return ImVec4(base.x, base.y, base.z, opacity);
     }
 
-    // Fluent Design reveal effect (brightens on hover)
     static inline ImVec4 Reveal(const ImVec4& base, float amount = 0.15f)
     {
         return Mix(base, ImVec4(1, 1, 1, base.w), amount);
     }
-
-    // Shadow for depth
+    
     static inline void DrawShadow(ImDrawList* drawList, const ImVec2& min, const ImVec2& max, 
                                   float rounding, float shadowSize = 8.0f, float opacity = 0.3f)
     {

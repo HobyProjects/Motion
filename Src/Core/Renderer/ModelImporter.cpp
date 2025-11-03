@@ -189,67 +189,50 @@ namespace Motion
             outResults->Name = input.filename().stem().string();
             outResults->FilePath = input;
 
-            if (!output.empty())
-            {
-                const std::string modelFileName   = input.filename().string();
-                const std::string modelFolderName = input.filename().stem().string();
-                uniqueOutput = GetAvailableCopyName(output / modelFolderName) / modelFileName;
-
-                if (!std::filesystem::exists(uniqueOutput))
-                {
-                    try
-                    {
-                        std::filesystem::copy_options options = std::filesystem::copy_options::recursive | std::filesystem::copy_options::overwrite_existing;
-                        std::filesystem::create_directories(uniqueOutput.parent_path());
-                        std::filesystem::copy(input, uniqueOutput, options);
-                        MOTION_CORE_INFO("Copied all content from {} to {}", input.string(), uniqueOutput.string());
-                    }
-                    catch (const std::exception& e)
-                    {
-                        MOTION_CORE_ERROR("Failed to copy directory: {}", e.what());
-                        return false;
-                    }
-                }
-
-                outResults->FilePath = uniqueOutput;
-            }
-
-            Assimp::Importer importer{};
-            constexpr std::uint32_t importFlags =
+            Assimp::Importer importer;
+            constexpr std::uint32_t flags =
                 aiProcess_Triangulate |
+                aiProcess_JoinIdenticalVertices |
+                aiProcess_SortByPType |
                 aiProcess_GenSmoothNormals |
                 aiProcess_CalcTangentSpace |
                 aiProcess_ImproveCacheLocality |
-                aiProcess_RemoveRedundantMaterials |
-                aiProcess_ValidateDataStructure |
-                aiProcess_JoinIdenticalVertices |
-                aiProcess_PreTransformVertices |
-                aiProcess_FindInvalidData |
-                aiProcess_FindDegenerates |
-                aiProcess_SortByPType |
-                aiProcess_FlipUVs;
+                aiProcess_OptimizeMeshes |
+                aiProcess_ValidateDataStructure;
 
-            const aiScene* scene = importer.ReadFile(uniqueOutput.string(), importFlags);
-            if (!scene || (scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE) || !scene->mRootNode)
+            const aiScene* scene = importer.ReadFile(input.string(), flags);
+            if (!scene || !scene->HasMeshes())
             {
-                MOTION_CORE_ERROR("Assimp Importer Error: {}", importer.GetErrorString());
+                MOTION_CORE_ERROR("Failed to load model: {}", input.string());
                 return false;
             }
 
-            std::vector<bool> meshLoaded(scene->mNumMeshes, false);
-            auto loadMesh = [&](std::uint32_t meshIndex, const aiMesh* mesh)
+            MOTION_CORE_TRACE("Imported file: {} ({} meshes)", input.string(), scene->mNumMeshes);
+
+            MeshAssetID currentMeshID = 0;
+
+            auto getMaterialName = [&](std::uint32_t materialIndex) -> std::string
             {
-                if (!mesh || meshLoaded[meshIndex]) return;
-                meshLoaded[meshIndex] = true;
+                if (!scene->HasMaterials() || materialIndex >= scene->mNumMaterials)
+                    return "UnknownMaterial";
 
-                auto [it, inserted] = outResults->Meshes.emplace(meshIndex, MeshAsset{});
-                MeshAsset& m = it->second;
-                m.ID         = meshIndex;
+                aiMaterial* mat = scene->mMaterials[materialIndex];
+                aiString nameStr;
+                if (mat->Get(AI_MATKEY_NAME, nameStr) == AI_SUCCESS)
+                    return std::string(nameStr.C_Str());
 
-                aiMaterial* material    = scene->mMaterials[mesh->mMaterialIndex];
-                aiString name           = material->GetName();
-                
-                const char* matName = name.Empty() ? std::format("MAT{}", mesh->mName.C_Str()).c_str() : name.C_Str();
+                return "UnknownMaterial";
+            };
+
+            auto loadMesh = [&](std::uint32_t index, aiMesh* mesh)
+            {
+                if (!mesh || mesh->mNumVertices == 0 || mesh->mNumFaces == 0)
+                    return;
+
+                std::string matName = getMaterialName(mesh->mMaterialIndex);
+
+                MeshAsset& m = outResults->Meshes[currentMeshID];
+                m.ID = currentMeshID++;
                 m.Name = std::format("{}_[{}]", mesh->mName.C_Str(), matName);
 
                 const bool hasUVs      = mesh->HasTextureCoords(0);
@@ -329,7 +312,7 @@ namespace Motion
 
             traverse(scene->mRootNode);
 
-
+            // Calculate initial model bounds
             glm::vec3 modelMin( FLT_MAX );
             glm::vec3 modelMax(-FLT_MAX);
 
@@ -360,7 +343,7 @@ namespace Motion
             const float     targetSize   = 1.0f;              
             const float     uniformScale = targetSize / maxExtent;
 
-
+            // Normalize vertices and recalculate bounds
             glm::vec3 newModelMin( (std::numeric_limits<float>::max)());
             glm::vec3 newModelMax(-(std::numeric_limits<float>::max)());
 
@@ -369,26 +352,31 @@ namespace Motion
                 auto& mesh  = kv.second;
                 auto& verts = mesh.Vertices;
 
+                // Initialize mesh bounds correctly
                 glm::vec3 mn( (std::numeric_limits<float>::max)());
                 glm::vec3 mx(-(std::numeric_limits<float>::max)());
 
                 for (auto& v : verts)
                 {
+                    // Transform and normalize
                     v.Position = (v.Position - modelCenter) * uniformScale;
                     v.Normal = glm::normalize(v.Normal);
 
-                    mn.x = std::max<float>(mn.x, v.Position.x);
-                    mn.y = std::max<float>(mn.y, v.Position.y);
-                    mn.z = std::max<float>(mn.z, v.Position.z);
+                    // FIXED: Use std::min for minimum bounds
+                    mn.x = std::min<float>(mn.x, v.Position.x);
+                    mn.y = std::min<float>(mn.y, v.Position.y);
+                    mn.z = std::min<float>(mn.z, v.Position.z);
 
-                    mx.x = std::min<float>(mx.x, v.Position.x);
-                    mx.y = std::min<float>(mx.y, v.Position.y);
-                    mx.z = std::min<float>(mx.z, v.Position.z);
+                    // FIXED: Use std::max for maximum bounds
+                    mx.x = std::max<float>(mx.x, v.Position.x);
+                    mx.y = std::max<float>(mx.y, v.Position.y);
+                    mx.z = std::max<float>(mx.z, v.Position.z);
                 }
 
                 mesh.MIN = mn;
                 mesh.MAX = mx;
 
+                // Update global model bounds
                 newModelMin.x = std::min<float>(newModelMin.x, mn.x);
                 newModelMin.y = std::min<float>(newModelMin.y, mn.y);
                 newModelMin.z = std::min<float>(newModelMin.z, mn.z);
@@ -437,4 +425,3 @@ namespace Motion
         return importedResults;  
     }
 }
-

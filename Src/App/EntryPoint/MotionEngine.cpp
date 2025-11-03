@@ -21,6 +21,5 @@ int main(int argc, char* argv[])
     }
 
     coreAPI.Quit();
-    MOTION_INFO("Application exited successfully.");
     return 0;
 }

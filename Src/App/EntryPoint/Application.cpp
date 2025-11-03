@@ -12,7 +12,11 @@ namespace Motion
 
         m_WindowContext = IContext::GetContext();
         m_WindowContext->MakeCurrent(m_Window->GetNativeWindow());
-        m_WindowContext->Create();
+        if(!m_WindowContext->Create())
+        {
+            MOTION_CORE_CRITICAL("OpenGL 4.6 is not supported on this system!");
+            return;
+        }
 
         Renderer::Init();
         UserInterface::Init(m_Window->GetHandle());

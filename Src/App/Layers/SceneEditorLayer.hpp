@@ -25,8 +25,6 @@ namespace Motion
         std::shared_ptr<Scene>  m_Scene{ nullptr };
         std::filesystem::path   m_ScenePath{};
 
-        // === ASYNC OPERATION TRACKING ===
-        
         enum class AsyncOperationState
         {
             Idle,
@@ -95,11 +93,9 @@ namespace Motion
             }
         };
 
-        // === SCENE CREATION ===
-        
         struct SceneCreationRequest
         {
-            char Name[256] = "MyScene";  // Changed to char array for ImGui::InputText
+            char Name[256] = "MyScene";  
             std::filesystem::path FilePath{ DialogBoxes::GetSystemFolder(SystemFolder::Documents) };
             bool ShowDialog{ false };
 
@@ -114,8 +110,6 @@ namespace Motion
         SceneCreationRequest m_SceneCreationRequest{};
         AsyncOperation<std::shared_ptr<Scene>> m_SceneCreationOp{};
 
-        // === SCENE LOADING ===
-        
         struct SceneLoadRequest
         {
             std::filesystem::path FilePath{};
@@ -130,9 +124,7 @@ namespace Motion
 
         SceneLoadRequest m_SceneLoadRequest{};
         AsyncOperation<std::shared_ptr<Scene>> m_SceneLoadOp{};
-
-        // === ENTITY IMPORT ===
-        
+ 
         struct EntityImportRequest
         {
             std::filesystem::path FilePath{};
@@ -154,17 +146,14 @@ namespace Motion
         void BuildDockspace();
         void DrawMenuBar();
         
-        // Scene operations - now properly async
         void HandleSceneCreation();
         void HandleSceneLoading();
         void HandleEntityImport();
         
-        // UI Rendering
         void RenderScene();
         void RenderLoadingOverlay();
         void RenderErrorModal();
 
-        // Keep all your existing render functions
         void RenderViewport(SceneContext& context);
         void RenderNodeEntities(SceneContext& context, entt::entity root);
         void RenderTagAndModel(SceneContext& context, entt::entity e);
@@ -181,7 +170,6 @@ namespace Motion
         void DrawAttributes(std::shared_ptr<Material>& mat);
         void DrawTexturesSlots(std::shared_ptr<Material>& mat);
 
-        // Initiates async entity import
         bool RequestEntityImport(bool showDialog, bool shouldExport, std::filesystem::path path = {});
 
         std::vector<std::shared_ptr<BaseMaterial>> m_BaseMaterial;

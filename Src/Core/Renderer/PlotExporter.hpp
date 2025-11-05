@@ -73,6 +73,8 @@ namespace Motion
         ImVec2 AngularPlotPos;
         ImVec2 AngularPlotSize;
         float TimeAccumulator = 0.0f;
+
+        std::vector<float> TimePoints;
         
         glm::vec3 ImpulseDirection = glm::vec3(0.0f, 1.0f, 0.0f);
         float ImpulseMagnitude = 10.0f;

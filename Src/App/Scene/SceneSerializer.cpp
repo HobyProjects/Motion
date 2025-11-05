@@ -271,6 +271,8 @@ namespace Motion
                         {
                             rb->PhysicsBody->resetForce();
                             rb->PhysicsBody->resetTorque();
+                            rb->PhysicsBody->setLinearVelocity(rp3d::Vector3(0, 0, 0));
+                            rb->PhysicsBody->setAngularVelocity(rp3d::Vector3(0, 0, 0));
                         }
                     }
 
@@ -280,6 +282,7 @@ namespace Motion
                         col->Friction = nodeData->Collider.Friction;
                         col->Restitution = nodeData->Collider.Restitution;
                         col->MassDensity = nodeData->Collider.MassDensity;
+                        col->Collider->setLocalToBodyTransform(rp3d::Transform::identity());
                     }
                 }
             });

@@ -5,6 +5,55 @@
 
 namespace Motion
 {
+    namespace PhysicsUI
+    {
+        inline float GetSpeed(const glm::vec3& velocity)
+        {
+            return glm::length(velocity);
+        }
+        
+        inline glm::vec3 GetDirection(const glm::vec3& velocity)
+        {
+            float speed = GetSpeed(velocity);
+            if (speed < 0.0001f) return glm::vec3(0.0f);
+            return velocity / speed;
+        }
+        
+        inline float RadPerSecToRPM(float radPerSec)
+        {
+            return radPerSec * (60.0f / (2.0f * glm::pi<float>()));
+        }
+        
+        inline float MsToKmh(float ms)
+        {
+            return ms * 3.6f;
+        }
+        
+        inline const char* GetBodyTypeDescription(BodyType type)
+        {
+            switch (type)
+            {
+                case BodyType::Static:  return "Static (immovable, like walls or ground)";
+                case BodyType::Dynamic: return "Dynamic (moves and collides with forces)";
+                default:                return "Unknown";
+            }
+        }
+        
+        inline void StatusIndicator(const char* label, bool active, const char* tooltip = nullptr)
+        {
+            ImVec4 color = active ? ImVec4(0.1f, 0.9f, 0.3f, 1.0f) : ImVec4(0.6f, 0.6f, 0.6f, 1.0f);
+            ImGui::TextColored(color, "%s %s", active ? "●" : "○", label);
+            if (tooltip && ImGui::IsItemHovered())
+            {
+                ImGui::BeginTooltip();
+                ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+                ImGui::TextUnformatted(tooltip);
+                ImGui::PopTextWrapPos();
+                ImGui::EndTooltip();
+            }
+        }
+    }
+
     /**
      * @brief Called when the layer is attached to the application.
      * @details This method is used to load the base materials of the scene.
@@ -980,13 +1029,34 @@ namespace Motion
     {
         if (!mat) return;
 
+        // Material Help Section
+        if (ImGui::CollapsingHeader("📖 What are Materials?", ImGuiTreeNodeFlags_None))
+        {
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.8f, 0.9f, 1.0f, 1.0f));
+            ImGui::TextWrapped(
+                "Materials control how objects look when light hits them. Think of it like "
+                "the 'skin' of your object - determining if it looks shiny like metal, rough "
+                "like stone, or translucent like plastic."
+            );
+            ImGui::Spacing();
+            
+            ImGui::TextWrapped("Key Concepts:");
+            ImGui::BulletText("Base Color: The main color of the object");
+            ImGui::BulletText("Metallic: How metal-like it looks (0=plastic/wood, 1=pure metal)");
+            ImGui::BulletText("Roughness: How shiny or matte (0=mirror, 1=rough surface)");
+            ImGui::BulletText("Normal Maps: Add surface detail without extra geometry");
+            ImGui::BulletText("Emissive: Makes objects glow (like LEDs or screens)");
+            ImGui::PopStyleColor();
+            ImGui::Spacing();
+        }
+
         if (ImGui::TreeNodeEx("Material Properties", ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_DefaultOpen))
         {
             DrawAttributes(mat);
             ImGui::TreePop();
         }
 
-        if (ImGui::TreeNodeEx("Textures", ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_DefaultOpen))
+        if (ImGui::TreeNodeEx("Texture Slots", ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_DefaultOpen))
         {
             DrawTexturesSlots(mat);
             ImGui::TreePop();
@@ -1031,6 +1101,7 @@ namespace Motion
                         mat->SetBaseMaterial(*it);
                     }
                 });
+            HelpMarker("Base materials are presets that give you a starting point for common materials like Metal, Wood, Plastic, etc.");
 
             EndPropertyGrid();
         }
@@ -1042,14 +1113,35 @@ namespace Motion
             auto& C = mat->Get<CoreMaterialComponents>();
             if (BeginPropertyGrid("##core-pbr"))
             {
-                ColorEdit4("Base Color",            C.BaseColorFactor);
-                SliderFloat("Metallic Factor",      &C.MetallicFactor, 0.0f, 1.0f, "%.3f");
-                SliderFloat("Roughness Factor",     &C.RoughnessFactor, 0.0f, 1.0f, "%.3f");
-                SliderFloat("Normal Scaling",       &C.NormalScale,     0.0f, 1.0f, "%.3f");
-                SliderFloat("Occlusion Strength",   &C.OcclusionStrength, 0.0f, 1.0f, "%.3f");
-                ColorEdit3("Emissive Factor",       C.EmissiveFactor);
-                SliderFloat("Emissive Strength",    &C.EmissiveStrength, 0.0f, 1.0f, "%.3f");
-                SliderFloat("Opacity Factor",       &C.OpacityFactor, 0.0f, 1.0f, "%.3f");
+                ColorEdit4("Base Color", C.BaseColorFactor);
+                HelpMarker("The main color of your object. Think of it as painting the object.");
+                
+                SliderFloat("Metallic", &C.MetallicFactor, 0.0f, 1.0f, "%.3f");
+                HelpMarker("0 = Non-metal (plastic, wood, fabric)\n1 = Pure metal (gold, steel, chrome)\n"
+                          "Metals reflect environment strongly, non-metals don't.");
+                
+                SliderFloat("Roughness", &C.RoughnessFactor, 0.0f, 1.0f, "%.3f");
+                HelpMarker("0 = Mirror-smooth (polished, shiny)\n1 = Very rough (matte, diffuse)\n"
+                          "Controls how blurry reflections are.");
+                
+                SliderFloat("Normal Strength", &C.NormalScale, 0.0f, 1.0f, "%.3f");
+                HelpMarker("Controls how pronounced surface details from the normal map appear.\n"
+                          "Higher = more bumpy/detailed, Lower = smoother");
+                
+                SliderFloat("Ambient Occlusion", &C.OcclusionStrength, 0.0f, 1.0f, "%.3f");
+                HelpMarker("Darkens crevices and corners where light doesn't reach easily.\n"
+                          "Makes surfaces look more realistic with subtle shadows.");
+                
+                ColorEdit3("Emissive Color", C.EmissiveFactor);
+                HelpMarker("Color of light the object emits. Makes objects 'glow' without affecting other objects.");
+                
+                SliderFloat("Emissive Strength", &C.EmissiveStrength, 0.0f, 1.0f, "%.3f");
+                HelpMarker("How bright the emissive glow is. 0 = off, 1 = full brightness");
+                
+                SliderFloat("Opacity", &C.OpacityFactor, 0.0f, 1.0f, "%.3f");
+                HelpMarker("0 = Fully transparent (invisible)\n1 = Fully opaque (solid)\n"
+                          "Values between make the object see-through.");
+                
                 EndPropertyGrid();
             }
         }
@@ -1070,24 +1162,46 @@ namespace Motion
         {
             auto& C = mat->Get<CoreMaterialComponents>();
 
-            struct Row { const char* Label; std::shared_ptr<ITexture>& Tex; TextureType Type; };
+            // Texture explanation
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.9f, 0.9f, 0.6f, 1.0f));
+            ImGui::TextWrapped("💡 Tip: Textures add visual detail. Click slots to load images. Right-click for more options.");
+            ImGui::PopStyleColor();
+            ImGui::Spacing();
+
+            struct Row { const char* Label; std::shared_ptr<ITexture>& Tex; TextureType Type; const char* Help; };
             std::vector<Row> textures =
             {
-                {"Base Color",  C.BaseColorTexture, TextureType::BaseColorTexture},
-                {"Metallic",    C.MetallicTexture,  TextureType::MetallicTexture},
-                {"Roughness",   C.RoughnessTexture, TextureType::RoughnessTexture},
-                {"Normal",      C.NormalTexture,    TextureType::NormalTexture},
-                {"Occlusion",   C.OcclusionTexture, TextureType::AmbientOcclusionTexture},
-                {"Emissive",    C.EmissiveTexture,  TextureType::EmissiveTexture},
+                {"Base Color",  C.BaseColorTexture, TextureType::BaseColorTexture, 
+                 "RGB image that defines the object's color pattern"},
+                {"Metallic",    C.MetallicTexture,  TextureType::MetallicTexture, 
+                 "Grayscale: White=metal, Black=non-metal"},
+                {"Roughness",   C.RoughnessTexture, TextureType::RoughnessTexture, 
+                 "Grayscale: White=rough, Black=smooth"},
+                {"Normal",      C.NormalTexture,    TextureType::NormalTexture, 
+                 "RGB map that fakes surface bumps and details"},
+                {"Occlusion",   C.OcclusionTexture, TextureType::AmbientOcclusionTexture, 
+                 "Grayscale: Darker areas receive less ambient light"},
+                {"Emissive",    C.EmissiveTexture,  TextureType::EmissiveTexture, 
+                 "RGB: Defines which parts of the object glow"},
             };
 
-            const int columns = 4;
-            ImGui::BeginTable("##core-pbr", columns, ImGuiTableFlags_NoBordersInBody);
+            const int columns = 3;
+            ImGui::BeginTable("##texture-grid", columns, ImGuiTableFlags_NoBordersInBody);
             for (size_t i = 0; i < textures.size(); ++i)
             {
                 if (i % columns == 0) ImGui::TableNextRow();
                 ImGui::TableNextColumn();
+                
+                ImGui::BeginGroup();
                 TextureSlot(textures[i].Label, textures[i].Tex, textures[i].Type);
+                
+                // Show help text below each slot
+                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.7f, 0.7f, 0.7f, 1.0f));
+                ImGui::PushTextWrapPos(ImGui::GetCursorPosX() + 150.0f);
+                ImGui::Text("ℹ %s", textures[i].Help);
+                ImGui::PopTextWrapPos();
+                ImGui::PopStyleColor();
+                ImGui::EndGroup();
             }
             ImGui::EndTable();
         }
@@ -1121,8 +1235,9 @@ namespace Motion
         ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.26f, 0.59f, 0.98f, 0.80f));
         ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0.26f, 0.59f, 0.98f, 1.00f));
 
-        ImGui::SetNextWindowSize(ImVec2(800, 900), ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowSize(ImVec2(850, 950), ImGuiCond_FirstUseEver);
         ImGui::Begin("Simulation Watchlist", nullptr, ImGuiWindowFlags_MenuBar);
+        
         if (ImGui::BeginMenuBar())
         {
             if (ImGui::BeginMenu("Options"))
@@ -1132,17 +1247,51 @@ namespace Motion
                     s_EntityPlotData.clear();
                 }
                 ImGui::MenuItem("Pause Recording", nullptr, &s_PauseRecording);
+                ImGui::Separator();
+                if (ImGui::MenuItem("Help"))
+                {
+                    ImGui::OpenPopup("WatchlistHelp");
+                }
                 ImGui::EndMenu();
             }
-                
             ImGui::EndMenuBar();
         }
         
+        // Help popup
+        if (ImGui::BeginPopupModal("WatchlistHelp", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+        {
+            ImGui::TextWrapped("Simulation Watchlist allows you to monitor physics objects in real-time:");
+            ImGui::BulletText("View position, rotation, and scale");
+            ImGui::BulletText("Track velocity and angular velocity over time");
+            ImGui::BulletText("Apply forces and impulses to objects");
+            ImGui::BulletText("Export plots as PNG images");
+            ImGui::Spacing();
+            ImGui::TextWrapped("Add objects to the watchlist by right-clicking them and selecting 'Add to Watchlist'.");
+            ImGui::Spacing();
+            if (ImGui::Button("Close", ImVec2(120, 0)))
+                ImGui::CloseCurrentPopup();
+            ImGui::EndPopup();
+        }
+        
+        // Global Settings Section
         if (ImGui::CollapsingHeader("Global Settings", ImGuiTreeNodeFlags_DefaultOpen))
         {
             ImGui::Indent(10.0f);
-            ImGui::SliderFloat("Plot History", &s_PlotHistory, 1.0f, 60.0f, "%.1f seconds");
+            
+            ImGui::Text("Plot History:");
+            ImGui::SameLine();
+            ImGui::SetNextItemWidth(200.0f);
+            ImGui::SliderFloat("##PlotHistory", &s_PlotHistory, 1.0f, 60.0f, "%.1f seconds");
+            ImGui::SameLine();
+            HelpMarker("How many seconds of data to display in the graphs.\n"
+                    "Longer history = more data visible but may impact performance.");
+            
+            ImGui::Spacing();
             ImGui::Checkbox("Pause Recording", &s_PauseRecording);
+            ImGui::SameLine();
+            HelpMarker("Pause data recording to freeze the current graphs.\n"
+                    "Useful for analyzing specific moments in the simulation.");
+            
             ImGui::Unindent(10.0f);
             ImGui::Spacing();
         }
@@ -1150,6 +1299,7 @@ namespace Motion
         ImGui::Separator();
         ImGui::Spacing();
 
+        // Entity List
         for (auto& e : m_SimulationWatchList)
         {
             auto* tag = context.Entities->Registry.try_get<TagComponent>(e);
@@ -1157,24 +1307,34 @@ namespace Motion
             auto& plotData = s_EntityPlotData[e];
 
             ImGui::PushID(static_cast<std::int32_t>(entt::to_integral(e)));
+            
+            // Entity header with colored background
+            ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.2f, 0.35f, 0.5f, 0.8f));
             bool nodeOpen = ImGui::CollapsingHeader((tag->Tag + "###watch-node").c_str(), ImGuiTreeNodeFlags_DefaultOpen);
+            ImGui::PopStyleColor();
 
             if (nodeOpen)
             {
                 ImGui::Indent(15.0f);
+                
+                // Transform Section
                 if (auto* tr = context.Entities->Registry.try_get<TransformComponent>(e))
                 {
-                    if (ImGui::TreeNodeEx("Transform", ImGuiTreeNodeFlags_DefaultOpen))
+                    if (ImGui::TreeNodeEx("Transform Data", ImGuiTreeNodeFlags_DefaultOpen))
                     {
                         ImGui::Columns(2, "transform_cols", false);
-                        ImGui::SetColumnWidth(0, 150);
+                        ImGui::SetColumnWidth(0, 120);
                         
                         ImGui::Text("Position:"); ImGui::NextColumn();
-                        ImGui::Text("(%.3f, %.3f, %.3f)", tr->Translation.x, tr->Translation.y, tr->Translation.z);
+                        ImGui::Text("(%.3f, %.3f, %.3f) m", tr->Translation.x, tr->Translation.y, tr->Translation.z);
                         ImGui::NextColumn();
                         
                         ImGui::Text("Rotation:"); ImGui::NextColumn();
-                        ImGui::Text("(%.3f, %.3f, %.3f, %.3f)", tr->Rotation.x, tr->Rotation.y, tr->Rotation.z, tr->Rotation.w);
+                        // Convert quaternion to euler angles for display
+                        glm::vec3 eulerDeg = glm::degrees(glm::eulerAngles(tr->Rotation));
+                        ImGui::Text("(%.1f°, %.1f°, %.1f°)", eulerDeg.x, eulerDeg.y, eulerDeg.z);
+                        ImGui::SameLine();
+                        ImGui::TextDisabled("(X, Y, Z)");
                         ImGui::NextColumn();
                         
                         ImGui::Text("Scale:"); ImGui::NextColumn();
@@ -1186,6 +1346,7 @@ namespace Motion
                     ImGui::Spacing();
                 }
 
+                // Rigidbody Section
                 if (auto* rb = context.Entities->Registry.try_get<RigidBodyComponent>(e))
                 {
                     if (!rb->PhysicsBody) 
@@ -1196,33 +1357,72 @@ namespace Motion
                         continue;
                     }
 
+                    // Velocity Data Section
                     if (ImGui::TreeNodeEx("Velocity Data", ImGuiTreeNodeFlags_DefaultOpen))
                     {
                         glm::vec3 velocity = ToVec3(rb->PhysicsBody->getLinearVelocity());
                         glm::vec3 angularVelocity = ToVec3(rb->PhysicsBody->getAngularVelocity());
+                        float speed = glm::length(velocity);
+                        float speedKmh = PhysicsUI::MsToKmh(speed);
+                        float angSpeed = glm::length(angularVelocity);
+                        float rpm = PhysicsUI::RadPerSecToRPM(angSpeed);
 
                         ImGui::Columns(2, "velocity_cols", false);
                         ImGui::SetColumnWidth(0, 150);
                         
-                        ImGui::Text("Linear:"); ImGui::NextColumn();
+                        // Linear Velocity
+                        ImGui::Text("Linear Velocity:"); ImGui::NextColumn();
                         ImGui::Text("(%.3f, %.3f, %.3f) m/s", velocity.x, velocity.y, velocity.z);
                         ImGui::NextColumn();
                         
-                        ImGui::Text("Angular:"); ImGui::NextColumn();
+                        ImGui::Text("Speed:"); ImGui::NextColumn();
+                        ImGui::Text("%.3f m/s  (%.1f km/h)", speed, speedKmh);
+                        ImGui::NextColumn();
+                        
+                        ImGui::Text("Direction:"); ImGui::NextColumn();
+                        if (speed > 0.001f)
+                        {
+                            glm::vec3 dir = PhysicsUI::GetDirection(velocity);
+                            ImGui::Text("(%.2f, %.2f, %.2f)", dir.x, dir.y, dir.z);
+                        }
+                        else
+                        {
+                            ImGui::TextDisabled("Not moving");
+                        }
+                        ImGui::NextColumn();
+                        
+                        ImGui::Separator();
+                        ImGui::NextColumn(); ImGui::NextColumn();
+                        
+                        // Angular Velocity
+                        ImGui::Text("Angular Velocity:"); ImGui::NextColumn();
                         ImGui::Text("(%.3f, %.3f, %.3f) rad/s", angularVelocity.x, angularVelocity.y, angularVelocity.z);
                         ImGui::NextColumn();
                         
-                        ImGui::Text("Speed:"); ImGui::NextColumn();
-                        float speed = glm::length(velocity);
-                        ImGui::Text("%.3f m/s", speed);
+                        ImGui::Text("Spin Rate:"); ImGui::NextColumn();
+                        ImGui::Text("%.3f rad/s  (%.0f RPM)", angSpeed, std::abs(rpm));
+                        ImGui::NextColumn();
+                        
+                        ImGui::Text("Spin Axis:"); ImGui::NextColumn();
+                        if (angSpeed > 0.001f)
+                        {
+                            glm::vec3 axis = PhysicsUI::GetDirection(angularVelocity);
+                            ImGui::Text("(%.2f, %.2f, %.2f)", axis.x, axis.y, axis.z);
+                        }
+                        else
+                        {
+                            ImGui::TextDisabled("Not rotating");
+                        }
                         
                         ImGui::Columns(1);
                         ImGui::TreePop();
                     }
                     ImGui::Spacing();
 
+                    // Velocity Graphs Section
                     if (ImGui::TreeNodeEx("Velocity Graphs", ImGuiTreeNodeFlags_DefaultOpen))
                     {
+                        // Recording logic
                         if (!s_PauseRecording)
                         {
                             plotData.TimeAccumulator += ImGui::GetIO().DeltaTime;
@@ -1237,8 +1437,12 @@ namespace Motion
                         float t = plotData.TimeAccumulator;
                         
                         // Linear Velocity Plot
-                        ImGui::Text("Linear Velocity (m/s)");
-                        if (ImPlot::BeginPlot("##LinearVelocityPlot", ImVec2(-1, 180)))
+                        ImGui::Text("Linear Velocity Over Time");
+                        ImGui::SameLine();
+                        HelpMarker("Shows how fast the object is moving over time.\n"
+                                "Peaks indicate acceleration, flat lines indicate constant speed.");
+                        
+                        if (ImPlot::BeginPlot("##LinearVelocityPlot", ImVec2(-1, 250)))
                         {
                             ImPlot::SetupAxes("Time (s)", "Speed (m/s)", ImPlotAxisFlags_NoTickLabels, 0);
                             ImPlot::SetupAxisLimits(ImAxis_X1, t - s_PlotHistory, t, ImGuiCond_Always);
@@ -1249,7 +1453,7 @@ namespace Motion
                             if (!plotData.LinearVelocity.Data.empty())
                             {
                                 ImPlot::PlotLine(
-                                    "Linear",
+                                    "Linear Speed",
                                     &plotData.LinearVelocity.Data[0].x,
                                     &plotData.LinearVelocity.Data[0].y,
                                     (int)plotData.LinearVelocity.Data.size(),
@@ -1259,7 +1463,6 @@ namespace Motion
                                 );
                             }
                             
-                            // Capture plot dimensions while plot is active
                             plotData.LinearPlotPos = ImPlot::GetPlotPos();
                             plotData.LinearPlotSize = ImPlot::GetPlotSize();
                             
@@ -1267,18 +1470,24 @@ namespace Motion
                             ImPlot::EndPlot();
                         }
                         
-                        if (ImGui::Button("Save Linear Plot"))
+                        if (ImGui::Button("Save Linear Plot", ImVec2(180, 0)))
                         {
                             ImGui::OpenPopup("SaveLinearPlot");
                         }
+                        ImGui::SameLine();
+                        HelpMarker("Export this graph as a PNG image");
                         
                         ImGui::Spacing();
                         ImGui::Separator();
                         ImGui::Spacing();
 
                         // Angular Velocity Plot
-                        ImGui::Text("Angular Velocity (rad/s)");
-                        if (ImPlot::BeginPlot("##AngularVelocityPlot", ImVec2(-1, 180)))
+                        ImGui::Text("Angular Velocity Over Time");
+                        ImGui::SameLine();
+                        HelpMarker("Shows how fast the object is rotating over time.\n"
+                                "Useful for analyzing spinning, tumbling, or stabilization.");
+                        
+                        if (ImPlot::BeginPlot("##AngularVelocityPlot", ImVec2(-1, 250)))
                         {
                             ImPlot::SetupAxes("Time (s)", "Speed (rad/s)", ImPlotAxisFlags_NoTickLabels, 0);
                             ImPlot::SetupAxisLimits(ImAxis_X1, t - s_PlotHistory, t, ImGuiCond_Always);
@@ -1289,7 +1498,7 @@ namespace Motion
                             if (!plotData.AngularVelocity.Data.empty())
                             {
                                 ImPlot::PlotLine(
-                                    "Angular",
+                                    "Angular Speed",
                                     &plotData.AngularVelocity.Data[0].x,
                                     &plotData.AngularVelocity.Data[0].y,
                                     (int)plotData.AngularVelocity.Data.size(),
@@ -1299,7 +1508,6 @@ namespace Motion
                                 );
                             }
                             
-                            // Capture plot dimensions while plot is active
                             plotData.AngularPlotPos = ImPlot::GetPlotPos();
                             plotData.AngularPlotSize = ImPlot::GetPlotSize();
                             
@@ -1307,28 +1515,40 @@ namespace Motion
                             ImPlot::EndPlot();
                         }
                         
-                        if (ImGui::Button("Save Angular Plot"))
+                        if (ImGui::Button("Save Angular Plot", ImVec2(180, 0)))
                         {
                             ImGui::OpenPopup("SaveAngularPlot");
                         }
-                        
                         ImGui::SameLine();
-                        if (ImGui::Button("Clear Plots"))
+                        HelpMarker("Export this graph as a PNG image");
+                        
+                        ImGui::SameLine(0.0f, 20.0f);
+                        if (ImGui::Button("Clear Plots", ImVec2(150, 0)))
                         {
                             plotData.LinearVelocity.Erase();
                             plotData.AngularVelocity.Erase();
                             plotData.TimeAccumulator = 0.0f;
                         }
+                        ImGui::SameLine();
+                        HelpMarker("Reset all graph data and start fresh");
 
                         // Linear Plot Save Popup
                         if (ImGui::BeginPopup("SaveLinearPlot"))
                         {
                             ImGui::Text("Save Linear Velocity Plot");
                             ImGui::Separator();
-                            static char filename[128] = "linear_velocity.png";
-                            ImGui::InputText("Filename", filename, sizeof(filename));
+                            ImGui::Spacing();
                             
-                            if (ImGui::Button("Save"))
+                            static char filename[128] = "linear_velocity.png";
+                            ImGui::Text("Filename:");
+                            ImGui::SetNextItemWidth(300.0f);
+                            ImGui::InputText("##filename", filename, sizeof(filename));
+                            
+                            ImGui::Spacing();
+                            ImGui::Separator();
+                            ImGui::Spacing();
+                            
+                            if (ImGui::Button("Save", ImVec2(120, 0)))
                             {
                                 DialogBoxes::InitializeCOM();
                                 if(auto path = DialogBoxes::SelectFolderDialog(L"Select a folder to save the linear plot", m_ScenePath); !path.empty())
@@ -1341,7 +1561,7 @@ namespace Motion
                                 ImGui::CloseCurrentPopup();
                             }
                             ImGui::SameLine();
-                            if (ImGui::Button("Cancel"))
+                            if (ImGui::Button("Cancel", ImVec2(120, 0)))
                                 ImGui::CloseCurrentPopup();
                             
                             ImGui::EndPopup();
@@ -1352,10 +1572,18 @@ namespace Motion
                         {
                             ImGui::Text("Save Angular Velocity Plot");
                             ImGui::Separator();
-                            static char filename[128] = "angular_velocity.png";
-                            ImGui::InputText("Filename", filename, sizeof(filename));
+                            ImGui::Spacing();
                             
-                            if (ImGui::Button("Save"))
+                            static char filename[128] = "angular_velocity.png";
+                            ImGui::Text("Filename:");
+                            ImGui::SetNextItemWidth(300.0f);
+                            ImGui::InputText("##filename", filename, sizeof(filename));
+                            
+                            ImGui::Spacing();
+                            ImGui::Separator();
+                            ImGui::Spacing();
+                            
+                            if (ImGui::Button("Save", ImVec2(120, 0)))
                             {
                                 DialogBoxes::InitializeCOM();
                                 if(auto path = DialogBoxes::SelectFolderDialog(L"Select a folder to save the angular plot", m_ScenePath); !path.empty())
@@ -1368,7 +1596,7 @@ namespace Motion
                                 ImGui::CloseCurrentPopup();
                             }
                             ImGui::SameLine();
-                            if (ImGui::Button("Cancel"))
+                            if (ImGui::Button("Cancel", ImVec2(120, 0)))
                                 ImGui::CloseCurrentPopup();
                             
                             ImGui::EndPopup();
@@ -1378,57 +1606,115 @@ namespace Motion
                     }
                     ImGui::Spacing();
 
-                    if (ImGui::TreeNodeEx("Apply Impulse", ImGuiTreeNodeFlags_DefaultOpen))
+                    // Apply Forces Section
+                    if (ImGui::TreeNodeEx("Apply Forces & Impulses", ImGuiTreeNodeFlags_DefaultOpen))
                     {
-                        ImGui::Text("Configure and apply forces to the rigidbody");
+                        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.9f, 0.9f, 0.6f, 1.0f));
+                        ImGui::TextWrapped("Apply forces to test physics behavior. Use impulses for instant impacts or sustained forces for continuous acceleration.");
+                        ImGui::PopStyleColor();
+                        ImGui::Spacing();
+                        ImGui::Separator();
                         ImGui::Spacing();
                     
+                        // Direction Controls
                         ImGui::Text("Direction:");
+                        ImGui::SameLine();
+                        HelpMarker("The direction in which to apply the force.\n"
+                                "Use the buttons for quick presets or drag to customize.");
+                        
+                        ImGui::SetNextItemWidth(250.0f);
                         ImGui::DragFloat3("##impulse_dir", &plotData.ImpulseDirection.x, 0.01f, -1.0f, 1.0f);
+                        ImGui::SameLine();
                         if (ImGui::Button("Normalize##dir"))
                         {
                             plotData.ImpulseDirection = glm::normalize(plotData.ImpulseDirection);
                         }
+                        ImGui::SameLine();
+                        HelpMarker("Normalize the direction vector to length 1.0");
                         
                         ImGui::Spacing();
+                        ImGui::Text("Quick Directions:");
+                        if (ImGui::Button("↑ Up", ImVec2(80, 0))) 
+                            plotData.ImpulseDirection = glm::vec3(0, 1, 0);
+                        ImGui::SameLine();
+                        if (ImGui::Button("↓ Down", ImVec2(80, 0))) 
+                            plotData.ImpulseDirection = glm::vec3(0, -1, 0);
+                        ImGui::SameLine();
+                        if (ImGui::Button("→ Right", ImVec2(80, 0))) 
+                            plotData.ImpulseDirection = glm::vec3(1, 0, 0);
+                        ImGui::SameLine();
+                        if (ImGui::Button("← Left", ImVec2(80, 0))) 
+                            plotData.ImpulseDirection = glm::vec3(-1, 0, 0);
+                        ImGui::SameLine();
+                        if (ImGui::Button("⊙ Forward", ImVec2(80, 0))) 
+                            plotData.ImpulseDirection = glm::vec3(0, 0, 1);
+                        ImGui::SameLine();
+                        if (ImGui::Button("⊗ Back", ImVec2(80, 0))) 
+                            plotData.ImpulseDirection = glm::vec3(0, 0, -1);
                         
-                        if (ImGui::Button("↑ Up")) plotData.ImpulseDirection = glm::vec3(0, 1, 0);
-                        ImGui::SameLine();
-                        if (ImGui::Button("↓ Down")) plotData.ImpulseDirection = glm::vec3(0, -1, 0);
-                        ImGui::SameLine();
-                        if (ImGui::Button("→ Right")) plotData.ImpulseDirection = glm::vec3(1, 0, 0);
-                        ImGui::SameLine();
-                        if (ImGui::Button("← Left")) plotData.ImpulseDirection = glm::vec3(-1, 0, 0);
+                        ImGui::Spacing();
+                        ImGui::Separator();
+                        ImGui::Spacing();
                         
-                        ImGui::Spacing();                   
-                        ImGui::Text("Magnitude:");
+                        // Magnitude Control
+                        ImGui::Text("Force Magnitude:");
+                        ImGui::SameLine();
+                        HelpMarker("Strength of the force in Newton-seconds (N·s).\n"
+                                "Larger values = stronger force.\n"
+                                "Typical values: 1-10 for small objects, 10-100 for heavy objects.");
+                        ImGui::SetNextItemWidth(300.0f);
                         ImGui::SliderFloat("##impulse_mag", &plotData.ImpulseMagnitude, 0.1f, 100.0f, "%.2f N·s");
                         
                         ImGui::Spacing();
+                        ImGui::Separator();
+                        ImGui::Spacing();
                     
+                        // Application Point
                         ImGui::Text("Application Point:");
+                        ImGui::SameLine();
+                        HelpMarker("Where to apply the force on the object.\n"
+                                "Local: Relative to object center\n"
+                                "World: Absolute position in world space");
+                        
                         ImGui::Checkbox("Use Local Position", &plotData.UseLocalPosition);
+                        ImGui::SetNextItemWidth(250.0f);
                         ImGui::DragFloat3("##impulse_pos", &plotData.ImpulsePosition.x, 0.1f);
                         
                         ImGui::Spacing();
                         ImGui::Separator();
                         ImGui::Spacing();
                         
-                        if (ImGui::Button("Apply Linear Impulse", ImVec2(-1, 0)))
+                        // Apply Buttons
+                        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.5f, 0.8f, 1.0f));
+                        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.3f, 0.6f, 0.9f, 1.0f));
+                        
+                        if (ImGui::Button("Apply Linear Force", ImVec2(-1, 30)))
                         {
                             glm::vec3 impulse = plotData.ImpulseDirection * plotData.ImpulseMagnitude;
                             reactphysics3d::Vector3 rp3dImpulse(impulse.x, impulse.y, impulse.z);
                             rb->PhysicsBody->applyWorldForceAtCenterOfMass(rp3dImpulse);
                         }
+                        if (ImGui::IsItemHovered())
+                        {
+                            ImGui::BeginTooltip();
+                            ImGui::Text("Pushes the object in the specified direction");
+                            ImGui::EndTooltip();
+                        }
                         
-                        if (ImGui::Button("Apply Angular Impulse", ImVec2(-1, 0)))
+                        if (ImGui::Button("Apply Angular Force (Torque)", ImVec2(-1, 30)))
                         {
                             glm::vec3 torque = plotData.ImpulseDirection * plotData.ImpulseMagnitude;
                             reactphysics3d::Vector3 rp3dTorque(torque.x, torque.y, torque.z);
                             rb->PhysicsBody->applyWorldTorque(rp3dTorque);
                         }
+                        if (ImGui::IsItemHovered())
+                        {
+                            ImGui::BeginTooltip();
+                            ImGui::Text("Makes the object spin around the specified axis");
+                            ImGui::EndTooltip();
+                        }
                         
-                        if (ImGui::Button("Apply Force at Point", ImVec2(-1, 0)))
+                        if (ImGui::Button("Apply Force at Point", ImVec2(-1, 30)))
                         {
                             glm::vec3 impulse = plotData.ImpulseDirection * plotData.ImpulseMagnitude;
                             reactphysics3d::Vector3 rp3dImpulse(impulse.x, impulse.y, impulse.z);
@@ -1443,6 +1729,15 @@ namespace Motion
                             else
                                 rb->PhysicsBody->applyWorldForceAtWorldPosition(rp3dImpulse, rp3dPoint);
                         }
+                        if (ImGui::IsItemHovered())
+                        {
+                            ImGui::BeginTooltip();
+                            ImGui::Text("Pushes the object at a specific point");
+                            ImGui::Text("Creates both linear and angular motion (torque)");
+                            ImGui::EndTooltip();
+                        }
+                        
+                        ImGui::PopStyleColor(2);
 
                         ImGui::TreePop();
                     }
@@ -1497,14 +1792,13 @@ namespace Motion
             {
                 if (ImGui::MenuItem("Delete Entity"))
                 {
-                    // Perform delete action here
-                    // context.Entities->Registry.destroy(e);
+                    m_Scene->DestroyEntity(e, true);
                     ImGui::CloseCurrentPopup();
                 }
 
                 if (ImGui::MenuItem("Duplicate Entity"))
                 {
-                    // Perform duplicate action here
+                    m_Scene->DuplicateEntity(e);
                     ImGui::CloseCurrentPopup();
                 }
 
@@ -1528,26 +1822,53 @@ namespace Motion
                 }
 
                 ImGui::Separator();
-
                 if(ImGui::MenuItem("Open In Material Editor"))
                 {
-                    if (auto* material = context.Entities->Registry.try_get<MaterialComponent>(e))
+                    if (context.Entities->Registry.try_get<MaterialComponent>(e))
                     {
-                        static bool isEditorOpen = true;
-                        ImGui::SetNextWindowSize(ImVec2(600.0f, 400.0f), ImGuiCond_FirstUseEver);
-                        std::string w = std::string("Material Editor##") + std::to_string((uintptr_t)material->ID);
-                        if (ImGui::Begin(w.c_str(), &isEditorOpen, ImGuiWindowFlags_NoDocking))
+                        openMaterialEditors[e] = true;
+                    }
+                }
+
+                for (auto it = openMaterialEditors.begin(); it != openMaterialEditors.end();)
+                {
+                    entt::entity entity = it->first;
+                    bool& isOpen = it->second;
+                
+                    auto* material = context.Entities->Registry.try_get<MaterialComponent>(entity);
+                    if (!material)
+                    {
+                        it = openMaterialEditors.erase(it);
+                        continue;
+                    }
+                    
+                    std::string windowName = "Material Editor##" + std::to_string((uint32_t)entity);
+                    ImGui::SetNextWindowSize(ImVec2(600.0f, 400.0f), ImGuiCond_FirstUseEver);
+                    
+                    if (ImGui::Begin(windowName.c_str(), &isOpen, ImGuiWindowFlags_NoDocking))
+                    {
+                        ImGui::Text("Entity: %u", (uint32_t)entity);
+                        ImGui::Separator();
+                        
+                        if (ImGui::BeginChild("##inspector-area", ImVec2(0.0f, 0.0f)))
                         {
-                            if (ImGui::BeginChild("##inspector-area", ImVec2(0.0f, 0.0f)))
-                            {
-                                if (material->MaterialPointer)
-                                    DrawMaterialUI(material->MaterialPointer);
-                                else
-                                    ImGui::TextDisabled("No material assigned");
-                                ImGui::EndChild();
-                            }
-                            ImGui::End();
+                            if (material->MaterialPointer)
+                                DrawMaterialUI(material->MaterialPointer);
+                            else
+                                ImGui::TextDisabled("No material assigned");
+                            
+                            ImGui::EndChild();
                         }
+                        ImGui::End();
+                    }
+                    
+                    if (!isOpen)
+                    {
+                        it = openMaterialEditors.erase(it);
+                    }
+                    else
+                    {
+                        ++it;
                     }
                 }
 
@@ -1621,14 +1942,17 @@ namespace Motion
             glm::vec3 t = tr->Translation;
             if (DragFloat3("Position (m)", t, 0.1f))
                 tr->Translation = t;
+            HelpMarker("The position of the object in 3D space (X, Y, Z coordinates).\nMeasured in meters.");
 
             glm::vec3 eulerDeg = glm::degrees(glm::eulerAngles(tr->Rotation));
             if (DragFloat3("Rotation (deg)", eulerDeg, 1.0f))
                 tr->Rotation = glm::normalize(glm::quat(glm::radians(eulerDeg)));
+            HelpMarker("The rotation of the object around each axis.\nMeasured in degrees (0-360).");
 
             glm::vec3 s = tr->Scale;
-            if (DragFloat3("Scale (m)", s, 0.1f))
+            if (DragFloat3("Scale", s, 0.1f, 0.01f, 100.0f))
                 tr->Scale = s;
+            HelpMarker("The size multiplier for each axis.\n1.0 = original size, 2.0 = double size, 0.5 = half size");
 
             EndPropertyGrid();
         }
@@ -1647,12 +1971,30 @@ namespace Motion
         auto* rb = context.Entities->Registry.try_get<RigidBodyComponent>(e);
         if (!cc || !rb) return;
 
-        BeginPropertyGrid("##physics-grid");
+        if (ImGui::CollapsingHeader("Physics Status", ImGuiTreeNodeFlags_DefaultOpen))
+        {
+            ImGui::Indent(10.0f);
+            
+            bool isDynamic = rb->PhysicsBody->getType() == rp3d::BodyType::DYNAMIC;
+            bool isAwake = isDynamic && rb->PhysicsBody->isActive();
+            bool isSleeping = isDynamic && rb->PhysicsBody->isSleeping();
+            
+            PhysicsUI::StatusIndicator("Active", isAwake, "Object is currently being updated by physics simulation");
+            PhysicsUI::StatusIndicator("Sleeping", isSleeping, "Object has stopped moving and is temporarily paused to save performance");
+            PhysicsUI::StatusIndicator("Collisions Enabled", true, "Object can collide with other physics objects");
+            
+            ImGui::Unindent(10.0f);
+            ImGui::Spacing();
+        }
 
         DrawRigidBodyUI(*rb);
         DrawColliderUI(*cc);
 
-        EndPropertyGrid();
+        // Display live physics data during simulation
+        if (context.Simulation->InSimulation && rb->PhysicsBody->getType() == rp3d::BodyType::DYNAMIC)
+        {
+            DrawLivePhysicsData(*rb);
+        }
     }
 
     /**
@@ -1663,24 +2005,61 @@ namespace Motion
      */
     void SceneEditorLayer::DrawRigidBodyUI(RigidBodyComponent & rb)
     {
-        std::int32_t interaction = (rb.PhysicsBody->getType() == rp3d::BodyType::DYNAMIC) ? 1 : 0;
-        ComboBox("Interaction", { "Static", "Dynamic" }, interaction,
-            [&](std::int32_t idx, const std::string&)
+        ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.2f, 0.4f, 0.7f, 0.5f));
+        if (ImGui::CollapsingHeader("Rigid Body Properties", ImGuiTreeNodeFlags_DefaultOpen))
+        {
+            ImGui::PopStyleColor();
+            ImGui::Indent(10.0f);
+            
+            if (BeginPropertyGrid("##rigidbody-props"))
             {
-                if (idx == 0) { rb.Type = BodyType::Static;  rb.PhysicsBody->setType(rp3d::BodyType::STATIC); }
-                if (idx == 1) { rb.Type = BodyType::Dynamic; rb.PhysicsBody->setType(rp3d::BodyType::DYNAMIC); }
-            });
+                std::int32_t interaction = (rb.PhysicsBody->getType() == rp3d::BodyType::DYNAMIC) ? 1 : 0;
+                ComboBox("Body Type", { "Static", "Dynamic" }, interaction,
+                    [&](std::int32_t idx, const std::string&)
+                    {
+                        if (idx == 0) { rb.Type = BodyType::Static;  rb.PhysicsBody->setType(rp3d::BodyType::STATIC); }
+                        if (idx == 1) { rb.Type = BodyType::Dynamic; rb.PhysicsBody->setType(rp3d::BodyType::DYNAMIC); }
+                    });
+                HelpMarker("Static: Immovable objects like walls, floors, and obstacles\n"
+                          "Dynamic: Objects that move and respond to forces like balls, boxes, characters");
 
-        auto* body = rb.PhysicsBody;
+                auto* body = rb.PhysicsBody;
 
-        float mass = static_cast<float>(body->getMass());
-        if (DragFloat("Compute Mass", &mass, 0.001f, 0.0f, 1e10f)) body->setMass(mass);
+                // Mass
+                float mass = static_cast<float>(body->getMass());
+                if (DragFloat("Mass (kg)", &mass, 0.1f, 0.01f, 10000.0f))
+                    body->setMass(mass);
+                HelpMarker("How heavy the object is in kilograms.\n"
+                          "Heavier objects need more force to move and have more momentum.\n"
+                          "Examples: Basketball ≈0.6kg, Car ≈1500kg, Person ≈70kg");
 
-        float linDamp = static_cast<float>(body->getLinearDamping());
-        if (DragFloat("Linear Damping", &linDamp, 0.01f, 0.0f, 1.0f)) body->setLinearDamping(linDamp);
+                // Linear Damping
+                float linDamp = static_cast<float>(body->getLinearDamping());
+                if (SliderFloat("Linear Damping", &linDamp, 0.0f, 1.0f, "%.3f"))
+                    body->setLinearDamping(linDamp);
+                HelpMarker("Air resistance for movement. Higher = slows down faster.\n"
+                          "0 = No air resistance (moves forever like in space)\n"
+                          "0.5 = Medium resistance (normal physics)\n"
+                          "1.0 = High resistance (moving through water)");
 
-        float angDamp = static_cast<float>(body->getAngularDamping());
-        if (DragFloat("Angular Damping", &angDamp, 0.01f, 0.0f, 1.0f)) body->setAngularDamping(angDamp);
+                // Angular Damping
+                float angDamp = static_cast<float>(body->getAngularDamping());
+                if (SliderFloat("Angular Damping", &angDamp, 0.0f, 1.0f, "%.3f"))
+                    body->setAngularDamping(angDamp);
+                HelpMarker("Air resistance for rotation/spinning. Higher = stops spinning faster.\n"
+                          "0 = Spins forever like in space\n"
+                          "0.5 = Normal spinning (like a basketball)\n"
+                          "1.0 = Stops spinning quickly");
+
+                EndPropertyGrid();
+            }
+            
+            ImGui::Unindent(10.0f);
+        }
+        else
+        {
+            ImGui::PopStyleColor();
+        }
     }
 
     /**
@@ -1689,27 +2068,152 @@ namespace Motion
      * friction coefficient, and mass density.
      * @param cc The collider component to render the user interface for.
      */
-    void SceneEditorLayer::DrawColliderUI(ColliderComponent & cc)
+    void SceneEditorLayer::DrawColliderUI(ColliderComponent& cc)
     {
-        float bounce = cc.Restitution;
-        if (DragFloat("Bounce", &bounce, 0.001f, 0.0f, 1.0f))
+        ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.7f, 0.4f, 0.2f, 0.5f));
+        if (ImGui::CollapsingHeader("Collider Properties", ImGuiTreeNodeFlags_DefaultOpen))
         {
-            cc.Collider->getMaterial().setBounciness(bounce);
-            cc.Restitution = bounce;
-        }
+            ImGui::PopStyleColor();
+            ImGui::Indent(10.0f);
+            
+            if (BeginPropertyGrid("##collider-props"))
+            {
+                // Bounciness (Restitution)
+                float bounce = cc.Restitution;
+                if (SliderFloat("Bounciness", &bounce, 0.0f, 1.0f, "%.3f"))
+                {
+                    cc.Collider->getMaterial().setBounciness(bounce);
+                    cc.Restitution = bounce;
+                }
+                HelpMarker("How bouncy the object is when it hits something.\n"
+                          "0.0 = No bounce (like clay or putty)\n"
+                          "0.5 = Medium bounce (like a basketball)\n"
+                          "0.9 = Very bouncy (like a rubber super ball)\n"
+                          "1.0 = Perfect bounce (no energy lost)");
 
-        float friction = cc.Friction;
-        if (DragFloat("Friction", &friction, 0.001f, 0.0f, 1.0f))
-        {
-            cc.Collider->getMaterial().setFrictionCoefficient(friction);
-            cc.Friction = friction;
-        }
+                // Friction
+                float friction = cc.Friction;
+                if (SliderFloat("Friction", &friction, 0.0f, 1.0f, "%.3f"))
+                {
+                    cc.Collider->getMaterial().setFrictionCoefficient(friction);
+                    cc.Friction = friction;
+                }
+                HelpMarker("How much the object resists sliding.\n"
+                          "0.0 = Ice (super slippery)\n"
+                          "0.5 = Wood or plastic\n"
+                          "0.8 = Rubber\n"
+                          "1.0 = Maximum grip");
 
-        float density = cc.MassDensity;
-        if (DragFloat("Density", &density, 0.01f, 0.0f, FLT_MAX))
+                // Density
+                float density = cc.MassDensity;
+                if (DragFloat("Density (kg/m³)", &density, 1.0f, 0.1f, 10000.0f))
+                {
+                    cc.Collider->getMaterial().setMassDensity(density);
+                    cc.MassDensity = density;
+                }
+                HelpMarker("How dense the material is (mass per volume).\n"
+                          "This affects the calculated mass based on object size.\n\n"
+                          "Common densities:\n"
+                          "• Water: 1000 kg/m³\n"
+                          "• Wood: 500-800 kg/m³\n"
+                          "• Concrete: 2400 kg/m³\n"
+                          "• Steel: 7850 kg/m³\n"
+                          "• Gold: 19300 kg/m³");
+
+                // Volume
+                std::string volume = std::to_string(cc.Shape->getVolume());
+                TextBox("Volume (m³)", volume, true);
+                HelpMarker("The volume of the object.\n"
+                          "This is automatically calculated based on object size.");
+
+                EndPropertyGrid();
+            }
+            
+            ImGui::Unindent(10.0f);
+        }
+        else
         {
-            cc.Collider->getMaterial().setMassDensity(density);
-            cc.MassDensity = density;
+            ImGui::PopStyleColor();
+        }
+    }
+
+    /**
+     * Draws a user interface for displaying live physics data of a rigid body component.
+     * This includes the current linear velocity (speed and direction), angular velocity (spin rate and axis),
+     * and kinetic energy of the body.
+     * @param rb The rigid body component to display the live physics data for.
+     */
+    void SceneEditorLayer::DrawLivePhysicsData(RigidBodyComponent& rb)
+    {
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+        
+        ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.1f, 0.7f, 0.4f, 0.5f));
+        if (ImGui::CollapsingHeader("Live Physics Data", ImGuiTreeNodeFlags_DefaultOpen))
+        {
+            ImGui::PopStyleColor();
+            ImGui::Indent(10.0f);
+            
+            auto* body = rb.PhysicsBody;
+            
+            // Linear Velocity
+            auto linVel = body->getLinearVelocity();
+            glm::vec3 velocity(linVel.x, linVel.y, linVel.z);
+            float speed = PhysicsUI::GetSpeed(velocity);
+            float speedKmh = PhysicsUI::MsToKmh(speed);
+            glm::vec3 direction = PhysicsUI::GetDirection(velocity);
+            
+            ImGui::Text("Movement");
+            ImGui::Indent(10.0f);
+            ImGui::BulletText("Speed: %.2f m/s (%.1f km/h)", speed, speedKmh);
+            if (speed > 0.001f)
+            {
+                ImGui::BulletText("Direction: (%.2f, %.2f, %.2f)", direction.x, direction.y, direction.z);
+            }
+            else
+            {
+                ImGui::BulletText("Direction: Not moving");
+            }
+            ImGui::Unindent(10.0f);
+            ImGui::Spacing();
+            
+            // Angular Velocity
+            auto angVel = body->getAngularVelocity();
+            glm::vec3 angularVelocity(angVel.x, angVel.y, angVel.z);
+            float rotSpeed = PhysicsUI::GetSpeed(angularVelocity);
+            float rpm = PhysicsUI::RadPerSecToRPM(rotSpeed);
+            glm::vec3 rotAxis = PhysicsUI::GetDirection(angularVelocity);
+            
+            ImGui::Text("Rotation");
+            ImGui::Indent(10.0f);
+            ImGui::BulletText("Spin Rate: %.2f rad/s (%.0f RPM)", rotSpeed, std::abs(rpm));
+            if (rotSpeed > 0.001f)
+            {
+                ImGui::BulletText("Spin Axis: (%.2f, %.2f, %.2f)", rotAxis.x, rotAxis.y, rotAxis.z);
+            }
+            else
+            {
+                ImGui::BulletText("Spin Axis: Not rotating");
+            }
+            ImGui::Unindent(10.0f);
+            ImGui::Spacing();
+            
+            // Energy Information
+            float kineticEnergy = 0.5f * body->getMass() * speed * speed;
+            ImGui::Text("Energy");
+            ImGui::Indent(10.0f);
+            ImGui::BulletText("Kinetic Energy: %.2f Joules", kineticEnergy);
+            ImGui::SameLine();
+            HelpMarker("Energy of motion. Higher = more force in collisions.\n"
+                      "A 1kg object at 10 m/s has 50 Joules.");
+            ImGui::Unindent(10.0f);
+            
+            ImGui::Unindent(10.0f);
+        }
+        else
+        {
+            ImGui::PopStyleColor();
         }
     }
 
@@ -1719,7 +2223,7 @@ namespace Motion
      */
     void SceneEditorLayer::RenderToolbarAndSearch()
     {
-        ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 150.0f);
+        ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 100.0f);
         ImGui::InputTextWithHint("##SearchScenes", "Search scenes...", m_SearchBuf, sizeof(m_SearchBuf));
         ImGui::PopItemWidth();
 
@@ -1779,7 +2283,7 @@ namespace Motion
      * Additionally, advanced settings are available for the physics world, including the number of velocity solver iterations, position solver iterations, restitution velocity threshold, sleep linear velocity, sleep angular velocity, and time before sleep.
      * @param context The scene context.
      */
-    void SceneEditorLayer::RenderEnvironmentSettings(SceneContext & context)
+    void SceneEditorLayer::RenderEnvironmentSettings(SceneContext& context)
     {
         const ImGuiTreeNodeFlags flags =
               ImGuiTreeNodeFlags_Framed
@@ -1788,85 +2292,123 @@ namespace Motion
             | ImGuiTreeNodeFlags_FramePadding
             | ImGuiTreeNodeFlags_DefaultOpen;
 
-        if (ImGui::TreeNodeEx("##environment", flags, "Environment"))
+        if (ImGui::TreeNodeEx("##environment", flags, "🌍 Environment"))
         {
             ImGui::Indent();
 
-            if (ImGui::CollapsingHeader("Light"))
+            // Lighting Section
+            if (ImGui::CollapsingHeader("☀️ Lighting", ImGuiTreeNodeFlags_DefaultOpen))
             {
+                ImGui::Indent(10.0f);
                 auto& light = context.Physics->SunLight;
-                BeginPropertyGrid("##sun-properties");
-
-                DragFloat3("Direction", light.Direction);
-                ColorEdit3("Color",     light.Color);
-                DragFloat("Intensity",  &light.Intensity, 0.01f, 0.0f, 50.0f);
-                ToggleSwitch("Show Direction", light.ShowGuizmo);
-
-                EndPropertyGrid();
-            }
-
-            if (ImGui::CollapsingHeader("Physics World"))
-            {
-                auto& world = context.Physics->Settings;
-                BeginPropertyGrid("##world-properties");
-
-                std::string worldName = world.worldName.empty() ? "New World" : world.worldName;
-                TextBox("World Name", worldName);
-
-                glm::vec3 gravity = ToVec3(world.gravity);
-                if (DragFloat3("Gravity", gravity, 0.01f, -50.0f, 50.0f))
-                    world.gravity = ToVec3(gravity);
-
-                float defaultRestitution = world.defaultBounciness;
-                if (DragFloat("Default Restitution", &defaultRestitution, 0.01f, 0.0f, 1.0f))
-                    world.defaultBounciness = defaultRestitution;
-
-                float defaultFriction = world.defaultFrictionCoefficient;
-                if (DragFloat("Default Friction", &defaultFriction, 0.01f, 0.0f, 1.0f))
-                    world.defaultFrictionCoefficient = defaultFriction;
-
-                ToggleSwitch("Allow Sleeping", world.isSleepingEnabled);
-
-                EndPropertyGrid();
-
-                if (ImGui::CollapsingHeader("Advanced Settings"))
+                
+                if (BeginPropertyGrid("##sun-properties"))
                 {
-                    GridSpec spec;
-                    spec.twoColumns = true;
-                    spec.labelWidth = 300.0f;
-
-                    BeginPropertyGrid("##world-advanced-properties");
-
-                    float velIters = static_cast<float>(world.defaultVelocitySolverNbIterations);
-                    if (DragFloat("Velocity Solver Iterations", &velIters, 1.0f, 1.0f, 100.0f))
-                        world.defaultVelocitySolverNbIterations = static_cast<uint32_t>(velIters);
-
-                    float posIters = static_cast<float>(world.defaultPositionSolverNbIterations);
-                    if (DragFloat("Position Solver Iterations", &posIters, 1.0f, 1.0f, 100.0f))
-                        world.defaultPositionSolverNbIterations = static_cast<uint32_t>(posIters);
-
-                    float rvThresh = world.restitutionVelocityThreshold;
-                    if (DragFloat("Restitution Velocity Threshold", &rvThresh, 0.01f, 0.0f, 10.0f))
-                        world.restitutionVelocityThreshold = rvThresh;
-
-                    float sleepLin = world.defaultSleepLinearVelocity;
-                    if (DragFloat("Sleep Linear Velocity", &sleepLin, 0.01f, 0.0f, 10.0f))
-                        world.defaultSleepLinearVelocity = sleepLin;
-
-                    float sleepAng = world.defaultSleepAngularVelocity;
-                    if (DragFloat("Sleep Angular Velocity", &sleepAng, 0.01f, 0.0f, 10.0f))
-                        world.defaultSleepAngularVelocity = sleepAng;
-
-                    float cosAngle = world.cosAngleSimilarContactManifold;
-                    if (DragFloat("Angle Similar Contact Manifold", &cosAngle, 0.01f, 0.0f, 1.0f))
-                        world.cosAngleSimilarContactManifold = std::clamp(cosAngle, 0.0f, 1.0f);
-
-                    float tBeforeSleep = world.defaultTimeBeforeSleep;
-                    if (DragFloat("Time Before Sleep", &tBeforeSleep, 0.01f, 0.0f, 10.0f))
-                        world.defaultTimeBeforeSleep = tBeforeSleep;
+                    DragFloat3("Light Direction", light.Direction, 0.01f);
+                    HelpMarker("The direction the main light comes from.\n"
+                              "Think of this as the sun position.\n"
+                              "(-1,0,0) = light from left, (0,-1,0) = light from above");
+                    
+                    ColorEdit3("Light Color", light.Color);
+                    HelpMarker("The color of the light source.\n"
+                              "White = natural sunlight, Yellow = warm light, Blue = cold light");
+                    
+                    DragFloat("Intensity", &light.Intensity, 0.1f, 0.0f, 50.0f);
+                    HelpMarker("How bright the light is.\n"
+                              "1.0 = normal daylight, 5.0 = very bright, 0.1 = dim");
+                    
+                    ToggleSwitch("Show Gizmo", light.ShowGuizmo);
+                    HelpMarker("Show a visual indicator for light direction in the viewport");
 
                     EndPropertyGrid();
                 }
+                ImGui::Unindent(10.0f);
+            }
+
+            // Physics World Settings
+            if (ImGui::CollapsingHeader("🌐 Physics World", ImGuiTreeNodeFlags_DefaultOpen))
+            {
+                ImGui::Indent(10.0f);
+                auto& world = context.Physics->Settings;
+                
+                if (BeginPropertyGrid("##world-properties"))
+                {
+                    std::string worldName = world.worldName.empty() ? "New World" : world.worldName;
+                    TextBox("World Name", worldName);
+                    HelpMarker("A name for your physics world");
+
+                    glm::vec3 gravity = ToVec3(world.gravity);
+                    if (DragFloat3("Gravity (m/s²)", gravity, 0.1f, -50.0f, 50.0f))
+                        world.gravity = ToVec3(gravity);
+                    HelpMarker("The pull of gravity on all objects.\n"
+                              "Earth = (0, -9.81, 0) downward\n"
+                              "Moon = (0, -1.62, 0) weaker gravity\n"
+                              "Space = (0, 0, 0) zero gravity");
+
+                    float defaultRestitution = world.defaultBounciness;
+                    if (SliderFloat("Default Bounciness", &defaultRestitution, 0.0f, 1.0f, "%.3f"))
+                        world.defaultBounciness = defaultRestitution;
+                    HelpMarker("Default bounciness for new objects");
+
+                    float defaultFriction = world.defaultFrictionCoefficient;
+                    if (SliderFloat("Default Friction", &defaultFriction, 0.0f, 1.0f, "%.3f"))
+                        world.defaultFrictionCoefficient = defaultFriction;
+                    HelpMarker("Default friction for new objects");
+
+                    bool sleeping = world.isSleepingEnabled;
+                    if (ToggleSwitch("Enable Sleep", sleeping))
+                        world.isSleepingEnabled = sleeping;
+                    HelpMarker("Allow objects to 'sleep' when not moving.\n"
+                              "This saves CPU by not updating still objects.\n"
+                              "Turn off for precise simulations.");
+
+                    EndPropertyGrid();
+                }
+                
+                // Advanced Physics Settings
+                if (ImGui::TreeNode("Advanced Settings"))
+                {
+                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.8f, 0.3f, 1.0f));
+                    ImGui::TextWrapped("⚠️ Advanced: These settings affect simulation accuracy and performance");
+                    ImGui::PopStyleColor();
+                    ImGui::Spacing();
+                    
+                    if (BeginPropertyGrid("##advanced-physics"))
+                    {
+                        int velIter = world.defaultVelocitySolverNbIterations;
+                        if (DragFloat("Velocity Iterations", (float*)&velIter, 0.1f, 1.0f, 50.0f))
+                            world.defaultVelocitySolverNbIterations = (unsigned int)velIter;
+                        HelpMarker("Higher = more accurate velocity calculations but slower.\n"
+                                  "Typical: 10-20 iterations");
+
+                        int posIter = world.defaultPositionSolverNbIterations;
+                        if (DragFloat("Position Iterations", (float*)&posIter, 0.1f, 1.0f, 50.0f))
+                            world.defaultPositionSolverNbIterations = (unsigned int)posIter;
+                        HelpMarker("Higher = objects penetrate less but slower.\n"
+                                  "Typical: 5-10 iterations");
+
+                        float sleepLinVel = world.defaultSleepLinearVelocity;
+                        if (DragFloat("Sleep Linear Velocity", &sleepLinVel, 0.01f, 0.0f, 5.0f))
+                            world.defaultSleepLinearVelocity = sleepLinVel;
+                        HelpMarker("Objects slower than this can go to sleep");
+
+                        float sleepAngVel = world.defaultSleepAngularVelocity;
+                        if (DragFloat("Sleep Angular Velocity", &sleepAngVel, 0.01f, 0.0f, 5.0f))
+                            world.defaultSleepAngularVelocity = sleepAngVel;
+                        HelpMarker("Objects rotating slower than this can go to sleep");
+
+                        float timeBeforeSleep = world.defaultTimeBeforeSleep;
+                        if (DragFloat("Time Before Sleep (s)", &timeBeforeSleep, 0.1f, 0.0f, 10.0f))
+                            world.defaultTimeBeforeSleep = timeBeforeSleep;
+                        HelpMarker("How long an object must be still before sleeping");
+
+                        EndPropertyGrid();
+                    }
+                    
+                    ImGui::TreePop();
+                }
+                
+                ImGui::Unindent(10.0f);
             }
 
             ImGui::Unindent();
@@ -2181,17 +2723,22 @@ namespace Motion
                     TagComponent* tag        = context.Entities->Registry.try_get<TagComponent>(context.Entities->SelectedEntity);
                     const bool isActive      = tag ? tag->IsActive : false;
 
-                    if (ImGui::BeginPopup("ViewportContextMenu", ImGuiPopupFlags_NoOpenOverItems | ImGuiPopupFlags_MouseButtonMiddle))
+                    if (ImGui::IsWindowHovered() && ImGui::IsMouseClicked(ImGuiPopupFlags_MouseButtonMiddle))
+                    {
+                        ImGui::OpenPopup("ViewportContextMenu");
+                    }
+
+                    if (ImGui::BeginPopup("ViewportContextMenu"))
                     {
                         if(ImGui::MenuItem("Delete"))
                         {
-                            m_Scene->RemoveEntity(context.Entities->SelectedEntity);
+                            m_Scene->DestroyEntity(context.Entities->SelectedEntity, true);
                             ImGui::CloseCurrentPopup();
                         }
 
                         if(ImGui::MenuItem("Duplicate"))
                         {
-                            //TODO: Add the entitiy duplication logic to Scene Class
+                            m_Scene->DuplicateEntity(context.Entities->SelectedEntity);
                             ImGui::CloseCurrentPopup();
                         }
 
@@ -2228,27 +2775,56 @@ namespace Motion
 
                         if(ImGui::MenuItem("Open In Material Editor"))
                         {
-                            if (auto* material = context.Entities->Registry.try_get<MaterialComponent>(context.Entities->SelectedEntity))
+                            if (context.Entities->Registry.try_get<MaterialComponent>(context.Entities->SelectedEntity))
                             {
-                                static bool isEditorOpen = true;
-                                ImGui::SetNextWindowSize(ImVec2(600.0f, 400.0f), ImGuiCond_FirstUseEver);
-                                std::string w = std::string("Material Editor##") + std::to_string((uintptr_t)material->ID);
-                                if (ImGui::Begin(w.c_str(), &isEditorOpen, ImGuiWindowFlags_NoDocking))
-                                {
-                                    if (ImGui::BeginChild("##inspector-area", ImVec2(0.0f, 0.0f)))
-                                    {
-                                        if (material->MaterialPointer)
-                                            DrawMaterialUI(material->MaterialPointer);
-                                        else
-                                            ImGui::TextDisabled("No material assigned");
-                                        ImGui::EndChild();
-                                    }
-                                    ImGui::End();
-                                }
+                                openMaterialEditors[context.Entities->SelectedEntity] = true;
                             }
                         }
 
                         ImGui::EndPopup();
+                    }
+
+
+                    for (auto it = openMaterialEditors.begin(); it != openMaterialEditors.end();)
+                    {
+                        entt::entity entity = it->first;
+                        bool& isOpen = it->second;
+
+                        auto* material = context.Entities->Registry.try_get<MaterialComponent>(entity);
+                        if (!material)
+                        {
+                            it = openMaterialEditors.erase(it);
+                            continue;
+                        }
+                        
+                        std::string windowName = "Material Editor##" + std::to_string((uint32_t)entity);
+                        ImGui::SetNextWindowSize(ImVec2(600.0f, 400.0f), ImGuiCond_FirstUseEver);
+                        
+                        if (ImGui::Begin(windowName.c_str(), &isOpen, ImGuiWindowFlags_NoDocking))
+                        {
+                            ImGui::Text("Entity: %u", (uint32_t)entity);
+                            ImGui::Separator();
+                            
+                            if (ImGui::BeginChild("##inspector-area", ImVec2(0.0f, 0.0f)))
+                            {
+                                if (material->MaterialPointer)
+                                    DrawMaterialUI(material->MaterialPointer);
+                                else
+                                    ImGui::TextDisabled("No material assigned");
+                                
+                                ImGui::EndChild();
+                            }
+                            ImGui::End();
+                        }
+                        
+                        if (!isOpen)
+                        {
+                            it = openMaterialEditors.erase(it);
+                        }
+                        else
+                        {
+                            ++it;
+                        }
                     }
 
                     if (isActive && hasTransform)

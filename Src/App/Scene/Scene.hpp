@@ -25,7 +25,8 @@ namespace Motion
 
             void SelectedEntity(const entt::entity& entt);
             void EmplaceEntity(const entt::entity& entity);
-            void RemoveEntity(const entt::entity& entity);
+            void DestroyEntity(const entt::entity& entity, bool deleteResources = false);
+            bool DuplicateEntity(const entt::entity& entity);
 
             void ForEachActiveEntity(const std::function<void(entt::entity)>& fn);
             void ForEachEntity(const std::function<void(entt::entity)>& fn);
@@ -37,6 +38,7 @@ namespace Motion
             
             [[nodiscard]] const bool IsRootEntity(entt::entity entity) const;
             [[nodiscard]] const bool IsNodeEntity(entt::entity entity) const;
+            [[nodiscard]] entt::entity FindRootOf(entt::entity entity);
             [[nodiscard]] SceneContext& GetContext() { return m_Context; }
 
 

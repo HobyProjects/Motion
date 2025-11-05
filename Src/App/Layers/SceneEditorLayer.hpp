@@ -4,6 +4,7 @@
 #include "Timer.hpp"
 #include "DialogBoxes.hpp"
 #include "Scene.hpp"
+
 #include <chrono>
 
 namespace Motion
@@ -170,6 +171,7 @@ namespace Motion
         void DrawMaterialUI(std::shared_ptr<Material>& mat);
         void DrawAttributes(std::shared_ptr<Material>& mat);
         void DrawTexturesSlots(std::shared_ptr<Material>& mat);
+        void DrawLivePhysicsData(RigidBodyComponent& rb);
 
         bool RequestEntityImport(bool showDialog, bool shouldExport, std::filesystem::path path = {});
 
@@ -177,6 +179,8 @@ namespace Motion
         std::vector<entt::entity> m_SimulationWatchList{};
         std::shared_ptr<IPlotExporter> m_PlotExporter{ nullptr };
         char m_SearchBuf[1024] = {};
+        
+        inline static std::map<entt::entity, bool> openMaterialEditors;
 
     public:
         static constexpr float EPSILON = 1e-6f;

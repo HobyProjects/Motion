@@ -452,22 +452,46 @@ namespace Motion
         }
     }
 
+
     /**
-     * @brief Destroys an entity from the scene.
+     * @brief Destroys an entity in the scene.
      *
-     * Destroys an entity from the scene, its child nodes, and its physical body and
-     * colliders. If the currently selected entity is the entity to be destroyed, it
-     * is reset to null.
+     * Destroys an entity in the scene, along with all its components and children.
+     * If the specified entity is not valid, nothing is done.
+     *
+     * If deleteResources is true, any resources associated with the entity and its
+     * components are deleted. For example, if the entity has a ModelComponent, the
+     * associated model file is deleted.
      *
      * @param entity The entity to destroy.
+     * @param deleteResources If true, any resources associated with the entity and its
+     * components are deleted.
      */
-    void Scene::RemoveEntity(const entt::entity& entity)
+    void Scene::DestroyEntity(const entt::entity& entity, bool deleteResources)
     {
         auto DestroyComponents = [&](entt::entity entity)
         {
             if (entity == entt::null) return;
             if (!m_Entities.Registry.valid(entity)) return;  
             if (m_Entities.SelectedEntity == entity) m_Entities.SelectedEntity = entt::null;
+
+            if(deleteResources)
+            {
+                if(ModelComponent* model = m_Entities.Registry.try_get<ModelComponent>(entity))
+                {
+                    try
+                    {
+                        std::error_code ec{};
+                        std::filesystem::remove(model->FilePath, ec);
+                        if(ec) MOTION_ERROR("Failed to delete model file: {}", ec.message());
+                    }
+                    catch(const std::exception& e)
+                    {
+                        MOTION_ERROR("Failed to delete model file: {}", e.what());
+                    }
+                }
+            }
+
 
             if (RigidBodyComponent* rb = m_Entities.Registry.try_get<RigidBodyComponent>(entity))
             {
@@ -499,19 +523,166 @@ namespace Motion
 
         };
 
-        ForEachRootEntity([&](entt::entity root)
-        {
-            if(entity == root)
-            {
-                ForEachNodeEntity(root, [&](entt::entity node)
-                {
-                    DestroyComponents(node);
-                    m_Entities.Registry.destroy(node);
-                });
 
-                m_Entities.Registry.destroy(root);
-            }
+        if(entt::entity root = FindRootOf(entity); IsRootEntity(entity))
+        {
+            ForEachNodeEntity(root, [&](entt::entity node)
+            {
+                DestroyComponents(node);
+                m_Entities.Registry.destroy(node);
+            });
+
+            m_Entities.Registry.destroy(entity);
+            std::remove_if(m_Entities.EntryPoints.begin(), m_Entities.EntryPoints.end(),
+                [&](const entt::entity& e) { return e == root; });
+        }
+    }
+
+    /**
+     * @brief Duplicates an entity and its children in the scene.
+     *
+     * Duplicates an entity and its children in the scene. The duplicated entity will
+     * have the same name as the original entity, with "_Copy" appended to the end.
+     * The duplicated entity will also have the same transform, material, and physics components
+     * as the original entity.
+     *
+     * @param entity The entity to duplicate.
+     * @return True if the entity was successfully duplicated, false otherwise.
+     */
+    bool Scene::DuplicateEntity(const entt::entity& entity)
+    {
+        if (!m_Entities.Registry.valid(entity)) return false;
+        entt::entity srcEntity = FindRootOf(entity);
+
+        auto* srcModel = m_Entities.Registry.try_get<ModelComponent>(srcEntity);
+        if(!srcModel) return false;
+
+        ImportSettings settings{};
+        settings.ExportPath = m_Specification.SavedPath / "Assets";
+        settings.ShouldExport = true;
+        settings.FilePath = srcModel ? srcModel->FilePath : std::filesystem::path{};
+
+        std::shared_ptr<ImportedResults> results = Importer::ImportEntity(settings);
+        if(!results) return false;
+
+        const BufferLayout layout
+        {
+            { "a_Position",   BufferComponents::XYZ,  BufferStride::F3, false, offsetof(Vertex, Position)    },
+            { "a_TexCoords",  BufferComponents::UV,   BufferStride::F2, false, offsetof(Vertex, TexCoord)    },
+            { "a_Normals",    BufferComponents::XYZ,  BufferStride::F3, false, offsetof(Vertex, Normal)      },
+            { "a_Tangents",   BufferComponents::XYZW, BufferStride::F4, false, offsetof(Vertex, Tangent)     },
+            { "a_Bitangents", BufferComponents::XYZ,  BufferStride::F3, false, offsetof(Vertex, Bitangent)   },
+        };
+
+        entt::entity dstEntity = m_Entities.Registry.create();
+        m_Entities.Registry.emplace<TagComponent>(dstEntity, results->Name);
+        m_Entities.Registry.emplace<TransformComponent>(dstEntity);
+
+        auto& modelCompo     = m_Entities.Registry.emplace<ModelComponent>(dstEntity);
+        modelCompo.FilePath  = results->FilePath;
+        modelCompo.MeshCount = results->MeshCount;
+        modelCompo.MaxBounds = results->MAX;
+        modelCompo.MinBounds = results->MIN;
+
+        std::vector<entt::entity> children;
+        children.reserve(results->MeshCount);
+
+        for (const auto& [index, mesh] : results->Meshes)
+        {
+            entt::entity e = m_Entities.Registry.create();
+            m_Entities.Registry.emplace<TagComponent>(e, mesh.Name);
+            m_Entities.Registry.emplace<TransformComponent>(e);
+            m_Entities.Registry.emplace<RigidBodyComponent>(e);
+            m_Entities.Registry.emplace<ColliderComponent>(e);
+
+            auto& meshCompo = m_Entities.Registry.emplace<MeshComponent>(e);
+            meshCompo.MeshPointer = Mesh::Create(mesh.Vertices.data(), mesh.Vertices.size(),
+                                                  mesh.Indices.data(), mesh.Indices.size(), layout);
+
+            meshCompo.MeshIndex = index;
+            meshCompo.Name      = mesh.Name;
+            meshCompo.MaxBounds = mesh.MAX;
+            meshCompo.MinBounds = mesh.MIN;
+
+            auto& materialCompo = m_Entities.Registry.emplace<MaterialComponent>(e);
+            materialCompo.MaterialPointer = Material::Create();
+
+            CreateRigidBody(m_Physics.World, &m_Entities.Registry, e);
+
+            std::vector<glm::vec3> verts;
+            verts.reserve(mesh.Vertices.size());
+            std::transform(mesh.Vertices.begin(), mesh.Vertices.end(), std::back_inserter(verts),
+                            [](const Vertex& v) { return v.Position; });
+
+            CreateConvexCollider(&m_Physics.Properties, &m_Entities.Registry, e, verts);
+            children.push_back(e);
+        }
+
+        entt::entity prev = entt::null;
+        for (std::size_t i = 0; i < children.size(); ++i)
+        {
+            auto e = children[i];
+            m_Entities.Registry.emplace<HierarchyComponent>(e, dstEntity, entt::null, entt::null);
+            if (i > 0) m_Entities.Registry.get<HierarchyComponent>(prev).NextSibling = e;
+            prev = e;
+        }
+
+        m_Entities.Registry.emplace<HierarchyComponent>(dstEntity, entt::null,
+            children.empty() ? entt::null : children.front(), entt::null);
+
+        ForEachNodeEntity(srcEntity, [&](entt::entity srcNode)
+        {
+            auto* srcTag        = m_Entities.Registry.try_get<TagComponent>(srcNode);
+            auto* srcTransform  = m_Entities.Registry.try_get<TransformComponent>(srcNode);
+            auto* srcMaterial   = m_Entities.Registry.try_get<MaterialComponent>(srcNode);
+
+            ForEachNodeEntity(dstEntity, [&](entt::entity dstNode)
+            {
+                auto* dstTag        = m_Entities.Registry.try_get<TagComponent>(dstNode);
+                auto* dstTransform  = m_Entities.Registry.try_get<TransformComponent>(dstNode);
+                auto* dstRigidBody  = m_Entities.Registry.try_get<RigidBodyComponent>(dstNode);
+                auto* dstCollider   = m_Entities.Registry.try_get<ColliderComponent>(dstNode);
+                auto* dstMaterial   = m_Entities.Registry.try_get<MaterialComponent>(dstNode);
+
+                if(srcTag && dstTag)
+                {
+                    dstTag->Tag = srcTag->Tag + "_Copy";
+                    dstTag->IsActive = srcTag->IsActive;
+                }
+
+                if(srcTransform && dstTransform)
+                {
+                    dstTransform->Translation = srcTransform->Translation;
+                    dstTransform->Rotation    = srcTransform->Rotation;
+                    dstTransform->Scale       = srcTransform->Scale;
+
+                    dstTransform->Translation.x = srcTransform->Translation.x + 1.5f; // Offset the duplicated entity
+                    dstTransform->RebuildLocal();
+                }
+
+                if(srcMaterial && dstMaterial)
+                {
+                    auto srcMatPtr = srcMaterial->MaterialPointer;
+                    auto dstMatPtr = dstMaterial->MaterialPointer;    
+                    
+                    if(srcMatPtr->Has<CoreMaterialComponents>() && dstMatPtr->Has<CoreMaterialComponents>())
+                    {
+                        auto& srcCore = srcMatPtr->Get<CoreMaterialComponents>();
+                        auto& dstCore = dstMatPtr->Get<CoreMaterialComponents>();
+                        dstCore = srcCore;
+                    }
+
+                    // Add more material components copying as needed
+
+                    auto baseMaterial = srcMatPtr->GetBaseMaterial();
+                    dstMatPtr->SetBaseMaterial(baseMaterial);
+                }
+            });
         });
+
+
+        EmplaceEntity(dstEntity);
+        return true;
     }
 
     /**
@@ -636,5 +807,50 @@ namespace Motion
             return h->Parent == entt::null;
 
         return false;
+    }
+    
+    /**
+     * @brief Checks if an entity is a node entity in the scene.
+     *
+     * Checks if an entity is a node entity in the scene. This function checks if the
+     * entity does not have a parent entity.
+     *
+     * @param entity The entity to check.
+     * @return True if the entity is a node entity, false otherwise.
+     */
+    const bool Scene::IsNodeEntity(entt::entity entity) const
+    {
+        return !IsRootEntity(entity);
+    }
+
+    /**
+     * @brief Gets the root node of a given entity.
+     *
+     * Gets the root node of a given entity. This function retrieves the parent
+     * entity from the HierarchyComponent of the specified entity.
+     *
+     * @param entity The entity to get the root node of.
+     * @return The root node entity, or entt::null if the entity has no parent.
+     */
+    entt::entity Scene::FindRootOf(entt::entity entity)
+    {
+        if(IsRootEntity(entity)) return entity;
+
+        entt::entity found = entt::null;
+        ForEachRootEntity([&](entt::entity root)
+        {
+            ForEachNodeEntity(root, [&](entt::entity node)
+            {
+                if(node == entity)
+                {
+                    found = root;
+                    return;
+                }
+            });
+
+            if(found != entt::null) return;
+        });
+
+        return m_Entities.Registry.valid(found) ? found : entt::null;
     }
 }

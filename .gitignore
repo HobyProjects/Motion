@@ -1,6 +1,12 @@
-out
-.vs
-.vscode
-build
-libs/build
+# Build and output directories
+out/
+build/
+libs/build/
+
+# IDE and editor settings
+.vs/
+.vscode/
+
+# CMake configuration
 CMakePresets.json
+

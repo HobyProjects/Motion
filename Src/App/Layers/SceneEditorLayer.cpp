@@ -28,6 +28,7 @@ namespace Motion
             m_BaseMaterial.push_back(Material::CreateBase(p));
         
         std::memset(m_SearchBuf, 0, sizeof(m_SearchBuf));
+        m_PlotExporter = IPlotExporter::Create();
     }
 
     /**
@@ -257,6 +258,7 @@ namespace Motion
                 }));
 
                 m_ScenePath = scenePath;
+                m_SceneName = sceneName;
                 m_SceneCreationRequest.Reset();
                 ImGui::CloseCurrentPopup();
             }
@@ -285,7 +287,7 @@ namespace Motion
                     std::string layoutFile = std::format("{}/mes-config.ini", m_ScenePath.string());
                     ImGui::SaveIniSettingsToDisk(layoutFile.c_str());
 
-                    std::string sceneName = m_Scene->GetContext().Specification->Name;
+                    std::string sceneName = m_SceneName;
                     std::filesystem::path savePath = m_ScenePath / std::format("{}.mes", sceneName);
                     SceneSerializer::Serialize(m_Scene.get(), savePath);
                     
@@ -403,7 +405,7 @@ namespace Motion
             options.DefaultExtension = L"obj";
             options.AllowMultiSelect = false;
             options.InitialDirectory = std::filesystem::current_path();
-            options.Filters = { {L"Mesh Files", L"*.fbx;*.obj;*.gltf;*.glb"} };
+            options.Filters = { { L"Mesh Files", L"*.fbx;*.obj;*.gltf;*.glb" } };
             
             DialogBoxes::InitializeCOM();
             
@@ -536,6 +538,13 @@ namespace Motion
         }
     }
 
+    /**
+     * @brief Renders a loading overlay for the scene editor.
+     *
+     * This function renders a semi-transparent overlay with a loading animation and a text describing the current operation.
+     * The overlay is rendered over the entire window, and is meant to be used when the scene editor is performing an operation that
+     * takes a significant amount of time, such as creating a scene or importing a model.
+     */
     void SceneEditorLayer::RenderLoadingOverlay()
     {
         ImGuiViewport* viewport = ImGui::GetMainViewport();
@@ -624,6 +633,18 @@ namespace Motion
         ImGui::PopStyleVar(3);
     }
 
+    /**
+     * @brief Renders an error modal in the event of an operation failure.
+     * 
+     * This function will render a popup modal with an error message
+     * and a button to close the modal. If the operation that failed
+     * is a scene creation operation, loading operation, or entity
+     * import operation, the error message will correspond to the
+     * correct operation.
+     * 
+     * @note This function is intended to be called from the main loop of
+     * the application, and should not be called from any other thread.
+     */
     void SceneEditorLayer::RenderErrorModal()
     {
         ImGui::OpenPopup("Operation Failed");
@@ -670,6 +691,25 @@ namespace Motion
         }
     }
  
+    /**
+     * @brief Draws the main menu bar of the scene editor layer
+     * 
+     * This function draws the main menu bar of the scene editor layer, which
+     * includes the following items:
+     *  - Files: New Scene, Open...
+     *  - Shapes: Cube, Cone, Cylinder, Plane, Sphere, Torus
+     *  - Simulation Controls: Play, Pause, Stop
+     * 
+     * This function should be called from the main loop of the application,
+     * and should not be called from any other thread.
+     * 
+     * @note This function will only render the menu items that are valid
+     * given the current state of the scene editor layer. For example, if
+     * there is no scene loaded, then the "Save" menu item will not be
+     * rendered.
+     * 
+     * @see SceneEditorLayer::DrawMenuBar
+     */
     void SceneEditorLayer::DrawMenuBar()
     {
         if (!ImGui::BeginMenuBar())
@@ -698,7 +738,7 @@ namespace Motion
                 {
                     auto scene = m_Scene.get();
                     auto path = m_ScenePath;
-                    auto sceneName = m_Scene->GetContext().Specification->Name;
+                    auto sceneName = m_SceneName;
                     
                     LOADER::Submit([scene, path, sceneName]()
                     {
@@ -842,6 +882,11 @@ namespace Motion
         ImGui::EndMenuBar();
     }
 
+    /**
+     * @brief Builds the dockspace for the scene editor layer.
+     * @details This function sets up the dockspace for the scene editor layer, which includes the scene viewport, scene properties, and other widgets.
+     * @note This function is only called once, when the scene editor layer is first initialized.
+     */
     void SceneEditorLayer::BuildDockspace()
     {
         ImGuiWindowFlags host =
@@ -887,6 +932,7 @@ namespace Motion
                 ImGuiID dock_right_id = ImGui::DockBuilderSplitNode(dock_main_id, ImGuiDir_Right, 0.30f, nullptr, &dock_main_id);
                 ImGui::DockBuilderDockWindow("Scene Viewport",   dock_main_id);
                 ImGui::DockBuilderDockWindow("Scene Properties", dock_right_id);
+                ImGui::DockBuilderDockWindow("Simulation Watch List", dock_right_id);
                 ImGui::DockBuilderFinish(dockspace_id);
             }
         }
@@ -894,6 +940,15 @@ namespace Motion
         ImGui::End();
     }
 
+
+    /**
+     * @brief Render the scene properties panel and viewport.
+     * 
+     * This function renders the scene properties panel, which includes the toolbar and search bar, entity hierarchy, and environment settings.
+     * It also renders the viewport, which shows the scene as it is being edited.
+     * 
+     * @note This function will return early if the scene is not valid.
+     */
     void SceneEditorLayer::RenderScene()
     {
         if(!m_Scene) return;
@@ -908,8 +963,19 @@ namespace Motion
         ImGui::End();
 
         RenderViewport(context);
+        RenderSimulationWatchList(context);
     }
 
+    /**
+     * @brief Renders the material properties panel and texture slots.
+     * 
+     * This function renders a window that displays the properties of a material, including its attributes and texture slots.
+     * The material properties panel is a collapsible tree node that displays the material's attributes, such as its name, diffuse color, metallic factor, etc.
+     * The texture slots panel is also a collapsible tree node that displays the material's texture slots, such as its diffuse texture, normal map, etc.
+     * 
+     * @param mat The material to render the properties for.
+     * @return None.
+     */
     void SceneEditorLayer::DrawMaterialUI(std::shared_ptr<Material>& mat)
     {
         if (!mat) return;
@@ -927,6 +993,16 @@ namespace Motion
         }
     }
 
+    /**
+     * @brief Draws the material properties panel and texture slots.
+     * 
+     * This function renders a window that displays the properties of a material, including its attributes and texture slots.
+     * The material properties panel is a collapsible tree node that displays the material's attributes, such as its name, diffuse color, metallic factor, etc.
+     * The texture slots panel is also a collapsible tree node that displays the material's texture slots, such as its diffuse texture, normal map, etc.
+     * 
+     * @param mat The material to render the properties for.
+     * @return None.
+     */
     void SceneEditorLayer::DrawAttributes(std::shared_ptr<Material>& mat)
     {
         if (BeginPropertyGrid("##base-material"))
@@ -983,6 +1059,11 @@ namespace Motion
         }
     }
 
+    /**
+     * @brief Draw a table of texture slots for the given material.
+     * @param mat The material to draw the texture slots for.
+     * @details This function will draw a table of texture slots for the given material. The table will have one row per texture slot, and each row will have one column per texture slot. The columns will be labeled "Base Color", "Metallic", "Roughness", "Normal", "Occlusion", and "Emissive". If the material does not have any texture slots, this function will draw a disabled text that says "No textures assigned".
+     */
     void SceneEditorLayer::DrawTexturesSlots(std::shared_ptr<Material>& mat)
     {
         if (mat->Has<CoreMaterialComponents>())
@@ -1015,7 +1096,382 @@ namespace Motion
             ImGui::TextDisabled("No textures assigned");
         }
     }
+
+    static std::unordered_map<entt::entity, EntityPlotData> s_EntityPlotData;
+    static float s_PlotHistory = 10.0f;
+    static bool s_PauseRecording = false;
+
+    /**
+     * Draws a watchlist for a simulation, allowing the user to view and
+     * manipulate the rigidbodies in the simulation.
+     *
+     * This function is only called if there is a valid scene and the scene is
+     * currently in simulation mode.
+     *
+     * @param context The scene context.
+     */
+    void SceneEditorLayer::RenderSimulationWatchList(SceneContext& context)
+    {
+        if (!m_Scene || !context.Simulation->InSimulation || m_SimulationWatchList.empty())
+            return;
+
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(12, 12));
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(8, 8));
+        ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.26f, 0.59f, 0.98f, 0.31f));
+        ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.26f, 0.59f, 0.98f, 0.80f));
+        ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0.26f, 0.59f, 0.98f, 1.00f));
+
+        ImGui::SetNextWindowSize(ImVec2(800, 900), ImGuiCond_FirstUseEver);
+        ImGui::Begin("Simulation Watchlist", nullptr, ImGuiWindowFlags_MenuBar);
+        if (ImGui::BeginMenuBar())
+        {
+            if (ImGui::BeginMenu("Options"))
+            {
+                if (ImGui::MenuItem("Clear All Plots"))
+                {
+                    s_EntityPlotData.clear();
+                }
+                ImGui::MenuItem("Pause Recording", nullptr, &s_PauseRecording);
+                ImGui::EndMenu();
+            }
+                
+            ImGui::EndMenuBar();
+        }
+        
+        if (ImGui::CollapsingHeader("Global Settings", ImGuiTreeNodeFlags_DefaultOpen))
+        {
+            ImGui::Indent(10.0f);
+            ImGui::SliderFloat("Plot History", &s_PlotHistory, 1.0f, 60.0f, "%.1f seconds");
+            ImGui::Checkbox("Pause Recording", &s_PauseRecording);
+            ImGui::Unindent(10.0f);
+            ImGui::Spacing();
+        }
+        
+        ImGui::Separator();
+        ImGui::Spacing();
+
+        for (auto& e : m_SimulationWatchList)
+        {
+            auto* tag = context.Entities->Registry.try_get<TagComponent>(e);
+            if (!tag) continue;
+            auto& plotData = s_EntityPlotData[e];
+
+            ImGui::PushID(static_cast<std::int32_t>(entt::to_integral(e)));
+            bool nodeOpen = ImGui::CollapsingHeader((tag->Tag + "###watch-node").c_str(), ImGuiTreeNodeFlags_DefaultOpen);
+
+            if (nodeOpen)
+            {
+                ImGui::Indent(15.0f);
+                if (auto* tr = context.Entities->Registry.try_get<TransformComponent>(e))
+                {
+                    if (ImGui::TreeNodeEx("Transform", ImGuiTreeNodeFlags_DefaultOpen))
+                    {
+                        ImGui::Columns(2, "transform_cols", false);
+                        ImGui::SetColumnWidth(0, 150);
+                        
+                        ImGui::Text("Position:"); ImGui::NextColumn();
+                        ImGui::Text("(%.3f, %.3f, %.3f)", tr->Translation.x, tr->Translation.y, tr->Translation.z);
+                        ImGui::NextColumn();
+                        
+                        ImGui::Text("Rotation:"); ImGui::NextColumn();
+                        ImGui::Text("(%.3f, %.3f, %.3f, %.3f)", tr->Rotation.x, tr->Rotation.y, tr->Rotation.z, tr->Rotation.w);
+                        ImGui::NextColumn();
+                        
+                        ImGui::Text("Scale:"); ImGui::NextColumn();
+                        ImGui::Text("(%.3f, %.3f, %.3f)", tr->Scale.x, tr->Scale.y, tr->Scale.z);
+                        
+                        ImGui::Columns(1);
+                        ImGui::TreePop();
+                    }
+                    ImGui::Spacing();
+                }
+
+                if (auto* rb = context.Entities->Registry.try_get<RigidBodyComponent>(e))
+                {
+                    if (!rb->PhysicsBody) 
+                    {
+                        ImGui::TextColored(ImVec4(1.0f, 0.3f, 0.3f, 1.0f), "Physics body is null!");
+                        ImGui::Unindent(15.0f);
+                        ImGui::PopID();
+                        continue;
+                    }
+
+                    if (ImGui::TreeNodeEx("Velocity Data", ImGuiTreeNodeFlags_DefaultOpen))
+                    {
+                        glm::vec3 velocity = ToVec3(rb->PhysicsBody->getLinearVelocity());
+                        glm::vec3 angularVelocity = ToVec3(rb->PhysicsBody->getAngularVelocity());
+
+                        ImGui::Columns(2, "velocity_cols", false);
+                        ImGui::SetColumnWidth(0, 150);
+                        
+                        ImGui::Text("Linear:"); ImGui::NextColumn();
+                        ImGui::Text("(%.3f, %.3f, %.3f) m/s", velocity.x, velocity.y, velocity.z);
+                        ImGui::NextColumn();
+                        
+                        ImGui::Text("Angular:"); ImGui::NextColumn();
+                        ImGui::Text("(%.3f, %.3f, %.3f) rad/s", angularVelocity.x, angularVelocity.y, angularVelocity.z);
+                        ImGui::NextColumn();
+                        
+                        ImGui::Text("Speed:"); ImGui::NextColumn();
+                        float speed = glm::length(velocity);
+                        ImGui::Text("%.3f m/s", speed);
+                        
+                        ImGui::Columns(1);
+                        ImGui::TreePop();
+                    }
+                    ImGui::Spacing();
+
+                    if (ImGui::TreeNodeEx("Velocity Graphs", ImGuiTreeNodeFlags_DefaultOpen))
+                    {
+                        if (!s_PauseRecording)
+                        {
+                            plotData.TimeAccumulator += ImGui::GetIO().DeltaTime;
+                            
+                            float linearVel = rb->PhysicsBody->getLinearVelocity().length();
+                            float angularVel = rb->PhysicsBody->getAngularVelocity().length();
+                            
+                            plotData.LinearVelocity.AddPoint(plotData.TimeAccumulator, linearVel);
+                            plotData.AngularVelocity.AddPoint(plotData.TimeAccumulator, angularVel);
+                        }
+
+                        float t = plotData.TimeAccumulator;
+                        
+                        // Linear Velocity Plot
+                        ImGui::Text("Linear Velocity (m/s)");
+                        if (ImPlot::BeginPlot("##LinearVelocityPlot", ImVec2(-1, 180)))
+                        {
+                            ImPlot::SetupAxes("Time (s)", "Speed (m/s)", ImPlotAxisFlags_NoTickLabels, 0);
+                            ImPlot::SetupAxisLimits(ImAxis_X1, t - s_PlotHistory, t, ImGuiCond_Always);
+                            ImPlot::SetupAxisLimits(ImAxis_Y1, 0, 20, ImGuiCond_Once);                   
+                            ImPlot::PushStyleColor(ImPlotCol_Line, ImVec4(0.0f, 0.75f, 1.0f, 1.0f));
+                            ImPlot::SetNextFillStyle(ImVec4(0.0f, 0.75f, 1.0f, 0.25f));
+                            
+                            if (!plotData.LinearVelocity.Data.empty())
+                            {
+                                ImPlot::PlotLine(
+                                    "Linear",
+                                    &plotData.LinearVelocity.Data[0].x,
+                                    &plotData.LinearVelocity.Data[0].y,
+                                    (int)plotData.LinearVelocity.Data.size(),
+                                    0,
+                                    plotData.LinearVelocity.Offset,
+                                    2 * sizeof(float)
+                                );
+                            }
+                            
+                            // Capture plot dimensions while plot is active
+                            plotData.LinearPlotPos = ImPlot::GetPlotPos();
+                            plotData.LinearPlotSize = ImPlot::GetPlotSize();
+                            
+                            ImPlot::PopStyleColor();
+                            ImPlot::EndPlot();
+                        }
+                        
+                        if (ImGui::Button("Save Linear Plot"))
+                        {
+                            ImGui::OpenPopup("SaveLinearPlot");
+                        }
+                        
+                        ImGui::Spacing();
+                        ImGui::Separator();
+                        ImGui::Spacing();
+
+                        // Angular Velocity Plot
+                        ImGui::Text("Angular Velocity (rad/s)");
+                        if (ImPlot::BeginPlot("##AngularVelocityPlot", ImVec2(-1, 180)))
+                        {
+                            ImPlot::SetupAxes("Time (s)", "Speed (rad/s)", ImPlotAxisFlags_NoTickLabels, 0);
+                            ImPlot::SetupAxisLimits(ImAxis_X1, t - s_PlotHistory, t, ImGuiCond_Always);
+                            ImPlot::SetupAxisLimits(ImAxis_Y1, 0, 10, ImGuiCond_Once);                       
+                            ImPlot::PushStyleColor(ImPlotCol_Line, ImVec4(1.0f, 0.5f, 0.0f, 1.0f));
+                            ImPlot::SetNextFillStyle(ImVec4(1.0f, 0.5f, 0.0f, 0.25f));
+                            
+                            if (!plotData.AngularVelocity.Data.empty())
+                            {
+                                ImPlot::PlotLine(
+                                    "Angular",
+                                    &plotData.AngularVelocity.Data[0].x,
+                                    &plotData.AngularVelocity.Data[0].y,
+                                    (int)plotData.AngularVelocity.Data.size(),
+                                    0,
+                                    plotData.AngularVelocity.Offset,
+                                    2 * sizeof(float)
+                                );
+                            }
+                            
+                            // Capture plot dimensions while plot is active
+                            plotData.AngularPlotPos = ImPlot::GetPlotPos();
+                            plotData.AngularPlotSize = ImPlot::GetPlotSize();
+                            
+                            ImPlot::PopStyleColor();
+                            ImPlot::EndPlot();
+                        }
+                        
+                        if (ImGui::Button("Save Angular Plot"))
+                        {
+                            ImGui::OpenPopup("SaveAngularPlot");
+                        }
+                        
+                        ImGui::SameLine();
+                        if (ImGui::Button("Clear Plots"))
+                        {
+                            plotData.LinearVelocity.Erase();
+                            plotData.AngularVelocity.Erase();
+                            plotData.TimeAccumulator = 0.0f;
+                        }
+
+                        // Linear Plot Save Popup
+                        if (ImGui::BeginPopup("SaveLinearPlot"))
+                        {
+                            ImGui::Text("Save Linear Velocity Plot");
+                            ImGui::Separator();
+                            static char filename[128] = "linear_velocity.png";
+                            ImGui::InputText("Filename", filename, sizeof(filename));
+                            
+                            if (ImGui::Button("Save"))
+                            {
+                                DialogBoxes::InitializeCOM();
+                                if(auto path = DialogBoxes::SelectFolderDialog(L"Select a folder to save the linear plot", m_ScenePath); !path.empty())
+                                {
+                                    std::filesystem::path savePath = path / filename;
+                                    std::string savePathStr = savePath.string();
+                                    m_PlotExporter->SavePlotRegionToPNG(savePathStr, plotData.LinearPlotPos, plotData.LinearPlotSize);
+                                }
+                                DialogBoxes::UninitializeCOM();
+                                ImGui::CloseCurrentPopup();
+                            }
+                            ImGui::SameLine();
+                            if (ImGui::Button("Cancel"))
+                                ImGui::CloseCurrentPopup();
+                            
+                            ImGui::EndPopup();
+                        }
+                        
+                        // Angular Plot Save Popup
+                        if (ImGui::BeginPopup("SaveAngularPlot"))
+                        {
+                            ImGui::Text("Save Angular Velocity Plot");
+                            ImGui::Separator();
+                            static char filename[128] = "angular_velocity.png";
+                            ImGui::InputText("Filename", filename, sizeof(filename));
+                            
+                            if (ImGui::Button("Save"))
+                            {
+                                DialogBoxes::InitializeCOM();
+                                if(auto path = DialogBoxes::SelectFolderDialog(L"Select a folder to save the angular plot", m_ScenePath); !path.empty())
+                                {
+                                    std::filesystem::path savePath = path / filename;
+                                    std::string savePathStr = savePath.string();
+                                    m_PlotExporter->SavePlotRegionToPNG(savePathStr, plotData.AngularPlotPos, plotData.AngularPlotSize);
+                                }
+                                DialogBoxes::UninitializeCOM();
+                                ImGui::CloseCurrentPopup();
+                            }
+                            ImGui::SameLine();
+                            if (ImGui::Button("Cancel"))
+                                ImGui::CloseCurrentPopup();
+                            
+                            ImGui::EndPopup();
+                        }
+
+                        ImGui::TreePop();
+                    }
+                    ImGui::Spacing();
+
+                    if (ImGui::TreeNodeEx("Apply Impulse", ImGuiTreeNodeFlags_DefaultOpen))
+                    {
+                        ImGui::Text("Configure and apply forces to the rigidbody");
+                        ImGui::Spacing();
+                    
+                        ImGui::Text("Direction:");
+                        ImGui::DragFloat3("##impulse_dir", &plotData.ImpulseDirection.x, 0.01f, -1.0f, 1.0f);
+                        if (ImGui::Button("Normalize##dir"))
+                        {
+                            plotData.ImpulseDirection = glm::normalize(plotData.ImpulseDirection);
+                        }
+                        
+                        ImGui::Spacing();
+                        
+                        if (ImGui::Button("↑ Up")) plotData.ImpulseDirection = glm::vec3(0, 1, 0);
+                        ImGui::SameLine();
+                        if (ImGui::Button("↓ Down")) plotData.ImpulseDirection = glm::vec3(0, -1, 0);
+                        ImGui::SameLine();
+                        if (ImGui::Button("→ Right")) plotData.ImpulseDirection = glm::vec3(1, 0, 0);
+                        ImGui::SameLine();
+                        if (ImGui::Button("← Left")) plotData.ImpulseDirection = glm::vec3(-1, 0, 0);
+                        
+                        ImGui::Spacing();                   
+                        ImGui::Text("Magnitude:");
+                        ImGui::SliderFloat("##impulse_mag", &plotData.ImpulseMagnitude, 0.1f, 100.0f, "%.2f N·s");
+                        
+                        ImGui::Spacing();
+                    
+                        ImGui::Text("Application Point:");
+                        ImGui::Checkbox("Use Local Position", &plotData.UseLocalPosition);
+                        ImGui::DragFloat3("##impulse_pos", &plotData.ImpulsePosition.x, 0.1f);
+                        
+                        ImGui::Spacing();
+                        ImGui::Separator();
+                        ImGui::Spacing();
+                        
+                        if (ImGui::Button("Apply Linear Impulse", ImVec2(-1, 0)))
+                        {
+                            glm::vec3 impulse = plotData.ImpulseDirection * plotData.ImpulseMagnitude;
+                            reactphysics3d::Vector3 rp3dImpulse(impulse.x, impulse.y, impulse.z);
+                            rb->PhysicsBody->applyWorldForceAtCenterOfMass(rp3dImpulse);
+                        }
+                        
+                        if (ImGui::Button("Apply Angular Impulse", ImVec2(-1, 0)))
+                        {
+                            glm::vec3 torque = plotData.ImpulseDirection * plotData.ImpulseMagnitude;
+                            reactphysics3d::Vector3 rp3dTorque(torque.x, torque.y, torque.z);
+                            rb->PhysicsBody->applyWorldTorque(rp3dTorque);
+                        }
+                        
+                        if (ImGui::Button("Apply Force at Point", ImVec2(-1, 0)))
+                        {
+                            glm::vec3 impulse = plotData.ImpulseDirection * plotData.ImpulseMagnitude;
+                            reactphysics3d::Vector3 rp3dImpulse(impulse.x, impulse.y, impulse.z);
+                            reactphysics3d::Vector3 rp3dPoint(
+                                plotData.ImpulsePosition.x, 
+                                plotData.ImpulsePosition.y, 
+                                plotData.ImpulsePosition.z
+                            );
+                            
+                            if (plotData.UseLocalPosition)
+                                rb->PhysicsBody->applyWorldForceAtLocalPosition(rp3dImpulse, rp3dPoint);
+                            else
+                                rb->PhysicsBody->applyWorldForceAtWorldPosition(rp3dImpulse, rp3dPoint);
+                        }
+
+                        ImGui::TreePop();
+                    }
+                }
+                
+                ImGui::Unindent(15.0f);
+            }
+            
+            ImGui::Spacing();
+            ImGui::Separator();
+            ImGui::Spacing();
+            
+            ImGui::PopID();
+        }
+
+        ImGui::End();
+        
+        ImGui::PopStyleColor(3);
+        ImGui::PopStyleVar(2);
+    }
     
+    /**
+     * Renders a node entity in the scene hierarchy.
+     * This includes rendering the entity's tag name and model, as well as its transform and physics components.
+     * If the entity is inactive, a disabled text is rendered instead.
+     * Additionally, a right-click context menu is rendered with options to delete, duplicate, add to watchlist, or remove from watchlist.
+     * @param context The scene context.
+     * @param root The root entity of the node.
+     */
     void SceneEditorLayer::RenderNodeEntities(SceneContext& context, entt::entity root)
     {
         m_Scene->ForEachNodeEntity(root, [&](entt::entity e)
@@ -1032,6 +1488,71 @@ namespace Motion
             const bool open = ImGui::TreeNodeEx("##node", flags, "%s %s", label, 
                 (e == context.Entities->SelectedEntity) ? "*" : "");
             if (ImGui::IsItemClicked(ImGuiMouseButton_Left)) m_Scene->SelectedEntity(e);
+            if (ImGui::IsItemClicked(ImGuiMouseButton_Right))
+            {
+                ImGui::OpenPopup("EntityContextMenu");
+            }
+
+            if (ImGui::BeginPopupContextWindow("EntityContextMenu"))
+            {
+                if (ImGui::MenuItem("Delete Entity"))
+                {
+                    // Perform delete action here
+                    // context.Entities->Registry.destroy(e);
+                    ImGui::CloseCurrentPopup();
+                }
+
+                if (ImGui::MenuItem("Duplicate Entity"))
+                {
+                    // Perform duplicate action here
+                    ImGui::CloseCurrentPopup();
+                }
+
+                ImGui::Separator();
+
+                if (std::find(m_SimulationWatchList.begin(), m_SimulationWatchList.end(), e) == m_SimulationWatchList.end())
+                {
+                    if(ImGui::MenuItem("Add To Watchlist"))
+                    {
+                        m_SimulationWatchList.push_back(e);
+                        ImGui::CloseCurrentPopup();
+                    }
+                }
+                else
+                {
+                    if(ImGui::MenuItem("Remove From Watchlist"))
+                    {
+                        m_SimulationWatchList.erase(std::remove(m_SimulationWatchList.begin(), m_SimulationWatchList.end(), e), m_SimulationWatchList.end());
+                        ImGui::CloseCurrentPopup();
+                    }
+                }
+
+                ImGui::Separator();
+
+                if(ImGui::MenuItem("Open In Material Editor"))
+                {
+                    if (auto* material = context.Entities->Registry.try_get<MaterialComponent>(e))
+                    {
+                        static bool isEditorOpen = true;
+                        ImGui::SetNextWindowSize(ImVec2(600.0f, 400.0f), ImGuiCond_FirstUseEver);
+                        std::string w = std::string("Material Editor##") + std::to_string((uintptr_t)material->ID);
+                        if (ImGui::Begin(w.c_str(), &isEditorOpen, ImGuiWindowFlags_NoDocking))
+                        {
+                            if (ImGui::BeginChild("##inspector-area", ImVec2(0.0f, 0.0f)))
+                            {
+                                if (material->MaterialPointer)
+                                    DrawMaterialUI(material->MaterialPointer);
+                                else
+                                    ImGui::TextDisabled("No material assigned");
+                                ImGui::EndChild();
+                            }
+                            ImGui::End();
+                        }
+                    }
+                }
+
+                ImGui::EndPopup();
+            }
 
             if (open)
             {
@@ -1041,7 +1562,6 @@ namespace Motion
                 {
                     RenderTransform(context, e);
                     RenderPhysics(context, e);
-                    RenderMaterialEditor(context, e);
                 }
                 else
                 {
@@ -1054,6 +1574,14 @@ namespace Motion
         });
     }
 
+    /**
+     * Renders the tag and model of an entity in the scene hierarchy.
+     * This includes rendering the entity's tag name and model, as well as its transform and physics components.
+     * If the entity is inactive, a disabled text is rendered instead.
+     * Additionally, a right-click context menu is rendered with options to delete, duplicate, add to watchlist, or remove from watchlist.
+     * @param context The scene context.
+     * @param root The root entity of the node.
+     */
     void SceneEditorLayer::RenderTagAndModel(SceneContext& context, entt::entity e)
     {
         if (!context.Entities->Registry.any_of<TagComponent>(e)) return;
@@ -1077,6 +1605,13 @@ namespace Motion
         EndPropertyGrid();
     }
 
+    /**
+     * Renders the transform component of an entity in the scene hierarchy.
+     * This includes rendering the entity's position, rotation, and scale, with drag float widgets to adjust them.
+     * If the entity does not have a transform component, nothing is rendered.
+     * @param context The scene context.
+     * @param e The entity to render the transform component for.
+     */
     void SceneEditorLayer::RenderTransform(SceneContext& context, entt::entity e)
     {
         if (auto* tr = context.Entities->Registry.try_get<TransformComponent>(e))
@@ -1099,6 +1634,13 @@ namespace Motion
         }
     }
 
+    /**
+     * Renders the physics components of an entity in the scene hierarchy.
+     * This includes rendering the entity's rigid body and collider, with drag float widgets to adjust their properties.
+     * If the entity does not have a rigid body or collider, nothing is rendered.
+     * @param context The scene context.
+     * @param e The entity to render the physics components for.
+     */
     void SceneEditorLayer::RenderPhysics(SceneContext& context, entt::entity e)
     {
         auto* cc = context.Entities->Registry.try_get<ColliderComponent>(e);
@@ -1113,34 +1655,12 @@ namespace Motion
         EndPropertyGrid();
     }
 
-    void SceneEditorLayer::RenderMaterialEditor(SceneContext & context, entt::entity e)
-    {
-        if (auto* material = context.Entities->Registry.try_get<MaterialComponent>(e))
-        {
-            static bool isEditorOpen = false;
-            if (ImGui::Button("Material Editor"))
-                isEditorOpen = !isEditorOpen;
-
-            if (isEditorOpen)
-            {
-                ImGui::SetNextWindowSize(ImVec2(600.0f, 400.0f), ImGuiCond_FirstUseEver);
-                std::string w = std::string("Material Editor##") + std::to_string((uintptr_t)material->ID);
-                if (ImGui::Begin(w.c_str(), &isEditorOpen, ImGuiWindowFlags_NoDocking))
-                {
-                    if (ImGui::BeginChild("##inspector-area", ImVec2(0.0f, 0.0f)))
-                    {
-                        if (material->MaterialPointer)
-                            DrawMaterialUI(material->MaterialPointer);
-                        else
-                            ImGui::TextDisabled("No material assigned");
-                        ImGui::EndChild();
-                    }
-                    ImGui::End();
-                }
-            }
-        }
-    }
-
+    /**
+     * Renders a user interface for adjusting the properties of a rigid body component.
+     * This includes a combo box for selecting whether the body is static or dynamic, and
+     * drag float widgets for adjusting the body's mass, linear damping, and angular damping.
+     * @param rb The rigid body component to render the user interface for.
+     */
     void SceneEditorLayer::DrawRigidBodyUI(RigidBodyComponent & rb)
     {
         std::int32_t interaction = (rb.PhysicsBody->getType() == rp3d::BodyType::DYNAMIC) ? 1 : 0;
@@ -1163,6 +1683,12 @@ namespace Motion
         if (DragFloat("Angular Damping", &angDamp, 0.01f, 0.0f, 1.0f)) body->setAngularDamping(angDamp);
     }
 
+    /**
+     * Renders a user interface for adjusting the properties of a collider component.
+     * This includes drag float widgets for adjusting the collider's restitution (bounciness),
+     * friction coefficient, and mass density.
+     * @param cc The collider component to render the user interface for.
+     */
     void SceneEditorLayer::DrawColliderUI(ColliderComponent & cc)
     {
         float bounce = cc.Restitution;
@@ -1187,14 +1713,18 @@ namespace Motion
         }
     }
 
+    /**
+     * Renders the toolbar and search field for the scene editor layer.
+     * This includes a text field for searching for entities in the scene, and a button for importing entities from external files.
+     */
     void SceneEditorLayer::RenderToolbarAndSearch()
     {
-        ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 25.0f);
+        ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 150.0f);
         ImGui::InputTextWithHint("##SearchScenes", "Search scenes...", m_SearchBuf, sizeof(m_SearchBuf));
         ImGui::PopItemWidth();
 
         ImGui::SameLine();
-        if (ImGui::Button("Import##Button", ImVec2(50.0f, 0.0f)))
+        if (ImGui::Button("Import##Button", ImVec2(120.0f, 0.0f)))
         {
             RequestEntityImport(true, true);
         }
@@ -1202,6 +1732,12 @@ namespace Motion
         ImGui::Separator();
     }
 
+    /**
+     * Renders the entity hierarchy for the scene editor layer.
+     * This includes rendering the entities in a tree view, with the ability to expand and collapse entities.
+     * If an entity is inactive, a disabled text is rendered instead.
+     * @param context The scene context.
+     */
     void SceneEditorLayer::RenderEntityHierarchy(SceneContext& context)
     {
         const ImGuiTreeNodeFlags flags =
@@ -1235,6 +1771,14 @@ namespace Motion
         }
     }
 
+    /**
+     * Renders the environment settings for the scene editor layer.
+     * This includes rendering the environment properties, such as the light direction and color, and the physics world settings.
+     * The environment properties include the light direction, color, and intensity, as well as whether the light direction should be shown in the gizmo.
+     * The physics world settings include the gravity, default restitution, default friction coefficient, and whether sleeping is enabled.
+     * Additionally, advanced settings are available for the physics world, including the number of velocity solver iterations, position solver iterations, restitution velocity threshold, sleep linear velocity, sleep angular velocity, and time before sleep.
+     * @param context The scene context.
+     */
     void SceneEditorLayer::RenderEnvironmentSettings(SceneContext & context)
     {
         const ImGuiTreeNodeFlags flags =
@@ -1248,7 +1792,7 @@ namespace Motion
         {
             ImGui::Indent();
 
-            if (ImGui::CollapsingHeader("Light", flags))
+            if (ImGui::CollapsingHeader("Light"))
             {
                 auto& light = context.Physics->SunLight;
                 BeginPropertyGrid("##sun-properties");
@@ -1261,7 +1805,7 @@ namespace Motion
                 EndPropertyGrid();
             }
 
-            if (ImGui::CollapsingHeader("Physics World", flags))
+            if (ImGui::CollapsingHeader("Physics World"))
             {
                 auto& world = context.Physics->Settings;
                 BeginPropertyGrid("##world-properties");
@@ -1285,13 +1829,13 @@ namespace Motion
 
                 EndPropertyGrid();
 
-                if (ImGui::CollapsingHeader("Advanced Settings", flags))
+                if (ImGui::CollapsingHeader("Advanced Settings"))
                 {
                     GridSpec spec;
                     spec.twoColumns = true;
                     spec.labelWidth = 300.0f;
 
-                    BeginPropertyGrid("##world-advanced-properties", spec);
+                    BeginPropertyGrid("##world-advanced-properties");
 
                     float velIters = static_cast<float>(world.defaultVelocitySolverNbIterations);
                     if (DragFloat("Velocity Solver Iterations", &velIters, 1.0f, 1.0f, 100.0f))
@@ -1330,6 +1874,12 @@ namespace Motion
         }
     }
 
+    /**
+     * @brief Computes the viewport rectangle for the ImGui window
+     * @return the viewport rectangle
+     * This function computes the viewport rectangle for the ImGui window
+     * by getting the window position and content region min/max.
+     */
     static SceneEditorLayer::ViewportRect ComputeViewportRect()
     {
         const ImVec2 winPos = ImGui::GetWindowPos();
@@ -1338,6 +1888,18 @@ namespace Motion
         return { { winPos.x + crMin.x, winPos.y + crMin.y }, { winPos.x + crMax.x, winPos.y + crMax.y } };
     }
 
+    /**
+     * @brief Computes the screen coordinates for a given point in world space
+     * @param p the point in world space
+     * @param VP the view projection matrix
+     * @param rect the viewport rectangle
+     * @param[out] out the screen coordinates
+     * @return true if the computation was successful, false otherwise
+     * This function computes the screen coordinates for a given point in world space
+     * by transforming the point with the view projection matrix and then
+     * normalizing the resulting coordinates. The normalized coordinates are then
+     * mapped to the viewport rectangle coordinates.
+     */
     static bool WorldToScreen(const glm::vec3& p, const glm::mat4& VP, const SceneEditorLayer::ViewportRect& rect, ImVec2& out)
     {
         glm::vec4 clip = VP * glm::vec4(p, 1.0f);
@@ -1350,6 +1912,18 @@ namespace Motion
         return true;
     }
 
+    /**
+     * @brief builds a ray from a mouse position in framebuffer space
+     * @param mouseFB the mouse position in framebuffer space
+     * @param fbSize the size of the framebuffer
+     * @param view the view matrix
+     * @param proj the projection matrix
+     * @return a ray in world space
+     * This function builds a ray from a mouse position in framebuffer space
+     * by transforming the mouse position into normalized device coordinates,
+     * and then transforming those coordinates into world space using the
+     * view and projection matrices.
+     */
     static SceneEditorLayer::RayWS BuildMouseRayFromFB(const glm::vec2& mouseFB, const glm::vec2& fbSize, const glm::mat4& view, const glm::mat4& proj)
     {
         const float ndcX =  (mouseFB.x / fbSize.x) * 2.0f - 1.0f;
@@ -1368,6 +1942,16 @@ namespace Motion
         return r;
     }
 
+    /**
+     * @brief creates a rotation matrix from a direction vector and an up hint vector
+     * @param dir the direction vector
+     * @param upHint the up hint vector, defaults to {0,1,0}
+     * @return a rotation matrix
+     * This function creates a rotation matrix from a direction vector and an up hint vector.
+     * The direction vector is used to compute the forward direction of the rotation matrix.
+     * The up hint vector is used to compute the right and up directions of the rotation matrix.
+     * If the up hint vector is close to parallel to the direction vector, a default up vector is used instead.
+     */
     static glm::mat3 MakeRotationFromDirection(const glm::vec3& dir, const glm::vec3& upHint = {0,1,0})
     {
         glm::vec3 fwd   = glm::normalize(-dir);
@@ -1382,12 +1966,26 @@ namespace Motion
         return { right, up, fwd };
     }
 
+    /**
+     * @brief extracts the forward direction from a 4x4 matrix
+     * @param M the 4x4 matrix
+     * @return the forward direction as a glm::vec3
+     * This function extracts the forward direction from a 4x4 matrix by normalizing the second column of the matrix and negating it.
+     */
     static glm::vec3 ExtractDirectionFromMatrix(const glm::mat4& M)
     {
         const glm::vec3 fwd = glm::normalize(glm::vec3(M[2]));
         return -fwd;
     }
     
+    /**
+     * @brief returns a dummy position for a directional light based on the camera's position and direction
+     * @param cam the camera
+     * @param distance the distance from the camera's position to the dummy position, defaults to 6.0f
+     * @return a dummy position for a directional light
+     * This function returns a dummy position for a directional light based on the camera's position and direction.
+     * The dummy position is computed by moving along the camera's forward direction by the specified distance.
+     */
     static glm::vec3 ChooseDummyPosition(const Camera3D& cam, float distance = 6.0f)
     {
         const glm::mat4 invView = glm::inverse(cam.View);
@@ -1396,6 +1994,23 @@ namespace Motion
     }
 
 
+    /**
+     * @brief draws a directional light in the scene editor
+     * @param light the light to be drawn
+     * @param camera the camera used for drawing
+     * @param rect the viewport rect
+     * @param dl the draw list
+     * @param cfg the config for drawing the light
+     * @return true if the light was changed, false otherwise
+     * This function draws a directional light in the scene editor.
+     * It uses ImGuizmo to draw the light and its direction.
+     * The light is represented as a billboard with a direction arrow.
+     * The direction arrow is drawn from the light's position to a point on the direction vector.
+     * The length of the direction arrow is configurable.
+     * The function also draws optional rays from the light's position in the direction of the light.
+     * The number of rays is configurable.
+     * The function returns true if the light was changed, false otherwise.
+     */
     static bool DrawDirectionalLight(ScenePhysicsWorld::WorldLighting& light, const Camera3D& camera, const SceneEditorLayer::ViewportRect& rect, ImDrawList* dl, const SceneEditorLayer::LightGizmoConfig& cfg)
     {
         ImGuizmo::PushID(cfg.GizmoId);
@@ -1489,6 +2104,13 @@ namespace Motion
         return changed;
     }
 
+    /**
+     * @brief Render the scene viewport.
+     * @details This function renders the scene viewport. It draws the scene using the
+     *          current camera and frame buffer. It also renders the gizmos and
+     *          handles the input for the gizmos.
+     * @param context The scene context.
+     */
     void SceneEditorLayer::RenderViewport(SceneContext& context)
     {
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {0, 0});
@@ -1559,6 +2181,76 @@ namespace Motion
                     TagComponent* tag        = context.Entities->Registry.try_get<TagComponent>(context.Entities->SelectedEntity);
                     const bool isActive      = tag ? tag->IsActive : false;
 
+                    if (ImGui::BeginPopup("ViewportContextMenu", ImGuiPopupFlags_NoOpenOverItems | ImGuiPopupFlags_MouseButtonMiddle))
+                    {
+                        if(ImGui::MenuItem("Delete"))
+                        {
+                            m_Scene->RemoveEntity(context.Entities->SelectedEntity);
+                            ImGui::CloseCurrentPopup();
+                        }
+
+                        if(ImGui::MenuItem("Duplicate"))
+                        {
+                            //TODO: Add the entitiy duplication logic to Scene Class
+                            ImGui::CloseCurrentPopup();
+                        }
+
+                        if(tag->IsActive)
+                        {
+                            ImGui::Separator();
+                            if(ImGui::MenuItem("Hide"))
+                            {
+                                tag->IsActive = false;
+                                ImGui::CloseCurrentPopup();
+                            }
+                        }
+
+                        ImGui::Separator();
+
+                        if (std::find(m_SimulationWatchList.begin(), m_SimulationWatchList.end(), context.Entities->SelectedEntity) == m_SimulationWatchList.end())
+                        {
+                            if(ImGui::MenuItem("Add To Watchlist"))
+                            {
+                                m_SimulationWatchList.push_back(context.Entities->SelectedEntity);
+                                ImGui::CloseCurrentPopup();
+                            }
+                        }
+                        else
+                        {
+                            if(ImGui::MenuItem("Remove From Watchlist"))
+                            {
+                                m_SimulationWatchList.erase(std::remove(m_SimulationWatchList.begin(), m_SimulationWatchList.end(), context.Entities->SelectedEntity), m_SimulationWatchList.end());
+                                ImGui::CloseCurrentPopup();
+                            }
+                        }
+
+                        ImGui::Separator();
+
+                        if(ImGui::MenuItem("Open In Material Editor"))
+                        {
+                            if (auto* material = context.Entities->Registry.try_get<MaterialComponent>(context.Entities->SelectedEntity))
+                            {
+                                static bool isEditorOpen = true;
+                                ImGui::SetNextWindowSize(ImVec2(600.0f, 400.0f), ImGuiCond_FirstUseEver);
+                                std::string w = std::string("Material Editor##") + std::to_string((uintptr_t)material->ID);
+                                if (ImGui::Begin(w.c_str(), &isEditorOpen, ImGuiWindowFlags_NoDocking))
+                                {
+                                    if (ImGui::BeginChild("##inspector-area", ImVec2(0.0f, 0.0f)))
+                                    {
+                                        if (material->MaterialPointer)
+                                            DrawMaterialUI(material->MaterialPointer);
+                                        else
+                                            ImGui::TextDisabled("No material assigned");
+                                        ImGui::EndChild();
+                                    }
+                                    ImGui::End();
+                                }
+                            }
+                        }
+
+                        ImGui::EndPopup();
+                    }
+
                     if (isActive && hasTransform)
                     {
                         ImGuizmo::PushID(1);
@@ -1616,4 +2308,6 @@ namespace Motion
         ImGui::End();
         ImGui::PopStyleVar();
     }
+
+
 }

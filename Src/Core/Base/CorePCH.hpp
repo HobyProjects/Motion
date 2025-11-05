@@ -40,6 +40,7 @@
 
 #include <stb/stb_image.h>
 #include <stb/stb_image_resize2.h>
+#include <stb/stb_image_write.h>
 
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
@@ -109,6 +110,7 @@
 #include "RenderCommand.hpp"
 #include "CommandQueue.hpp"
 #include "Renderer.hpp"
+#include "PlotExporter.hpp"
 
 //Renderer - OpenGL
 #include "GL_Debug.hpp"
@@ -118,13 +120,14 @@
 #include "GL_Texture.hpp"
 #include "GL_Arrays.hpp"
 #include "GLFW_GL_Context.hpp"
+#include "GL_PlotExporter.hpp"
 
 //Window
 #include "Window.hpp"
 #include "GLFW_Window.hpp"
 #include "WindowThread.hpp"
 
-//User Interface Initializer
+//User Interface
 #include "UI.hpp"
 #include "Controls.hpp"
 

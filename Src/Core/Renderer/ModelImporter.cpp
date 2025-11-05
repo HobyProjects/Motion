@@ -104,6 +104,12 @@ namespace Motion
             v.Normal = glm::normalize(v.Normal);
     }
 
+    /**
+     * @brief Converts a string into a hash string in hexadecimal format.
+     * @param input The input string to be hashed.
+     * @return A string containing the hash value of the input string in hexadecimal format.
+     * @example HashString("Hello World") returns "6597fabe95561fb93".
+     */
     static std::string HashString(const std::string& input)
     {
         return std::format("{:X}", std::hash<std::string>{}(input));
@@ -117,6 +123,11 @@ namespace Motion
             const std::vector<uint32_t>& Indices;
         };
 
+        /**
+         * @brief Retrieves the number of faces (triangles/quads) of a mesh.
+         * @param context The MikkTSpace context.
+         * @return The number of faces in the mesh.
+         */
         static std::int32_t GetNumFaces(const SMikkTSpaceContext* context)
         {
             auto* adapter = static_cast<MeshMikkTSpaceAdapter*>(context->m_pUserData);
@@ -125,6 +136,13 @@ namespace Motion
 
         static std::int32_t GetNumVerticesOfFace(const SMikkTSpaceContext*, std::int32_t) { return 3; }
 
+        /**
+         * Retrieves the position of a vertex in a face of a mesh.
+         * @param context The MikkTSpace context.
+         * @param pos The position of the vertex as a 3-element float array.
+         * @param face The index of the face that the vertex belongs to.
+         * @param vert The index of the vertex in the face.
+         */
         static void GetPosition(const SMikkTSpaceContext* context, float pos[3], std::int32_t face, std::int32_t vert)
         {
             auto* adapter = static_cast<MeshMikkTSpaceAdapter*>(context->m_pUserData);
@@ -133,6 +151,14 @@ namespace Motion
             pos[0] = p.x; pos[1] = p.y; pos[2] = p.z;
         }
 
+        /**
+         * @brief Retrieves the normal vector of a vertex in a face of a mesh.
+         *
+         * @param context The MikkTSpace context.
+         * @param norm The normal vector as an array of three floats.
+         * @param face The index of the face in the mesh.
+         * @param vert The index of the vertex in the face.
+         */
         static void GetNormal(const SMikkTSpaceContext* context, float norm[3], std::int32_t face, std::int32_t vert)
         {
             auto* adapter = static_cast<MeshMikkTSpaceAdapter*>(context->m_pUserData);
@@ -141,6 +167,14 @@ namespace Motion
             norm[0] = n.x; norm[1] = n.y; norm[2] = n.z;
         }
 
+        /**
+         * @brief Gets the texture coordinates of a vertex in a face.
+         *
+         * @param context The MikkTSpace context.
+         * @param uv The texture coordinates of the vertex.
+         * @param face The index of the face.
+         * @param vert The index of the vertex in the face.
+         */
         static void GetTexCoord(const SMikkTSpaceContext* context, float uv[2], std::int32_t face, std::int32_t vert)
         {
             auto* adapter       = static_cast<MeshMikkTSpaceAdapter*>(context->m_pUserData);
@@ -149,6 +183,19 @@ namespace Motion
             uv[0] = t.x; uv[1]  = t.y;
         }
 
+        /**
+         * @brief Sets the tangent space of a vertex using the given data.
+         *
+         * This function is used by the MikkTSpace library to set the tangent space of a vertex.
+         * It takes the vertex index, the tangent data and the sign of the tangent data as parameters.
+         * The tangent data is an array of 4 floats and the sign is a float.
+         * The function sets the tangent space of the given vertex to the given tangent data and sign.
+         * @param context The MikkTSpace context.
+         * @param tangent The tangent data as an array of 4 floats.
+         * @param sign The sign of the tangent data as a float.
+         * @param face The index of the face that the vertex belongs to.
+         * @param vert The index of the vertex in the face.
+         */
         static void SetTSpaceBasic(const SMikkTSpaceContext* context, const float tangent[4], float sign, std::int32_t face, std::int32_t vert)
         {
             auto* adapter = static_cast<MeshMikkTSpaceAdapter*>(context->m_pUserData);
@@ -161,6 +208,13 @@ namespace Motion
 
         }
 
+        /**
+         * Generates tangent spaces for the given mesh.
+         * This function uses the MikkTSpace library to generate the tangent spaces.
+         * The generated tangent spaces are stored in the given mesh's vertices.
+         * @param vertices The mesh's vertices where the tangent spaces will be stored.
+         * @param indices The mesh's indices.
+         */
         inline void GenerateTangents(std::vector<Vertex>& vertices, const std::vector<std::uint32_t>& indices)
         {
             MeshMikkTSpaceAdapter adapter{ vertices, indices };
@@ -181,6 +235,14 @@ namespace Motion
         }
     }
 
+    /**
+     * @brief Import a 3D model from a file and store its contents in the output results.
+     * @param input The path to the 3D model file.
+     * @param output The path to the directory where the model should be copied to (if a copy is needed).
+     * @param outResults The output results object which will be populated with the contents of the model.
+     * @return True if the model was imported successfully, false otherwise.
+     * @throws std::exception If an exception occurs while importing the model, this is caught and re-thrown as a std::exception with a descriptive error message.
+     */
     static bool Import(const std::filesystem::path& input, const std::filesystem::path& output, std::shared_ptr<ImportedResults>& outResults)
     {
         try
@@ -188,6 +250,20 @@ namespace Motion
             std::filesystem::path uniqueOutput = input;
             outResults->Name = input.filename().stem().string();
             outResults->FilePath = input;
+
+            if(!output.empty())
+            {
+                const std::string modelFileName = input.filename().string();
+                const std::string modelFolderName = input.filename().stem().string();
+
+                uniqueOutput = GetAvailableCopyName(output / modelFolderName) / modelFileName;
+                if(!std::filesystem::exists(uniqueOutput))
+                    std::filesystem::create_directories(uniqueOutput.parent_path());
+                std::filesystem::copy(input, uniqueOutput, std::filesystem::copy_options::recursive | std::filesystem::copy_options::overwrite_existing);
+
+                outResults->Name = uniqueOutput.filename().stem().string();
+                outResults->FilePath = uniqueOutput;
+            }
 
             Assimp::Importer importer;
             constexpr std::uint32_t flags =
@@ -311,8 +387,6 @@ namespace Motion
             };
 
             traverse(scene->mRootNode);
-
-            // Calculate initial model bounds
             glm::vec3 modelMin( FLT_MAX );
             glm::vec3 modelMax(-FLT_MAX);
 
@@ -343,7 +417,6 @@ namespace Motion
             const float     targetSize   = 1.0f;              
             const float     uniformScale = targetSize / maxExtent;
 
-            // Normalize vertices and recalculate bounds
             glm::vec3 newModelMin( (std::numeric_limits<float>::max)());
             glm::vec3 newModelMax(-(std::numeric_limits<float>::max)());
 
@@ -351,23 +424,18 @@ namespace Motion
             {
                 auto& mesh  = kv.second;
                 auto& verts = mesh.Vertices;
-
-                // Initialize mesh bounds correctly
                 glm::vec3 mn( (std::numeric_limits<float>::max)());
                 glm::vec3 mx(-(std::numeric_limits<float>::max)());
 
                 for (auto& v : verts)
                 {
-                    // Transform and normalize
                     v.Position = (v.Position - modelCenter) * uniformScale;
                     v.Normal = glm::normalize(v.Normal);
 
-                    // FIXED: Use std::min for minimum bounds
                     mn.x = std::min<float>(mn.x, v.Position.x);
                     mn.y = std::min<float>(mn.y, v.Position.y);
                     mn.z = std::min<float>(mn.z, v.Position.z);
 
-                    // FIXED: Use std::max for maximum bounds
                     mx.x = std::max<float>(mx.x, v.Position.x);
                     mx.y = std::max<float>(mx.y, v.Position.y);
                     mx.z = std::max<float>(mx.z, v.Position.z);
@@ -376,7 +444,6 @@ namespace Motion
                 mesh.MIN = mn;
                 mesh.MAX = mx;
 
-                // Update global model bounds
                 newModelMin.x = std::min<float>(newModelMin.x, mn.x);
                 newModelMin.y = std::min<float>(newModelMin.y, mn.y);
                 newModelMin.z = std::min<float>(newModelMin.z, mn.z);

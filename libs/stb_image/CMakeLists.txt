@@ -7,6 +7,7 @@ add_library(
     STATIC
     stb/stb_image.h
     stb/stb_image_resize2.h
+    stb/stb_image_write.h
     src/stb_image.cpp
 )
 
@@ -44,6 +45,7 @@ set(
     STB_IMAGE_INSTALL_HEADERS
     stb/stb_image.h
     stb/stb_image_resize2.h
+    stb/stb_image_write.h
 )
 
 install(

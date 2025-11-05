@@ -23,6 +23,7 @@ namespace Motion
     private:
         glm::vec2               m_CurrentViewportSize{ 1280.0f, 720.0f };
         std::shared_ptr<Scene>  m_Scene{ nullptr };
+        std::string             m_SceneName{};
         std::filesystem::path   m_ScenePath{};
 
         enum class AsyncOperationState
@@ -159,10 +160,10 @@ namespace Motion
         void RenderTagAndModel(SceneContext& context, entt::entity e);
         void RenderTransform(SceneContext& context, entt::entity e);
         void RenderPhysics(SceneContext& context, entt::entity e);
-        void RenderMaterialEditor(SceneContext& context, entt::entity e);
         void RenderToolbarAndSearch();
         void RenderEntityHierarchy(SceneContext& context);
         void RenderEnvironmentSettings(SceneContext& context);
+        void RenderSimulationWatchList(SceneContext& context);
 
         void DrawRigidBodyUI(RigidBodyComponent& rb);
         void DrawColliderUI(ColliderComponent& cc);
@@ -172,7 +173,9 @@ namespace Motion
 
         bool RequestEntityImport(bool showDialog, bool shouldExport, std::filesystem::path path = {});
 
-        std::vector<std::shared_ptr<BaseMaterial>> m_BaseMaterial;
+        std::vector<std::shared_ptr<BaseMaterial>> m_BaseMaterial{};
+        std::vector<entt::entity> m_SimulationWatchList{};
+        std::shared_ptr<IPlotExporter> m_PlotExporter{ nullptr };
         char m_SearchBuf[1024] = {};
 
     public:

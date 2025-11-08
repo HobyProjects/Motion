@@ -533,8 +533,6 @@ namespace Motion
             });
 
             m_Entities.Registry.destroy(entity);
-            std::remove_if(m_Entities.EntryPoints.begin(), m_Entities.EntryPoints.end(),
-                [&](const entt::entity& e) { return e == root; });
         }
     }
 

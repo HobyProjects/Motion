@@ -255,7 +255,7 @@ namespace Motion
         style.WindowBorderSize   = 1.0f;
         style.ChildBorderSize    = 1.0f;
         style.PopupBorderSize    = 1.0f;
-        style.FrameBorderSize    = 0.8f;  
+        style.FrameBorderSize    = 0.0f;  
         style.TabBorderSize      = 0.0f;
         style.TabBarBorderSize   = 0.0f;
         

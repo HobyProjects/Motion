@@ -101,7 +101,7 @@ namespace Motion
     /// Configuration for property grid layout
     struct GridSpec
     {
-        float labelWidth = 160.0f;
+        float labelWidth = 200.0f;
         float innerSpacing = 0.0f;
         bool  twoColumns = true;
     };

@@ -7,29 +7,30 @@ namespace Motion
 {
     namespace PhysicsUI
     {
-        inline float GetSpeed(const glm::vec3& velocity)
+
+        static float GetSpeed(const glm::vec3& velocity)
         {
             return glm::length(velocity);
         }
         
-        inline glm::vec3 GetDirection(const glm::vec3& velocity)
+        static glm::vec3 GetDirection(const glm::vec3& velocity)
         {
             float speed = GetSpeed(velocity);
             if (speed < 0.0001f) return glm::vec3(0.0f);
             return velocity / speed;
         }
         
-        inline float RadPerSecToRPM(float radPerSec)
+        static float RadPerSecToRPM(float radPerSec)
         {
             return radPerSec * (60.0f / (2.0f * glm::pi<float>()));
         }
         
-        inline float MsToKmh(float ms)
+        static float MsToKmh(float ms)
         {
             return ms * 3.6f;
         }
         
-        inline const char* GetBodyTypeDescription(BodyType type)
+        static const char* GetBodyTypeDescription(BodyType type)
         {
             switch (type)
             {
@@ -39,7 +40,7 @@ namespace Motion
             }
         }
         
-        inline void StatusIndicator(const char* label, bool active, const char* tooltip = nullptr)
+        static void StatusIndicator(const char* label, bool active, const char* tooltip = nullptr)
         {
             ImVec4 color = active ? ImVec4(0.1f, 0.9f, 0.3f, 1.0f) : ImVec4(0.6f, 0.6f, 0.6f, 1.0f);
             ImGui::TextColored(color, "%s %s", active ? "●" : "○", label);
@@ -183,6 +184,30 @@ namespace Motion
      */
     void SceneEditorLayer::HandleSceneCreation()
     {
+        const ImVec4 CARD_BG        = ImVec4(255.0f/255.0f, 255.0f/255.0f, 255.0f/255.0f, 0.98f);
+        const ImVec4 CONTROL_BG     = ImVec4(251.0f/255.0f, 251.0f/255.0f, 251.0f/255.0f, 1.0f);
+        const ImVec4 HOVER_BG       = ImVec4(246.0f/255.0f, 246.0f/255.0f, 246.0f/255.0f, 1.0f);
+        const ImVec4 TEXT_PRIMARY   = ImVec4(32.0f/255.0f, 33.0f/255.0f, 36.0f/255.0f, 1.0f);
+        const ImVec4 TEXT_SECONDARY = ImVec4(96.0f/255.0f, 94.0f/255.0f, 92.0f/255.0f, 1.0f);
+        const ImVec4 TEXT_DISABLED  = ImVec4(161.0f/255.0f, 159.0f/255.0f, 157.0f/255.0f, 1.0f);
+        const ImVec4 BORDER         = ImVec4(229.0f/255.0f, 229.0f/255.0f, 229.0f/255.0f, 0.50f);
+        const ImVec4 SUCCESS        = ImVec4(16.0f/255.0f, 137.0f/255.0f, 62.0f/255.0f, 1.0f);
+        const ImVec4 WARNING        = ImVec4(255.0f/255.0f, 185.0f/255.0f, 0.0f/255.0f, 1.0f);
+        const ImVec4 ERROR_COLOR    = ImVec4(232.0f/255.0f, 17.0f/255.0f, 35.0f/255.0f, 1.0f);
+        
+        ImVec4 ACCENT = ImGui::GetStyleColorVec4(ImGuiCol_CheckMark);
+        auto MixColors = [](const ImVec4& a, const ImVec4& b, float t) -> ImVec4 {
+            return ImVec4(
+                a.x + (b.x - a.x) * t,
+                a.y + (b.y - a.y) * t,
+                a.z + (b.z - a.z) * t,
+                a.w + (b.w - a.w) * t
+            );
+        };
+        
+        const ImVec4 ACCENT_HOVER = MixColors(ACCENT, ImVec4(1, 1, 1, 1), 0.12f);
+        const ImVec4 ACCENT_ACTIVE = MixColors(ACCENT, ImVec4(0, 0, 0, 1), 0.15f);
+
         if (m_SceneCreationRequest.ShowDialog)
         {
             ImGui::OpenPopup("Create New Scene");
@@ -192,9 +217,14 @@ namespace Motion
         ImVec2 center = ImGui::GetMainViewport()->GetCenter();
         ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
         
-        if (ImGui::BeginPopupModal("Create New Scene", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(20, 20));
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(8, 12));
+        
+        if (ImGui::BeginPopupModal("Create New Scene", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoScrollbar))
         {
             std::vector<std::string> errors;
+            std::vector<std::string> warnings;
+            
             auto trim = [](std::string& s)
             {
                 const auto wsfront = s.find_first_not_of(" \t\r\n");
@@ -205,105 +235,297 @@ namespace Motion
 
             auto has_invalid_win_chars = [](const std::string& s)
             {
-#ifdef MOTION_PLATFORM_WINDOWS
+    #ifdef MOTION_PLATFORM_WINDOWS
                 static const char* bad = "<>:\"/\\|?*";
                 return s.find_first_of(bad) != std::string::npos;
-#else
+    #else
                 (void)s;
                 return false;
-#endif
+    #endif
             };
 
-            ImGui::Text("Enter scene details:");
+            ImGui::PushStyleColor(ImGuiCol_Text, ACCENT);
+            ImGui::Text("Create a New Physics Scene");
+            ImGui::PopStyleColor();
+            
+            ImGui::Spacing();
+            ImGui::PushStyleColor(ImGuiCol_Text, TEXT_SECONDARY);
+            ImGui::TextWrapped("Set up a new scene to start building and simulating your physics experiments.");
+            ImGui::PopStyleColor();
+            
             ImGui::Spacing();
             ImGui::Separator();
             ImGui::Spacing();
-
-            ImGui::Text("Scene Name:");
-            ImGui::SetNextItemWidth(360.0f);
-            ImGui::InputText("##scenename", m_SceneCreationRequest.Name, sizeof(m_SceneCreationRequest.Name));
-            
             ImGui::Spacing();
 
+            ImGui::PushStyleColor(ImGuiCol_Text, TEXT_PRIMARY);
+            ImGui::AlignTextToFramePadding();
+            ImGui::Text("Scene Name:");
+            ImGui::PopStyleColor();
+            ImGui::SameLine();
+            HelpMarker("Choose a descriptive name for your scene.\n\n"
+                    "Good examples:\n"
+                    "• 'Projectile Motion Experiment'\n"
+                    "• 'Collision Test Scene'\n"
+                    "• 'Pendulum Simulation'\n\n"
+                    "The name should only contain letters, numbers,\n"
+                    "spaces, hyphens, and underscores.");
+            
+            ImGui::SetNextItemWidth(450.0f);
+            std::string name = m_SceneCreationRequest.Name;
+            trim(name);
+            bool nameHasError = false;
+            
+            if (name.empty() || has_invalid_win_chars(name))
+            {
+                nameHasError = true;
+                ImVec4 errorBg = MixColors(ERROR_COLOR, CONTROL_BG, 0.90f);
+                ImGui::PushStyleColor(ImGuiCol_FrameBg, errorBg);
+                ImGui::PushStyleColor(ImGuiCol_Border, MixColors(ERROR_COLOR, BORDER, 0.30f));
+            }
+            
+            ImGui::InputTextWithHint("##scenename", "Enter scene name...", 
+                                    m_SceneCreationRequest.Name, 
+                                    sizeof(m_SceneCreationRequest.Name));
+            
+            if (nameHasError)
+                ImGui::PopStyleColor(2);
+            
+            ImGui::SameLine();
+            int nameLen = (int)strlen(m_SceneCreationRequest.Name);
+            ImGui::PushStyleColor(ImGuiCol_Text, TEXT_DISABLED);
+            ImGui::Text("(%d chars)", nameLen);
+            ImGui::PopStyleColor();
+            
+            ImGui::Spacing();
+            ImGui::Spacing();
+
+            ImGui::PushStyleColor(ImGuiCol_Text, TEXT_PRIMARY);
+            ImGui::AlignTextToFramePadding();
             ImGui::Text("Save Location:");
+            ImGui::PopStyleColor();
+            ImGui::SameLine();
+            HelpMarker("Choose where to save your scene files.\n\n"
+                    "The scene folder will contain:\n"
+                    "• Scene data file (.mes)\n"
+                    "• Assets folder (for textures, models, etc.)\n"
+                    "• Temporary files folder\n\n"
+                    "Make sure you have write permissions for the selected location.");
+            
             std::string pathStr = m_SceneCreationRequest.FilePath.string();
-            ImGui::SetNextItemWidth(300.0f);
-            if (ImGui::InputText("##path", &pathStr, ImGuiInputTextFlags_ReadOnly))
+            bool pathHasError = m_SceneCreationRequest.FilePath.empty() || 
+                                !std::filesystem::exists(m_SceneCreationRequest.FilePath);
+            
+            if (pathHasError)
+            {
+                ImVec4 errorBg = MixColors(ERROR_COLOR, CONTROL_BG, 0.90f);
+                ImGui::PushStyleColor(ImGuiCol_FrameBg, errorBg);
+                ImGui::PushStyleColor(ImGuiCol_Border, MixColors(ERROR_COLOR, BORDER, 0.30f));
+            }
+            
+            ImGui::SetNextItemWidth(340.0f);
+            if (ImGui::InputTextWithHint("##path", "Click Browse to select a folder...", 
+                                        &pathStr, ImGuiInputTextFlags_ReadOnly))
             {
                 m_SceneCreationRequest.FilePath = std::filesystem::path(pathStr);
             }
             
+            if (pathHasError)
+                ImGui::PopStyleColor(2);
+            
             ImGui::SameLine();
-            if (ImGui::Button("Browse..."))
+            ImGui::PushStyleColor(ImGuiCol_Button, ACCENT);
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ACCENT_HOVER);
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ACCENT_ACTIVE);
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1, 1, 1, 1));
+            
+            if (ImGui::Button("Browse", ImVec2(120, 0)))
             {
                 DialogBoxes::InitializeCOM();
-                if (auto folder = DialogBoxes::SelectFolderDialog(); !folder.empty())
+                if (auto folder = DialogBoxes::SelectFolderDialog(L"Select where to save your scene"); !folder.empty())
                 {
                     m_SceneCreationRequest.FilePath = folder;
                 }
                 DialogBoxes::UninitializeCOM();
             }
+            ImGui::PopStyleColor(4);
 
             ImGui::Spacing();
-
-            std::string name = m_SceneCreationRequest.Name;
-            trim(name);
+            ImGui::Spacing();
 
             if (name.empty())
-                errors.emplace_back("Name cannot be empty.");
+            {
+                errors.emplace_back("Scene name is required");
+            }
             else 
             {
                 if (has_invalid_win_chars(name))
-                    errors.emplace_back("Name contains invalid characters (< > : \" / \\ | ? *).");
+                {
+                    errors.emplace_back("Name contains invalid characters: < > : \" / \\ | ? *");
+                }
 
-#ifdef MOTION_PLATFORM_WINDOWS
+    #ifdef MOTION_PLATFORM_WINDOWS
                 if (!name.empty() && (name.back() == ' ' || name.back() == '.'))
-                    errors.emplace_back("Name cannot end with a space or period on Windows.");
-#endif
+                {
+                    errors.emplace_back("Name cannot end with a space or period on Windows");
+                }
+    #endif
+
+                // Check if scene already exists
+                if (!m_SceneCreationRequest.FilePath.empty())
+                {
+                    auto potentialPath = m_SceneCreationRequest.FilePath / name;
+                    if (std::filesystem::exists(potentialPath))
+                    {
+                        warnings.emplace_back("A folder with this name already exists at this location");
+                    }
+                }
             }
 
             if (m_SceneCreationRequest.FilePath.empty())
-                errors.emplace_back("File path cannot be empty.");
+            {
+                errors.emplace_back("Please select a save location");
+            }
             else if (!std::filesystem::exists(m_SceneCreationRequest.FilePath))
-                errors.emplace_back("Parent directory does not exist.");
+            {
+                errors.emplace_back("The selected folder does not exist or is not accessible");
+            }
+            else if (!std::filesystem::is_directory(m_SceneCreationRequest.FilePath))
+            {
+                errors.emplace_back("The selected path is not a valid folder");
+            }
 
+            // Preview the final path
+            if (errors.empty())
+            {
+                ImGui::Spacing();
+                ImVec4 successBg = MixColors(SUCCESS, CARD_BG, 0.93f);
+                ImGui::PushStyleColor(ImGuiCol_ChildBg, successBg);
+                ImGui::PushStyleColor(ImGuiCol_Border, MixColors(SUCCESS, BORDER, 0.40f));
+                ImGui::BeginChild("PathPreview", ImVec2(450, 65), ImGuiChildFlags_AutoResizeX | ImGuiChildFlags_AutoResizeY, ImGuiWindowFlags_None);
+                
+                ImGui::PushStyleColor(ImGuiCol_Text, MixColors(SUCCESS, TEXT_PRIMARY, 0.30f));
+                ImGui::Text("Scene will be created at:");
+                ImGui::PopStyleColor();
+                
+                ImGui::Spacing();
+                auto fullPath = m_SceneCreationRequest.FilePath / name;
+                ImGui::PushStyleColor(ImGuiCol_Text, TEXT_SECONDARY);
+                ImGui::TextWrapped("%s", fullPath.string().c_str());
+                ImGui::PopStyleColor();
+                
+                ImGui::EndChild();
+                ImGui::PopStyleColor(2);
+                ImGui::Spacing();
+            }
+
+            // Display warnings
+            if (!warnings.empty())
+            {
+                ImGui::Separator();
+                ImGui::Spacing();
+                
+                ImVec4 warningBg = MixColors(WARNING, CARD_BG, 0.95f);
+                ImGui::PushStyleColor(ImGuiCol_ChildBg, warningBg);
+                ImGui::PushStyleColor(ImGuiCol_Border, MixColors(WARNING, BORDER, 0.40f));
+                ImGui::BeginChild("WarningList", ImVec2(450, 0), ImGuiChildFlags_AutoResizeX | ImGuiChildFlags_AutoResizeY, ImGuiWindowFlags_None);
+                
+                ImGui::PushStyleColor(ImGuiCol_Text, MixColors(WARNING, TEXT_PRIMARY, 0.20f));
+                for (const auto& warning : warnings)
+                {
+                    ImGui::TextWrapped("%s", warning.c_str());
+                }
+                ImGui::PopStyleColor();
+                
+                ImGui::EndChild();
+                ImGui::PopStyleColor(2);
+                ImGui::Spacing();
+            }
+
+            // Display errors
             if (!errors.empty())
             {
                 ImGui::Separator();
-                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.9f, 0.3f, 0.3f, 1.0f));
-                for (const auto& e : errors)
-                    ImGui::TextWrapped("%s", e.c_str());
+                ImGui::Spacing();
+                
+                ImVec4 errorBg = MixColors(ERROR_COLOR, CARD_BG, 0.95f);
+                ImGui::PushStyleColor(ImGuiCol_ChildBg, errorBg);
+                ImGui::PushStyleColor(ImGuiCol_Border, MixColors(ERROR_COLOR, BORDER, 0.40f));
+                ImGui::BeginChild("ErrorList", ImVec2(450, 0), ImGuiChildFlags_AutoResizeX | ImGuiChildFlags_AutoResizeY, ImGuiWindowFlags_None);
+                
+                ImGui::PushStyleColor(ImGuiCol_Text, MixColors(ERROR_COLOR, TEXT_PRIMARY, 0.20f));
+                ImGui::TextWrapped("Please fix the following issues:");
                 ImGui::PopStyleColor();
+                
+                ImGui::Spacing();
+                ImGui::Indent(10.0f);
+                
+                ImGui::PushStyleColor(ImGuiCol_Text, MixColors(ERROR_COLOR, TEXT_PRIMARY, 0.30f));
+                for (const auto& error : errors)
+                {
+                    ImGui::BulletText("%s", error.c_str());
+                }
+                ImGui::PopStyleColor();
+                
+                ImGui::Unindent(10.0f);
+                ImGui::Spacing();
+                
+                ImGui::EndChild();
+                ImGui::PopStyleColor(2);
+                
+                ImGui::Spacing();
             }
 
             ImGui::Spacing();
             ImGui::Separator();
             ImGui::Spacing();
 
+            // Action Buttons
             bool canCreate = errors.empty();
+            ImGui::SetCursorPosX((ImGui::GetWindowWidth() - 270) * 0.5f);
             
-            if (!canCreate) ImGui::BeginDisabled();
-            if (ImGui::Button("Create", ImVec2(120, 0)))
+            if (!canCreate) 
+            {
+                ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 0.5f);
+                ImGui::BeginDisabled();
+            }
+        
+            ImVec4 successHover = MixColors(SUCCESS, ImVec4(1, 1, 1, 1), 0.12f);
+            ImVec4 successActive = MixColors(SUCCESS, ImVec4(0, 0, 0, 1), 0.15f);
+            ImGui::PushStyleColor(ImGuiCol_Button, SUCCESS);
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, successHover);
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, successActive);
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1, 1, 1, 1)); 
+            
+            if (ImGui::Button("Create Scene", ImVec2(140, 35)))
             {
                 std::string sceneName = name;
                 auto scenePath = m_SceneCreationRequest.FilePath / sceneName;
-                
                 m_SceneCreationOp.Start(LOADER::Submit([sceneName, scenePath]() -> std::shared_ptr<Scene>
                 {
-                    SceneSpecification spec;
-                    spec.ID = UniqueIdentity::GetUniqueID();
-                    spec.Name = sceneName;
-                    spec.SavedPath = scenePath;
-                    auto scene = std::make_shared<Scene>(spec);
-                    
-                    if (!scene)
-                        throw std::runtime_error("Failed to create scene object");
+                    try
+                    {
+                        SceneSpecification spec;
+                        spec.ID = UniqueIdentity::GetUniqueID();
+                        spec.Name = sceneName;
+                        spec.SavedPath = scenePath;
+                        auto scene = std::make_shared<Scene>(spec);
+                        
+                        if (!scene)
+                            throw std::runtime_error("Failed to create scene object");
 
-                    std::filesystem::create_directories(scenePath);
-                    std::filesystem::create_directory(scenePath / "Assets");
-                    std::filesystem::create_directory(scenePath / ".motion_temp");
-                    
-                    return scene;
+                        // Create directory structure
+                        std::filesystem::create_directories(scenePath);
+                        std::filesystem::create_directory(scenePath / "Assets");
+                        std::filesystem::create_directory(scenePath / ".motion_temp");
+                        
+                        return scene;
+                    }
+                    catch (const std::exception& e)
+                    {
+                        MOTION_CORE_ERROR("Scene creation error: {}", e.what());
+                        throw;
+                    }
                 }));
 
                 m_ScenePath = scenePath;
@@ -311,18 +533,42 @@ namespace Motion
                 m_SceneCreationRequest.Reset();
                 ImGui::CloseCurrentPopup();
             }
-            if (!canCreate) ImGui::EndDisabled();
+            
+            ImGui::PopStyleColor(4);
+            
+            if (!canCreate) 
+            {
+                ImGui::EndDisabled();
+                ImGui::PopStyleVar();
+            }
+            
+            if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled) && !canCreate)
+            {
+                ImGui::BeginTooltip();
+                ImGui::PushStyleColor(ImGuiCol_Text, ERROR_COLOR);
+                ImGui::TextWrapped("Please fix all errors before creating the scene");
+                ImGui::PopStyleColor();
+                ImGui::EndTooltip();
+            }
             
             ImGui::SameLine();
-            if (ImGui::Button("Cancel", ImVec2(120, 0)))
+            ImGui::PushStyleColor(ImGuiCol_Button, CONTROL_BG);
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, HOVER_BG);
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, MixColors(ACCENT, CONTROL_BG, 0.85f));
+            ImGui::PushStyleColor(ImGuiCol_Text, TEXT_PRIMARY);
+            
+            if (ImGui::Button("Cancel", ImVec2(120, 35)))
             {
                 m_SceneCreationRequest.Reset();
                 ImGui::CloseCurrentPopup();
             }
-
+            
+            ImGui::PopStyleColor(4);
+            ImGui::Spacing();
             ImGui::EndPopup();
         }
-
+        
+        ImGui::PopStyleVar(2);
         if (m_SceneCreationOp.IsReady())
         {
             try
@@ -331,16 +577,26 @@ namespace Motion
                 
                 if (m_Scene)
                 {
+                    // Save ImGui layout
                     ImGuiIO& io = ImGui::GetIO();
                     io.IniFilename = nullptr;
                     std::string layoutFile = std::format("{}/mes-config.ini", m_ScenePath.string());
                     ImGui::SaveIniSettingsToDisk(layoutFile.c_str());
 
+                    // Serialize the scene
                     std::string sceneName = m_SceneName;
                     std::filesystem::path savePath = m_ScenePath / std::format("{}.mes", sceneName);
-                    SceneSerializer::Serialize(m_Scene.get(), savePath);
                     
-                    MOTION_CORE_INFO("Scene created successfully: {}", m_ScenePath.string());
+                    try
+                    {
+                        SceneSerializer::Serialize(m_Scene.get(), savePath);
+                        MOTION_CORE_INFO("Scene created successfully: {}", m_ScenePath.string());
+                    }
+                    catch (const std::exception& e)
+                    {
+                        MOTION_CORE_ERROR("Failed to serialize scene: {}", e.what());
+                        ImGui::OpenPopup("SceneCreationError");
+                    }
                 }
                 else
                 {
@@ -350,8 +606,61 @@ namespace Motion
             catch (const std::exception& e)
             {
                 MOTION_CORE_ERROR("Failed to create scene: {}", e.what());
+                ImGui::OpenPopup("SceneCreationError");
             }
         }
+        
+        // Error Modal
+        ImVec2 center2 = ImGui::GetMainViewport()->GetCenter();
+        ImGui::SetNextWindowPos(center2, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(20, 20));
+        
+        if (ImGui::BeginPopupModal("SceneCreationError", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+        {
+            ImGui::PushStyleColor(ImGuiCol_Text, ERROR_COLOR);
+            ImGui::Text("Scene Creation Failed");
+            ImGui::PopStyleColor();
+            
+            ImGui::Spacing();
+            ImGui::Separator();
+            ImGui::Spacing();
+            
+            ImGui::PushStyleColor(ImGuiCol_Text, TEXT_PRIMARY);
+            ImGui::TextWrapped("An error occurred while creating the scene.");
+            ImGui::PopStyleColor();
+            
+            ImGui::Spacing();
+            
+            ImGui::PushStyleColor(ImGuiCol_Text, TEXT_SECONDARY);
+            ImGui::TextWrapped("Please check the following:");
+            ImGui::BulletText("You have write permissions for the selected folder");
+            ImGui::BulletText("There is enough disk space available");
+            ImGui::BulletText("The folder path is valid and accessible");
+            ImGui::BulletText("No other application is blocking the folder");
+            ImGui::PopStyleColor();
+            
+            ImGui::Spacing();
+            ImGui::Separator();
+            ImGui::Spacing();
+            
+            ImGui::SetCursorPosX((ImGui::GetWindowWidth() - 120) * 0.5f);
+            
+            ImGui::PushStyleColor(ImGuiCol_Button, ACCENT);
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ACCENT_HOVER);
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ACCENT_ACTIVE);
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1, 1, 1, 1));
+            
+            if (ImGui::Button("OK", ImVec2(120, 30)))
+            {
+                ImGui::CloseCurrentPopup();
+            }
+            
+            ImGui::PopStyleColor(4);
+            
+            ImGui::EndPopup();
+        }
+        
+        ImGui::PopStyleVar();
     }
 
     /**
@@ -490,6 +799,7 @@ namespace Motion
         return true;
     }
 
+
     /**
      * @brief Handles the result of an entity import operation.
      *
@@ -596,6 +906,12 @@ namespace Motion
      */
     void SceneEditorLayer::RenderLoadingOverlay()
     {
+        const ImVec4 OVERLAY_DIM    = ImVec4(0.0f, 0.0f, 0.0f, 0.50f);
+        const ImVec4 CARD_BG        = ImVec4(255.0f/255.0f, 255.0f/255.0f, 255.0f/255.0f, 0.98f);
+        const ImVec4 TEXT_PRIMARY   = ImVec4(32.0f/255.0f, 33.0f/255.0f, 36.0f/255.0f, 1.0f);
+        const ImVec4 TEXT_SECONDARY = ImVec4(96.0f/255.0f, 94.0f/255.0f, 92.0f/255.0f, 1.0f);
+        const ImVec4 BORDER         = ImVec4(229.0f/255.0f, 229.0f/255.0f, 229.0f/255.0f, 0.50f);
+        
         ImGuiViewport* viewport = ImGui::GetMainViewport();
         ImGui::SetNextWindowPos(viewport->WorkPos);
         ImGui::SetNextWindowSize(viewport->WorkSize);
@@ -604,77 +920,204 @@ namespace Motion
         ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
-        ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.0f, 0.0f, 0.0f, 0.5f));
+        ImGui::PushStyleColor(ImGuiCol_WindowBg, OVERLAY_DIM);
         
         ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
-                                 ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar |
-                                 ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoInputs;
+                                ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar |
+                                ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoInputs;
         
         if (ImGui::Begin("LoadingOverlay", nullptr, flags))
         {
             ImVec2 center = ImGui::GetMainViewport()->GetCenter();
             ImGui::SetNextWindowPos(center, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
             
-            ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(40, 40));
-            ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 16.0f);
-            ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.98f, 0.98f, 0.98f, 0.95f));
+            ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(50, 45));
+            ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 12.0f);
+            ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, 1.0f);
             
-            if (ImGui::BeginChild("LoadingContent", ImVec2(400, 200), true, 
-                                 ImGuiWindowFlags_NoScrollbar))
+            ImGui::PushStyleColor(ImGuiCol_WindowBg, CARD_BG);
+            ImGui::PushStyleColor(ImGuiCol_Border, BORDER);
+            
+            if (ImGui::BeginChild("LoadingContent", ImVec2(520, 320), true, 
+                                ImGuiWindowFlags_NoScrollbar))
             {
                 const float time = ImGui::GetTime();
-                const float radius = 30.0f;
-                const ImVec2 pos = ImGui::GetCursorScreenPos();
-                ImDrawList* draw_list = ImGui::GetWindowDrawList();
+                const float contentWidth = 520.0f;
                 
-                const int num_segments = 30;
-                const float angle_offset = time * 8.0f;
-                
-                for (int i = 0; i < num_segments; i++)
-                {
-                    const float a = ((float)i / (float)num_segments) * 2.0f * 3.14159f + angle_offset;
-                    const float alpha = 1.0f - ((float)i / (float)num_segments);
-                    const ImU32 segment_col = ImGui::GetColorU32(ImVec4(0.13f, 0.59f, 0.95f, alpha));
-                    
-                    draw_list->AddCircleFilled(
-                        ImVec2(pos.x + 200 + cosf(a) * radius, pos.y + 60 + sinf(a) * radius),
-                        3.0f, segment_col
-                    );
-                }
-                
-                ImGui::Dummy(ImVec2(0, 100));
-                
-                const char* loadingText = "Loading...";
+                // Determine what operation is in progress
+                const char* loadingTitle = "Processing";
+                const char* loadingDescription = "Please wait while the operation completes.";
+                const char* operationIcon = ICON_MD_HOURGLASS_EMPTY;
+                ImVec4 accentColor = ImGui::GetStyleColorVec4(ImGuiCol_CheckMark);
                 float elapsedTime = 0.0f;
                 
                 if (m_SceneCreationOp.State == AsyncOperationState::InProgress)
                 {
-                    loadingText = "Creating Scene...";
+                    loadingTitle = "Creating Your Scene";
+                    loadingDescription = "Setting up the scene structure, creating folders, and initializing physics simulation...";
+                    operationIcon = ICON_MD_CREATE_NEW_FOLDER;
+                    accentColor = ImVec4(16.0f/255.0f, 137.0f/255.0f, 62.0f/255.0f, 1.0f); // SUCCESS color
                     elapsedTime = m_SceneCreationOp.GetElapsedSeconds();
                 }
                 else if (m_SceneLoadOp.State == AsyncOperationState::InProgress)
                 {
-                    loadingText = "Loading Scene...";
+                    loadingTitle = "Loading Scene";
+                    loadingDescription = "Reading scene data, loading assets, and preparing the physics simulation environment...";
+                    operationIcon = ICON_MD_FOLDER_OPEN;
                     elapsedTime = m_SceneLoadOp.GetElapsedSeconds();
                 }
                 else if (m_EntityImportOp.State == AsyncOperationState::InProgress)
                 {
-                    loadingText = "Importing Model...";
+                    loadingTitle = "Importing 3D Model";
+                    loadingDescription = "Processing geometry, materials, and textures from the imported model file...";
+                    operationIcon = ICON_MD_INVENTORY_2;
+                    accentColor = ImVec4(255.0f/255.0f, 185.0f/255.0f, 0.0f/255.0f, 1.0f); // WARNING color
                     elapsedTime = m_EntityImportOp.GetElapsedSeconds();
                 }
                 
-                ImGui::SetCursorPosX((400 - ImGui::CalcTextSize(loadingText).x) * 0.5f);
-                ImGui::Text("%s", loadingText);
+                ImGui::Spacing();
+                ImGui::Spacing();
+                ImGui::Spacing();
                 
-                char timeBuffer[32];
-                snprintf(timeBuffer, sizeof(timeBuffer), "%.1f seconds", elapsedTime);
-                ImGui::SetCursorPosX((400 - ImGui::CalcTextSize(timeBuffer).x) * 0.5f);
+                // Animated Loading Spinner
+                const float radius = 38.0f;
+                const float thickness = 3.5f;
+                const ImVec2 spinnerPos = ImVec2(contentWidth * 0.5f, 90.0f);
+                ImDrawList* draw_list = ImGui::GetWindowDrawList();
+                ImVec2 windowPos = ImGui::GetCursorScreenPos();
+                
+                // Draw outer rotating arc
+                const int num_segments = 48;
+                const float angle_offset = time * 5.0f;
+                const float arc_length = 0.75f; // 75% of circle
+                
+                for (int i = 0; i < num_segments; i++)
+                {
+                    float t = (float)i / (float)num_segments;
+                    if (t > arc_length) break;
+                    
+                    const float a_start = (t * 2.0f * 3.14159f) + angle_offset;
+                    const float a_end = ((t + 0.02f) * 2.0f * 3.14159f) + angle_offset;
+                    
+                    // Gradient alpha from bright to dim
+                    const float alpha = 0.2f + (0.8f * (1.0f - t / arc_length));
+                    
+                    ImVec4 segmentColor = accentColor;
+                    segmentColor.w = alpha;
+                    const ImU32 col = ImGui::GetColorU32(segmentColor);
+                    
+                    draw_list->PathArcTo(
+                        ImVec2(windowPos.x + spinnerPos.x, windowPos.y + spinnerPos.y),
+                        radius, a_start, a_end, 6
+                    );
+                    draw_list->PathStroke(col, 0, thickness);
+                }
+                
+                // Draw inner subtle circle
+                ImVec4 innerCircleColor = accentColor;
+                innerCircleColor.w = 0.08f;
+                draw_list->AddCircleFilled(
+                    ImVec2(windowPos.x + spinnerPos.x, windowPos.y + spinnerPos.y),
+                    radius - thickness * 2, 
+                    ImGui::GetColorU32(innerCircleColor),
+                    48
+                );
+                
+                // Draw icon in center
+                ImGui::SetCursorPosY(55.0f);
+                ImGui::PushStyleColor(ImGuiCol_Text, accentColor);
+                float iconWidth = ImGui::CalcTextSize(operationIcon).x;
+                ImGui::SetCursorPosX((contentWidth - iconWidth) * 0.5f);
+                ImGui::Text("%s", operationIcon);
+                ImGui::PopStyleColor();
+                
+                ImGui::SetCursorPosY(160.0f);
+                ImGui::Spacing();
+                ImGui::Spacing();
+                
+                // Title
+                ImGui::PushStyleColor(ImGuiCol_Text, TEXT_PRIMARY);
+                float titleWidth = ImGui::CalcTextSize(loadingTitle).x;
+                ImGui::SetCursorPosX((contentWidth - titleWidth) * 0.5f);
+                ImGui::Text("%s", loadingTitle);
+                ImGui::PopStyleColor();
+                
+                ImGui::Spacing();
+                
+                // Description
+                ImGui::PushStyleColor(ImGuiCol_Text, TEXT_SECONDARY);
+                ImGui::PushTextWrapPos(ImGui::GetCursorPosX() + 440.0f);
+                ImGui::SetCursorPosX(40.0f);
+                ImGui::TextWrapped("%s", loadingDescription);
+                ImGui::PopTextWrapPos();
+                ImGui::PopStyleColor();
+                
+                ImGui::Spacing();
+                ImGui::Spacing();
+                ImGui::Spacing();
+                
+                // Separator
+                ImGui::PushStyleColor(ImGuiCol_Separator, BORDER);
+                ImGui::Separator();
+                ImGui::PopStyleColor();
+                
+                ImGui::Spacing();
+                
+                // Animated status indicator
+                int numDots = ((int)(time * 2.5f)) % 4;
+                char dots[5] = "";
+                for (int i = 0; i < numDots; i++)
+                    dots[i] = '.';
+                dots[numDots] = '\0';
+                
+                char statusText[64];
+                snprintf(statusText, sizeof(statusText), "Processing%s", dots);
+                
+                ImGui::PushStyleColor(ImGuiCol_Text, accentColor);
+                float statusWidth = ImGui::CalcTextSize(statusText).x;
+                ImGui::SetCursorPosX((contentWidth - statusWidth) * 0.5f);
+                ImGui::Text("%s", statusText);
+                ImGui::PopStyleColor();
+                
+                ImGui::Spacing();
+                
+                // Elapsed time
+                char timeBuffer[64];
+                if (elapsedTime < 60.0f)
+                {
+                    snprintf(timeBuffer, sizeof(timeBuffer), "%.1f seconds elapsed", elapsedTime);
+                }
+                else
+                {
+                    int minutes = (int)(elapsedTime / 60.0f);
+                    int seconds = (int)(elapsedTime) % 60;
+                    snprintf(timeBuffer, sizeof(timeBuffer), "%d:%02d elapsed", minutes, seconds);
+                }
+                
+                ImGui::PushStyleColor(ImGuiCol_Text, TEXT_SECONDARY);
+                float timeWidth = ImGui::CalcTextSize(timeBuffer).x;
+                ImGui::SetCursorPosX((contentWidth - timeWidth) * 0.5f);
                 ImGui::TextDisabled("%s", timeBuffer);
+                ImGui::PopStyleColor();
+                
+                ImGui::Spacing();
+                
+                // Optional: Progress hint
+                if (elapsedTime > 5.0f)
+                {
+                    ImGui::Spacing();
+                    const char* hintText = "This is taking longer than usual...";
+                    ImGui::PushStyleColor(ImGuiCol_Text, TEXT_SECONDARY);
+                    float hintWidth = ImGui::CalcTextSize(hintText).x;
+                    ImGui::SetCursorPosX((contentWidth - hintWidth) * 0.5f);
+                    ImGui::TextDisabled("%s", hintText);
+                    ImGui::PopStyleColor();
+                }
             }
             ImGui::EndChild();
             
-            ImGui::PopStyleColor();
-            ImGui::PopStyleVar(2);
+            ImGui::PopStyleColor(2);
+            ImGui::PopStyleVar(3);
         }
         ImGui::End();
         
@@ -833,9 +1276,9 @@ namespace Motion
         const float bar_w = content_max_x - content_min_x;
         const float cur_x = ImGui::GetCursorPosX();
 
-        const char* kPlay  = "Play";
-        const char* kPause = "Pause";
-        const char* kStop  = "Stop";
+        const char* kPlay  = ICON_MD_PLAY_ARROW;
+        const char* kPause = ICON_MD_PAUSE;
+        const char* kStop  = ICON_MD_STOP;
 
         const float button_h = ImGui::GetFrameHeight();
         const float pad_w   = style.FramePadding.x * 2.0f;
@@ -979,9 +1422,13 @@ namespace Motion
 
                 ImGuiID dock_main_id  = dockspace_id;
                 ImGuiID dock_right_id = ImGui::DockBuilderSplitNode(dock_main_id, ImGuiDir_Right, 0.30f, nullptr, &dock_main_id);
+                //ImGuiID dock_bottom_id = ImGui::DockBuilderSplitNode(dock_main_id, ImGuiDir_Down, 0.30f, nullptr, &dock_main_id);
+
                 ImGui::DockBuilderDockWindow("Scene Viewport",   dock_main_id);
                 ImGui::DockBuilderDockWindow("Scene Properties", dock_right_id);
-                ImGui::DockBuilderDockWindow("Simulation Watch List", dock_right_id);
+                ImGui::DockBuilderDockWindow("Physics Simulation Watchlist", dock_right_id);
+                ImGui::DockBuilderDockWindow("Statistical Analysis", dock_right_id);
+                //ImGui::DockBuilderDockWindow("Console", dock_bottom_id);
                 ImGui::DockBuilderFinish(dockspace_id);
             }
         }
@@ -1013,6 +1460,7 @@ namespace Motion
 
         RenderViewport(context);
         RenderSimulationWatchList(context);
+        RenderStatisticalAnalysisPanel(context);
     }
 
     /**
@@ -1029,10 +1477,9 @@ namespace Motion
     {
         if (!mat) return;
 
-        // Material Help Section
-        if (ImGui::CollapsingHeader("📖 What are Materials?", ImGuiTreeNodeFlags_None))
+        if (ImGui::CollapsingHeader("What are Materials?", ImGuiTreeNodeFlags_None))
         {
-            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.8f, 0.9f, 1.0f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0f, 0.0f, 1.0f, 1.0f));
             ImGui::TextWrapped(
                 "Materials control how objects look when light hits them. Think of it like "
                 "the 'skin' of your object - determining if it looks shiny like metal, rough "
@@ -1164,7 +1611,7 @@ namespace Motion
 
             // Texture explanation
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.9f, 0.9f, 0.6f, 1.0f));
-            ImGui::TextWrapped("💡 Tip: Textures add visual detail. Click slots to load images. Right-click for more options.");
+            ImGui::TextWrapped("Tip: Textures add visual detail. Click slots to load images. Right-click for more options.");
             ImGui::PopStyleColor();
             ImGui::Spacing();
 
@@ -1198,7 +1645,7 @@ namespace Motion
                 // Show help text below each slot
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.7f, 0.7f, 0.7f, 1.0f));
                 ImGui::PushTextWrapPos(ImGui::GetCursorPosX() + 150.0f);
-                ImGui::Text("ℹ %s", textures[i].Help);
+                ImGui::Text("%s", textures[i].Help);
                 ImGui::PopTextWrapPos();
                 ImGui::PopStyleColor();
                 ImGui::EndGroup();
@@ -1226,29 +1673,62 @@ namespace Motion
      */
     void SceneEditorLayer::RenderSimulationWatchList(SceneContext& context)
     {
+        const ImVec4 CARD_BG = ImVec4(255.0f/255.0f, 255.0f/255.0f, 255.0f/255.0f, 0.90f);
+        const ImVec4 CONTROL_BG = ImVec4(251.0f/255.0f, 251.0f/255.0f, 251.0f/255.0f, 1.0f);
+        const ImVec4 HOVER_BG = ImVec4(246.0f/255.0f, 246.0f/255.0f, 246.0f/255.0f, 1.0f);
+        const ImVec4 ACTIVE_BG = ImVec4(243.0f/255.0f, 243.0f/255.0f, 243.0f/255.0f, 1.0f);
+        const ImVec4 TEXT_PRIMARY = ImVec4(32.0f/255.0f, 33.0f/255.0f, 36.0f/255.0f, 1.0f);
+        const ImVec4 TEXT_SECONDARY = ImVec4(96.0f/255.0f, 94.0f/255.0f, 92.0f/255.0f, 1.0f);
+        const ImVec4 TEXT_DISABLED = ImVec4(161.0f/255.0f, 159.0f/255.0f, 157.0f/255.0f, 1.0f);
+        const ImVec4 BORDER = ImVec4(229.0f/255.0f, 229.0f/255.0f, 229.0f/255.0f, 0.50f);
+        const ImVec4 SUCCESS = ImVec4(16.0f/255.0f, 137.0f/255.0f, 62.0f/255.0f, 1.0f);
+        const ImVec4 WARNING = ImVec4(255.0f/255.0f, 185.0f/255.0f, 0.0f/255.0f, 1.0f);
+        const ImVec4 ERROR_COLOR = ImVec4(232.0f/255.0f, 17.0f/255.0f, 35.0f/255.0f, 1.0f);
+        
+        ImVec4 ACCENT = ImGui::GetStyleColorVec4(ImGuiCol_CheckMark);
+        auto MixColors = [](const ImVec4& a, const ImVec4& b, float t) -> ImVec4 {
+            return ImVec4(
+                a.x + (b.x - a.x) * t,
+                a.y + (b.y - a.y) * t,
+                a.z + (b.z - a.z) * t,
+                a.w + (b.w - a.w) * t
+            );
+        };
+        
+        const ImVec4 ACCENT_HOVER = MixColors(ACCENT, ImVec4(1, 1, 1, 1), 0.12f);
+        const ImVec4 ACCENT_ACTIVE = MixColors(ACCENT, ImVec4(0, 0, 0, 1), 0.15f);
+
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(16, 16));
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(10, 10));
+
+        ImGui::PushStyleColor(ImGuiCol_Header, HOVER_BG);
+        ImGui::PushStyleColor(ImGuiCol_HeaderHovered, MixColors(ACCENT, HOVER_BG, 0.90f));
+        ImGui::PushStyleColor(ImGuiCol_HeaderActive, MixColors(ACCENT, ACTIVE_BG, 0.85f));
+
+        ImGui::SetNextWindowSize(ImVec2(950, 820), ImGuiCond_FirstUseEver);
+        ImGui::Begin("Physics Simulation Watchlist", nullptr, ImGuiWindowFlags_MenuBar);
+
         if (!m_Scene || !context.Simulation->InSimulation || m_SimulationWatchList.empty())
+        {
+            ImGui::TextDisabled("Waiting for Simulation to Start!");
+            ImGui::TextDisabled("Make sure you're simulation watch list is not empty!");
+            ImGui::End();
+            ImGui::PopStyleColor(3);
+            ImGui::PopStyleVar(2);
             return;
-
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(12, 12));
-        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(8, 8));
-        ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.26f, 0.59f, 0.98f, 0.31f));
-        ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.26f, 0.59f, 0.98f, 0.80f));
-        ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0.26f, 0.59f, 0.98f, 1.00f));
-
-        ImGui::SetNextWindowSize(ImVec2(850, 950), ImGuiCond_FirstUseEver);
-        ImGui::Begin("Simulation Watchlist", nullptr, ImGuiWindowFlags_MenuBar);
+        }
         
         if (ImGui::BeginMenuBar())
         {
             if (ImGui::BeginMenu("Options"))
             {
-                if (ImGui::MenuItem("Clear All Plots"))
+                if (ImGui::MenuItem("Clear All Graph Data"))
                 {
                     s_EntityPlotData.clear();
                 }
-                ImGui::MenuItem("Pause Recording", nullptr, &s_PauseRecording);
+                ImGui::MenuItem("Pause Data Recording", nullptr, &s_PauseRecording);
                 ImGui::Separator();
-                if (ImGui::MenuItem("Help"))
+                if (ImGui::MenuItem("Show Help"))
                 {
                     ImGui::OpenPopup("WatchlistHelp");
                 }
@@ -1257,49 +1737,115 @@ namespace Motion
             ImGui::EndMenuBar();
         }
         
-        // Help popup
         if (ImGui::BeginPopupModal("WatchlistHelp", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
         {
-            ImGui::TextWrapped("Simulation Watchlist allows you to monitor physics objects in real-time:");
-            ImGui::BulletText("View position, rotation, and scale");
-            ImGui::BulletText("Track velocity and angular velocity over time");
-            ImGui::BulletText("Apply forces and impulses to objects");
-            ImGui::BulletText("Export plots as PNG images");
+            ImGui::PushStyleColor(ImGuiCol_Text, ACCENT);
+            ImGui::Text("Welcome to the Physics Simulation Watchlist!");
+            ImGui::PopStyleColor();
+            
             ImGui::Spacing();
-            ImGui::TextWrapped("Add objects to the watchlist by right-clicking them and selecting 'Add to Watchlist'.");
+            ImGui::Separator();
             ImGui::Spacing();
-            if (ImGui::Button("Close", ImVec2(120, 0)))
+            
+            ImGui::PushStyleColor(ImGuiCol_Text, TEXT_PRIMARY);
+            ImGui::TextWrapped("This tool helps you monitor and analyze physics objects in real-time:");
+            ImGui::PopStyleColor();
+            ImGui::Spacing();
+            
+            ImGui::PushStyleColor(ImGuiCol_Text, TEXT_SECONDARY);
+            ImGui::BulletText("Track Position & Movement: See where objects are and how they're moving");
+            ImGui::BulletText("Monitor Speed: View velocity in both m/s and km/h for easy understanding");
+            ImGui::BulletText("Analyze Rotation: Watch how fast objects spin (shown in RPM like a car engine)");
+            ImGui::BulletText("Apply Forces: Push, pull, or spin objects to test physics behavior");
+            ImGui::BulletText("Create Graphs: Visualize motion over time and export as images");
+            ImGui::PopStyleColor();
+            
+            ImGui::Spacing();
+            ImGui::Separator();
+            ImGui::Spacing();
+            
+            ImVec4 successBg = MixColors(SUCCESS, CARD_BG, 0.93f);
+            ImGui::PushStyleColor(ImGuiCol_ChildBg, successBg);
+            ImGui::PushStyleColor(ImGuiCol_Border, MixColors(SUCCESS, BORDER, 0.40f));
+            ImGui::BeginChild("HelpTip", ImVec2(0, 50), true);
+            
+            ImGui::PushStyleColor(ImGuiCol_Text, MixColors(SUCCESS, TEXT_PRIMARY, 0.30f));
+            ImGui::TextWrapped("%s Getting Started: Right-click any object in your scene and select 'Add to Watchlist' to begin monitoring it.", ICON_MD_LIGHTBULB);
+            ImGui::PopStyleColor();
+            
+            ImGui::EndChild();
+            ImGui::PopStyleColor(2);
+            
+            ImGui::Spacing();
+            
+            ImGui::PushStyleColor(ImGuiCol_Button, ACCENT);
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ACCENT_HOVER);
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ACCENT_ACTIVE);
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1, 1, 1, 1));
+            
+            if (ImGui::Button("Got it!", ImVec2(150, 0)))
                 ImGui::CloseCurrentPopup();
+            
+            ImGui::PopStyleColor(4);
             ImGui::EndPopup();
         }
         
-        // Global Settings Section
+        ImGui::PushStyleColor(ImGuiCol_Header, CONTROL_BG);
+        ImGui::PushStyleColor(ImGuiCol_HeaderHovered, HOVER_BG);
+        ImGui::PushStyleColor(ImGuiCol_HeaderActive, ACTIVE_BG);
+        
         if (ImGui::CollapsingHeader("Global Settings", ImGuiTreeNodeFlags_DefaultOpen))
         {
-            ImGui::Indent(10.0f);
+            ImGui::PopStyleColor(3);
+            ImGui::Indent(15.0f);
             
-            ImGui::Text("Plot History:");
+            ImGui::Spacing();
+            ImGui::PushStyleColor(ImGuiCol_Text, MixColors(WARNING, TEXT_PRIMARY, 0.30f));
+            ImGui::TextWrapped("Configure how the watchlist displays and records data for all objects:");
+            ImGui::PopStyleColor();
+            ImGui::Spacing();
+            ImGui::Separator();
+            ImGui::Spacing();
+            
+            ImGui::AlignTextToFramePadding();
+            ImGui::PushStyleColor(ImGuiCol_Text, TEXT_PRIMARY);
+            ImGui::Text("Graph Time Window:");
+            ImGui::PopStyleColor();
             ImGui::SameLine();
-            ImGui::SetNextItemWidth(200.0f);
+            ImGui::SetNextItemWidth(250.0f);
             ImGui::SliderFloat("##PlotHistory", &s_PlotHistory, 1.0f, 60.0f, "%.1f seconds");
             ImGui::SameLine();
-            HelpMarker("How many seconds of data to display in the graphs.\n"
-                    "Longer history = more data visible but may impact performance.");
+            HelpMarker("Controls how much historical data to show in graphs.\n\n"
+                    "• Short window (1-10s): See recent detail\n"
+                    "• Long window (30-60s): See overall patterns\n\n"
+                    "Note: Longer windows may slow down performance slightly.");
             
             ImGui::Spacing();
-            ImGui::Checkbox("Pause Recording", &s_PauseRecording);
+            ImGui::Spacing();
+            
+            ImGui::AlignTextToFramePadding();
+            ImGui::Checkbox("Freeze Data Recording", &s_PauseRecording);
             ImGui::SameLine();
-            HelpMarker("Pause data recording to freeze the current graphs.\n"
-                    "Useful for analyzing specific moments in the simulation.");
+            HelpMarker("Pause recording to freeze all graphs at the current moment.\n\n"
+                    "Useful for:\n"
+                    "• Analyzing specific events (like collisions)\n"
+                    "• Taking screenshots of interesting patterns\n"
+                    "• Comparing before/after measurements\n\n"
+                    "Click again to resume recording.");
             
-            ImGui::Unindent(10.0f);
             ImGui::Spacing();
+            ImGui::Unindent(15.0f);
+        }
+        else
+        {
+            ImGui::PopStyleColor(3);
         }
         
+        ImGui::Spacing();
         ImGui::Separator();
         ImGui::Spacing();
+        ImGui::Spacing();
 
-        // Entity List
         for (auto& e : m_SimulationWatchList)
         {
             auto* tag = context.Entities->Registry.try_get<TagComponent>(e);
@@ -1307,41 +1853,103 @@ namespace Motion
             auto& plotData = s_EntityPlotData[e];
 
             ImGui::PushID(static_cast<std::int32_t>(entt::to_integral(e)));
+
+            ImVec4 entityHeaderBg = MixColors(ACCENT, CONTROL_BG, 0.92f);
+            ImVec4 entityHeaderHover = MixColors(ACCENT, HOVER_BG, 0.85f);
+            ImVec4 entityHeaderActive = MixColors(ACCENT, ACTIVE_BG, 0.80f);
             
-            // Entity header with colored background
-            ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.2f, 0.35f, 0.5f, 0.8f));
-            bool nodeOpen = ImGui::CollapsingHeader((tag->Tag + "###watch-node").c_str(), ImGuiTreeNodeFlags_DefaultOpen);
-            ImGui::PopStyleColor();
+            ImGui::PushStyleColor(ImGuiCol_Header, entityHeaderBg);
+            ImGui::PushStyleColor(ImGuiCol_HeaderHovered, entityHeaderHover);
+            ImGui::PushStyleColor(ImGuiCol_HeaderActive, entityHeaderActive);
+            
+            bool nodeOpen = ImGui::CollapsingHeader(tag->Tag.c_str(), ImGuiTreeNodeFlags_DefaultOpen);
+            ImGui::PopStyleColor(3);
 
             if (nodeOpen)
             {
-                ImGui::Indent(15.0f);
+                ImGui::Indent(20.0f);
+                ImGui::Spacing();
                 
                 // Transform Section
                 if (auto* tr = context.Entities->Registry.try_get<TransformComponent>(e))
                 {
-                    if (ImGui::TreeNodeEx("Transform Data", ImGuiTreeNodeFlags_DefaultOpen))
+                    ImGui::PushStyleColor(ImGuiCol_Header, CONTROL_BG);
+                    ImGui::PushStyleColor(ImGuiCol_HeaderHovered, HOVER_BG);
+                    
+                    if (ImGui::TreeNodeEx(ICON_MD_PLACE " Position & Orientation", ImGuiTreeNodeFlags_DefaultOpen))
                     {
+                        ImGui::PopStyleColor(2);
+                        ImGui::Spacing();
+                        
+                        ImGui::PushStyleColor(ImGuiCol_Text, TEXT_SECONDARY);
+                        ImGui::TextWrapped("Where the object is located and how it's rotated in 3D space:");
+                        ImGui::PopStyleColor();
+                        
+                        ImGui::Spacing();
+                        ImGui::Separator();
+                        ImGui::Spacing();
+                        
                         ImGui::Columns(2, "transform_cols", false);
-                        ImGui::SetColumnWidth(0, 120);
+                        ImGui::SetColumnWidth(0, 180);
                         
-                        ImGui::Text("Position:"); ImGui::NextColumn();
-                        ImGui::Text("(%.3f, %.3f, %.3f) m", tr->Translation.x, tr->Translation.y, tr->Translation.z);
-                        ImGui::NextColumn();
-                        
-                        ImGui::Text("Rotation:"); ImGui::NextColumn();
-                        // Convert quaternion to euler angles for display
-                        glm::vec3 eulerDeg = glm::degrees(glm::eulerAngles(tr->Rotation));
-                        ImGui::Text("(%.1f°, %.1f°, %.1f°)", eulerDeg.x, eulerDeg.y, eulerDeg.z);
+                        ImGui::AlignTextToFramePadding();
+                        ImGui::PushStyleColor(ImGuiCol_Text, TEXT_PRIMARY);
+                        ImGui::Text("Location (XYZ):"); 
+                        ImGui::PopStyleColor();
                         ImGui::SameLine();
-                        ImGui::TextDisabled("(X, Y, Z)");
+                        HelpMarker("Position in meters from the world origin (0,0,0).\n\n"
+                                "• X: Left(-) / Right(+)\n"
+                                "• Y: Down(-) / Up(+)\n"
+                                "• Z: Back(-) / Forward(+)");
+                        ImGui::NextColumn();
+                        ImGui::PushStyleColor(ImGuiCol_Text, TEXT_SECONDARY);
+                        ImGui::Text("(%.3f, %.3f, %.3f) meters", tr->Translation.x, tr->Translation.y, tr->Translation.z);
+                        ImGui::PopStyleColor();
                         ImGui::NextColumn();
                         
-                        ImGui::Text("Scale:"); ImGui::NextColumn();
+                        ImGui::Spacing();
+                        
+                        ImGui::AlignTextToFramePadding();
+                        ImGui::PushStyleColor(ImGuiCol_Text, TEXT_PRIMARY);
+                        ImGui::Text("Rotation (Angles):"); 
+                        ImGui::PopStyleColor();
+                        ImGui::SameLine();
+                        HelpMarker("How much the object is rotated around each axis.\n\n"
+                                "Measured in degrees (0° to 360°).\n"
+                                "• 0°: No rotation\n"
+                                "• 90°: Quarter turn\n"
+                                "• 180°: Half turn\n"
+                                "• 360°: Full turn");
+                        ImGui::NextColumn();
+                        glm::vec3 eulerDeg = glm::degrees(glm::eulerAngles(tr->Rotation));
+                        ImGui::PushStyleColor(ImGuiCol_Text, TEXT_SECONDARY);
+                        ImGui::Text("X: %.1f°  Y: %.1f°  Z: %.1f°", eulerDeg.x, eulerDeg.y, eulerDeg.z);
+                        ImGui::PopStyleColor();
+                        ImGui::NextColumn();
+                        
+                        ImGui::Spacing();
+                        
+                        ImGui::AlignTextToFramePadding();
+                        ImGui::PushStyleColor(ImGuiCol_Text, TEXT_PRIMARY);
+                        ImGui::Text("Size (Scale):"); 
+                        ImGui::PopStyleColor();
+                        ImGui::SameLine();
+                        HelpMarker("How much the object is stretched or shrunk.\n\n"
+                                "• 1.0: Normal size\n"
+                                "• 2.0: Twice as big\n"
+                                "• 0.5: Half the size");
+                        ImGui::NextColumn();
+                        ImGui::PushStyleColor(ImGuiCol_Text, TEXT_SECONDARY);
                         ImGui::Text("(%.3f, %.3f, %.3f)", tr->Scale.x, tr->Scale.y, tr->Scale.z);
+                        ImGui::PopStyleColor();
                         
                         ImGui::Columns(1);
+                        ImGui::Spacing();
                         ImGui::TreePop();
+                    }
+                    else
+                    {
+                        ImGui::PopStyleColor(2);
                     }
                     ImGui::Spacing();
                 }
@@ -1351,15 +1959,23 @@ namespace Motion
                 {
                     if (!rb->PhysicsBody) 
                     {
-                        ImGui::TextColored(ImVec4(1.0f, 0.3f, 0.3f, 1.0f), "Physics body is null!");
-                        ImGui::Unindent(15.0f);
+                        ImGui::PushStyleColor(ImGuiCol_Text, ERROR_COLOR);
+                        ImGui::TextWrapped("Physics Error: This object doesn't have a valid physics body!");
+                        ImGui::PopStyleColor();
+                        ImGui::Unindent(20.0f);
                         ImGui::PopID();
                         continue;
                     }
 
                     // Velocity Data Section
-                    if (ImGui::TreeNodeEx("Velocity Data", ImGuiTreeNodeFlags_DefaultOpen))
+                    ImGui::PushStyleColor(ImGuiCol_Header, CONTROL_BG);
+                    ImGui::PushStyleColor(ImGuiCol_HeaderHovered, HOVER_BG);
+                    
+                    if (ImGui::TreeNodeEx("Motion Data (Speed & Rotation)", ImGuiTreeNodeFlags_DefaultOpen))
                     {
+                        ImGui::PopStyleColor(2);
+                        ImGui::Spacing();
+                        
                         glm::vec3 velocity = ToVec3(rb->PhysicsBody->getLinearVelocity());
                         glm::vec3 angularVelocity = ToVec3(rb->PhysicsBody->getAngularVelocity());
                         float speed = glm::length(velocity);
@@ -1367,61 +1983,186 @@ namespace Motion
                         float angSpeed = glm::length(angularVelocity);
                         float rpm = PhysicsUI::RadPerSecToRPM(angSpeed);
 
+                        ImGui::PushStyleColor(ImGuiCol_Text, TEXT_SECONDARY);
+                        ImGui::TextWrapped("How fast the object is moving and spinning:");
+                        ImGui::PopStyleColor();
+                        
+                        ImGui::Spacing();
+                        ImGui::Separator();
+                        ImGui::Spacing();
+                        
                         ImGui::Columns(2, "velocity_cols", false);
-                        ImGui::SetColumnWidth(0, 150);
+                        ImGui::SetColumnWidth(0, 200);
                         
-                        // Linear Velocity
-                        ImGui::Text("Linear Velocity:"); ImGui::NextColumn();
+                        // Linear Motion Section
+                        ImVec4 linearColor = MixColors(ACCENT, TEXT_PRIMARY, 0.30f);
+                        ImGui::PushStyleColor(ImGuiCol_Text, linearColor);
+                        ImGui::Text("LINEAR MOTION");
+                        ImGui::PopStyleColor();
+                        ImGui::NextColumn();
+                        ImGui::NextColumn();
+                        
+                        ImGui::Spacing();
+                        
+                        ImGui::AlignTextToFramePadding();
+                        ImGui::PushStyleColor(ImGuiCol_Text, TEXT_PRIMARY);
+                        ImGui::Text("Velocity Vector:"); 
+                        ImGui::PopStyleColor();
+                        ImGui::SameLine();
+                        HelpMarker("The object's velocity broken down by direction.\n\n"
+                                "This shows how much the object is moving\n"
+                                "in each direction (X, Y, Z) in meters per second.");
+                        ImGui::NextColumn();
+                        ImGui::PushStyleColor(ImGuiCol_Text, TEXT_SECONDARY);
                         ImGui::Text("(%.3f, %.3f, %.3f) m/s", velocity.x, velocity.y, velocity.z);
+                        ImGui::PopStyleColor();
                         ImGui::NextColumn();
                         
-                        ImGui::Text("Speed:"); ImGui::NextColumn();
-                        ImGui::Text("%.3f m/s  (%.1f km/h)", speed, speedKmh);
+                        ImGui::Spacing();
+                        
+                        ImGui::AlignTextToFramePadding();
+                        ImGui::PushStyleColor(ImGuiCol_Text, TEXT_PRIMARY);
+                        ImGui::Text("Overall Speed:"); 
+                        ImGui::PopStyleColor();
+                        ImGui::SameLine();
+                        HelpMarker("How fast the object is traveling overall.\n\n"
+                                "Examples of speeds:\n"
+                                "• Walking: ~5 km/h (1.4 m/s)\n"
+                                "• Running: ~15 km/h (4.2 m/s)\n"
+                                "• Car in city: ~50 km/h (14 m/s)\n"
+                                "• Highway speed: ~100 km/h (28 m/s)");
+                        ImGui::NextColumn();
+                        ImGui::PushStyleColor(ImGuiCol_Text, SUCCESS);
+                        ImGui::Text("%.3f m/s  ≈  %.1f km/h", speed, speedKmh);
+                        ImGui::PopStyleColor();
                         ImGui::NextColumn();
                         
-                        ImGui::Text("Direction:"); ImGui::NextColumn();
+                        ImGui::Spacing();
+                        
+                        ImGui::AlignTextToFramePadding();
+                        ImGui::PushStyleColor(ImGuiCol_Text, TEXT_PRIMARY);
+                        ImGui::Text("Direction of Travel:"); 
+                        ImGui::PopStyleColor();
+                        ImGui::SameLine();
+                        HelpMarker("Which way the object is moving.\n\n"
+                                "This is a normalized direction vector\n"
+                                "showing the movement direction.");
+                        ImGui::NextColumn();
                         if (speed > 0.001f)
                         {
                             glm::vec3 dir = PhysicsUI::GetDirection(velocity);
+                            ImGui::PushStyleColor(ImGuiCol_Text, TEXT_SECONDARY);
                             ImGui::Text("(%.2f, %.2f, %.2f)", dir.x, dir.y, dir.z);
+                            ImGui::PopStyleColor();
                         }
                         else
                         {
-                            ImGui::TextDisabled("Not moving");
+                            ImGui::PushStyleColor(ImGuiCol_Text, TEXT_DISABLED);
+                            ImGui::Text("Object is stationary");
+                            ImGui::PopStyleColor();
                         }
                         ImGui::NextColumn();
                         
+                        ImGui::Spacing();
                         ImGui::Separator();
-                        ImGui::NextColumn(); ImGui::NextColumn();
+                        ImGui::Spacing();
                         
-                        // Angular Velocity
-                        ImGui::Text("Angular Velocity:"); ImGui::NextColumn();
+                        // Angular Motion Section
+                        ImVec4 angularColor = MixColors(WARNING, TEXT_PRIMARY, 0.30f);
+                        ImGui::PushStyleColor(ImGuiCol_Text, angularColor);
+                        ImGui::Text("ROTATIONAL MOTION");
+                        ImGui::PopStyleColor();
+                        ImGui::NextColumn();
+                        ImGui::NextColumn();
+                        
+                        ImGui::Spacing();
+                        
+                        ImGui::AlignTextToFramePadding();
+                        ImGui::PushStyleColor(ImGuiCol_Text, TEXT_PRIMARY);
+                        ImGui::Text("Angular Velocity:"); 
+                        ImGui::PopStyleColor();
+                        ImGui::SameLine();
+                        HelpMarker("How fast the object is rotating around each axis.\n\n"
+                                "Measured in radians per second (rad/s).\n"
+                                "This shows the spin speed in each direction.");
+                        ImGui::NextColumn();
+                        ImGui::PushStyleColor(ImGuiCol_Text, TEXT_SECONDARY);
                         ImGui::Text("(%.3f, %.3f, %.3f) rad/s", angularVelocity.x, angularVelocity.y, angularVelocity.z);
+                        ImGui::PopStyleColor();
                         ImGui::NextColumn();
                         
-                        ImGui::Text("Spin Rate:"); ImGui::NextColumn();
-                        ImGui::Text("%.3f rad/s  (%.0f RPM)", angSpeed, std::abs(rpm));
+                        ImGui::Spacing();
+                        
+                        ImGui::AlignTextToFramePadding();
+                        ImGui::PushStyleColor(ImGuiCol_Text, TEXT_PRIMARY);
+                        ImGui::Text("Spin Rate:"); 
+                        ImGui::PopStyleColor();
+                        ImGui::SameLine();
+                        HelpMarker("How fast the object is spinning overall.\n\n"
+                                "RPM = Revolutions Per Minute (like a car engine)\n\n"
+                                "Examples:\n"
+                                "• Slow ceiling fan: ~60 RPM\n"
+                                "• Fast ceiling fan: ~300 RPM\n"
+                                "• Car engine idle: ~800 RPM\n"
+                                "• Car engine cruising: ~2000-3000 RPM");
+                        ImGui::NextColumn();
+                        ImGui::PushStyleColor(ImGuiCol_Text, WARNING);
+                        ImGui::Text("%.3f rad/s  ≈  %.0f RPM", angSpeed, std::abs(rpm));
+                        ImGui::PopStyleColor();
                         ImGui::NextColumn();
                         
-                        ImGui::Text("Spin Axis:"); ImGui::NextColumn();
+                        ImGui::Spacing();
+                        
+                        ImGui::AlignTextToFramePadding();
+                        ImGui::PushStyleColor(ImGuiCol_Text, TEXT_PRIMARY);
+                        ImGui::Text("Axis of Rotation:"); 
+                        ImGui::PopStyleColor();
+                        ImGui::SameLine();
+                        HelpMarker("The axis the object is spinning around.\n\n"
+                                "Think of this like the axle of a wheel -\n"
+                                "it shows which line the object rotates around.");
+                        ImGui::NextColumn();
                         if (angSpeed > 0.001f)
                         {
                             glm::vec3 axis = PhysicsUI::GetDirection(angularVelocity);
+                            ImGui::PushStyleColor(ImGuiCol_Text, TEXT_SECONDARY);
                             ImGui::Text("(%.2f, %.2f, %.2f)", axis.x, axis.y, axis.z);
+                            ImGui::PopStyleColor();
                         }
                         else
                         {
-                            ImGui::TextDisabled("Not rotating");
+                            ImGui::PushStyleColor(ImGuiCol_Text, TEXT_DISABLED);
+                            ImGui::Text("%s Object is not rotating", ICON_MD_PAUSE);
+                            ImGui::PopStyleColor();
                         }
                         
                         ImGui::Columns(1);
+                        ImGui::Spacing();
                         ImGui::TreePop();
+                    }
+                    else
+                    {
+                        ImGui::PopStyleColor(2);
                     }
                     ImGui::Spacing();
 
                     // Velocity Graphs Section
-                    if (ImGui::TreeNodeEx("Velocity Graphs", ImGuiTreeNodeFlags_DefaultOpen))
+                    ImGui::PushStyleColor(ImGuiCol_Header, CONTROL_BG);
+                    ImGui::PushStyleColor(ImGuiCol_HeaderHovered, HOVER_BG);
+                    
+                    if (ImGui::TreeNodeEx("Motion Graphs (Visual Analysis)", ImGuiTreeNodeFlags_DefaultOpen))
                     {
+                        ImGui::PopStyleColor(2);
+                        ImGui::Spacing();
+                        
+                        ImGui::PushStyleColor(ImGuiCol_Text, TEXT_SECONDARY);
+                        ImGui::TextWrapped("Visualize how the object's motion changes over time with interactive graphs:");
+                        ImGui::PopStyleColor();
+                        
+                        ImGui::Spacing();
+                        ImGui::Separator();
+                        ImGui::Spacing();
+                        
                         // Recording logic
                         if (!s_PauseRecording)
                         {
@@ -1437,23 +2178,39 @@ namespace Motion
                         float t = plotData.TimeAccumulator;
                         
                         // Linear Velocity Plot
-                        ImGui::Text("Linear Velocity Over Time");
+                        ImGui::PushStyleColor(ImGuiCol_Text, ACCENT);
+                        ImGui::Text("Linear Speed Over Time");
+                        ImGui::PopStyleColor();
                         ImGui::SameLine();
-                        HelpMarker("Shows how fast the object is moving over time.\n"
-                                "Peaks indicate acceleration, flat lines indicate constant speed.");
+                        HelpMarker("This graph shows how the object's speed changes over time.\n\n"
+                                "Reading the graph:\n"
+                                "• Horizontal axis: Time in seconds\n"
+                                "• Vertical axis: Speed in meters per second\n"
+                                "• Peaks: When the object is moving fastest\n"
+                                "• Valleys: When the object slows down\n"
+                                "• Flat lines: Constant speed (steady motion)\n"
+                                "• Rising lines: Acceleration\n"
+                                "• Falling lines: Deceleration\n\n"
+                                "Useful for understanding:\n"
+                                "• How forces affect motion\n"
+                                "• Energy transfer during collisions\n"
+                                "• Friction and air resistance effects");
                         
-                        if (ImPlot::BeginPlot("##LinearVelocityPlot", ImVec2(-1, 250)))
+                        if (ImPlot::BeginPlot("##LinearVelocityPlot", ImVec2(-1, 280)))
                         {
-                            ImPlot::SetupAxes("Time (s)", "Speed (m/s)", ImPlotAxisFlags_NoTickLabels, 0);
+                            ImPlot::SetupAxes("Time (seconds)", "Speed (m/s)", 0, 0);
                             ImPlot::SetupAxisLimits(ImAxis_X1, t - s_PlotHistory, t, ImGuiCond_Always);
                             ImPlot::SetupAxisLimits(ImAxis_Y1, 0, 20, ImGuiCond_Once);                   
-                            ImPlot::PushStyleColor(ImPlotCol_Line, ImVec4(0.0f, 0.75f, 1.0f, 1.0f));
-                            ImPlot::SetNextFillStyle(ImVec4(0.0f, 0.75f, 1.0f, 0.25f));
+                            ImPlot::PushStyleColor(ImPlotCol_Line, ACCENT);
+                            ImVec4 fillColor = ACCENT;
+                            fillColor.w = 0.25f;
+                            ImPlot::SetNextFillStyle(fillColor);
+                            ImPlot::SetNextLineStyle(ACCENT, 2.5f);
                             
                             if (!plotData.LinearVelocity.Data.empty())
                             {
                                 ImPlot::PlotLine(
-                                    "Linear Speed",
+                                    "Speed",
                                     &plotData.LinearVelocity.Data[0].x,
                                     &plotData.LinearVelocity.Data[0].y,
                                     (int)plotData.LinearVelocity.Data.size(),
@@ -1470,35 +2227,63 @@ namespace Motion
                             ImPlot::EndPlot();
                         }
                         
-                        if (ImGui::Button("Save Linear Plot", ImVec2(180, 0)))
+                        ImGui::Spacing();
+                        
+                        ImGui::PushStyleColor(ImGuiCol_Button, ACCENT);
+                        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ACCENT_HOVER);
+                        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ACCENT_ACTIVE);
+                        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1, 1, 1, 1));
+                        
+                        if (ImGui::Button("Save Linear Graph", ImVec2(200, 0)))
                         {
                             ImGui::OpenPopup("SaveLinearPlot");
                         }
+                        ImGui::PopStyleColor(4);
                         ImGui::SameLine();
-                        HelpMarker("Export this graph as a PNG image");
+                        HelpMarker("Export this graph as a PNG image file.\n\n"
+                                "Perfect for:\n"
+                                "• Including in reports\n"
+                                "• Sharing with classmates\n"
+                                "• Documenting experiments");
                         
+                        ImGui::Spacing();
                         ImGui::Spacing();
                         ImGui::Separator();
                         ImGui::Spacing();
 
                         // Angular Velocity Plot
-                        ImGui::Text("Angular Velocity Over Time");
+                        ImGui::PushStyleColor(ImGuiCol_Text, WARNING);
+                        ImGui::Text("Rotational Speed Over Time");
+                        ImGui::PopStyleColor();
                         ImGui::SameLine();
-                        HelpMarker("Shows how fast the object is rotating over time.\n"
-                                "Useful for analyzing spinning, tumbling, or stabilization.");
+                        HelpMarker("This graph shows how fast the object is spinning over time.\n\n"
+                                "Reading the graph:\n"
+                                "• Horizontal axis: Time in seconds\n"
+                                "• Vertical axis: Rotation speed in radians per second\n"
+                                "• Peaks: Fastest spinning moments\n"
+                                "• Valleys: Slowest spinning moments\n"
+                                "• Flat lines: Constant spin rate\n\n"
+                                "Useful for analyzing:\n"
+                                "• Torque effects\n"
+                                "• Angular momentum conservation\n"
+                                "• Rotational stability and wobbling\n"
+                                "• Gyroscopic effects");
                         
-                        if (ImPlot::BeginPlot("##AngularVelocityPlot", ImVec2(-1, 250)))
+                        if (ImPlot::BeginPlot("##AngularVelocityPlot", ImVec2(-1, 280)))
                         {
-                            ImPlot::SetupAxes("Time (s)", "Speed (rad/s)", ImPlotAxisFlags_NoTickLabels, 0);
+                            ImPlot::SetupAxes("Time (seconds)", "Rotation Speed (rad/s)", 0, 0);
                             ImPlot::SetupAxisLimits(ImAxis_X1, t - s_PlotHistory, t, ImGuiCond_Always);
                             ImPlot::SetupAxisLimits(ImAxis_Y1, 0, 10, ImGuiCond_Once);                       
-                            ImPlot::PushStyleColor(ImPlotCol_Line, ImVec4(1.0f, 0.5f, 0.0f, 1.0f));
-                            ImPlot::SetNextFillStyle(ImVec4(1.0f, 0.5f, 0.0f, 0.25f));
+                            ImPlot::PushStyleColor(ImPlotCol_Line, WARNING);
+                            ImVec4 fillColor2 = WARNING;
+                            fillColor2.w = 0.25f;
+                            ImPlot::SetNextFillStyle(fillColor2);
+                            ImPlot::SetNextLineStyle(WARNING, 2.5f);
                             
                             if (!plotData.AngularVelocity.Data.empty())
                             {
                                 ImPlot::PlotLine(
-                                    "Angular Speed",
+                                    "Spin Rate",
                                     &plotData.AngularVelocity.Data[0].x,
                                     &plotData.AngularVelocity.Data[0].y,
                                     (int)plotData.AngularVelocity.Data.size(),
@@ -1515,43 +2300,86 @@ namespace Motion
                             ImPlot::EndPlot();
                         }
                         
-                        if (ImGui::Button("Save Angular Plot", ImVec2(180, 0)))
+                        ImGui::Spacing();
+                        
+                        ImGui::PushStyleColor(ImGuiCol_Button, WARNING);
+                        ImVec4 warningHover = MixColors(WARNING, ImVec4(1, 1, 1, 1), 0.12f);
+                        ImVec4 warningActive = MixColors(WARNING, ImVec4(0, 0, 0, 1), 0.15f);
+                        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, warningHover);
+                        ImGui::PushStyleColor(ImGuiCol_ButtonActive, warningActive);
+                        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1, 1, 1, 1));
+                        
+                        if (ImGui::Button("Save Rotation Graph", ImVec2(200, 0)))
                         {
                             ImGui::OpenPopup("SaveAngularPlot");
                         }
+                        ImGui::PopStyleColor(4);
                         ImGui::SameLine();
-                        HelpMarker("Export this graph as a PNG image");
+                        HelpMarker("Export this graph as a PNG image file for reports and presentations.");
                         
-                        ImGui::SameLine(0.0f, 20.0f);
-                        if (ImGui::Button("Clear Plots", ImVec2(150, 0)))
+                        ImGui::SameLine(0.0f, 30.0f);
+                        
+                        ImGui::PushStyleColor(ImGuiCol_Button, ERROR_COLOR);
+                        ImVec4 errorHover = MixColors(ERROR_COLOR, ImVec4(1, 1, 1, 1), 0.12f);
+                        ImVec4 errorActive = MixColors(ERROR_COLOR, ImVec4(0, 0, 0, 1), 0.15f);
+                        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, errorHover);
+                        ImGui::PushStyleColor(ImGuiCol_ButtonActive, errorActive);
+                        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1, 1, 1, 1));
+                        
+                        if (ImGui::Button("Clear All Data", ImVec2(170, 0)))
                         {
                             plotData.LinearVelocity.Erase();
                             plotData.AngularVelocity.Erase();
                             plotData.TimeAccumulator = 0.0f;
                         }
+                        ImGui::PopStyleColor(4);
                         ImGui::SameLine();
-                        HelpMarker("Reset all graph data and start fresh");
+                        HelpMarker("Erase all recorded data and start with fresh, empty graphs.\n\n"
+                                "Use this when:\n"
+                                "• Starting a new experiment\n"
+                                "• Graphs become cluttered\n"
+                                "• You want to reset and try again");
 
                         // Linear Plot Save Popup
                         if (ImGui::BeginPopup("SaveLinearPlot"))
                         {
-                            ImGui::Text("Save Linear Velocity Plot");
+                            ImGui::PushStyleColor(ImGuiCol_Text, ACCENT);
+                            ImGui::Text("Save Linear Speed Graph");
+                            ImGui::PopStyleColor();
                             ImGui::Separator();
                             ImGui::Spacing();
                             
-                            static char filename[128] = "linear_velocity.png";
+                            ImGui::PushStyleColor(ImGuiCol_Text, TEXT_PRIMARY);
+                            ImGui::TextWrapped("Choose a name for your graph image:");
+                            ImGui::PopStyleColor();
+                            ImGui::Spacing();
+                            
+                            static char filename[128] = "linear_velocity_graph.png";
+                            ImGui::PushStyleColor(ImGuiCol_Text, TEXT_PRIMARY);
                             ImGui::Text("Filename:");
-                            ImGui::SetNextItemWidth(300.0f);
+                            ImGui::PopStyleColor();
+                            ImGui::SetNextItemWidth(350.0f);
                             ImGui::InputText("##filename", filename, sizeof(filename));
                             
                             ImGui::Spacing();
+                            ImGui::PushStyleColor(ImGuiCol_Text, TEXT_DISABLED);
+                            ImGui::TextDisabled("The graph will be saved as a PNG image file");
+                            ImGui::PopStyleColor();
+                            ImGui::Spacing();
                             ImGui::Separator();
                             ImGui::Spacing();
                             
-                            if (ImGui::Button("Save", ImVec2(120, 0)))
+                            ImGui::PushStyleColor(ImGuiCol_Button, SUCCESS);
+                            ImVec4 successHover = MixColors(SUCCESS, ImVec4(1, 1, 1, 1), 0.12f);
+                            ImVec4 successActive = MixColors(SUCCESS, ImVec4(0, 0, 0, 1), 0.15f);
+                            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, successHover);
+                            ImGui::PushStyleColor(ImGuiCol_ButtonActive, successActive);
+                            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1, 1, 1, 1));
+                            
+                            if (ImGui::Button("Save", ImVec2(140, 0)))
                             {
                                 DialogBoxes::InitializeCOM();
-                                if(auto path = DialogBoxes::SelectFolderDialog(L"Select a folder to save the linear plot", m_ScenePath); !path.empty())
+                                if(auto path = DialogBoxes::SelectFolderDialog(L"Choose where to save the linear speed graph", m_ScenePath); !path.empty())
                                 {
                                     std::filesystem::path savePath = path / filename;
                                     std::string savePathStr = savePath.string();
@@ -1560,9 +2388,18 @@ namespace Motion
                                 DialogBoxes::UninitializeCOM();
                                 ImGui::CloseCurrentPopup();
                             }
+                            ImGui::PopStyleColor(4);
                             ImGui::SameLine();
-                            if (ImGui::Button("Cancel", ImVec2(120, 0)))
+                            
+                            ImGui::PushStyleColor(ImGuiCol_Button, CONTROL_BG);
+                            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, HOVER_BG);
+                            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ACTIVE_BG);
+                            ImGui::PushStyleColor(ImGuiCol_Text, TEXT_PRIMARY);
+                            
+                            if (ImGui::Button("Cancel", ImVec2(140, 0)))
                                 ImGui::CloseCurrentPopup();
+                            
+                            ImGui::PopStyleColor(4);
                             
                             ImGui::EndPopup();
                         }
@@ -1570,23 +2407,43 @@ namespace Motion
                         // Angular Plot Save Popup
                         if (ImGui::BeginPopup("SaveAngularPlot"))
                         {
-                            ImGui::Text("Save Angular Velocity Plot");
+                            ImGui::PushStyleColor(ImGuiCol_Text, WARNING);
+                            ImGui::Text("Save Rotational Speed Graph");
+                            ImGui::PopStyleColor();
                             ImGui::Separator();
                             ImGui::Spacing();
                             
-                            static char filename[128] = "angular_velocity.png";
+                            ImGui::PushStyleColor(ImGuiCol_Text, TEXT_PRIMARY);
+                            ImGui::TextWrapped("Choose a name for your graph image:");
+                            ImGui::PopStyleColor();
+                            ImGui::Spacing();
+                            
+                            static char filename[128] = "angular_velocity_graph.png";
+                            ImGui::PushStyleColor(ImGuiCol_Text, TEXT_PRIMARY);
                             ImGui::Text("Filename:");
-                            ImGui::SetNextItemWidth(300.0f);
+                            ImGui::PopStyleColor();
+                            ImGui::SetNextItemWidth(350.0f);
                             ImGui::InputText("##filename", filename, sizeof(filename));
                             
                             ImGui::Spacing();
+                            ImGui::PushStyleColor(ImGuiCol_Text, TEXT_DISABLED);
+                            ImGui::TextDisabled("The graph will be saved as a PNG image file");
+                            ImGui::PopStyleColor();
+                            ImGui::Spacing();
                             ImGui::Separator();
                             ImGui::Spacing();
                             
-                            if (ImGui::Button("Save", ImVec2(120, 0)))
+                            ImGui::PushStyleColor(ImGuiCol_Button, SUCCESS);
+                            ImVec4 successHover = MixColors(SUCCESS, ImVec4(1, 1, 1, 1), 0.12f);
+                            ImVec4 successActive = MixColors(SUCCESS, ImVec4(0, 0, 0, 1), 0.15f);
+                            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, successHover);
+                            ImGui::PushStyleColor(ImGuiCol_ButtonActive, successActive);
+                            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1, 1, 1, 1));
+                            
+                            if (ImGui::Button("Save", ImVec2(140, 0)))
                             {
                                 DialogBoxes::InitializeCOM();
-                                if(auto path = DialogBoxes::SelectFolderDialog(L"Select a folder to save the angular plot", m_ScenePath); !path.empty())
+                                if(auto path = DialogBoxes::SelectFolderDialog(L"Choose where to save the rotation speed graph", m_ScenePath); !path.empty())
                                 {
                                     std::filesystem::path savePath = path / filename;
                                     std::string savePathStr = savePath.string();
@@ -1595,126 +2452,278 @@ namespace Motion
                                 DialogBoxes::UninitializeCOM();
                                 ImGui::CloseCurrentPopup();
                             }
+                            ImGui::PopStyleColor(4);
                             ImGui::SameLine();
-                            if (ImGui::Button("Cancel", ImVec2(120, 0)))
+                            
+                            ImGui::PushStyleColor(ImGuiCol_Button, CONTROL_BG);
+                            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, HOVER_BG);
+                            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ACTIVE_BG);
+                            ImGui::PushStyleColor(ImGuiCol_Text, TEXT_PRIMARY);
+                            
+                            if (ImGui::Button("Cancel", ImVec2(140, 0)))
                                 ImGui::CloseCurrentPopup();
+                            
+                            ImGui::PopStyleColor(4);
                             
                             ImGui::EndPopup();
                         }
 
                         ImGui::TreePop();
                     }
+                    else
+                    {
+                        ImGui::PopStyleColor(2);
+                    }
                     ImGui::Spacing();
 
                     // Apply Forces Section
-                    if (ImGui::TreeNodeEx("Apply Forces & Impulses", ImGuiTreeNodeFlags_DefaultOpen))
+                    ImGui::PushStyleColor(ImGuiCol_Header, CONTROL_BG);
+                    ImGui::PushStyleColor(ImGuiCol_HeaderHovered, HOVER_BG);
+                    
+                    if (ImGui::TreeNodeEx("Physics Controls (Apply Forces)", ImGuiTreeNodeFlags_DefaultOpen))
                     {
-                        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.9f, 0.9f, 0.6f, 1.0f));
-                        ImGui::TextWrapped("Apply forces to test physics behavior. Use impulses for instant impacts or sustained forces for continuous acceleration.");
+                        ImGui::PopStyleColor(2);
+                        ImGui::Spacing();
+                        
+                        ImGui::PushStyleColor(ImGuiCol_Text, MixColors(WARNING, TEXT_PRIMARY, 0.30f));
+                        ImGui::TextWrapped("Experiment with physics by applying forces to see how objects react!");
                         ImGui::PopStyleColor();
+                        
+                        ImGui::Spacing();
+                        ImGui::PushStyleColor(ImGuiCol_Text, TEXT_SECONDARY);
+                        ImGui::TextWrapped("Use these controls to push, pull, or spin the object. Watch how different forces affect motion in real-time.");
+                        ImGui::PopStyleColor();
+                        
                         ImGui::Spacing();
                         ImGui::Separator();
                         ImGui::Spacing();
-                    
-                        // Direction Controls
-                        ImGui::Text("Direction:");
-                        ImGui::SameLine();
-                        HelpMarker("The direction in which to apply the force.\n"
-                                "Use the buttons for quick presets or drag to customize.");
                         
-                        ImGui::SetNextItemWidth(250.0f);
-                        ImGui::DragFloat3("##impulse_dir", &plotData.ImpulseDirection.x, 0.01f, -1.0f, 1.0f);
+                        // Direction Controls
+                        ImGui::AlignTextToFramePadding();
+                        ImGui::PushStyleColor(ImGuiCol_Text, TEXT_PRIMARY);
+                        ImGui::Text("Force Direction:");
+                        ImGui::PopStyleColor();
                         ImGui::SameLine();
-                        if (ImGui::Button("Normalize##dir"))
+                        HelpMarker("Choose which direction to apply the force.\n\n"
+                                "• Use the sliders to set a custom direction\n"
+                                "• Or click the preset buttons below for common directions\n"
+                                "• Click 'Normalize' to make it a unit direction vector\n\n"
+                                "Think of this like choosing which way to push an object.");
+                        
+                        ImGui::SetNextItemWidth(280.0f);
+                        ImGui::DragFloat3("##impulse_dir", &plotData.ImpulseDirection.x, 0.01f, -1.0f, 1.0f, "%.2f");
+                        ImGui::SameLine();
+                        
+                        ImGui::PushStyleColor(ImGuiCol_Button, CONTROL_BG);
+                        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, HOVER_BG);
+                        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ACTIVE_BG);
+                        ImGui::PushStyleColor(ImGuiCol_Text, TEXT_PRIMARY);
+                        
+                        if (ImGui::Button("Normalize Direction", ImVec2(160, 0)))
                         {
                             plotData.ImpulseDirection = glm::normalize(plotData.ImpulseDirection);
                         }
+                        ImGui::PopStyleColor(4);
                         ImGui::SameLine();
-                        HelpMarker("Normalize the direction vector to length 1.0");
+                        HelpMarker("Convert to a unit vector (length = 1.0)\n"
+                                "This makes the direction 'pure' without affecting magnitude.");
                         
                         ImGui::Spacing();
-                        ImGui::Text("Quick Directions:");
-                        if (ImGui::Button("↑ Up", ImVec2(80, 0))) 
+                        ImGui::PushStyleColor(ImGuiCol_Text, TEXT_PRIMARY);
+                        ImGui::Text("Quick Direction Presets:");
+                        ImGui::PopStyleColor();
+                        ImGui::Indent(10.0f);
+                        
+                        ImGui::PushStyleColor(ImGuiCol_Button, CONTROL_BG);
+                        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, HOVER_BG);
+                        ImGui::PushStyleColor(ImGuiCol_ButtonActive, MixColors(ACCENT, CONTROL_BG, 0.80f));
+                        ImGui::PushStyleColor(ImGuiCol_Text, TEXT_PRIMARY);
+                        
+                        if (ImGui::Button("Up", ImVec2(90, 0))) 
                             plotData.ImpulseDirection = glm::vec3(0, 1, 0);
                         ImGui::SameLine();
-                        if (ImGui::Button("↓ Down", ImVec2(80, 0))) 
+                        if (ImGui::Button("Down", ImVec2(90, 0))) 
                             plotData.ImpulseDirection = glm::vec3(0, -1, 0);
                         ImGui::SameLine();
-                        if (ImGui::Button("→ Right", ImVec2(80, 0))) 
+                        if (ImGui::Button("Right", ImVec2(90, 0))) 
                             plotData.ImpulseDirection = glm::vec3(1, 0, 0);
                         ImGui::SameLine();
-                        if (ImGui::Button("← Left", ImVec2(80, 0))) 
+                        if (ImGui::Button("Left", ImVec2(90, 0))) 
                             plotData.ImpulseDirection = glm::vec3(-1, 0, 0);
-                        ImGui::SameLine();
-                        if (ImGui::Button("⊙ Forward", ImVec2(80, 0))) 
+                        
+                        if (ImGui::Button("Forward", ImVec2(90, 0))) 
                             plotData.ImpulseDirection = glm::vec3(0, 0, 1);
                         ImGui::SameLine();
-                        if (ImGui::Button("⊗ Back", ImVec2(80, 0))) 
+                        if (ImGui::Button("Backward", ImVec2(90, 0))) 
                             plotData.ImpulseDirection = glm::vec3(0, 0, -1);
+                        
+                        ImGui::PopStyleColor(4);
+                        ImGui::Unindent(10.0f);
                         
                         ImGui::Spacing();
                         ImGui::Separator();
                         ImGui::Spacing();
                         
                         // Magnitude Control
-                        ImGui::Text("Force Magnitude:");
+                        ImGui::AlignTextToFramePadding();
+                        ImGui::PushStyleColor(ImGuiCol_Text, TEXT_PRIMARY);
+                        ImGui::Text("Force Strength (Magnitude):");
+                        ImGui::PopStyleColor();
                         ImGui::SameLine();
-                        HelpMarker("Strength of the force in Newton-seconds (N·s).\n"
-                                "Larger values = stronger force.\n"
-                                "Typical values: 1-10 for small objects, 10-100 for heavy objects.");
-                        ImGui::SetNextItemWidth(300.0f);
-                        ImGui::SliderFloat("##impulse_mag", &plotData.ImpulseMagnitude, 0.1f, 100.0f, "%.2f N·s");
+                        HelpMarker("How strong the force should be, measured in Newton-seconds (N·s).\n\n"
+                                "What's a Newton?\n"
+                                "• 1 N = Force needed to lift ~100 grams\n"
+                                "• 10 N = Force to lift ~1 kilogram\n\n"
+                                "Suggested values:\n"
+                                "• Light objects (ball, phone): 1-10 N·s\n"
+                                "• Medium objects (chair, toolbox): 10-50 N·s\n"
+                                "• Heavy objects (car, boulder): 50-100 N·s\n\n"
+                                "Experiment with different values to see the effects!");
+                        
+                        ImGui::SetNextItemWidth(400.0f);
+                        ImGui::SliderFloat("##impulse_mag", &plotData.ImpulseMagnitude, 0.1f, 100.0f, "%.2f N·s", ImGuiSliderFlags_Logarithmic);
+                        
+                        ImGui::Spacing();
+                        ImGui::PushStyleColor(ImGuiCol_Text, TEXT_PRIMARY);
+                        ImGui::Text("Preset Strengths:");
+                        ImGui::PopStyleColor();
+                        ImGui::Indent(10.0f);
+                        
+                        ImGui::PushStyleColor(ImGuiCol_Button, CONTROL_BG);
+                        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, HOVER_BG);
+                        ImGui::PushStyleColor(ImGuiCol_ButtonActive, MixColors(ACCENT, CONTROL_BG, 0.80f));
+                        ImGui::PushStyleColor(ImGuiCol_Text, TEXT_PRIMARY);
+                        
+                        if (ImGui::Button("Gentle (1 N·s)", ImVec2(150, 0))) 
+                            plotData.ImpulseMagnitude = 1.0f;
+                        ImGui::SameLine();
+                        if (ImGui::Button("Moderate (10 N·s)", ImVec2(150, 0))) 
+                            plotData.ImpulseMagnitude = 10.0f;
+                        ImGui::SameLine();
+                        if (ImGui::Button("Strong (50 N·s)", ImVec2(150, 0))) 
+                            plotData.ImpulseMagnitude = 50.0f;
+                        ImGui::SameLine();
+                        if (ImGui::Button("Very Strong (100 N·s)", ImVec2(150, 0))) 
+                            plotData.ImpulseMagnitude = 100.0f;
+                        
+                        ImGui::PopStyleColor(4);
+                        ImGui::Unindent(10.0f);
                         
                         ImGui::Spacing();
                         ImGui::Separator();
                         ImGui::Spacing();
-                    
-                        // Application Point
-                        ImGui::Text("Application Point:");
-                        ImGui::SameLine();
-                        HelpMarker("Where to apply the force on the object.\n"
-                                "Local: Relative to object center\n"
-                                "World: Absolute position in world space");
                         
-                        ImGui::Checkbox("Use Local Position", &plotData.UseLocalPosition);
-                        ImGui::SetNextItemWidth(250.0f);
-                        ImGui::DragFloat3("##impulse_pos", &plotData.ImpulsePosition.x, 0.1f);
+                        // Application Point
+                        ImGui::AlignTextToFramePadding();
+                        ImGui::PushStyleColor(ImGuiCol_Text, TEXT_PRIMARY);
+                        ImGui::Text("Where to Apply Force:");
+                        ImGui::PopStyleColor();
+                        ImGui::SameLine();
+                        HelpMarker("Choose where on the object to apply the force.\n\n"
+                                "Local Position:\n"
+                                "• Relative to the object's center\n"
+                                "• (0, 0, 0) = center of object\n"
+                                "• Moves with the object as it rotates\n\n"
+                                "World Position:\n"
+                                "• Absolute position in world space\n"
+                                "• Fixed location regardless of object rotation\n\n"
+                                "Tip: Pushing off-center creates both linear motion\n"
+                                "and rotation (torque)!");
+                        
+                        ImGui::Checkbox("Use Local Position (relative to object center)", &plotData.UseLocalPosition);
+                        ImGui::SetNextItemWidth(280.0f);
+                        ImGui::DragFloat3("##impulse_pos", &plotData.ImpulsePosition.x, 0.1f, -10.0f, 10.0f, "%.2f");
+                        ImGui::SameLine();
+                        
+                        ImGui::PushStyleColor(ImGuiCol_Button, CONTROL_BG);
+                        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, HOVER_BG);
+                        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ACTIVE_BG);
+                        ImGui::PushStyleColor(ImGuiCol_Text, TEXT_PRIMARY);
+                        
+                        if (ImGui::Button("Reset to Center", ImVec2(140, 0)))
+                        {
+                            plotData.ImpulsePosition = glm::vec3(0.0f);
+                        }
+                        ImGui::PopStyleColor(4);
                         
                         ImGui::Spacing();
                         ImGui::Separator();
                         ImGui::Spacing();
                         
                         // Apply Buttons
-                        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.5f, 0.8f, 1.0f));
-                        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.3f, 0.6f, 0.9f, 1.0f));
+                        ImGui::PushStyleColor(ImGuiCol_Text, TEXT_PRIMARY);
+                        ImGui::TextWrapped("Ready to apply forces? Click a button below:");
+                        ImGui::PopStyleColor();
                         
-                        if (ImGui::Button("Apply Linear Force", ImVec2(-1, 30)))
+                        ImGui::Spacing();
+                        
+                        // Linear force button
+                        ImGui::PushStyleColor(ImGuiCol_Button, ACCENT);
+                        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ACCENT_HOVER);
+                        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ACCENT_ACTIVE);
+                        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1, 1, 1, 1));
+                        
+                        if (ImGui::Button("Apply Linear Force (Push/Pull)", ImVec2(-1, 35)))
                         {
                             glm::vec3 impulse = plotData.ImpulseDirection * plotData.ImpulseMagnitude;
                             reactphysics3d::Vector3 rp3dImpulse(impulse.x, impulse.y, impulse.z);
                             rb->PhysicsBody->applyWorldForceAtCenterOfMass(rp3dImpulse);
                         }
+                        ImGui::PopStyleColor(4);
                         if (ImGui::IsItemHovered())
                         {
                             ImGui::BeginTooltip();
-                            ImGui::Text("Pushes the object in the specified direction");
+                            ImGui::PushStyleColor(ImGuiCol_Text, TEXT_PRIMARY);
+                            ImGui::TextWrapped("Pushes or pulls the object in the chosen direction.");
+                            ImGui::PopStyleColor();
+                            ImGui::Spacing();
+                            ImGui::PushStyleColor(ImGuiCol_Text, TEXT_SECONDARY);
+                            ImGui::TextDisabled("This creates linear motion (straight-line movement)");
+                            ImGui::PopStyleColor();
                             ImGui::EndTooltip();
                         }
                         
-                        if (ImGui::Button("Apply Angular Force (Torque)", ImVec2(-1, 30)))
+                        ImGui::Spacing();
+                        
+                        // Angular force button
+                        ImGui::PushStyleColor(ImGuiCol_Button, WARNING);
+                        ImVec4 warningHover = MixColors(WARNING, ImVec4(1, 1, 1, 1), 0.12f);
+                        ImVec4 warningActive = MixColors(WARNING, ImVec4(0, 0, 0, 1), 0.15f);
+                        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, warningHover);
+                        ImGui::PushStyleColor(ImGuiCol_ButtonActive, warningActive);
+                        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1, 1, 1, 1));
+                        
+                        if (ImGui::Button("Apply Rotational Force (Spin/Torque)", ImVec2(-1, 35)))
                         {
                             glm::vec3 torque = plotData.ImpulseDirection * plotData.ImpulseMagnitude;
                             reactphysics3d::Vector3 rp3dTorque(torque.x, torque.y, torque.z);
                             rb->PhysicsBody->applyWorldTorque(rp3dTorque);
                         }
+                        ImGui::PopStyleColor(4);
                         if (ImGui::IsItemHovered())
                         {
                             ImGui::BeginTooltip();
-                            ImGui::Text("Makes the object spin around the specified axis");
+                            ImGui::PushStyleColor(ImGuiCol_Text, TEXT_PRIMARY);
+                            ImGui::TextWrapped("Makes the object spin around the chosen axis.");
+                            ImGui::PopStyleColor();
+                            ImGui::Spacing();
+                            ImGui::PushStyleColor(ImGuiCol_Text, TEXT_SECONDARY);
+                            ImGui::TextDisabled("This creates angular motion (rotation)");
+                            ImGui::PopStyleColor();
                             ImGui::EndTooltip();
                         }
                         
-                        if (ImGui::Button("Apply Force at Point", ImVec2(-1, 30)))
+                        ImGui::Spacing();
+                        
+                        // Force at point button
+                        ImGui::PushStyleColor(ImGuiCol_Button, SUCCESS);
+                        ImVec4 successHover = MixColors(SUCCESS, ImVec4(1, 1, 1, 1), 0.12f);
+                        ImVec4 successActive = MixColors(SUCCESS, ImVec4(0, 0, 0, 1), 0.15f);
+                        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, successHover);
+                        ImGui::PushStyleColor(ImGuiCol_ButtonActive, successActive);
+                        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1, 1, 1, 1));
+                        
+                        if (ImGui::Button("Apply Force at Specific Point", ImVec2(-1, 35)))
                         {
                             glm::vec3 impulse = plotData.ImpulseDirection * plotData.ImpulseMagnitude;
                             reactphysics3d::Vector3 rp3dImpulse(impulse.x, impulse.y, impulse.z);
@@ -1729,23 +2738,37 @@ namespace Motion
                             else
                                 rb->PhysicsBody->applyWorldForceAtWorldPosition(rp3dImpulse, rp3dPoint);
                         }
+                        ImGui::PopStyleColor(4);
                         if (ImGui::IsItemHovered())
                         {
                             ImGui::BeginTooltip();
-                            ImGui::Text("Pushes the object at a specific point");
-                            ImGui::Text("Creates both linear and angular motion (torque)");
+                            ImGui::PushStyleColor(ImGuiCol_Text, TEXT_PRIMARY);
+                            ImGui::TextWrapped("Pushes the object at the specified location.");
+                            ImGui::PopStyleColor();
+                            ImGui::Spacing();
+                            ImGui::PushStyleColor(ImGuiCol_Text, TEXT_SECONDARY);
+                            ImGui::TextDisabled("Creates both linear motion AND rotation!");
+                            ImGui::Spacing();
+                            ImGui::Text("Perfect for:");
+                            ImGui::BulletText("Simulating impacts");
+                            ImGui::BulletText("Creating realistic collisions");
+                            ImGui::BulletText("Understanding torque");
+                            ImGui::PopStyleColor();
                             ImGui::EndTooltip();
                         }
-                        
-                        ImGui::PopStyleColor(2);
 
                         ImGui::TreePop();
                     }
+                    else
+                    {
+                        ImGui::PopStyleColor(2);
+                    }
                 }
                 
-                ImGui::Unindent(15.0f);
+                ImGui::Unindent(20.0f);
             }
             
+            ImGui::Spacing();
             ImGui::Spacing();
             ImGui::Separator();
             ImGui::Spacing();
@@ -1758,7 +2781,491 @@ namespace Motion
         ImGui::PopStyleColor(3);
         ImGui::PopStyleVar(2);
     }
-    
+
+    /**
+     * @brief Renders a window for statistical analysis of physics data.
+     *
+     * This window allows the user to analyze physics data with statistical tools.
+     * Features include mean, median, standard deviation, min/max value detection,
+     * peak detection for oscillations, numerical integration (area under curve),
+     * sample statistics and distributions.
+     *
+     * The user can select an object in the simulation watchlist to analyze its data.
+     * The analysis is split into two sections: linear motion and rotational motion.
+     * The linear motion section shows the statistical analysis of the object's linear velocity.
+     * The rotational motion section shows the statistical analysis of the object's angular velocity.
+     * A third section allows the user to compare the two types of motion.
+     *
+     * @param[in] context The current scene context.
+     */
+    void SceneEditorLayer::RenderStatisticalAnalysisPanel(SceneContext& context)
+    {
+        const ImVec4 CARD_BG        = ImVec4(255.0f/255.0f, 255.0f/255.0f, 255.0f/255.0f, 0.90f);
+        const ImVec4 CONTROL_BG     = ImVec4(251.0f/255.0f, 251.0f/255.0f, 251.0f/255.0f, 1.0f);
+        const ImVec4 HOVER_BG       = ImVec4(246.0f/255.0f, 246.0f/255.0f, 246.0f/255.0f, 1.0f);
+        const ImVec4 TEXT_PRIMARY   = ImVec4(32.0f/255.0f, 33.0f/255.0f, 36.0f/255.0f, 1.0f);
+        const ImVec4 TEXT_SECONDARY = ImVec4(96.0f/255.0f, 94.0f/255.0f, 92.0f/255.0f, 1.0f);
+        const ImVec4 TEXT_DISABLED  = ImVec4(161.0f/255.0f, 159.0f/255.0f, 157.0f/255.0f, 1.0f);
+        const ImVec4 BORDER         = ImVec4(229.0f/255.0f, 229.0f/255.0f, 229.0f/255.0f, 0.50f);
+        const ImVec4 SUCCESS        = ImVec4(16.0f/255.0f, 137.0f/255.0f, 62.0f/255.0f, 1.0f);
+        const ImVec4 WARNING        = ImVec4(255.0f/255.0f, 185.0f/255.0f, 0.0f/255.0f, 1.0f);
+        
+        ImVec4 ACCENT = ImGui::GetStyleColorVec4(ImGuiCol_CheckMark);
+        
+        auto MixColors = [](const ImVec4& a, const ImVec4& b, float t) -> ImVec4 {
+            return ImVec4(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t,
+                        a.z + (b.z - a.z) * t, a.w + (b.w - a.w) * t);
+        };
+
+        ImGui::SetNextWindowSize(ImVec2(700, 800), ImGuiCond_FirstUseEver);
+        
+        if (ImGui::Begin("Statistical Analysis", nullptr))
+        {
+            if(m_SimulationWatchList.empty() || !context.Simulation->InSimulation)
+            {
+                ImGui::TextDisabled("No simulation data available.");
+                ImGui::End();
+                return;
+            }
+
+            ImGui::PushStyleColor(ImGuiCol_Text, ACCENT);
+            ImGui::Text("Statistical Data Analysis");
+            ImGui::PopStyleColor();
+            ImGui::SameLine();
+            HelpMarker("Analyze physics data with statistical tools.\n\n"
+                    "Features:\n"
+                    "• Mean, median, standard deviation\n"
+                    "• Min/max value detection\n"
+                    "• Peak detection for oscillations\n"
+                    "• Numerical integration (area under curve)\n"
+                    "• Sample statistics and distributions");
+            ImGui::Spacing();
+            ImGui::PushStyleColor(ImGuiCol_Text, TEXT_SECONDARY);
+            ImGui::TextWrapped("Statistical analysis of motion data helps identify patterns, trends, and key moments in your physics experiments.");
+            ImGui::PopStyleColor();
+            ImGui::Spacing();
+            ImGui::Separator();
+            ImGui::Spacing();
+            
+            // Object selector
+            static int selectedEntityIndex = 0;
+            const char* objectNames[100];
+            int objectCount = 0;
+            
+            for (auto& e : m_SimulationWatchList)
+            {
+                if (auto* tag = context.Entities->Registry.try_get<TagComponent>(e))
+                {
+                    objectNames[objectCount] = tag->Tag.c_str();
+                    objectCount++;
+                }
+            }
+            
+            if (objectCount == 0)
+            {
+                ImGui::TextWrapped("No objects in watchlist. Add objects to the simulation watchlist to analyze their data.");
+                ImGui::End();
+                return;
+            }
+            
+            ImGui::PushStyleColor(ImGuiCol_Text, TEXT_PRIMARY);
+            ImGui::Text("Select Object:");
+            ImGui::PopStyleColor();
+            ImGui::SetNextItemWidth(300.0f);
+            ImGui::Combo("##ObjectSelect", &selectedEntityIndex, objectNames, objectCount);
+            
+            ImGui::Spacing();
+            ImGui::Separator();
+            ImGui::Spacing();
+        
+            auto entityIter = m_SimulationWatchList.begin();
+            std::advance(entityIter, selectedEntityIndex);
+            auto& plotData = s_EntityPlotData[*entityIter];
+            
+            static StatisticalData linearStats;
+            static StatisticalData angularStats;
+            
+            std::vector<ImVec2> linearData(plotData.LinearVelocity.Data.begin(), plotData.LinearVelocity.Data.end());
+            std::vector<ImVec2> angularData(plotData.AngularVelocity.Data.begin(), plotData.AngularVelocity.Data.end());
+
+            linearStats.Calculate(linearData);
+            angularStats.Calculate(angularData);
+            
+            if (ImGui::BeginTabBar("AnalysisTabs"))
+            {
+                if (ImGui::BeginTabItem("Linear Motion"))
+                {
+                    ImGui::Spacing();
+                    RenderStatisticsSection("Linear Velocity (m/s)", linearStats, ACCENT);
+                    ImGui::EndTabItem();
+                }
+                
+                if (ImGui::BeginTabItem("Rotational Motion"))
+                {
+                    ImGui::Spacing();
+                    RenderStatisticsSection("Angular Velocity (rad/s)", angularStats, WARNING);
+                    ImGui::EndTabItem();
+                }
+                
+                if (ImGui::BeginTabItem("Compare"))
+                {
+                    ImGui::Spacing();
+                    RenderComparisonSection(linearStats, angularStats);
+                    ImGui::EndTabItem();
+                }
+                
+                ImGui::EndTabBar();
+            }
+        }
+
+        ImGui::End();
+    }
+
+    /**
+     * @brief Renders a statistics section of the scene editor layer.
+     * 
+     * This section displays a range of statistics about the linear motion of the object.
+     * It displays the mean, median, standard deviation, maximum, minimum, range, and integral
+     * values of the linear motion. It also displays the number of peaks detected for the linear motion.
+     * 
+     * @param title The title to display above the statistics section.
+     * @param stats The statistical data to display.
+     * @param color The accent color to use for the section.
+     */
+    void SceneEditorLayer::RenderStatisticsSection(const char* title, const StatisticalData& stats, const ImVec4& color)
+    {
+        const ImVec4 CARD_BG        = ImVec4(255.0f/255.0f, 255.0f/255.0f, 255.0f/255.0f, 0.90f);
+        const ImVec4 CONTROL_BG     = ImVec4(251.0f/255.0f, 251.0f/255.0f, 251.0f/255.0f, 1.0f);
+        const ImVec4 TEXT_PRIMARY   = ImVec4(32.0f/255.0f, 33.0f/255.0f, 36.0f/255.0f, 1.0f);
+        const ImVec4 TEXT_SECONDARY = ImVec4(96.0f/255.0f, 94.0f/255.0f, 92.0f/255.0f, 1.0f);
+        const ImVec4 TEXT_DISABLED  = ImVec4(161.0f/255.0f, 159.0f/255.0f, 157.0f/255.0f, 1.0f);
+        const ImVec4 BORDER         = ImVec4(229.0f/255.0f, 229.0f/255.0f, 229.0f/255.0f, 0.50f);
+        const ImVec4 SUCCESS        = ImVec4(16.0f/255.0f, 137.0f/255.0f, 62.0f/255.0f, 1.0f);
+        
+        auto MixColors = [](const ImVec4& a, const ImVec4& b, float t) -> ImVec4 {
+            return ImVec4(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t,
+                        a.z + (b.z - a.z) * t, a.w + (b.w - a.w) * t);
+        };
+        
+        ImGui::PushStyleColor(ImGuiCol_Text, color);
+        ImGui::Text("%s", title);
+        ImGui::PopStyleColor();
+        ImGui::Spacing();
+        
+        if (stats.SampleCount == 0)
+        {
+            ImGui::PushStyleColor(ImGuiCol_Text, TEXT_DISABLED);
+            ImGui::TextWrapped("No data available. Run the simulation to collect data.");
+            ImGui::PopStyleColor();
+            return;
+        }
+        
+        // Basic Statistics Card
+        ImVec4 cardBg = MixColors(color, CARD_BG, 0.95f);
+        ImGui::PushStyleColor(ImGuiCol_ChildBg, cardBg);
+        ImGui::PushStyleColor(ImGuiCol_Border, MixColors(color, BORDER, 0.40f));
+        
+        ImGui::BeginChild("BasicStats", ImVec2(0, 180), true);
+        
+        ImGui::PushStyleColor(ImGuiCol_Text, MixColors(color, TEXT_PRIMARY, 0.30f));
+        ImGui::Text("%s Basic Statistics", ICON_MD_CALCULATE);
+        ImGui::PopStyleColor();
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+        
+        ImGui::Columns(2, "stats_cols", false);
+        ImGui::SetColumnWidth(0, 200);
+        
+        // Mean
+        ImGui::PushStyleColor(ImGuiCol_Text, TEXT_PRIMARY);
+        ImGui::Text("Mean (Average):");
+        ImGui::PopStyleColor();
+        ImGui::SameLine();
+        HelpMarker("The average value of all data points.\n\nCalculated as: Σx / n");
+        ImGui::NextColumn();
+        ImGui::PushStyleColor(ImGuiCol_Text, TEXT_SECONDARY);
+        ImGui::Text("%.4f", stats.Mean);
+        ImGui::PopStyleColor();
+        ImGui::NextColumn();
+        
+        ImGui::Spacing();
+        
+        // Median
+        ImGui::PushStyleColor(ImGuiCol_Text, TEXT_PRIMARY);
+        ImGui::Text("Median (Middle Value):");
+        ImGui::PopStyleColor();
+        ImGui::SameLine();
+        HelpMarker("The middle value when data is sorted.\n\nLess affected by outliers than mean.");
+        ImGui::NextColumn();
+        ImGui::PushStyleColor(ImGuiCol_Text, TEXT_SECONDARY);
+        ImGui::Text("%.4f", stats.Median);
+        ImGui::PopStyleColor();
+        ImGui::NextColumn();
+        
+        ImGui::Spacing();
+        
+        // Standard Deviation
+        ImGui::PushStyleColor(ImGuiCol_Text, TEXT_PRIMARY);
+        ImGui::Text("Standard Deviation:");
+        ImGui::PopStyleColor();
+        ImGui::SameLine();
+        HelpMarker("Measures spread of data around the mean.\n\n"
+                "• Low value = data clustered near mean\n"
+                "• High value = data widely spread");
+        ImGui::NextColumn();
+        ImGui::PushStyleColor(ImGuiCol_Text, TEXT_SECONDARY);
+        ImGui::Text("%.4f", stats.StdDev);
+        ImGui::PopStyleColor();
+        ImGui::NextColumn();
+        
+        ImGui::Spacing();
+        
+        // Sample Count
+        ImGui::PushStyleColor(ImGuiCol_Text, TEXT_PRIMARY);
+        ImGui::Text("Sample Count:");
+        ImGui::PopStyleColor();
+        ImGui::SameLine();
+        HelpMarker("Total number of data points collected.");
+        ImGui::NextColumn();
+        ImGui::PushStyleColor(ImGuiCol_Text, TEXT_SECONDARY);
+        ImGui::Text("%d points", stats.SampleCount);
+        ImGui::PopStyleColor();
+        
+        ImGui::Columns(1);
+        
+        ImGui::EndChild();
+        ImGui::PopStyleColor(2);
+        
+        ImGui::Spacing();
+        
+        // Range Statistics Card
+        cardBg = MixColors(SUCCESS, CARD_BG, 0.95f);
+        ImGui::PushStyleColor(ImGuiCol_ChildBg, cardBg);
+        ImGui::PushStyleColor(ImGuiCol_Border, MixColors(SUCCESS, BORDER, 0.40f));
+        
+        ImGui::BeginChild("RangeStats", ImVec2(0, 140), true);
+        
+        ImGui::PushStyleColor(ImGuiCol_Text, MixColors(SUCCESS, TEXT_PRIMARY, 0.30f));
+        ImGui::Text("%s Range & Extremes", ICON_MD_HEIGHT);
+        ImGui::PopStyleColor();
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+        
+        ImGui::Columns(2, "range_cols", false);
+        ImGui::SetColumnWidth(0, 200);
+        
+        // Minimum
+        ImGui::PushStyleColor(ImGuiCol_Text, TEXT_PRIMARY);
+        ImGui::Text("Minimum Value:");
+        ImGui::PopStyleColor();
+        ImGui::SameLine();
+        HelpMarker("Lowest value in the dataset.");
+        ImGui::NextColumn();
+        ImGui::PushStyleColor(ImGuiCol_Text, TEXT_SECONDARY);
+        ImGui::Text("%.4f", stats.Min);
+        ImGui::PopStyleColor();
+        ImGui::NextColumn();
+        
+        ImGui::Spacing();
+        
+        // Maximum
+        ImGui::PushStyleColor(ImGuiCol_Text, TEXT_PRIMARY);
+        ImGui::Text("Maximum Value:");
+        ImGui::PopStyleColor();
+        ImGui::SameLine();
+        HelpMarker("Highest value in the dataset.");
+        ImGui::NextColumn();
+        ImGui::PushStyleColor(ImGuiCol_Text, TEXT_SECONDARY);
+        ImGui::Text("%.4f", stats.Max);
+        ImGui::PopStyleColor();
+        ImGui::NextColumn();
+        
+        ImGui::Spacing();
+        
+        // Range
+        ImGui::PushStyleColor(ImGuiCol_Text, TEXT_PRIMARY);
+        ImGui::Text("Range:");
+        ImGui::PopStyleColor();
+        ImGui::SameLine();
+        HelpMarker("Difference between max and min.\n\nRange = Max - Min");
+        ImGui::NextColumn();
+        ImGui::PushStyleColor(ImGuiCol_Text, TEXT_SECONDARY);
+        ImGui::Text("%.4f", stats.Range);
+        ImGui::PopStyleColor();
+        
+        ImGui::Columns(1);
+        
+        ImGui::EndChild();
+        ImGui::PopStyleColor(2);
+        
+        ImGui::Spacing();
+        
+        // Peak Detection Card
+        if (!stats.Peaks.empty())
+        {
+            const ImVec4 WARNING = ImVec4(255.0f/255.0f, 185.0f/255.0f, 0.0f/255.0f, 1.0f);
+            cardBg = MixColors(WARNING, CARD_BG, 0.95f);
+            ImGui::PushStyleColor(ImGuiCol_ChildBg, cardBg);
+            ImGui::PushStyleColor(ImGuiCol_Border, MixColors(WARNING, BORDER, 0.40f));
+            
+            ImGui::BeginChild("PeakStats", ImVec2(0, 200), true);
+            
+            ImGui::PushStyleColor(ImGuiCol_Text, MixColors(WARNING, TEXT_PRIMARY, 0.30f));
+            ImGui::Text("%s Peak Detection", ICON_MD_TRENDING_UP);
+            ImGui::PopStyleColor();
+            ImGui::SameLine();
+            HelpMarker("Automatically detected peaks (local maxima) in the data.\n\n"
+                    "Useful for:\n"
+                    "• Finding maximum speeds\n"
+                    "• Counting oscillations\n"
+                    "• Identifying impact moments");
+            ImGui::Spacing();
+            ImGui::Separator();
+            ImGui::Spacing();
+            
+            ImGui::PushStyleColor(ImGuiCol_Text, TEXT_PRIMARY);
+            ImGui::Text("Detected Peaks: %d", (int)stats.Peaks.size());
+            ImGui::PopStyleColor();
+            ImGui::Spacing();
+            
+            // Show first few peaks
+            ImGui::PushStyleColor(ImGuiCol_Text, TEXT_SECONDARY);
+            int peaksToShow = std::min(5, (int)stats.Peaks.size());
+            for (int i = 0; i < peaksToShow; i++)
+            {
+                ImGui::Text("  Peak %d: %.3f at t=%.2fs", i+1, stats.Peaks[i], stats.PeakTimes[i]);
+            }
+            if (stats.Peaks.size() > 5)
+            {
+                ImGui::Text("  ... and %d more", (int)stats.Peaks.size() - 5);
+            }
+            ImGui::PopStyleColor();
+            
+            ImGui::EndChild();
+            ImGui::PopStyleColor(2);
+            
+            ImGui::Spacing();
+        }
+        
+        // Integration Card
+        ImVec4 accentCard = MixColors(color, CARD_BG, 0.93f);
+        ImGui::PushStyleColor(ImGuiCol_ChildBg, accentCard);
+        ImGui::PushStyleColor(ImGuiCol_Border, MixColors(color, BORDER, 0.40f));
+        
+        ImGui::BeginChild("IntegralStats", ImVec2(0, 120), true);
+        
+        ImGui::PushStyleColor(ImGuiCol_Text, MixColors(color, TEXT_PRIMARY, 0.30f));
+        ImGui::Text("%s Numerical Integration", ICON_MD_FUNCTIONS);
+        ImGui::PopStyleColor();
+        ImGui::SameLine();
+        HelpMarker("Area under the curve using trapezoidal rule.\n\n"
+                "For velocity data:\n"
+                "• Integral of velocity = displacement\n"
+                "• Shows total distance traveled");
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+        
+        ImGui::PushStyleColor(ImGuiCol_Text, TEXT_PRIMARY);
+        ImGui::Text("Integral Value:");
+        ImGui::PopStyleColor();
+        ImGui::SameLine();
+        ImGui::PushStyleColor(ImGuiCol_Text, color);
+        ImGui::Text("%.4f", stats.IntegralValue);
+        ImGui::PopStyleColor();
+        
+        ImGui::Spacing();
+        ImGui::PushStyleColor(ImGuiCol_Text, TEXT_SECONDARY);
+        ImGui::TextWrapped("This represents the accumulated value over time (area under the graph).");
+        ImGui::PopStyleColor();
+        
+        ImGui::EndChild();
+        ImGui::PopStyleColor(2);
+    }
+
+
+    /**
+     * @brief Renders a comparison section of the scene editor layer.
+     * 
+     * This section compares the linear and angular motion of the object.
+     * It displays a table with the mean, median, standard deviation, maximum, minimum, range, and integral
+     * values of the linear and angular motion. It also displays the number of peaks detected for the linear and angular motion.
+     * 
+     * @param linear Linear motion data.
+     * @param angular Angular motion data.
+     */
+    void SceneEditorLayer::RenderComparisonSection(const StatisticalData & linear, const StatisticalData & angular)
+    {
+        const ImVec4 TEXT_PRIMARY = ImVec4(32.0f/255.0f, 33.0f/255.0f, 36.0f/255.0f, 1.0f);
+        const ImVec4 TEXT_SECONDARY = ImVec4(96.0f/255.0f, 94.0f/255.0f, 92.0f/255.0f, 1.0f);
+        ImVec4 ACCENT = ImGui::GetStyleColorVec4(ImGuiCol_CheckMark);
+        const ImVec4 WARNING = ImVec4(255.0f/255.0f, 185.0f/255.0f, 0.0f/255.0f, 1.0f);
+        
+        ImGui::PushStyleColor(ImGuiCol_Text, TEXT_PRIMARY);
+        ImGui::Text("Linear vs Angular Motion Comparison");
+        ImGui::PopStyleColor();
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+        
+        // Comparison table
+        if (ImGui::BeginTable("ComparisonTable", 3, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg))
+        {
+            ImGui::TableSetupColumn("Metric");
+            ImGui::TableSetupColumn("Linear Motion");
+            ImGui::TableSetupColumn("Angular Motion");
+            ImGui::TableHeadersRow();
+            
+            auto AddRow = [&](const char* metric, float linearVal, float angularVal, const char* units)
+            {
+                ImGui::TableNextRow();
+                ImGui::TableSetColumnIndex(0);
+                ImGui::PushStyleColor(ImGuiCol_Text, TEXT_PRIMARY);
+                ImGui::Text("%s", metric);
+                ImGui::PopStyleColor();
+                
+                ImGui::TableSetColumnIndex(1);
+                ImGui::PushStyleColor(ImGuiCol_Text, ACCENT);
+                ImGui::Text("%.4f %s", linearVal, units);
+                ImGui::PopStyleColor();
+                
+                ImGui::TableSetColumnIndex(2);
+                ImGui::PushStyleColor(ImGuiCol_Text, WARNING);
+                ImGui::Text("%.4f %s", angularVal, units);
+                ImGui::PopStyleColor();
+            };
+            
+            AddRow("Mean", linear.Mean, angular.Mean, "");
+            AddRow("Median", linear.Median, angular.Median, "");
+            AddRow("Std Deviation", linear.StdDev, angular.StdDev, "");
+            AddRow("Maximum", linear.Max, angular.Max, "");
+            AddRow("Minimum", linear.Min, angular.Min, "");
+            AddRow("Range", linear.Range, angular.Range, "");
+            AddRow("Integral", linear.IntegralValue, angular.IntegralValue, "");
+            
+            ImGui::TableNextRow();
+            ImGui::TableSetColumnIndex(0);
+            ImGui::PushStyleColor(ImGuiCol_Text, TEXT_PRIMARY);
+            ImGui::Text("Peaks Detected");
+            ImGui::PopStyleColor();
+            
+            ImGui::TableSetColumnIndex(1);
+            ImGui::PushStyleColor(ImGuiCol_Text, ACCENT);
+            ImGui::Text("%d", (int)linear.Peaks.size());
+            ImGui::PopStyleColor();
+            
+            ImGui::TableSetColumnIndex(2);
+            ImGui::PushStyleColor(ImGuiCol_Text, WARNING);
+            ImGui::Text("%d", (int)angular.Peaks.size());
+            ImGui::PopStyleColor();
+            
+            ImGui::EndTable();
+        }
+    }
+
+
     /**
      * Renders a node entity in the scene hierarchy.
      * This includes rendering the entity's tag name and model, as well as its transform and physics components.
@@ -2026,12 +3533,13 @@ namespace Motion
                 auto* body = rb.PhysicsBody;
 
                 // Mass
+                ImGui::BeginDisabled(true);
                 float mass = static_cast<float>(body->getMass());
-                if (DragFloat("Mass (kg)", &mass, 0.1f, 0.01f, 10000.0f))
-                    body->setMass(mass);
+                if (DragFloat("Computed Mass (kg)", &mass, 0.1f, 0.01f, 10000.0f))
                 HelpMarker("How heavy the object is in kilograms.\n"
                           "Heavier objects need more force to move and have more momentum.\n"
                           "Examples: Basketball ≈0.6kg, Car ≈1500kg, Person ≈70kg");
+                ImGui::EndDisabled();
 
                 // Linear Damping
                 float linDamp = static_cast<float>(body->getLinearDamping());
@@ -2121,10 +3629,12 @@ namespace Motion
                           "• Gold: 19300 kg/m³");
 
                 // Volume
-                std::string volume = std::to_string(cc.Shape->getVolume());
-                TextBox("Volume (m³)", volume, true);
+                ImGui::BeginDisabled();
+                float volume = cc.Shape->getVolume();
+                DragFloat("Volume", &volume, 0.1f, 0.0f, 1000000.0f);
                 HelpMarker("The volume of the object.\n"
                           "This is automatically calculated based on object size.");
+                ImGui::EndDisabled();
 
                 EndPropertyGrid();
             }
@@ -2292,12 +3802,12 @@ namespace Motion
             | ImGuiTreeNodeFlags_FramePadding
             | ImGuiTreeNodeFlags_DefaultOpen;
 
-        if (ImGui::TreeNodeEx("##environment", flags, "🌍 Environment"))
+        if (ImGui::TreeNodeEx("##environment", flags, "Environment"))
         {
             ImGui::Indent();
 
             // Lighting Section
-            if (ImGui::CollapsingHeader("☀️ Lighting", ImGuiTreeNodeFlags_DefaultOpen))
+            if (ImGui::CollapsingHeader("Lighting", ImGuiTreeNodeFlags_DefaultOpen))
             {
                 ImGui::Indent(10.0f);
                 auto& light = context.Physics->SunLight;
@@ -2326,7 +3836,7 @@ namespace Motion
             }
 
             // Physics World Settings
-            if (ImGui::CollapsingHeader("🌐 Physics World", ImGuiTreeNodeFlags_DefaultOpen))
+            if (ImGui::CollapsingHeader("Physics World", ImGuiTreeNodeFlags_DefaultOpen))
             {
                 ImGui::Indent(10.0f);
                 auto& world = context.Physics->Settings;
@@ -2369,7 +3879,7 @@ namespace Motion
                 if (ImGui::TreeNode("Advanced Settings"))
                 {
                     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.8f, 0.3f, 1.0f));
-                    ImGui::TextWrapped("⚠️ Advanced: These settings affect simulation accuracy and performance");
+                    ImGui::TextWrapped("Advanced: These settings affect simulation accuracy and performance");
                     ImGui::PopStyleColor();
                     ImGui::Spacing();
                     
@@ -2884,6 +4394,7 @@ namespace Motion
         ImGui::End();
         ImGui::PopStyleVar();
     }
+
 
 
 }

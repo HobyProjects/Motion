@@ -6,6 +6,9 @@
 #include "Scene.hpp"
 
 #include <chrono>
+#include <algorithm>
+#include <numeric>
+#include <cmath>
 
 namespace Motion
 {
@@ -271,5 +274,109 @@ namespace Motion
             glm::vec3 Origin; 
             glm::vec3 Direction; 
         };
+    
+    public:
+        struct StatisticalData
+        {
+            float Mean = 0.0f;
+            float Median = 0.0f;
+            float StdDev = 0.0f;
+            float Min = 0.0f;
+            float Max = 0.0f;
+            float Range = 0.0f;
+            int SampleCount = 0;
+            
+            std::vector<float> Peaks;
+            std::vector<float> PeakTimes;
+            
+            float IntegralValue = 0.0f; // Area under curve
+            
+            void Calculate(std::vector<ImVec2>& data)
+            {
+                if (data.empty())
+                {
+                    Reset();
+                    return;
+                }
+                
+                SampleCount = (int)data.size();
+                
+                std::vector<float> values;
+                values.reserve(data.size());
+                for (const auto& point : data)
+                    values.push_back(point.y);
+                
+                float sum = std::accumulate(values.begin(), values.end(), 0.0f);
+                Mean = sum / values.size();
+                
+                std::vector<float> sortedValues = values;
+                std::sort(sortedValues.begin(), sortedValues.end());
+                if (sortedValues.size() % 2 == 0)
+                    Median = (sortedValues[sortedValues.size()/2 - 1] + sortedValues[sortedValues.size()/2]) / 2.0f;
+                else
+                    Median = sortedValues[sortedValues.size()/2];
+                
+                Min = *std::min_element(values.begin(), values.end());
+                Max = *std::max_element(values.begin(), values.end());
+                Range = Max - Min;
+                
+                float variance = 0.0f;
+                for (float val : values)
+                    variance += (val - Mean) * (val - Mean);
+                variance /= values.size();
+                StdDev = std::sqrt(variance);
+                
+                DetectPeaks(data);
+                CalculateIntegral(data);
+            }
+            
+            void DetectPeaks(std::vector<ImVec2>& data, float threshold = 0.1f)
+            {
+                Peaks.clear();
+                PeakTimes.clear();
+                
+                if (data.size() < 3) return;
+                
+                for (size_t i = 1; i < data.size() - 1; i++)
+                {
+                    float prev = data[i-1].y;
+                    float curr = data[i].y;
+                    float next = data[i+1].y;
+                    
+                    if (curr > prev && curr > next && curr > (Mean + threshold * Range))
+                    {
+                        Peaks.push_back(curr);
+                        PeakTimes.push_back(data[i].x);
+                    }
+                }
+            }
+            
+            void CalculateIntegral(std::vector<ImVec2>& data)
+            {
+                IntegralValue = 0.0f;
+                
+                if (data.size() < 2) return;
+                for (size_t i = 0; i < data.size() - 1; i++)
+                {
+                    float dt = data[i+1].x - data[i].x;
+                    float avgHeight = (data[i].y + data[i+1].y) / 2.0f;
+                    IntegralValue += avgHeight * dt;
+                }
+            }
+            
+            void Reset()
+            {
+                Mean = Median = StdDev = Min = Max = Range = IntegralValue = 0.0f;
+                SampleCount = 0;
+                Peaks.clear();
+                PeakTimes.clear();
+            }
+        };
+
+    private:
+        void RenderStatisticalAnalysisPanel(SceneContext& context);
+        void RenderStatisticsSection(const char* title, const StatisticalData& stats, const ImVec4& color);
+        void RenderComparisonSection(const StatisticalData& linear, const StatisticalData& angular);
+    
     };
 }

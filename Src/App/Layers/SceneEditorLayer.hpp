@@ -25,6 +25,7 @@ namespace Motion
         virtual void OnUIRender(WindowHandle handle) override;
 
     private:
+        std::unique_ptr<ToastManager> m_ToastManager;
         glm::vec2               m_CurrentViewportSize{ 1280.0f, 720.0f };
         std::shared_ptr<Scene>  m_Scene{ nullptr };
         std::string             m_SceneName{};
@@ -164,8 +165,10 @@ namespace Motion
         void RenderTagAndModel(SceneContext& context, entt::entity e);
         void RenderTransform(SceneContext& context, entt::entity e);
         void RenderPhysics(SceneContext& context, entt::entity e);
+        
         void RenderToolbarAndSearch();
         void RenderEntityHierarchy(SceneContext& context);
+        void RenderEntityInspector(SceneContext& context);
         void RenderEnvironmentSettings(SceneContext& context);
         void RenderSimulationWatchList(SceneContext& context);
 

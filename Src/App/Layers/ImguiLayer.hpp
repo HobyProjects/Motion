@@ -28,7 +28,6 @@ namespace Motion
 
         private:
             WindowHandle m_WindowHandle{ 0 };
-            std::unique_ptr<ToastManager> m_ToastManager;
             bool m_ShowLogConsole{ true };
             bool m_AllowEvents{ false };
     };

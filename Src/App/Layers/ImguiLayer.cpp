@@ -11,8 +11,6 @@ namespace Motion
     {
         UserInterface::LoadDefaultFonts("Assets/Fonts/JetBrainsMono/JetBrainsMono-Regular.ttf", 17.5f);
         UserInterface::UseColor();
-        
-        m_ToastManager = std::make_unique<ToastManager>(5.0f, 0.5f);
     }
 
     void ImGuiLayer::OnDetach()
@@ -22,7 +20,7 @@ namespace Motion
 
     void ImGuiLayer::OnUpdate(WindowHandle handle, Timer deltaTime)
     {
-        m_ToastManager->Update();
+;
     }
 
     void ImGuiLayer::OnEvent(WindowHandle handle, IEvent& e)
@@ -49,7 +47,6 @@ namespace Motion
 
     void ImGuiLayer::End()
     {
-        m_ToastManager->Render();
         //RenderLogConsoleWindow();
 
         ImGuiIO& io = ImGui::GetIO();

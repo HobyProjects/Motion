@@ -79,6 +79,7 @@ namespace Motion
         
         std::memset(m_SearchBuf, 0, sizeof(m_SearchBuf));
         m_PlotExporter = IPlotExporter::Create();
+        m_ToastManager = std::make_unique<ToastManager>(5.0f, 0.5f);
     }
 
     /**
@@ -89,20 +90,9 @@ namespace Motion
      */
     void SceneEditorLayer::OnDetach()
     {
-        if (m_SceneCreationOp.State == AsyncOperationState::InProgress)
-        {
-            m_SceneCreationOp.Reset();
-        }
-        
-        if (m_SceneLoadOp.State == AsyncOperationState::InProgress)
-        {
-            m_SceneLoadOp.Reset();
-        }
-        
-        if (m_EntityImportOp.State == AsyncOperationState::InProgress)
-        {
-            m_EntityImportOp.Reset();
-        }
+        if (m_SceneCreationOp.State == AsyncOperationState::InProgress) m_SceneCreationOp.Reset();
+        if (m_SceneLoadOp.State == AsyncOperationState::InProgress) m_SceneLoadOp.Reset();
+        if (m_EntityImportOp.State == AsyncOperationState::InProgress) m_EntityImportOp.Reset();
     }
 
     /**
@@ -118,6 +108,7 @@ namespace Motion
     {
         if (!m_Scene) return;
 
+        m_ToastManager->Update();
         m_Scene->OnUpdate(handle, deltaTime);
         m_Scene->Submit();
     }
@@ -148,6 +139,7 @@ namespace Motion
     {
         BuildDockspace();
         
+        m_ToastManager->Render();
         HandleSceneCreation();
         HandleSceneLoading();
         HandleEntityImport();
@@ -1208,7 +1200,6 @@ namespace Motion
             return;
 
         ImGuiStyle& style = ImGui::GetStyle();
-        
         if (ImGui::BeginMenu("Files"))
         {
             if (ImGui::MenuItem("  New Scene ", "Ctrl+N"))
@@ -1231,12 +1222,8 @@ namespace Motion
                     auto scene = m_Scene.get();
                     auto path = m_ScenePath;
                     auto sceneName = m_SceneName;
-                    
-                    LOADER::Submit([scene, path, sceneName]()
-                    {
-                        std::string filename = std::format("{}.mes", sceneName);
-                        SceneSerializer::Serialize(scene, path / filename);
-                    });
+                    std::string filename = std::format("{}.mes", sceneName);
+                    SceneSerializer::Serialize(scene, path / filename);
                 }
             }
             ImGui::EndDisabled();
@@ -1422,12 +1409,17 @@ namespace Motion
 
                 ImGuiID dock_main_id  = dockspace_id;
                 ImGuiID dock_right_id = ImGui::DockBuilderSplitNode(dock_main_id, ImGuiDir_Right, 0.30f, nullptr, &dock_main_id);
+                ImGuiID dock_rbottom_id = ImGui::DockBuilderSplitNode(dock_right_id, ImGuiDir_Down, 0.30f, nullptr, &dock_right_id);
                 //ImGuiID dock_bottom_id = ImGui::DockBuilderSplitNode(dock_main_id, ImGuiDir_Down, 0.30f, nullptr, &dock_main_id);
 
                 ImGui::DockBuilderDockWindow("Scene Viewport",   dock_main_id);
-                ImGui::DockBuilderDockWindow("Scene Properties", dock_right_id);
+                ImGui::DockBuilderDockWindow("Scene Hierarchy", dock_right_id);
                 ImGui::DockBuilderDockWindow("Physics Simulation Watchlist", dock_right_id);
                 ImGui::DockBuilderDockWindow("Statistical Analysis", dock_right_id);
+
+                ImGui::DockBuilderDockWindow("Environment Settings", dock_rbottom_id);
+                ImGui::DockBuilderDockWindow("Entity Properties", dock_rbottom_id);
+
                 //ImGui::DockBuilderDockWindow("Console", dock_bottom_id);
                 ImGui::DockBuilderFinish(dockspace_id);
             }
@@ -1450,17 +1442,18 @@ namespace Motion
         if(!m_Scene) return;
 
         auto& context = m_Scene->GetContext();
-        ImGui::Begin("Scene Properties");
+        ImGui::Begin("Scene Hierarchy");
         {
             RenderToolbarAndSearch();
             RenderEntityHierarchy(context);
-            RenderEnvironmentSettings(context);
         }
         ImGui::End();
-
+        
         RenderViewport(context);
         RenderSimulationWatchList(context);
         RenderStatisticalAnalysisPanel(context);
+        RenderEnvironmentSettings(context);
+        RenderEntityInspector(context);
     }
 
     /**
@@ -1542,8 +1535,7 @@ namespace Motion
                 [&](std::int32_t, const std::string& selectedName)
                 {
                     if (selectedName == "None") { mat->SetBaseMaterial(nullptr); return; }
-                    if (auto it = std::ranges::find_if(m_BaseMaterial, [&](const auto& m){ return m->Name == selectedName; });
-                        it != m_BaseMaterial.end())
+                    if (auto it = std::ranges::find_if(m_BaseMaterial, [&](const auto& m){return m->Name == selectedName;}); it != m_BaseMaterial.end())
                     {
                         mat->SetBaseMaterial(*it);
                     }
@@ -1659,7 +1651,7 @@ namespace Motion
     }
 
     static std::unordered_map<entt::entity, EntityPlotData> s_EntityPlotData;
-    static float s_PlotHistory = 10.0f;
+    static float s_PlotHistory = 25.0f;
     static bool s_PauseRecording = false;
 
     /**
@@ -1825,6 +1817,8 @@ namespace Motion
             
             ImGui::AlignTextToFramePadding();
             ImGui::Checkbox("Freeze Data Recording", &s_PauseRecording);
+            if(context.Simulation->State == SceneSimulation::SimulationState::PAUSED)
+                s_PauseRecording = (s_PauseRecording ? false : true);
             ImGui::SameLine();
             HelpMarker("Pause recording to freeze all graphs at the current moment.\n\n"
                     "Useful for:\n"
@@ -1876,7 +1870,7 @@ namespace Motion
                     ImGui::PushStyleColor(ImGuiCol_Header, CONTROL_BG);
                     ImGui::PushStyleColor(ImGuiCol_HeaderHovered, HOVER_BG);
                     
-                    if (ImGui::TreeNodeEx(ICON_MD_PLACE " Position & Orientation", ImGuiTreeNodeFlags_DefaultOpen))
+                    if (ImGui::TreeNodeEx("Position & Orientation", ImGuiTreeNodeFlags_DefaultOpen))
                     {
                         ImGui::PopStyleColor(2);
                         ImGui::Spacing();
@@ -2132,7 +2126,7 @@ namespace Motion
                         else
                         {
                             ImGui::PushStyleColor(ImGuiCol_Text, TEXT_DISABLED);
-                            ImGui::Text("%s Object is not rotating", ICON_MD_PAUSE);
+                            ImGui::Text("Object is not rotating");
                             ImGui::PopStyleColor();
                         }
                         
@@ -2149,7 +2143,7 @@ namespace Motion
                     // Velocity Graphs Section
                     ImGui::PushStyleColor(ImGuiCol_Header, CONTROL_BG);
                     ImGui::PushStyleColor(ImGuiCol_HeaderHovered, HOVER_BG);
-                    
+
                     if (ImGui::TreeNodeEx("Motion Graphs (Visual Analysis)", ImGuiTreeNodeFlags_DefaultOpen))
                     {
                         ImGui::PopStyleColor(2);
@@ -2164,7 +2158,7 @@ namespace Motion
                         ImGui::Spacing();
                         
                         // Recording logic
-                        if (!s_PauseRecording)
+                        if (!s_PauseRecording || context.Simulation->State != SceneSimulation::SimulationState::PAUSED)
                         {
                             plotData.TimeAccumulator += ImGui::GetIO().DeltaTime;
                             
@@ -2175,9 +2169,7 @@ namespace Motion
                             plotData.AngularVelocity.AddPoint(plotData.TimeAccumulator, angularVel);
                         }
 
-                        float t = plotData.TimeAccumulator;
-                        
-                        // Linear Velocity Plot
+                        float currentTime = plotData.TimeAccumulator;                
                         ImGui::PushStyleColor(ImGuiCol_Text, ACCENT);
                         ImGui::Text("Linear Speed Over Time");
                         ImGui::PopStyleColor();
@@ -2199,8 +2191,9 @@ namespace Motion
                         if (ImPlot::BeginPlot("##LinearVelocityPlot", ImVec2(-1, 280)))
                         {
                             ImPlot::SetupAxes("Time (seconds)", "Speed (m/s)", 0, 0);
-                            ImPlot::SetupAxisLimits(ImAxis_X1, t - s_PlotHistory, t, ImGuiCond_Always);
-                            ImPlot::SetupAxisLimits(ImAxis_Y1, 0, 20, ImGuiCond_Once);                   
+                            ImPlot::SetupAxisLimits(ImAxis_X1, currentTime - s_PlotHistory, currentTime, ImGuiCond_Always);
+                            ImPlot::SetupAxisLimits(ImAxis_Y1, 0, 20, ImGuiCond_Once);
+                            
                             ImPlot::PushStyleColor(ImPlotCol_Line, ACCENT);
                             ImVec4 fillColor = ACCENT;
                             fillColor.w = 0.25f;
@@ -2213,13 +2206,14 @@ namespace Motion
                                     "Speed",
                                     &plotData.LinearVelocity.Data[0].x,
                                     &plotData.LinearVelocity.Data[0].y,
-                                    (int)plotData.LinearVelocity.Data.size(),
+                                    plotData.LinearVelocity.GetSize(),
                                     0,
                                     plotData.LinearVelocity.Offset,
                                     2 * sizeof(float)
                                 );
                             }
                             
+                            // Store plot position and size for PNG export
                             plotData.LinearPlotPos = ImPlot::GetPlotPos();
                             plotData.LinearPlotSize = ImPlot::GetPlotSize();
                             
@@ -2227,31 +2221,34 @@ namespace Motion
                             ImPlot::EndPlot();
                         }
                         
-                        ImGui::Spacing();
-                        
+                        ImGui::Spacing();                      
                         ImGui::PushStyleColor(ImGuiCol_Button, ACCENT);
                         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ACCENT_HOVER);
                         ImGui::PushStyleColor(ImGuiCol_ButtonActive, ACCENT_ACTIVE);
                         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1, 1, 1, 1));
                         
-                        if (ImGui::Button("Save Linear Graph", ImVec2(200, 0)))
+                        if (ImGui::Button("Export to CSV", ImVec2(180, 0)))
                         {
-                            ImGui::OpenPopup("SaveLinearPlot");
+                            ImGui::OpenPopup("ExportLinearCSV");
                         }
                         ImGui::PopStyleColor(4);
                         ImGui::SameLine();
-                        HelpMarker("Export this graph as a PNG image file.\n\n"
-                                "Perfect for:\n"
-                                "• Including in reports\n"
-                                "• Sharing with classmates\n"
-                                "• Documenting experiments");
+                        HelpMarker("Export the raw data to a CSV spreadsheet file.\n\n"
+                                "Use CSV files for:\n"
+                                "• Further analysis in Excel or Google Sheets\n"
+                                "• Creating custom graphs\n"
+                                "• Statistical calculations\n"
+                                "• Comparing with other datasets");
                         
                         ImGui::Spacing();
                         ImGui::Spacing();
                         ImGui::Separator();
                         ImGui::Spacing();
 
-                        // Angular Velocity Plot
+                        // ============================================================================
+                        // ANGULAR VELOCITY PLOT
+                        // ============================================================================
+                        
                         ImGui::PushStyleColor(ImGuiCol_Text, WARNING);
                         ImGui::Text("Rotational Speed Over Time");
                         ImGui::PopStyleColor();
@@ -2272,8 +2269,9 @@ namespace Motion
                         if (ImPlot::BeginPlot("##AngularVelocityPlot", ImVec2(-1, 280)))
                         {
                             ImPlot::SetupAxes("Time (seconds)", "Rotation Speed (rad/s)", 0, 0);
-                            ImPlot::SetupAxisLimits(ImAxis_X1, t - s_PlotHistory, t, ImGuiCond_Always);
-                            ImPlot::SetupAxisLimits(ImAxis_Y1, 0, 10, ImGuiCond_Once);                       
+                            ImPlot::SetupAxisLimits(ImAxis_X1, currentTime - s_PlotHistory, currentTime, ImGuiCond_Always);
+                            ImPlot::SetupAxisLimits(ImAxis_Y1, 0, 10, ImGuiCond_Once);
+                            
                             ImPlot::PushStyleColor(ImPlotCol_Line, WARNING);
                             ImVec4 fillColor2 = WARNING;
                             fillColor2.w = 0.25f;
@@ -2286,13 +2284,14 @@ namespace Motion
                                     "Spin Rate",
                                     &plotData.AngularVelocity.Data[0].x,
                                     &plotData.AngularVelocity.Data[0].y,
-                                    (int)plotData.AngularVelocity.Data.size(),
+                                    plotData.AngularVelocity.GetSize(),
                                     0,
                                     plotData.AngularVelocity.Offset,
                                     2 * sizeof(float)
                                 );
                             }
                             
+                            // Store plot position and size for PNG export
                             plotData.AngularPlotPos = ImPlot::GetPlotPos();
                             plotData.AngularPlotSize = ImPlot::GetPlotSize();
                             
@@ -2301,24 +2300,24 @@ namespace Motion
                         }
                         
                         ImGui::Spacing();
-                        
-                        ImGui::PushStyleColor(ImGuiCol_Button, WARNING);
                         ImVec4 warningHover = MixColors(WARNING, ImVec4(1, 1, 1, 1), 0.12f);
-                        ImVec4 warningActive = MixColors(WARNING, ImVec4(0, 0, 0, 1), 0.15f);
+                        ImVec4 warningActive = MixColors(WARNING, ImVec4(0, 0, 0, 1), 0.15f);            
+                        ImGui::PushStyleColor(ImGuiCol_Button, WARNING);
                         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, warningHover);
                         ImGui::PushStyleColor(ImGuiCol_ButtonActive, warningActive);
                         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1, 1, 1, 1));
                         
-                        if (ImGui::Button("Save Rotation Graph", ImVec2(200, 0)))
+                        if (ImGui::Button("Export to CSV##Angular", ImVec2(180, 0)))
                         {
-                            ImGui::OpenPopup("SaveAngularPlot");
+                            ImGui::OpenPopup("ExportAngularCSV");
                         }
                         ImGui::PopStyleColor(4);
                         ImGui::SameLine();
-                        HelpMarker("Export this graph as a PNG image file for reports and presentations.");
+                        HelpMarker("Export rotation data to CSV for detailed analysis in spreadsheet applications.");
                         
                         ImGui::SameLine(0.0f, 30.0f);
                         
+                        // Clear Data Button
                         ImGui::PushStyleColor(ImGuiCol_Button, ERROR_COLOR);
                         ImVec4 errorHover = MixColors(ERROR_COLOR, ImVec4(1, 1, 1, 1), 0.12f);
                         ImVec4 errorActive = MixColors(ERROR_COLOR, ImVec4(0, 0, 0, 1), 0.15f);
@@ -2331,6 +2330,8 @@ namespace Motion
                             plotData.LinearVelocity.Erase();
                             plotData.AngularVelocity.Erase();
                             plotData.TimeAccumulator = 0.0f;
+                            
+                            MOTION_INFO("Cleared all plot data for entity");
                         }
                         ImGui::PopStyleColor(4);
                         ImGui::SameLine();
@@ -2340,30 +2341,48 @@ namespace Motion
                                 "• Graphs become cluttered\n"
                                 "• You want to reset and try again");
 
-                        // Linear Plot Save Popup
-                        if (ImGui::BeginPopup("SaveLinearPlot"))
+                        // ============================================================================
+                        // EXPORT POPUPS
+                        // ============================================================================
+
+                        // Linear Velocity CSV Export Popup
+                        if (ImGui::BeginPopup("ExportLinearCSV"))
                         {
                             ImGui::PushStyleColor(ImGuiCol_Text, ACCENT);
-                            ImGui::Text("Save Linear Speed Graph");
+                            ImGui::Text("Export Linear Speed Data");
                             ImGui::PopStyleColor();
                             ImGui::Separator();
                             ImGui::Spacing();
                             
                             ImGui::PushStyleColor(ImGuiCol_Text, TEXT_PRIMARY);
-                            ImGui::TextWrapped("Choose a name for your graph image:");
+                            ImGui::TextWrapped("Export raw data to CSV format for analysis in Excel or other tools:");
                             ImGui::PopStyleColor();
                             ImGui::Spacing();
                             
-                            static char filename[128] = "linear_velocity_graph.png";
+                            static char linearCsvFilename[128] = "linear_velocity_data.csv";
                             ImGui::PushStyleColor(ImGuiCol_Text, TEXT_PRIMARY);
                             ImGui::Text("Filename:");
                             ImGui::PopStyleColor();
                             ImGui::SetNextItemWidth(350.0f);
-                            ImGui::InputText("##filename", filename, sizeof(filename));
+                            ImGui::InputText("##linearCsvFilename", linearCsvFilename, sizeof(linearCsvFilename));
+                            
+                            ImGui::Spacing();
+                            
+                            // Show data preview
+                            const int dataCount = plotData.LinearVelocity.GetSize();
+                            ImGui::PushStyleColor(ImGuiCol_Text, TEXT_SECONDARY);
+                            ImGui::Text("Data points: %d", dataCount);
+                            if (dataCount > 0)
+                            {
+                                const ImVec2 firstPoint = plotData.LinearVelocity.GetPoint(0);
+                                const ImVec2 lastPoint = plotData.LinearVelocity.GetPoint(dataCount - 1);
+                                ImGui::Text("Time range: %.2f - %.2f seconds", firstPoint.x, lastPoint.x);
+                            }
+                            ImGui::PopStyleColor();
                             
                             ImGui::Spacing();
                             ImGui::PushStyleColor(ImGuiCol_Text, TEXT_DISABLED);
-                            ImGui::TextDisabled("The graph will be saved as a PNG image file");
+                            ImGui::TextDisabled("CSV files can be opened in Excel, Google Sheets, or any spreadsheet application");
                             ImGui::PopStyleColor();
                             ImGui::Spacing();
                             ImGui::Separator();
@@ -2376,14 +2395,21 @@ namespace Motion
                             ImGui::PushStyleColor(ImGuiCol_ButtonActive, successActive);
                             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1, 1, 1, 1));
                             
-                            if (ImGui::Button("Save", ImVec2(140, 0)))
+                            if (ImGui::Button("Export", ImVec2(140, 0)))
                             {
                                 DialogBoxes::InitializeCOM();
-                                if(auto path = DialogBoxes::SelectFolderDialog(L"Choose where to save the linear speed graph", m_ScenePath); !path.empty())
+                                if (auto path = DialogBoxes::SelectFolderDialog(L"Choose where to save the CSV file", m_ScenePath); !path.empty())
                                 {
-                                    std::filesystem::path savePath = path / filename;
-                                    std::string savePathStr = savePath.string();
-                                    m_PlotExporter->SavePlotRegionToPNG(savePathStr, plotData.LinearPlotPos, plotData.LinearPlotSize);
+                                    std::filesystem::path savePath = path / linearCsvFilename;
+                                    
+                                    if (m_PlotExporter->ExportPlotDataToCSV(savePath.string(), plotData.LinearVelocity, "Time (s)", "Speed (m/s)"))
+                                    {
+                                        MOTION_INFO("Linear velocity data exported to: {}", savePath.string());
+                                    }
+                                    else
+                                    {
+                                        MOTION_ERROR("Failed to export linear velocity data");
+                                    }
                                 }
                                 DialogBoxes::UninitializeCOM();
                                 ImGui::CloseCurrentPopup();
@@ -2404,30 +2430,44 @@ namespace Motion
                             ImGui::EndPopup();
                         }
                         
-                        // Angular Plot Save Popup
-                        if (ImGui::BeginPopup("SaveAngularPlot"))
+                        // Angular Velocity CSV Export Popup
+                        if (ImGui::BeginPopup("ExportAngularCSV"))
                         {
                             ImGui::PushStyleColor(ImGuiCol_Text, WARNING);
-                            ImGui::Text("Save Rotational Speed Graph");
+                            ImGui::Text("Export Rotational Speed Data");
                             ImGui::PopStyleColor();
                             ImGui::Separator();
                             ImGui::Spacing();
                             
                             ImGui::PushStyleColor(ImGuiCol_Text, TEXT_PRIMARY);
-                            ImGui::TextWrapped("Choose a name for your graph image:");
+                            ImGui::TextWrapped("Export raw rotation data to CSV format for detailed analysis:");
                             ImGui::PopStyleColor();
                             ImGui::Spacing();
                             
-                            static char filename[128] = "angular_velocity_graph.png";
+                            static char angularCsvFilename[128] = "angular_velocity_data.csv";
                             ImGui::PushStyleColor(ImGuiCol_Text, TEXT_PRIMARY);
                             ImGui::Text("Filename:");
                             ImGui::PopStyleColor();
                             ImGui::SetNextItemWidth(350.0f);
-                            ImGui::InputText("##filename", filename, sizeof(filename));
+                            ImGui::InputText("##angularCsvFilename", angularCsvFilename, sizeof(angularCsvFilename));
+                            
+                            ImGui::Spacing();
+                            
+                            // Show data preview
+                            const int dataCount = plotData.AngularVelocity.GetSize();
+                            ImGui::PushStyleColor(ImGuiCol_Text, TEXT_SECONDARY);
+                            ImGui::Text("Data points: %d", dataCount);
+                            if (dataCount > 0)
+                            {
+                                const ImVec2 firstPoint = plotData.AngularVelocity.GetPoint(0);
+                                const ImVec2 lastPoint = plotData.AngularVelocity.GetPoint(dataCount - 1);
+                                ImGui::Text("Time range: %.2f - %.2f seconds", firstPoint.x, lastPoint.x);
+                            }
+                            ImGui::PopStyleColor();
                             
                             ImGui::Spacing();
                             ImGui::PushStyleColor(ImGuiCol_Text, TEXT_DISABLED);
-                            ImGui::TextDisabled("The graph will be saved as a PNG image file");
+                            ImGui::TextDisabled("CSV files can be opened in Excel, Google Sheets, or any spreadsheet application");
                             ImGui::PopStyleColor();
                             ImGui::Spacing();
                             ImGui::Separator();
@@ -2440,14 +2480,21 @@ namespace Motion
                             ImGui::PushStyleColor(ImGuiCol_ButtonActive, successActive);
                             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1, 1, 1, 1));
                             
-                            if (ImGui::Button("Save", ImVec2(140, 0)))
+                            if (ImGui::Button("Export", ImVec2(140, 0)))
                             {
                                 DialogBoxes::InitializeCOM();
-                                if(auto path = DialogBoxes::SelectFolderDialog(L"Choose where to save the rotation speed graph", m_ScenePath); !path.empty())
+                                if (auto path = DialogBoxes::SelectFolderDialog(L"Choose where to save the CSV file", m_ScenePath); !path.empty())
                                 {
-                                    std::filesystem::path savePath = path / filename;
-                                    std::string savePathStr = savePath.string();
-                                    m_PlotExporter->SavePlotRegionToPNG(savePathStr, plotData.AngularPlotPos, plotData.AngularPlotSize);
+                                    std::filesystem::path savePath = path / angularCsvFilename;
+                                    
+                                    if (m_PlotExporter->ExportPlotDataToCSV(savePath.string(), plotData.AngularVelocity, "Time (s)", "Rotation Speed (rad/s)"))
+                                    {
+                                        MOTION_INFO("Angular velocity data exported to: {}", savePath.string());
+                                    }
+                                    else
+                                    {
+                                        MOTION_ERROR("Failed to export angular velocity data");
+                                    }
                                 }
                                 DialogBoxes::UninitializeCOM();
                                 ImGui::CloseCurrentPopup();
@@ -2581,7 +2628,7 @@ namespace Motion
                                 "Experiment with different values to see the effects!");
                         
                         ImGui::SetNextItemWidth(400.0f);
-                        ImGui::SliderFloat("##impulse_mag", &plotData.ImpulseMagnitude, 0.1f, 100.0f, "%.2f N·s", ImGuiSliderFlags_Logarithmic);
+                        ImGui::SliderFloat("##impulse_mag", &plotData.ImpulseMagnitude, 0.1f, 1000.0f, "%.2f N·s", ImGuiSliderFlags_Logarithmic);
                         
                         ImGui::Spacing();
                         ImGui::PushStyleColor(ImGuiCol_Text, TEXT_PRIMARY);
@@ -2632,7 +2679,7 @@ namespace Motion
                         
                         ImGui::Checkbox("Use Local Position (relative to object center)", &plotData.UseLocalPosition);
                         ImGui::SetNextItemWidth(280.0f);
-                        ImGui::DragFloat3("##impulse_pos", &plotData.ImpulsePosition.x, 0.1f, -10.0f, 10.0f, "%.2f");
+                        ImGui::DragFloat3("##impulse_pos", &plotData.ImpulsePosition.x, 0.1f, 0.0f, 10000.0f, "%.2f");
                         ImGui::SameLine();
                         
                         ImGui::PushStyleColor(ImGuiCol_Button, CONTROL_BG);
@@ -3276,24 +3323,20 @@ namespace Motion
      */
     void SceneEditorLayer::RenderNodeEntities(SceneContext& context, entt::entity root)
     {
+        const ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_SpanAvailWidth |
+                                        ImGuiTreeNodeFlags_AllowItemOverlap | 
+                                        ImGuiTreeNodeFlags_FramePadding;
+
         m_Scene->ForEachNodeEntity(root, [&](entt::entity e)
         {
             if (e == root) return;
             const TagComponent* tagOpt = context.Entities->Registry.try_get<TagComponent>(e);
             const char* label = tagOpt ? tagOpt->Tag.c_str() : "Unnamed";
-
             ImGui::PushID(static_cast<std::int32_t>(entt::to_integral(e)));
 
-            const ImGuiTreeNodeFlags flags =
-                ImGuiTreeNodeFlags_SpanAvailWidth |ImGuiTreeNodeFlags_AllowItemOverlap | ImGuiTreeNodeFlags_FramePadding;
-
-            const bool open = ImGui::TreeNodeEx("##node", flags, "%s %s", label, 
-                (e == context.Entities->SelectedEntity) ? "*" : "");
+            const bool open = ImGui::TreeNodeEx("##node", flags, "%s %s", label, (e == context.Entities->SelectedEntity) ? "*" : "");
             if (ImGui::IsItemClicked(ImGuiMouseButton_Left)) m_Scene->SelectedEntity(e);
-            if (ImGui::IsItemClicked(ImGuiMouseButton_Right))
-            {
-                ImGui::OpenPopup("EntityContextMenu");
-            }
+            if (ImGui::IsItemClicked(ImGuiMouseButton_Right)) ImGui::OpenPopup("EntityContextMenu");
 
             if (ImGui::BeginPopupContextWindow("EntityContextMenu"))
             {
@@ -3388,8 +3431,12 @@ namespace Motion
 
                 if (tagOpt && tagOpt->IsActive)
                 {
+                    ImGui::BeginDisabled(context.Simulation->InSimulation);
+
                     RenderTransform(context, e);
                     RenderPhysics(context, e);
+
+                    ImGui::EndDisabled();
                 }
                 else
                 {
@@ -3397,7 +3444,7 @@ namespace Motion
                 }
                 ImGui::TreePop();
             }
-
+        
             ImGui::PopID();
         });
     }
@@ -3413,13 +3460,13 @@ namespace Motion
     void SceneEditorLayer::RenderTagAndModel(SceneContext& context, entt::entity e)
     {
         if (!context.Entities->Registry.any_of<TagComponent>(e)) return;
-
         auto& tag = context.Entities->Registry.get<TagComponent>(e);
 
+        ImGui::PushID("##tag-inspector");
         BeginPropertyGrid("##tag-grid");
+
         TextBox("Name Tag", tag.Tag, false);
         ToggleSwitch("Is Active", tag.IsActive);
-
         if (context.Entities->Registry.any_of<ModelComponent>(e))
         {
             const auto& model = context.Entities->Registry.get<ModelComponent>(e);
@@ -3431,6 +3478,7 @@ namespace Motion
         }
 
         EndPropertyGrid();
+        ImGui::PopID();
     }
 
     /**
@@ -3444,24 +3492,23 @@ namespace Motion
     {
         if (auto* tr = context.Entities->Registry.try_get<TransformComponent>(e))
         {
+            ImGui::PushID("##transform-properties");
             BeginPropertyGrid("##transform-grid");
 
             glm::vec3 t = tr->Translation;
-            if (DragFloat3("Position (m)", t, 0.1f))
-                tr->Translation = t;
+            if (DragFloat3("Position (m)", t, 0.1f)) tr->Translation = t;
             HelpMarker("The position of the object in 3D space (X, Y, Z coordinates).\nMeasured in meters.");
 
             glm::vec3 eulerDeg = glm::degrees(glm::eulerAngles(tr->Rotation));
-            if (DragFloat3("Rotation (deg)", eulerDeg, 1.0f))
-                tr->Rotation = glm::normalize(glm::quat(glm::radians(eulerDeg)));
+            if (DragFloat3("Rotation (deg)", eulerDeg, 1.0f)) tr->Rotation = glm::normalize(glm::quat(glm::radians(eulerDeg)));
             HelpMarker("The rotation of the object around each axis.\nMeasured in degrees (0-360).");
 
             glm::vec3 s = tr->Scale;
-            if (DragFloat3("Scale", s, 0.1f, 0.01f, 100.0f))
-                tr->Scale = s;
+            if (DragFloat3("Scale", s, 0.1f, 0.01f, 100.0f)) tr->Scale = s;
             HelpMarker("The size multiplier for each axis.\n1.0 = original size, 2.0 = double size, 0.5 = half size");
 
             EndPropertyGrid();
+            ImGui::PopID();
         }
     }
 
@@ -3478,6 +3525,7 @@ namespace Motion
         auto* rb = context.Entities->Registry.try_get<RigidBodyComponent>(e);
         if (!cc || !rb) return;
 
+        ImGui::PushID("##physics-properties");
         if (ImGui::CollapsingHeader("Physics Status", ImGuiTreeNodeFlags_DefaultOpen))
         {
             ImGui::Indent(10.0f);
@@ -3497,11 +3545,12 @@ namespace Motion
         DrawRigidBodyUI(*rb);
         DrawColliderUI(*cc);
 
-        // Display live physics data during simulation
         if (context.Simulation->InSimulation && rb->PhysicsBody->getType() == rp3d::BodyType::DYNAMIC)
         {
             DrawLivePhysicsData(*rb);
         }
+
+        ImGui::PopID();
     }
 
     /**
@@ -3512,14 +3561,19 @@ namespace Motion
      */
     void SceneEditorLayer::DrawRigidBodyUI(RigidBodyComponent & rb)
     {
-        ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.2f, 0.4f, 0.7f, 0.5f));
-        if (ImGui::CollapsingHeader("Rigid Body Properties", ImGuiTreeNodeFlags_DefaultOpen))
+        if (ImGui::CollapsingHeader("Rigid Body Properties"))
         {
             ImGui::PopStyleColor();
             ImGui::Indent(10.0f);
             
             if (BeginPropertyGrid("##rigidbody-props"))
             {
+                bool allowSleeping = rb.PhysicsBody->isAllowedToSleep();
+                if(ToggleSwitch("Allow Sleeping", allowSleeping)){
+                    rb.PhysicsBody->setIsAllowedToSleep(allowSleeping);
+                }
+                HelpMarker("Allow the body to sleep if it is not moving");
+
                 std::int32_t interaction = (rb.PhysicsBody->getType() == rp3d::BodyType::DYNAMIC) ? 1 : 0;
                 ComboBox("Body Type", { "Static", "Dynamic" }, interaction,
                     [&](std::int32_t idx, const std::string&)
@@ -3564,10 +3618,6 @@ namespace Motion
             
             ImGui::Unindent(10.0f);
         }
-        else
-        {
-            ImGui::PopStyleColor();
-        }
     }
 
     /**
@@ -3578,8 +3628,7 @@ namespace Motion
      */
     void SceneEditorLayer::DrawColliderUI(ColliderComponent& cc)
     {
-        ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.7f, 0.4f, 0.2f, 0.5f));
-        if (ImGui::CollapsingHeader("Collider Properties", ImGuiTreeNodeFlags_DefaultOpen))
+        if (ImGui::CollapsingHeader("Collider Properties"))
         {
             ImGui::PopStyleColor();
             ImGui::Indent(10.0f);
@@ -3640,10 +3689,6 @@ namespace Motion
             }
             
             ImGui::Unindent(10.0f);
-        }
-        else
-        {
-            ImGui::PopStyleColor();
         }
     }
 
@@ -3786,6 +3831,52 @@ namespace Motion
     }
 
     /**
+     * Renders the entity inspector panel for the scene editor layer.
+     * This includes rendering the entity's tag, model, transform, and physics components.
+     * If the entity is inactive, a disabled text is rendered instead.
+     * @param context The scene context.
+     */
+    void SceneEditorLayer::RenderEntityInspector(SceneContext& context)
+    {
+        ImGui::PushID("##entity-inspector");
+        ImGui::Begin("Entity Properties");
+        {
+            if (m_Scene->IsRootEntity(context.Entities->SelectedEntity) || context.Entities->SelectedEntity == entt::null)
+            {
+                ImGui::TextDisabled("This does not have any properties");
+                ImGui::End();
+                ImGui::PopID();
+                return;
+            };
+
+            const TagComponent* tagOpt = context.Entities->Registry.try_get<TagComponent>(context.Entities->SelectedEntity);
+            if(!tagOpt)
+            {
+                ImGui::TextDisabled("This does not have any properties");
+                ImGui::End();
+                ImGui::PopID();
+                return;
+            }
+
+            if (tagOpt && tagOpt->IsActive)
+            {
+                ImGui::BeginDisabled(context.Simulation->InSimulation);
+
+                RenderTransform(context, context.Entities->SelectedEntity);
+                RenderPhysics(context,context.Entities->SelectedEntity);
+
+                ImGui::EndDisabled();
+            }
+            else
+            {
+                ImGui::TextDisabled("Entity is inactive");
+            }
+        }
+        ImGui::End();
+        ImGui::PopID();
+    }
+
+    /**
      * Renders the environment settings for the scene editor layer.
      * This includes rendering the environment properties, such as the light direction and color, and the physics world settings.
      * The environment properties include the light direction, color, and intensity, as well as whether the light direction should be shown in the gizmo.
@@ -3802,128 +3893,139 @@ namespace Motion
             | ImGuiTreeNodeFlags_FramePadding
             | ImGuiTreeNodeFlags_DefaultOpen;
 
-        if (ImGui::TreeNodeEx("##environment", flags, "Environment"))
+        ImGui::PushID("##environment-settings");
+        ImGui::Begin("Environment Settings");
         {
-            ImGui::Indent();
-
-            // Lighting Section
-            if (ImGui::CollapsingHeader("Lighting", ImGuiTreeNodeFlags_DefaultOpen))
+            if (ImGui::TreeNodeEx("##environment", flags, "Environment"))
             {
-                ImGui::Indent(10.0f);
-                auto& light = context.Physics->SunLight;
-                
-                if (BeginPropertyGrid("##sun-properties"))
+                ImGui::Indent();
+
+                // Lighting Section
+                if (ImGui::CollapsingHeader("Lighting", ImGuiTreeNodeFlags_DefaultOpen))
                 {
-                    DragFloat3("Light Direction", light.Direction, 0.01f);
-                    HelpMarker("The direction the main light comes from.\n"
-                              "Think of this as the sun position.\n"
-                              "(-1,0,0) = light from left, (0,-1,0) = light from above");
+                    ImGui::Indent(10.0f);
+                    auto& light = context.Physics->SunLight;
                     
-                    ColorEdit3("Light Color", light.Color);
-                    HelpMarker("The color of the light source.\n"
-                              "White = natural sunlight, Yellow = warm light, Blue = cold light");
-                    
-                    DragFloat("Intensity", &light.Intensity, 0.1f, 0.0f, 50.0f);
-                    HelpMarker("How bright the light is.\n"
-                              "1.0 = normal daylight, 5.0 = very bright, 0.1 = dim");
-                    
-                    ToggleSwitch("Show Gizmo", light.ShowGuizmo);
-                    HelpMarker("Show a visual indicator for light direction in the viewport");
-
-                    EndPropertyGrid();
-                }
-                ImGui::Unindent(10.0f);
-            }
-
-            // Physics World Settings
-            if (ImGui::CollapsingHeader("Physics World", ImGuiTreeNodeFlags_DefaultOpen))
-            {
-                ImGui::Indent(10.0f);
-                auto& world = context.Physics->Settings;
-                
-                if (BeginPropertyGrid("##world-properties"))
-                {
-                    std::string worldName = world.worldName.empty() ? "New World" : world.worldName;
-                    TextBox("World Name", worldName);
-                    HelpMarker("A name for your physics world");
-
-                    glm::vec3 gravity = ToVec3(world.gravity);
-                    if (DragFloat3("Gravity (m/s²)", gravity, 0.1f, -50.0f, 50.0f))
-                        world.gravity = ToVec3(gravity);
-                    HelpMarker("The pull of gravity on all objects.\n"
-                              "Earth = (0, -9.81, 0) downward\n"
-                              "Moon = (0, -1.62, 0) weaker gravity\n"
-                              "Space = (0, 0, 0) zero gravity");
-
-                    float defaultRestitution = world.defaultBounciness;
-                    if (SliderFloat("Default Bounciness", &defaultRestitution, 0.0f, 1.0f, "%.3f"))
-                        world.defaultBounciness = defaultRestitution;
-                    HelpMarker("Default bounciness for new objects");
-
-                    float defaultFriction = world.defaultFrictionCoefficient;
-                    if (SliderFloat("Default Friction", &defaultFriction, 0.0f, 1.0f, "%.3f"))
-                        world.defaultFrictionCoefficient = defaultFriction;
-                    HelpMarker("Default friction for new objects");
-
-                    bool sleeping = world.isSleepingEnabled;
-                    if (ToggleSwitch("Enable Sleep", sleeping))
-                        world.isSleepingEnabled = sleeping;
-                    HelpMarker("Allow objects to 'sleep' when not moving.\n"
-                              "This saves CPU by not updating still objects.\n"
-                              "Turn off for precise simulations.");
-
-                    EndPropertyGrid();
-                }
-                
-                // Advanced Physics Settings
-                if (ImGui::TreeNode("Advanced Settings"))
-                {
-                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.8f, 0.3f, 1.0f));
-                    ImGui::TextWrapped("Advanced: These settings affect simulation accuracy and performance");
-                    ImGui::PopStyleColor();
-                    ImGui::Spacing();
-                    
-                    if (BeginPropertyGrid("##advanced-physics"))
+                    if (BeginPropertyGrid("##sun-properties"))
                     {
-                        int velIter = world.defaultVelocitySolverNbIterations;
-                        if (DragFloat("Velocity Iterations", (float*)&velIter, 0.1f, 1.0f, 50.0f))
-                            world.defaultVelocitySolverNbIterations = (unsigned int)velIter;
-                        HelpMarker("Higher = more accurate velocity calculations but slower.\n"
-                                  "Typical: 10-20 iterations");
+                        ImGui::BeginDisabled(context.Simulation->InSimulation);
+                        DragFloat3("Light Direction", light.Direction, 0.01f);
+                        HelpMarker("The direction the main light comes from.\n"
+                                "Think of this as the sun position.\n"
+                                "(-1,0,0) = light from left, (0,-1,0) = light from above");
+                        
+                        ColorEdit3("Light Color", light.Color);
+                        HelpMarker("The color of the light source.\n"
+                                "White = natural sunlight, Yellow = warm light, Blue = cold light");
+                        
+                        DragFloat("Intensity", &light.Intensity, 0.1f, 0.0f, 50.0f);
+                        HelpMarker("How bright the light is.\n"
+                                "1.0 = normal daylight, 5.0 = very bright, 0.1 = dim");
+                        
+                        ToggleSwitch("Show Gizmo", light.ShowGuizmo);
+                        HelpMarker("Show a visual indicator for light direction in the viewport");
 
-                        int posIter = world.defaultPositionSolverNbIterations;
-                        if (DragFloat("Position Iterations", (float*)&posIter, 0.1f, 1.0f, 50.0f))
-                            world.defaultPositionSolverNbIterations = (unsigned int)posIter;
-                        HelpMarker("Higher = objects penetrate less but slower.\n"
-                                  "Typical: 5-10 iterations");
+                        ImGui::EndDisabled();
+                        EndPropertyGrid();
+                    }
+                    ImGui::Unindent(10.0f);
+                }
 
-                        float sleepLinVel = world.defaultSleepLinearVelocity;
-                        if (DragFloat("Sleep Linear Velocity", &sleepLinVel, 0.01f, 0.0f, 5.0f))
-                            world.defaultSleepLinearVelocity = sleepLinVel;
-                        HelpMarker("Objects slower than this can go to sleep");
+                // Physics World Settings
+                if (ImGui::CollapsingHeader("Physics World", ImGuiTreeNodeFlags_DefaultOpen))
+                {
+                    ImGui::Indent(10.0f);
+                    auto& world = context.Physics->Settings;
+                    
+                    if (BeginPropertyGrid("##world-properties"))
+                    {
+                        ImGui::BeginDisabled(context.Simulation->InSimulation);
+                        std::string worldName = world.worldName.empty() ? "New World" : world.worldName;
+                        TextBox("World Name", worldName);
+                        HelpMarker("A name for your physics world");
 
-                        float sleepAngVel = world.defaultSleepAngularVelocity;
-                        if (DragFloat("Sleep Angular Velocity", &sleepAngVel, 0.01f, 0.0f, 5.0f))
-                            world.defaultSleepAngularVelocity = sleepAngVel;
-                        HelpMarker("Objects rotating slower than this can go to sleep");
+                        glm::vec3 gravity = ToVec3(world.gravity);
+                        if (DragFloat3("Gravity (m/s²)", gravity, 0.1f, -50.0f, 50.0f))
+                            world.gravity = ToVec3(gravity);
+                        HelpMarker("The pull of gravity on all objects.\n"
+                                "Earth = (0, -9.81, 0) downward\n"
+                                "Moon = (0, -1.62, 0) weaker gravity\n"
+                                "Space = (0, 0, 0) zero gravity");
 
-                        float timeBeforeSleep = world.defaultTimeBeforeSleep;
-                        if (DragFloat("Time Before Sleep (s)", &timeBeforeSleep, 0.1f, 0.0f, 10.0f))
-                            world.defaultTimeBeforeSleep = timeBeforeSleep;
-                        HelpMarker("How long an object must be still before sleeping");
+                        float defaultRestitution = world.defaultBounciness;
+                        if (SliderFloat("Default Bounciness", &defaultRestitution, 0.0f, 1.0f, "%.3f"))
+                            world.defaultBounciness = defaultRestitution;
+                        HelpMarker("Default bounciness for new objects");
 
+                        float defaultFriction = world.defaultFrictionCoefficient;
+                        if (SliderFloat("Default Friction", &defaultFriction, 0.0f, 1.0f, "%.3f"))
+                            world.defaultFrictionCoefficient = defaultFriction;
+                        HelpMarker("Default friction for new objects");
+
+                        bool sleeping = world.isSleepingEnabled;
+                        if (ToggleSwitch("Enable Sleep", sleeping))
+                            world.isSleepingEnabled = sleeping;
+                        HelpMarker("Allow objects to 'sleep' when not moving.\n"
+                                "This saves CPU by not updating still objects.\n"
+                                "Turn off for precise simulations.");
+
+                        ImGui::EndDisabled();
                         EndPropertyGrid();
                     }
                     
-                    ImGui::TreePop();
+                    // Advanced Physics Settings
+                    if (ImGui::TreeNode("Advanced Settings"))
+                    {
+                        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.8f, 0.3f, 1.0f));
+                        ImGui::TextWrapped("Advanced: These settings affect simulation accuracy and performance");
+                        ImGui::PopStyleColor();
+                        ImGui::Spacing();
+                        
+                        if (BeginPropertyGrid("##advanced-physics"))
+                        {
+                            int velIter = world.defaultVelocitySolverNbIterations;
+                            if (DragFloat("Velocity Iterations", (float*)&velIter, 0.1f, 1.0f, 50.0f))
+                                world.defaultVelocitySolverNbIterations = (unsigned int)velIter;
+                            HelpMarker("Higher = more accurate velocity calculations but slower.\n"
+                                    "Typical: 10-20 iterations");
+
+                            int posIter = world.defaultPositionSolverNbIterations;
+                            if (DragFloat("Position Iterations", (float*)&posIter, 0.1f, 1.0f, 50.0f))
+                                world.defaultPositionSolverNbIterations = (unsigned int)posIter;
+                            HelpMarker("Higher = objects penetrate less but slower.\n"
+                                    "Typical: 5-10 iterations");
+
+                            float sleepLinVel = world.defaultSleepLinearVelocity;
+                            if (DragFloat("Sleep Linear Velocity", &sleepLinVel, 0.01f, 0.0f, 5.0f))
+                                world.defaultSleepLinearVelocity = sleepLinVel;
+                            HelpMarker("Objects slower than this can go to sleep");
+
+                            float sleepAngVel = world.defaultSleepAngularVelocity;
+                            if (DragFloat("Sleep Angular Velocity", &sleepAngVel, 0.01f, 0.0f, 5.0f))
+                                world.defaultSleepAngularVelocity = sleepAngVel;
+                            HelpMarker("Objects rotating slower than this can go to sleep");
+
+                            float timeBeforeSleep = world.defaultTimeBeforeSleep;
+                            if (DragFloat("Time Before Sleep (s)", &timeBeforeSleep, 0.1f, 0.0f, 10.0f))
+                                world.defaultTimeBeforeSleep = timeBeforeSleep;
+                            HelpMarker("How long an object must be still before sleeping");
+
+                            EndPropertyGrid();
+                        }
+                        
+                        ImGui::TreePop();
+                    }
+                    
+                    ImGui::Unindent(10.0f);
                 }
-                
-                ImGui::Unindent(10.0f);
+
+                ImGui::Unindent();
+                ImGui::TreePop();
             }
 
-            ImGui::Unindent();
-            ImGui::TreePop();
         }
+        ImGui::End();
+        ImGui::PopID();
     }
 
     /**
@@ -4233,12 +4335,12 @@ namespace Motion
                     TagComponent* tag        = context.Entities->Registry.try_get<TagComponent>(context.Entities->SelectedEntity);
                     const bool isActive      = tag ? tag->IsActive : false;
 
-                    if (ImGui::IsWindowHovered() && ImGui::IsMouseClicked(ImGuiPopupFlags_MouseButtonMiddle))
+                    if (canPickEntites && ImGui::IsMouseClicked(ImGuiPopupFlags_MouseButtonMiddle))
                     {
                         ImGui::OpenPopup("ViewportContextMenu");
                     }
 
-                    if (ImGui::BeginPopup("ViewportContextMenu"))
+                    if (ImGui::BeginPopupContextWindow("ViewportContextMenu"))
                     {
                         if(ImGui::MenuItem("Delete"))
                         {
@@ -4294,7 +4396,6 @@ namespace Motion
                         ImGui::EndPopup();
                     }
 
-
                     for (auto it = openMaterialEditors.begin(); it != openMaterialEditors.end();)
                     {
                         entt::entity entity = it->first;
@@ -4312,9 +4413,6 @@ namespace Motion
                         
                         if (ImGui::Begin(windowName.c_str(), &isOpen, ImGuiWindowFlags_NoDocking))
                         {
-                            ImGui::Text("Entity: %u", (uint32_t)entity);
-                            ImGui::Separator();
-                            
                             if (ImGui::BeginChild("##inspector-area", ImVec2(0.0f, 0.0f)))
                             {
                                 if (material->MaterialPointer)
@@ -4394,7 +4492,5 @@ namespace Motion
         ImGui::End();
         ImGui::PopStyleVar();
     }
-
-
 
 }

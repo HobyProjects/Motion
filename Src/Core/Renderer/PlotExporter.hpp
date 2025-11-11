@@ -2,6 +2,8 @@
 
 #include <string>
 #include <cstdint>
+#include <memory>
+#include <vector>
 
 #include <imgui/imgui.h>
 #include <imgui/implot.h>
@@ -9,6 +11,9 @@
 
 namespace Motion
 {
+    /**
+     * @brief Circular buffer for storing plot data points with automatic wrapping
+     */
     struct ScrollingBuffer 
     {
         int MaxSize;
@@ -25,7 +30,9 @@ namespace Motion
         void AddPoint(float x, float y) 
         {
             if (Data.size() < MaxSize)
+            {
                 Data.push_back(ImVec2(x, y));
+            }
             else 
             {
                 Data[Offset] = ImVec2(x, y);
@@ -41,8 +48,34 @@ namespace Motion
                 Offset = 0;
             }
         }
+
+        /**
+         * @brief Get the data point at a given index, accounting for circular buffer offset
+         */
+        ImVec2 GetPoint(int index) const
+        {
+            if (Data.size() < MaxSize)
+            {
+                return Data[index];
+            }
+            else
+            {
+                return Data[(Offset + index) % MaxSize];
+            }
+        }
+
+        /**
+         * @brief Get the actual number of data points stored
+         */
+        int GetSize() const
+        {
+            return static_cast<int>(Data.size());
+        }
     };
 
+    /**
+     * @brief Rolling buffer that wraps data within a time span
+     */
     struct RollingBuffer 
     {
         float Span;
@@ -63,6 +96,9 @@ namespace Motion
         }
     };
 
+    /**
+     * @brief Stores plot data and configuration for a single entity
+     */
     struct EntityPlotData
     {
         ScrollingBuffer LinearVelocity;
@@ -84,17 +120,51 @@ namespace Motion
         EntityPlotData() : LinearVelocity(2000), AngularVelocity(2000) {}
     };
 
+    /**
+     * @brief Interface for exporting plot data and images
+     * 
+     * Provides methods for capturing plot regions as PNG images and
+     * exporting plot data to CSV format. Implementation is rendering API specific.
+     */
     class IPlotExporter
     {
     public:
         IPlotExporter() = default;
         virtual ~IPlotExporter() = default;
 
+        /**
+         * @brief Save a specific screen region to PNG
+         * @param filename Output file path (should end with .png)
+         * @param plotPos Position of the region in screen coordinates
+         * @param plotSize Size of the region in pixels
+         * @return true if successful, false otherwise
+         */
         virtual bool SavePlotRegionToPNG(const std::string& filename, ImVec2 plotPos, ImVec2 plotSize) = 0;
-        virtual bool SaveImGuiRegionToPNG(const std::string& filename) = 0;
-        virtual bool SaveCurrentPlotToPNG(const std::string& filename, std::int32_t width = 1920, std::int32_t height = 1080) = 0;
-        virtual bool ExportPlotDataToCSV(const std::string& filename, const ScrollingBuffer& buffer, const std::string& xLabel = "Time", const std::string& yLabel = "Value") = 0;
+        
+        /**
+         * @brief Save the current ImGui window to PNG
+         * @param filename Output file path (should end with .png)
+         * @return true if successful, false otherwise
+         */
+        virtual bool SaveImGuiWindowToPNG(const std::string& filename) = 0;
+        
+        /**
+         * @brief Export plot buffer data to CSV format
+         * @param filename Output file path (should end with .csv)
+         * @param buffer The scrolling buffer containing the data
+         * @param xLabel Label for the X-axis column
+         * @param yLabel Label for the Y-axis column
+         * @return true if successful, false otherwise
+         */
+        virtual bool ExportPlotDataToCSV(const std::string& filename, 
+                                        const ScrollingBuffer& buffer, 
+                                        const std::string& xLabel = "Time", 
+                                        const std::string& yLabel = "Value") = 0;
 
+        /**
+         * @brief Factory method to create the appropriate exporter for the current rendering API
+         * @return Shared pointer to the created exporter, or nullptr on failure
+         */
         static std::shared_ptr<IPlotExporter> Create();
     };
 }

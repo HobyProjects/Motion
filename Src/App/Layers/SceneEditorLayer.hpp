@@ -168,7 +168,6 @@ namespace Motion
         
         void RenderToolbarAndSearch();
         void RenderEntityHierarchy(SceneContext& context);
-        void RenderEntityInspector(SceneContext& context);
         void RenderEnvironmentSettings(SceneContext& context);
         void RenderSimulationWatchList(SceneContext& context);
 

@@ -1453,7 +1453,6 @@ namespace Motion
         RenderSimulationWatchList(context);
         RenderStatisticalAnalysisPanel(context);
         RenderEnvironmentSettings(context);
-        RenderEntityInspector(context);
     }
 
     /**
@@ -3547,7 +3546,11 @@ namespace Motion
 
         if (context.Simulation->InSimulation && rb->PhysicsBody->getType() == rp3d::BodyType::DYNAMIC)
         {
+            ImGui::BeginDisabled(false);
+
             DrawLivePhysicsData(*rb);
+            
+            ImGui::EndDisabled();
         }
 
         ImGui::PopID();
@@ -3563,7 +3566,6 @@ namespace Motion
     {
         if (ImGui::CollapsingHeader("Rigid Body Properties"))
         {
-            ImGui::PopStyleColor();
             ImGui::Indent(10.0f);
             
             if (BeginPropertyGrid("##rigidbody-props"))
@@ -3630,7 +3632,6 @@ namespace Motion
     {
         if (ImGui::CollapsingHeader("Collider Properties"))
         {
-            ImGui::PopStyleColor();
             ImGui::Indent(10.0f);
             
             if (BeginPropertyGrid("##collider-props"))
@@ -3830,51 +3831,6 @@ namespace Motion
         }
     }
 
-    /**
-     * Renders the entity inspector panel for the scene editor layer.
-     * This includes rendering the entity's tag, model, transform, and physics components.
-     * If the entity is inactive, a disabled text is rendered instead.
-     * @param context The scene context.
-     */
-    void SceneEditorLayer::RenderEntityInspector(SceneContext& context)
-    {
-        ImGui::PushID("##entity-inspector");
-        ImGui::Begin("Entity Properties");
-        {
-            if (m_Scene->IsRootEntity(context.Entities->SelectedEntity) || context.Entities->SelectedEntity == entt::null)
-            {
-                ImGui::TextDisabled("This does not have any properties");
-                ImGui::End();
-                ImGui::PopID();
-                return;
-            };
-
-            const TagComponent* tagOpt = context.Entities->Registry.try_get<TagComponent>(context.Entities->SelectedEntity);
-            if(!tagOpt)
-            {
-                ImGui::TextDisabled("This does not have any properties");
-                ImGui::End();
-                ImGui::PopID();
-                return;
-            }
-
-            if (tagOpt && tagOpt->IsActive)
-            {
-                ImGui::BeginDisabled(context.Simulation->InSimulation);
-
-                RenderTransform(context, context.Entities->SelectedEntity);
-                RenderPhysics(context,context.Entities->SelectedEntity);
-
-                ImGui::EndDisabled();
-            }
-            else
-            {
-                ImGui::TextDisabled("Entity is inactive");
-            }
-        }
-        ImGui::End();
-        ImGui::PopID();
-    }
 
     /**
      * Renders the environment settings for the scene editor layer.
@@ -4340,8 +4296,9 @@ namespace Motion
                         ImGui::OpenPopup("ViewportContextMenu");
                     }
 
-                    if (ImGui::BeginPopupContextWindow("ViewportContextMenu"))
+                    if (ImGui::BeginPopupContextWindow("ViewportContextMenu", ImGuiPopupFlags_MouseButtonMiddle))
                     {
+                        ImGui::Indent(5.0f);
                         if(ImGui::MenuItem("Delete"))
                         {
                             m_Scene->DestroyEntity(context.Entities->SelectedEntity, true);
@@ -4393,6 +4350,7 @@ namespace Motion
                             }
                         }
 
+                        ImGui::Unindent(5.0f);
                         ImGui::EndPopup();
                     }
 

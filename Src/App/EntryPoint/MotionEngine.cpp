@@ -1,5 +1,6 @@
 #include "CorePCH.hpp"
 #include "Application.hpp"
+#include "MotionVersion.hpp"
 
 using namespace Motion;
 
@@ -7,6 +8,8 @@ int main(int argc, char* argv[])
 {
     auto& logger = Loggers::GetInstance();
     logger.Initialize();
+
+    MOTION_INFO("{}", Motion::Version::GetFullVersionInfo());
 
     auto& coreAPI = CoreAPI::GetInstance();
     if (coreAPI.Init())

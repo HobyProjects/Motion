@@ -1,6 +1,14 @@
 cmake_minimum_required(VERSION 3.24)
 project(Motion VERSION 1.0.0 LANGUAGES C CXX)
 
+# Version control
+include(${CMAKE_SOURCE_DIR}/cmake/GenerateVersionHeader.cmake)
+set(VERSION_HEADER_FILE "${CMAKE_BINARY_DIR}/generated/MotionVersion.hpp")
+generate_version_header(
+    TARGET MotionCore
+    VERSION_FILE ${VERSION_HEADER_FILE}
+)
+
 # Dependencies (target-based)
 find_package(glfw3 CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
@@ -22,6 +30,7 @@ target_compile_features(MotionCore PUBLIC cxx_std_20)
 target_include_directories(
     MotionCore 
         PUBLIC 
+        ${CMAKE_BINARY_DIR}/generated
         ${CMAKE_SOURCE_DIR}/Src/Core
         ${CMAKE_SOURCE_DIR}/Src/Core/Base
         ${CMAKE_SOURCE_DIR}/Src/Core/Event
@@ -89,4 +98,3 @@ add_custom_target(MotionEngineAssets ALL
 )
 
 add_dependencies(MotionEngine MotionEngineAssets)
-

@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <numeric>
 #include <cmath>
+#include <deque>
 
 namespace Motion
 {
@@ -291,7 +292,7 @@ namespace Motion
             std::vector<float> Peaks;
             std::vector<float> PeakTimes;
             
-            float IntegralValue = 0.0f; // Area under curve
+            float IntegralValue = 0.0f;
             
             void Calculate(std::vector<ImVec2>& data)
             {
@@ -375,10 +376,436 @@ namespace Motion
             }
         };
 
+        // ==================== NEW NEWTONIAN PHYSICS FEATURES ====================
+        
+        // Force Analysis System
+        struct ForceVector
+        {
+            glm::vec3 Force{0.0f};
+            glm::vec3 ApplicationPoint{0.0f};
+            std::string Name{"Unknown Force"};
+            ImU32 Color{IM_COL32(255, 100, 100, 255)};
+            bool IsActive{true};
+            
+            float GetMagnitude() const { return glm::length(Force); }
+            glm::vec3 GetDirection() const 
+            { 
+                float mag = GetMagnitude();
+                return mag > EPSILON ? Force / mag : glm::vec3(0.0f);
+            }
+        };
+        
+        struct ForceAnalysisData
+        {
+            std::vector<ForceVector> Forces;
+            glm::vec3 NetForce{0.0f};
+            glm::vec3 NetTorque{0.0f};
+            float NetForceMagnitude{0.0f};
+            
+            bool ShowForceVectors{true};
+            bool ShowNetForce{true};
+            bool ShowComponents{false};
+            float VectorScale{1.0f};
+            float ArrowHeadSize{0.15f};
+            
+            void UpdateNetForce()
+            {
+                NetForce = glm::vec3(0.0f);
+                for (const auto& force : Forces)
+                {
+                    if (force.IsActive)
+                        NetForce += force.Force;
+                }
+                NetForceMagnitude = glm::length(NetForce);
+            }
+            
+            void Clear()
+            {
+                Forces.clear();
+                NetForce = glm::vec3(0.0f);
+                NetTorque = glm::vec3(0.0f);
+                NetForceMagnitude = 0.0f;
+            }
+        };
+        
+        // Energy Tracking System
+        struct EnergyTracker
+        {
+            static constexpr size_t MAX_HISTORY = 500;
+            
+            std::deque<float> KineticEnergyHistory;
+            std::deque<float> PotentialEnergyHistory;
+            std::deque<float> TotalEnergyHistory;
+            std::deque<float> TimeStamps;
+            
+            float CurrentKE{0.0f};
+            float CurrentPE{0.0f};
+            float CurrentTotal{0.0f};
+            float InitialTotal{0.0f};
+            float EnergyLoss{0.0f};
+            
+            bool TrackingEnabled{false};
+            bool ShowKE{true};
+            bool ShowPE{true};
+            bool ShowTotal{true};
+            float GravityMagnitude{9.81f};
+            
+            void AddSample(float ke, float pe, float time)
+            {
+                CurrentKE = ke;
+                CurrentPE = pe;
+                CurrentTotal = ke + pe;
+                
+                if (InitialTotal < EPSILON && CurrentTotal > EPSILON)
+                    InitialTotal = CurrentTotal;
+                
+                EnergyLoss = InitialTotal - CurrentTotal;
+                
+                KineticEnergyHistory.push_back(ke);
+                PotentialEnergyHistory.push_back(pe);
+                TotalEnergyHistory.push_back(CurrentTotal);
+                TimeStamps.push_back(time);
+                
+                if (KineticEnergyHistory.size() > MAX_HISTORY)
+                {
+                    KineticEnergyHistory.pop_front();
+                    PotentialEnergyHistory.pop_front();
+                    TotalEnergyHistory.pop_front();
+                    TimeStamps.pop_front();
+                }
+            }
+            
+            float GetEnergyConservation() const
+            {
+                if (InitialTotal < EPSILON) return 100.0f;
+                return (CurrentTotal / InitialTotal) * 100.0f;
+            }
+            
+            void Reset()
+            {
+                KineticEnergyHistory.clear();
+                PotentialEnergyHistory.clear();
+                TotalEnergyHistory.clear();
+                TimeStamps.clear();
+                CurrentKE = CurrentPE = CurrentTotal = InitialTotal = EnergyLoss = 0.0f;
+            }
+        };
+        
+        // Momentum & Impulse System
+        struct MomentumTracker
+        {
+            glm::vec3 LinearMomentum{0.0f};
+            glm::vec3 AngularMomentum{0.0f};
+            float LinearMagnitude{0.0f};
+            float AngularMagnitude{0.0f};
+            
+            glm::vec3 InitialLinearMomentum{0.0f};
+            glm::vec3 InitialAngularMomentum{0.0f};
+            
+            std::deque<glm::vec3> MomentumHistory;
+            std::deque<float> TimeStamps;
+            static constexpr size_t MAX_HISTORY = 300;
+            
+            bool ShowMomentumVector{true};
+            bool TrackConservation{true};
+            float VectorScale{0.5f};
+            
+            void Update(const glm::vec3& momentum, float time)
+            {
+                LinearMomentum = momentum;
+                LinearMagnitude = glm::length(momentum);
+                
+                if (glm::length(InitialLinearMomentum) < EPSILON && LinearMagnitude > EPSILON)
+                    InitialLinearMomentum = momentum;
+                
+                MomentumHistory.push_back(momentum);
+                TimeStamps.push_back(time);
+                
+                if (MomentumHistory.size() > MAX_HISTORY)
+                {
+                    MomentumHistory.pop_front();
+                    TimeStamps.pop_front();
+                }
+            }
+            
+            float GetConservationPercentage() const
+            {
+                float initialMag = glm::length(InitialLinearMomentum);
+                if (initialMag < EPSILON) return 100.0f;
+                return (LinearMagnitude / initialMag) * 100.0f;
+            }
+            
+            void Reset()
+            {
+                LinearMomentum = glm::vec3(0.0f);
+                AngularMomentum = glm::vec3(0.0f);
+                InitialLinearMomentum = glm::vec3(0.0f);
+                InitialAngularMomentum = glm::vec3(0.0f);
+                LinearMagnitude = AngularMagnitude = 0.0f;
+                MomentumHistory.clear();
+                TimeStamps.clear();
+            }
+        };
+        
+        // Collision Analysis System
+        struct CollisionEvent
+        {
+            entt::entity EntityA{entt::null};
+            entt::entity EntityB{entt::null};
+            glm::vec3 CollisionPoint{0.0f};
+            glm::vec3 CollisionNormal{0.0f};
+            float RelativeVelocity{0.0f};
+            float CoefficientOfRestitution{0.0f};
+            float ImpulseMagnitude{0.0f};
+            float TimeStamp{0.0f};
+            
+            glm::vec3 VelocityABefore{0.0f};
+            glm::vec3 VelocityBBefore{0.0f};
+            glm::vec3 VelocityAAfter{0.0f};
+            glm::vec3 VelocityBAfter{0.0f};
+            
+            float KEBefore{0.0f};
+            float KEAfter{0.0f};
+            float EnergyLoss{0.0f};
+            
+            enum class CollisionType
+            {
+                Elastic,
+                Inelastic,
+                PartiallyElastic,
+                Unknown
+            } Type{CollisionType::Unknown};
+            
+            void ClassifyCollision()
+            {
+                if (std::abs(CoefficientOfRestitution - 1.0f) < 0.05f)
+                    Type = CollisionType::Elastic;
+                else if (CoefficientOfRestitution < 0.1f)
+                    Type = CollisionType::Inelastic;
+                else
+                    Type = CollisionType::PartiallyElastic;
+            }
+            
+            const char* GetTypeName() const
+            {
+                switch (Type)
+                {
+                    case CollisionType::Elastic: return "Elastic";
+                    case CollisionType::Inelastic: return "Inelastic";
+                    case CollisionType::PartiallyElastic: return "Partially Elastic";
+                    default: return "Unknown";
+                }
+            }
+        };
+        
+        struct CollisionAnalyzer
+        {
+            std::vector<CollisionEvent> RecentCollisions;
+            static constexpr size_t MAX_COLLISIONS = 50;
+            
+            bool EnableAnalysis{false};
+            bool ShowCollisionPoints{true};
+            bool ShowImpulseVectors{true};
+            bool PlayCollisionSound{false};
+            
+            void RecordCollision(const CollisionEvent& event)
+            {
+                CollisionEvent evt = event;
+                evt.ClassifyCollision();
+                
+                RecentCollisions.push_back(evt);
+                
+                if (RecentCollisions.size() > MAX_COLLISIONS)
+                    RecentCollisions.erase(RecentCollisions.begin());
+            }
+            
+            void Clear()
+            {
+                RecentCollisions.clear();
+            }
+            
+            CollisionEvent* GetMostRecent()
+            {
+                return RecentCollisions.empty() ? nullptr : &RecentCollisions.back();
+            }
+        };
+        
+        // Acceleration Tracker
+        struct AccelerationTracker
+        {
+            glm::vec3 CurrentAcceleration{0.0f};
+            glm::vec3 PreviousVelocity{0.0f};
+            float AccelerationMagnitude{0.0f};
+            
+            std::deque<glm::vec3> AccelerationHistory;
+            std::deque<float> TimeStamps;
+            static constexpr size_t MAX_HISTORY = 300;
+            
+            bool ShowVector{true};
+            float VectorScale{1.0f};
+            ImU32 VectorColor{IM_COL32(255, 200, 0, 255)};
+            
+            void Update(const glm::vec3& velocity, float deltaTime)
+            {
+                if (deltaTime > EPSILON)
+                {
+                    CurrentAcceleration = (velocity - PreviousVelocity) / deltaTime;
+                    AccelerationMagnitude = glm::length(CurrentAcceleration);
+                }
+                
+                PreviousVelocity = velocity;
+                
+                AccelerationHistory.push_back(CurrentAcceleration);
+                TimeStamps.push_back(TimeStamps.empty() ? 0.0f : TimeStamps.back() + deltaTime);
+                
+                if (AccelerationHistory.size() > MAX_HISTORY)
+                {
+                    AccelerationHistory.pop_front();
+                    TimeStamps.pop_front();
+                }
+            }
+            
+            void Reset()
+            {
+                CurrentAcceleration = glm::vec3(0.0f);
+                PreviousVelocity = glm::vec3(0.0f);
+                AccelerationMagnitude = 0.0f;
+                AccelerationHistory.clear();
+                TimeStamps.clear();
+            }
+        };
+        
+        // Newton's Laws Interactive Panel
+        struct NewtonsLawsDemo
+        {
+            int CurrentLaw{0}; // 0 = First, 1 = Second, 2 = Third
+            
+            // First Law (Inertia) Demo
+            struct FirstLawDemo
+            {
+                bool ShowInertiaLine{true};
+                bool HighlightBalancedForces{true};
+                float FrictionCoefficient{0.1f};
+            } FirstLaw;
+            
+            // Second Law (F=ma) Demo  
+            struct SecondLawDemo
+            {
+                bool ShowForceEquation{true};
+                bool ShowAccelerationVector{true};
+                bool EnableMassSlider{false};
+                float TargetMass{1.0f};
+                glm::vec3 AppliedForce{0.0f};
+            } SecondLaw;
+            
+            // Third Law (Action-Reaction) Demo
+            struct ThirdLawDemo
+            {
+                bool ShowReactionForces{true};
+                bool HighlightPairs{true};
+                entt::entity EntityA{entt::null};
+                entt::entity EntityB{entt::null};
+            } ThirdLaw;
+        };
+        
+        // Trajectory Prediction System
+        struct TrajectoryPredictor
+        {
+            std::vector<glm::vec3> PredictedPath;
+            bool EnablePrediction{false};
+            bool ShowPredictionPath{true};
+            int PredictionSteps{50};
+            float TimeStep{0.1f};
+            ImU32 PathColor{IM_COL32(100, 255, 100, 150)};
+            
+            void PredictTrajectory(const glm::vec3& position, const glm::vec3& velocity, 
+                                  const glm::vec3& acceleration, float mass)
+            {
+                PredictedPath.clear();
+                PredictedPath.reserve(PredictionSteps);
+                
+                glm::vec3 pos = position;
+                glm::vec3 vel = velocity;
+                
+                for (int i = 0; i < PredictionSteps; ++i)
+                {
+                    PredictedPath.push_back(pos);
+                    vel += acceleration * TimeStep;
+                    pos += vel * TimeStep;
+                }
+            }
+            
+            void Clear()
+            {
+                PredictedPath.clear();
+            }
+        };
+        
+        // Physics Analysis State
+        struct PhysicsAnalysisState
+        {
+            entt::entity SelectedEntity{entt::null};
+            
+            ForceAnalysisData ForceAnalysis;
+            EnergyTracker Energy;
+            MomentumTracker Momentum;
+            CollisionAnalyzer Collisions;
+            AccelerationTracker Acceleration;
+            NewtonsLawsDemo NewtonsLaws;
+            TrajectoryPredictor Trajectory;
+            
+            bool ShowForceAnalysisPanel{false};
+            bool ShowEnergyPanel{false};
+            bool ShowMomentumPanel{false};
+            bool ShowCollisionPanel{false};
+            bool ShowNewtonsLawsPanel{false};
+            bool ShowAccelerationPanel{false};
+            bool ShowTrajectoryPanel{false};
+            
+            void ResetAll()
+            {
+                ForceAnalysis.Clear();
+                Energy.Reset();
+                Momentum.Reset();
+                Collisions.Clear();
+                Acceleration.Reset();
+                Trajectory.Clear();
+            }
+        };
+        
+        PhysicsAnalysisState m_PhysicsAnalysis;
+
     private:
+        // Original methods
         void RenderStatisticalAnalysisPanel(SceneContext& context);
         void RenderStatisticsSection(const char* title, const StatisticalData& stats, const ImVec4& color);
         void RenderComparisonSection(const StatisticalData& linear, const StatisticalData& angular);
-    
+        
+        // New Newtonian Physics UI Methods
+        void RenderForceAnalysisPanel(SceneContext& context);
+        void RenderEnergyTrackingPanel(SceneContext& context);
+        void RenderMomentumPanel(SceneContext& context);
+        void RenderCollisionAnalysisPanel(SceneContext& context);
+        void RenderNewtonsLawsPanel(SceneContext& context);
+        void RenderAccelerationPanel(SceneContext& context);
+        void RenderTrajectoryPanel(SceneContext& context);
+        
+        // Physics calculation helpers
+        void UpdateForceAnalysis(entt::entity entity, float deltaTime);
+        void UpdateEnergyTracking(entt::entity entity, float time);
+        void UpdateMomentumTracking(entt::entity entity, float time);
+        void DetectAndAnalyzeCollisions(SceneContext& context);
+        void UpdateAcceleration(entt::entity entity, float deltaTime);
+        void UpdateTrajectoryPrediction(entt::entity entity);
+        
+        // Visualization helpers
+        void DrawForceVector(const glm::vec3& origin, const glm::vec3& force, const ImU32& color, float scale);
+        void DrawMomentumVector(const glm::vec3& position, const glm::vec3& momentum, const ImU32& color, float scale);
+        void DrawTrajectoryPath(const std::vector<glm::vec3>& path, const ImU32& color);
+        void DrawCollisionPoint(const glm::vec3& point, float radius, const ImU32& color);
+        
+        // Educational helpers
+        void ShowPhysicsTooltip(const char* concepts, const char* explanation);
+        void RenderPhysicsEquation(const char* equation, const char* description);
     };
 }

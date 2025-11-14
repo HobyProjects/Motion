@@ -1,4 +1,5 @@
 #include "CorePCH.hpp"
+
 #include "SceneUtils.hpp"
 #include "SceneSerializer.hpp"
 #include "SceneEditorLayer.hpp"
@@ -110,6 +111,33 @@ namespace Motion
 
         m_ToastManager->Update();
         m_Scene->OnUpdate(handle, deltaTime);
+
+        auto& context = m_Scene->GetContext();
+        if (m_PhysicsAnalysis.SelectedEntity != entt::null && context.Entities->Registry.valid(m_PhysicsAnalysis.SelectedEntity))
+        {
+            float dt = deltaTime.GetDeltaTimeSeconds();
+            
+            if (m_PhysicsAnalysis.ShowForceAnalysisPanel)
+                UpdateForceAnalysis(m_PhysicsAnalysis.SelectedEntity, dt);
+            
+            if (m_PhysicsAnalysis.ShowEnergyPanel && m_PhysicsAnalysis.Energy.TrackingEnabled)
+                UpdateEnergyTracking(m_PhysicsAnalysis.SelectedEntity, dt);
+            
+            if (m_PhysicsAnalysis.ShowMomentumPanel)
+                UpdateMomentumTracking(m_PhysicsAnalysis.SelectedEntity, dt);
+            
+            if (m_PhysicsAnalysis.ShowAccelerationPanel)
+                UpdateAcceleration(m_PhysicsAnalysis.SelectedEntity, dt);
+            
+            if (m_PhysicsAnalysis.ShowTrajectoryPanel && m_PhysicsAnalysis.Trajectory.EnablePrediction)
+                UpdateTrajectoryPrediction(m_PhysicsAnalysis.SelectedEntity);
+        }
+        
+        if (m_PhysicsAnalysis.ShowCollisionPanel && m_PhysicsAnalysis.Collisions.EnableAnalysis)
+        {
+            DetectAndAnalyzeCollisions(context);
+        }
+
         m_Scene->Submit();
     }
 
@@ -160,6 +188,50 @@ namespace Motion
         {
             RenderErrorModal();
         }
+
+        if (ImGui::IsKeyPressed(ImGuiKey_F) && ImGui::IsKeyDown(ImGuiKey_LeftCtrl))
+        {
+            m_PhysicsAnalysis.ShowForceAnalysisPanel = !m_PhysicsAnalysis.ShowForceAnalysisPanel;
+        }
+        
+        if (ImGui::IsKeyPressed(ImGuiKey_E) && ImGui::IsKeyDown(ImGuiKey_LeftCtrl))
+        {
+            m_PhysicsAnalysis.ShowEnergyPanel = !m_PhysicsAnalysis.ShowEnergyPanel;
+        }
+        
+        if (ImGui::IsKeyPressed(ImGuiKey_M) && ImGui::IsKeyDown(ImGuiKey_LeftCtrl))
+        {
+            m_PhysicsAnalysis.ShowMomentumPanel = !m_PhysicsAnalysis.ShowMomentumPanel;
+        }
+        
+        if (ImGui::IsKeyPressed(ImGuiKey_C) && ImGui::IsKeyDown(ImGuiKey_LeftCtrl))
+        {
+            m_PhysicsAnalysis.ShowCollisionPanel = !m_PhysicsAnalysis.ShowCollisionPanel;
+        }
+        
+        if (ImGui::IsKeyPressed(ImGuiKey_N) && ImGui::IsKeyDown(ImGuiKey_LeftCtrl))
+        {
+            m_PhysicsAnalysis.ShowNewtonsLawsPanel = !m_PhysicsAnalysis.ShowNewtonsLawsPanel;
+        }
+        
+        if (ImGui::IsKeyPressed(ImGuiKey_A) && ImGui::IsKeyDown(ImGuiKey_LeftCtrl))
+        {
+            m_PhysicsAnalysis.ShowAccelerationPanel = !m_PhysicsAnalysis.ShowAccelerationPanel;
+        }
+        
+        if (ImGui::IsKeyPressed(ImGuiKey_T) && ImGui::IsKeyDown(ImGuiKey_LeftCtrl))
+        {
+            m_PhysicsAnalysis.ShowTrajectoryPanel = !m_PhysicsAnalysis.ShowTrajectoryPanel;
+        }
+
+        auto& context = m_Scene->GetContext();
+        RenderForceAnalysisPanel(context);
+        RenderEnergyTrackingPanel(context);
+        RenderMomentumPanel(context);
+        RenderCollisionAnalysisPanel(context);
+        RenderNewtonsLawsPanel(context);
+        RenderAccelerationPanel(context);
+        RenderTrajectoryPanel(context);
     }
 
     /**
@@ -1257,6 +1329,34 @@ namespace Motion
         }
         ImGui::EndDisabled();
 
+        if (ImGui::BeginMenu("Physics Analysis"))
+        {
+            ImGui::MenuItem(ICON_MD_ARCHITECTURE " Force Analysis", "Ctrl+F", 
+                          &m_PhysicsAnalysis.ShowForceAnalysisPanel);
+            
+            ImGui::MenuItem(ICON_MD_BOLT " Energy Tracking", "Ctrl+E", 
+                          &m_PhysicsAnalysis.ShowEnergyPanel);
+            
+            ImGui::MenuItem(ICON_MD_SPEED " Momentum Analysis", "Ctrl+M", 
+                          &m_PhysicsAnalysis.ShowMomentumPanel);
+            
+            ImGui::MenuItem(ICON_MD_ADJUST " Collision Analysis", "Ctrl+C", 
+                          &m_PhysicsAnalysis.ShowCollisionPanel);
+            
+            ImGui::Separator();
+            
+            ImGui::MenuItem(ICON_MD_SCHOOL " Newton's Laws Demo", "Ctrl+N", 
+                          &m_PhysicsAnalysis.ShowNewtonsLawsPanel);
+            
+            ImGui::MenuItem(ICON_MD_TRENDING_UP " Acceleration", "Ctrl+A", 
+                          &m_PhysicsAnalysis.ShowAccelerationPanel);
+            
+            ImGui::MenuItem(ICON_MD_SHOW_CHART " Trajectory Prediction", "Ctrl+T", 
+                          &m_PhysicsAnalysis.ShowTrajectoryPanel);
+            
+            ImGui::EndMenu();
+        }
+
         const float pad_x = style.ItemSpacing.x;
         const float content_min_x = ImGui::GetWindowContentRegionMin().x;
         const float content_max_x = ImGui::GetWindowContentRegionMax().x;
@@ -1761,7 +1861,7 @@ namespace Motion
             ImGui::BeginChild("HelpTip", ImVec2(0, 50), true);
             
             ImGui::PushStyleColor(ImGuiCol_Text, MixColors(SUCCESS, TEXT_PRIMARY, 0.30f));
-            ImGui::TextWrapped("%s Getting Started: Right-click any object in your scene and select 'Add to Watchlist' to begin monitoring it.", ICON_MD_LIGHTBULB);
+            ImGui::TextWrapped("Getting Started: Right-click any object in your scene and select 'Add to Watchlist' to begin monitoring it.");
             ImGui::PopStyleColor();
             
             ImGui::EndChild();
@@ -3014,7 +3114,7 @@ namespace Motion
         ImGui::BeginChild("BasicStats", ImVec2(0, 180), true);
         
         ImGui::PushStyleColor(ImGuiCol_Text, MixColors(color, TEXT_PRIMARY, 0.30f));
-        ImGui::Text("%s Basic Statistics", ICON_MD_CALCULATE);
+        ImGui::Text("Basic Statistics");
         ImGui::PopStyleColor();
         ImGui::Spacing();
         ImGui::Separator();
@@ -3093,7 +3193,7 @@ namespace Motion
         ImGui::BeginChild("RangeStats", ImVec2(0, 140), true);
         
         ImGui::PushStyleColor(ImGuiCol_Text, MixColors(SUCCESS, TEXT_PRIMARY, 0.30f));
-        ImGui::Text("%s Range & Extremes", ICON_MD_HEIGHT);
+        ImGui::Text("Range & Extremes");
         ImGui::PopStyleColor();
         ImGui::Spacing();
         ImGui::Separator();
@@ -3159,7 +3259,7 @@ namespace Motion
             ImGui::BeginChild("PeakStats", ImVec2(0, 200), true);
             
             ImGui::PushStyleColor(ImGuiCol_Text, MixColors(WARNING, TEXT_PRIMARY, 0.30f));
-            ImGui::Text("%s Peak Detection", ICON_MD_TRENDING_UP);
+            ImGui::Text("Peak Detection");
             ImGui::PopStyleColor();
             ImGui::SameLine();
             HelpMarker("Automatically detected peaks (local maxima) in the data.\n\n"
@@ -3203,7 +3303,7 @@ namespace Motion
         ImGui::BeginChild("IntegralStats", ImVec2(0, 120), true);
         
         ImGui::PushStyleColor(ImGuiCol_Text, MixColors(color, TEXT_PRIMARY, 0.30f));
-        ImGui::Text("%s Numerical Integration", ICON_MD_FUNCTIONS);
+        ImGui::Text("Numerical Integration");
         ImGui::PopStyleColor();
         ImGui::SameLine();
         HelpMarker("Area under the curve using trapezoidal rule.\n\n"
@@ -3334,7 +3434,25 @@ namespace Motion
             ImGui::PushID(static_cast<std::int32_t>(entt::to_integral(e)));
 
             const bool open = ImGui::TreeNodeEx("##node", flags, "%s %s", label, (e == context.Entities->SelectedEntity) ? "*" : "");
-            if (ImGui::IsItemClicked(ImGuiMouseButton_Left)) m_Scene->SelectedEntity(e);
+            if (ImGui::IsItemClicked(ImGuiMouseButton_Left)) 
+            {
+                m_Scene->SelectedEntity(e);
+                m_PhysicsAnalysis.SelectedEntity = e;
+
+                if (m_PhysicsAnalysis.Energy.TrackingEnabled)
+                {
+                    m_PhysicsAnalysis.Energy.Reset();
+                }
+                if (m_PhysicsAnalysis.Momentum.TrackConservation)
+                {
+                    m_PhysicsAnalysis.Momentum.Reset();
+                }
+                if (m_PhysicsAnalysis.Acceleration.ShowVector)
+                {
+                    m_PhysicsAnalysis.Acceleration.Reset();
+                }
+            }
+
             if (ImGui::IsItemClicked(ImGuiMouseButton_Right)) ImGui::OpenPopup("EntityContextMenu");
 
             if (ImGui::BeginPopupContextWindow("EntityContextMenu"))
@@ -3788,6 +3906,36 @@ namespace Motion
         {
             RequestEntityImport(true, true);
         }
+
+        ImGui::Separator();
+        ImGui::Spacing();
+        
+        ImGui::TextColored(ImVec4(0.5f, 0.8f, 1.0f, 1.0f), "Physics Analysis");
+        
+        // Quick toggle buttons with icons
+        bool forceActive = m_PhysicsAnalysis.ShowForceAnalysisPanel;
+        if (ImGui::Button(ICON_MD_ARCHITECTURE, ImVec2(40, 40)))
+        {
+            m_PhysicsAnalysis.ShowForceAnalysisPanel = !m_PhysicsAnalysis.ShowForceAnalysisPanel;
+        }
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("Force Analysis (Ctrl+F)");
+        
+        bool energyActive = m_PhysicsAnalysis.ShowEnergyPanel;
+        if (ImGui::Button(ICON_MD_BOLT, ImVec2(40, 40)))
+        {
+            m_PhysicsAnalysis.ShowEnergyPanel = !m_PhysicsAnalysis.ShowEnergyPanel;
+        }
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("Energy Tracking (Ctrl+E)");
+        
+        bool momentumActive = m_PhysicsAnalysis.ShowMomentumPanel;
+        if (ImGui::Button(ICON_MD_SPEED, ImVec2(40, 40)))
+        {
+            m_PhysicsAnalysis.ShowMomentumPanel = !m_PhysicsAnalysis.ShowMomentumPanel;
+        }
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("Momentum Analysis (Ctrl+M)");
 
         ImGui::Separator();
     }
@@ -4268,7 +4416,10 @@ namespace Motion
 
                     RayHitResults result{};
                     const bool hit = RaycastFirstHit(context.Physics->World, P0, P1, result);
-                    if (hit) m_Scene->SelectedEntity(result.Entity);
+                    if (hit) 
+                    {
+                        m_Scene->SelectedEntity(result.Entity);
+                    }
                 }
 
                 static GizmoState gizmo;
@@ -4435,6 +4586,78 @@ namespace Motion
                     }
                 }
 
+                if (m_PhysicsAnalysis.SelectedEntity != entt::null && context.Entities->Registry.valid(m_PhysicsAnalysis.SelectedEntity))
+                {
+                    auto* transform = context.Entities->Registry.try_get<TransformComponent>(m_PhysicsAnalysis.SelectedEntity);
+                    auto* rb = context.Entities->Registry.try_get<RigidBodyComponent>(m_PhysicsAnalysis.SelectedEntity);
+                    
+                    if (transform && rb)
+                    {
+                        // Draw force vectors
+                        if (m_PhysicsAnalysis.ShowForceAnalysisPanel && 
+                            m_PhysicsAnalysis.ForceAnalysis.ShowForceVectors)
+                        {
+                            for (const auto& force : m_PhysicsAnalysis.ForceAnalysis.Forces)
+                            {
+                                if (force.IsActive)
+                                {
+                                    DrawForceVector(transform->Translation, force.Force, 
+                                                force.Color, m_PhysicsAnalysis.ForceAnalysis.VectorScale);
+                                }
+                            }
+                            
+                            // Draw net force
+                            if (m_PhysicsAnalysis.ForceAnalysis.ShowNetForce)
+                            {
+                                DrawForceVector(transform->Translation, 
+                                            m_PhysicsAnalysis.ForceAnalysis.NetForce,
+                                            IM_COL32(255, 255, 0, 255), 
+                                            m_PhysicsAnalysis.ForceAnalysis.VectorScale * 1.5f);
+                            }
+                        }
+                        
+                        // Draw momentum vector
+                        if (m_PhysicsAnalysis.ShowMomentumPanel && 
+                            m_PhysicsAnalysis.Momentum.ShowMomentumVector)
+                        {
+                            DrawMomentumVector(transform->Translation, 
+                                            m_PhysicsAnalysis.Momentum.LinearMomentum,
+                                            IM_COL32(200, 100, 255, 255),
+                                            m_PhysicsAnalysis.Momentum.VectorScale);
+                        }
+                        
+                        // Draw acceleration vector
+                        if (m_PhysicsAnalysis.ShowAccelerationPanel && 
+                            m_PhysicsAnalysis.Acceleration.ShowVector)
+                        {
+                            glm::vec3 accelVector = m_PhysicsAnalysis.Acceleration.CurrentAcceleration * 
+                                                m_PhysicsAnalysis.Acceleration.VectorScale;
+                            DrawForceVector(transform->Translation, accelVector,
+                                        m_PhysicsAnalysis.Acceleration.VectorColor,
+                                        1.0f);
+                        }
+                        
+                        // Draw trajectory path
+                        if (m_PhysicsAnalysis.ShowTrajectoryPanel && 
+                            m_PhysicsAnalysis.Trajectory.ShowPredictionPath &&
+                            !m_PhysicsAnalysis.Trajectory.PredictedPath.empty())
+                        {
+                            DrawTrajectoryPath(m_PhysicsAnalysis.Trajectory.PredictedPath,
+                                            m_PhysicsAnalysis.Trajectory.PathColor);
+                        }
+                    }
+                }
+                
+                // Draw collision points
+                if (m_PhysicsAnalysis.ShowCollisionPanel && 
+                    m_PhysicsAnalysis.Collisions.ShowCollisionPoints)
+                {
+                    for (const auto& collision : m_PhysicsAnalysis.Collisions.RecentCollisions)
+                    {
+                        DrawCollisionPoint(collision.CollisionPoint, 0.2f, IM_COL32(255, 100, 100, 200));
+                    }
+                }
+
                 const bool clutchHide = ImGui::IsKeyDown(ImGuiKey_4);
                 static LightGizmoConfig lightCfg;
                 lightCfg.Enabled = context.Physics->SunLight.ShowGuizmo && !clutchHide;
@@ -4449,6 +4672,1770 @@ namespace Motion
 
         ImGui::End();
         ImGui::PopStyleVar();
+    }
+
+
+    void RenderEducationalInfoBox(const char* icon, const char* title, const char* text, float width = 400.0f)
+    {
+        // Calculate sizes
+        ImVec2 titleSize = ImGui::CalcTextSize(title);
+        ImVec2 textSize = ImGui::CalcTextSize(text, nullptr, false, width - 30.0f);
+        
+        float iconSize = 20.0f;
+        float titleHeight = std::max(iconSize, titleSize.y);
+        float totalHeight = titleHeight + 10.0f + textSize.y + 20.0f;
+        
+        ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.15f, 0.25f, 0.35f, 0.9f));
+        if (ImGui::BeginChild("##EduBox", ImVec2(width, totalHeight), true))
+        {
+            // Icon and title
+            ImGui::SetCursorPosY(10.0f);
+            ImGui::SetCursorPosX(10.0f);
+            
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.4f, 0.7f, 1.0f, 1.0f));
+            ImGui::Text("%s", icon);
+            ImGui::SameLine();
+            ImGui::TextColored(ImVec4(1.0f, 1.0f, 1.0f, 1.0f), "%s", title);
+            ImGui::PopStyleColor();
+            
+            ImGui::Spacing();
+            ImGui::Separator();
+            ImGui::Spacing();
+            
+            // Body text
+            ImGui::SetCursorPosX(10.0f);
+            ImGui::PushTextWrapPos(width - 10.0f);
+            ImGui::TextWrapped("%s", text);
+            ImGui::PopTextWrapPos();
+        }
+        ImGui::EndChild();
+        ImGui::PopStyleColor();
+    }
+
+
+    /**
+     * @brief Renders a window for analyzing force vectors acting on an object.
+     *
+     * This window allows the user to visualize and analyze force vectors acting on an object.
+     * Features include showing force vectors, net force, and components.
+     * The user can select an object in the simulation watchlist to analyze its data.
+     * The analysis is split into two sections: individual forces and net force.
+     * The individual forces section shows the active forces and their magnitude.
+     * The net force section shows the vector sum of all forces acting on the object.
+     * A third section allows the user to compare the two types of motion.
+     *
+     * @param[in] context The current scene context.
+     */
+    void SceneEditorLayer::RenderForceAnalysisPanel(SceneContext& context)
+    {
+        if (!m_PhysicsAnalysis.ShowForceAnalysisPanel) return;
+        
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(16, 16));
+        ImGui::Begin("Force Analysis", &m_PhysicsAnalysis.ShowForceAnalysisPanel, 
+                     ImGuiWindowFlags_AlwaysAutoResize);
+        
+        ImGui::TextColored(ImVec4(0.4f, 0.7f, 1.0f, 1.0f), "Force Vector Analysis");
+        ImGui::Separator();
+        ImGui::Spacing();
+        
+        auto& analysis = m_PhysicsAnalysis.ForceAnalysis;
+        
+        ImGui::Text("Visualization");
+        ImGui::Checkbox("Show Force Vectors", &analysis.ShowForceVectors);
+        ImGui::SameLine(); 
+        ShowPhysicsTooltip("Force Vectors", "Display arrows representing the magnitude and direction of forces acting on the object");
+        
+        ImGui::Checkbox("Show Net Force", &analysis.ShowNetForce);
+        ImGui::SameLine(); 
+        ShowPhysicsTooltip("Net Force", "The vector sum of all forces acting on the object (resultant force)");
+        
+        ImGui::Checkbox("Show Components", &analysis.ShowComponents);
+        ImGui::SameLine(); 
+        ShowPhysicsTooltip("Components", "Break down forces into X, Y, and Z components");
+        
+        ImGui::SliderFloat("Vector Scale", &analysis.VectorScale, 0.1f, 5.0f, "%.2fx");
+        ImGui::SliderFloat("Arrow Size", &analysis.ArrowHeadSize, 0.05f, 0.5f);
+        
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+        
+        ImGui::TextColored(ImVec4(0.3f, 1.0f, 0.3f, 1.0f), "Net Force");
+        ImGui::Text("Magnitude: %.2f N", analysis.NetForceMagnitude);
+        
+        if (analysis.NetForceMagnitude > EPSILON)
+        {
+            ImGui::Text("Direction: X: %.2f, Y: %.2f, Z: %.2f", 
+                       analysis.NetForce.x, analysis.NetForce.y, analysis.NetForce.z);
+            
+            glm::vec3 unitDir = glm::normalize(analysis.NetForce);
+            ImGui::Text("Unit Vector: (%.3f, %.3f, %.3f)", 
+                       unitDir.x, unitDir.y, unitDir.z);
+        }
+        else
+        {
+            ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), 
+                              "Object is in equilibrium (ΣF = 0)");
+        }
+        
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+        
+
+        ImGui::Text("Active Forces (%zu)", analysis.Forces.size());    
+        if (ImGui::BeginChild("ForcesList", ImVec2(400, 250), true))
+        {
+            for (size_t i = 0; i < analysis.Forces.size(); ++i)
+            {
+                auto& force = analysis.Forces[i];
+                
+                ImGui::PushID(static_cast<int>(i));
+                
+                // Force name with color indicator
+                ImGui::ColorButton("##color", ImGui::ColorConvertU32ToFloat4(force.Color), 
+                                  ImGuiColorEditFlags_NoTooltip, ImVec2(20, 20));
+                ImGui::SameLine();
+                
+                ImGui::Checkbox(force.Name.c_str(), &force.IsActive);
+                
+                if (force.IsActive)
+                {
+                    ImGui::Indent(30);
+                    ImGui::Text("Magnitude: %.2f N", force.GetMagnitude());
+                    ImGui::Text("Force: (%.2f, %.2f, %.2f) N", 
+                               force.Force.x, force.Force.y, force.Force.z);
+                    
+                    if (analysis.ShowComponents && force.GetMagnitude() > EPSILON)
+                    {
+                        ImGui::Text("Components:");
+                        ImGui::BulletText("Fx: %.2f N", force.Force.x);
+                        ImGui::BulletText("Fy: %.2f N", force.Force.y);
+                        ImGui::BulletText("Fz: %.2f N", force.Force.z);
+                    }
+                    ImGui::Unindent(30);
+                }
+                
+                ImGui::PopID();
+                
+                if (i < analysis.Forces.size() - 1)
+                    ImGui::Separator();
+            }
+        }
+        ImGui::EndChild();
+        
+        ImGui::Spacing();
+
+        RenderEducationalInfoBox(nullptr, "Force Info", "Forces are vector quantities that cause acceleration. "
+                          "The net force determines how an object moves according to Newton's Second Law (F=ma).");
+        
+        ImGui::End();
+        ImGui::PopStyleVar();
+    }
+    
+    /**
+     * @brief Renders a window for tracking the energy of objects in a simulation.
+     *
+     * This window allows the user to analyze the energy data of objects in a simulation.
+     * Features include tracking kinetic, potential, and total energy over time, displaying
+     * this data in a graph, and calculating the energy conservation of the simulation.
+     * The user can choose to display the kinetic energy, potential energy, or total energy of the
+     * objects in the simulation.
+     *
+     * @param[in] context The current scene context.
+     */
+    void SceneEditorLayer::RenderEnergyTrackingPanel(SceneContext& context)
+    {
+        if (!m_PhysicsAnalysis.ShowEnergyPanel) return;
+        
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(16, 16));
+        ImGui::Begin("Energy Analysis", &m_PhysicsAnalysis.ShowEnergyPanel);
+        
+        ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.2f, 1.0f), "Energy Tracking");
+        ImGui::Separator();
+        ImGui::Spacing();
+        
+        auto& energy = m_PhysicsAnalysis.Energy;
+        
+        // Enable/Disable Tracking
+        ImGui::Checkbox("Enable Tracking", &energy.TrackingEnabled);
+        ImGui::SameLine(); ShowPhysicsTooltip("Energy Tracking", 
+            "Record kinetic and potential energy over time to analyze energy conservation");
+        
+        ImGui::Spacing();
+        
+        // Current Energy Values - Large Display
+        ImGui::BeginGroup();
+        {
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.3f, 1.0f, 0.5f, 1.0f));
+            ImGui::Text("Kinetic Energy");
+            ImGui::PopStyleColor();
+            ImGui::SameLine(200);
+            ImGui::Text("%.2f J", energy.CurrentKE);
+            
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.5f, 0.7f, 1.0f, 1.0f));
+            ImGui::Text("Potential Energy");
+            ImGui::PopStyleColor();
+            ImGui::SameLine(200);
+            ImGui::Text("%.2f J", energy.CurrentPE);
+            
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.8f, 0.2f, 1.0f));
+            ImGui::Text("Total Energy");
+            ImGui::PopStyleColor();
+            ImGui::SameLine(200);
+            ImGui::Text("%.2f J", energy.CurrentTotal);
+        }
+        ImGui::EndGroup();
+        
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+        
+        // Conservation Analysis
+        float conservation = energy.GetEnergyConservation();
+        ImGui::Text("Energy Conservation: ");
+        ImGui::SameLine();
+        
+        ImVec4 conservationColor;
+        if (conservation > 95.0f)
+            conservationColor = ImVec4(0.2f, 1.0f, 0.2f, 1.0f); // Green - excellent
+        else if (conservation > 85.0f)
+            conservationColor = ImVec4(1.0f, 0.8f, 0.2f, 1.0f); // Yellow - good
+        else
+            conservationColor = ImVec4(1.0f, 0.3f, 0.3f, 1.0f); // Red - poor
+        
+        ImGui::TextColored(conservationColor, "%.1f%%", conservation);
+        
+        if (energy.InitialTotal > EPSILON)
+        {
+            ImGui::Text("Initial Total: %.2f J", energy.InitialTotal);
+            ImGui::Text("Energy Lost: %.2f J", energy.EnergyLoss);
+        }
+        
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+        
+        // Energy Graph
+        ImGui::Text("Energy Over Time");
+        
+        ImGui::Checkbox("Show KE", &energy.ShowKE);
+        ImGui::SameLine();
+        ImGui::Checkbox("Show PE", &energy.ShowPE);
+        ImGui::SameLine();
+        ImGui::Checkbox("Show Total", &energy.ShowTotal);
+        
+        if (!energy.TimeStamps.empty() && energy.TimeStamps.size() == energy.TotalEnergyHistory.size())
+        {
+            // Convert deque to vector for plotting
+            std::vector<ImVec2> keData, peData, totalData;
+            
+            for (size_t i = 0; i < energy.TimeStamps.size(); ++i)
+            {
+                float time = energy.TimeStamps[i];
+                if (energy.ShowKE && i < energy.KineticEnergyHistory.size())
+                    keData.push_back(ImVec2(time, energy.KineticEnergyHistory[i]));
+                if (energy.ShowPE && i < energy.PotentialEnergyHistory.size())
+                    peData.push_back(ImVec2(time, energy.PotentialEnergyHistory[i]));
+                if (energy.ShowTotal && i < energy.TotalEnergyHistory.size())
+                    totalData.push_back(ImVec2(time, energy.TotalEnergyHistory[i]));
+            }
+            
+            // Find max energy for scaling
+            float maxEnergy = 1.0f;
+            if (!totalData.empty())
+            {
+                for (const auto& point : totalData)
+                    maxEnergy = std::max(maxEnergy, point.y);
+            }
+            
+            ImVec2 graphSize(ImGui::GetContentRegionAvail().x, 200);
+            
+            if (ImGui::BeginChild("EnergyGraph", graphSize, true))
+            {
+                ImDrawList* drawList = ImGui::GetWindowDrawList();
+                ImVec2 graphMin = ImGui::GetCursorScreenPos();
+                ImVec2 graphMax = ImVec2(graphMin.x + graphSize.x - 20, graphMin.y + graphSize.y - 20);
+                
+                // Draw grid
+                drawList->AddRectFilled(graphMin, graphMax, IM_COL32(20, 20, 25, 255));
+                
+                // Helper to convert data to screen space
+                auto toScreen = [&](const ImVec2& dataPoint) -> ImVec2
+                {
+                    float timeRange = energy.TimeStamps.empty() ? 1.0f : 
+                        (energy.TimeStamps.back() - energy.TimeStamps.front());
+                    if (timeRange < EPSILON) timeRange = 1.0f;
+                    
+                    float x = graphMin.x + ((dataPoint.x - energy.TimeStamps.front()) / timeRange) * 
+                             (graphMax.x - graphMin.x);
+                    float y = graphMax.y - (dataPoint.y / maxEnergy) * (graphMax.y - graphMin.y);
+                    return ImVec2(x, y);
+                };
+                
+                // Plot lines
+                if (energy.ShowKE && keData.size() > 1)
+                {
+                    for (size_t i = 0; i < keData.size() - 1; ++i)
+                    {
+                        ImVec2 p1 = toScreen(keData[i]);
+                        ImVec2 p2 = toScreen(keData[i + 1]);
+                        drawList->AddLine(p1, p2, IM_COL32(50, 255, 100, 255), 2.0f);
+                    }
+                }
+                
+                if (energy.ShowPE && peData.size() > 1)
+                {
+                    for (size_t i = 0; i < peData.size() - 1; ++i)
+                    {
+                        ImVec2 p1 = toScreen(peData[i]);
+                        ImVec2 p2 = toScreen(peData[i + 1]);
+                        drawList->AddLine(p1, p2, IM_COL32(100, 150, 255, 255), 2.0f);
+                    }
+                }
+                
+                if (energy.ShowTotal && totalData.size() > 1)
+                {
+                    for (size_t i = 0; i < totalData.size() - 1; ++i)
+                    {
+                        ImVec2 p1 = toScreen(totalData[i]);
+                        ImVec2 p2 = toScreen(totalData[i + 1]);
+                        drawList->AddLine(p1, p2, IM_COL32(255, 200, 50, 255), 2.0f);
+                    }
+                }
+                
+                // Draw border
+                drawList->AddRect(graphMin, graphMax, IM_COL32(100, 100, 100, 255), 0, 0, 1.5f);
+                
+                // Labels
+                ImGui::SetCursorScreenPos(ImVec2(graphMin.x + 5, graphMin.y + 5));
+                ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "%.1f J", maxEnergy);
+                
+                ImGui::SetCursorScreenPos(ImVec2(graphMin.x + 5, graphMax.y - 15));
+                ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "0 J");
+            }
+            ImGui::EndChild();
+            
+            // Legend
+            ImGui::Spacing();
+            if (energy.ShowKE)
+            {
+                ImGui::ColorButton("##ke", ImVec4(0.2f, 1.0f, 0.4f, 1.0f), 
+                                  ImGuiColorEditFlags_NoTooltip, ImVec2(15, 15));
+                ImGui::SameLine();
+                ImGui::Text("Kinetic Energy");
+                ImGui::SameLine(200);
+            }
+            if (energy.ShowPE)
+            {
+                ImGui::ColorButton("##pe", ImVec4(0.4f, 0.6f, 1.0f, 1.0f), 
+                                  ImGuiColorEditFlags_NoTooltip, ImVec2(15, 15));
+                ImGui::SameLine();
+                ImGui::Text("Potential Energy");
+                ImGui::SameLine(200);
+            }
+            if (energy.ShowTotal)
+            {
+                ImGui::ColorButton("##total", ImVec4(1.0f, 0.8f, 0.2f, 1.0f), 
+                                  ImGuiColorEditFlags_NoTooltip, ImVec2(15, 15));
+                ImGui::SameLine();
+                ImGui::Text("Total Energy");
+            }
+        }
+        else
+        {
+            ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), 
+                              "Start simulation to track energy data");
+        }
+        
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+        
+        // Settings
+        ImGui::Text("Settings");
+        ImGui::SliderFloat("Gravity", &energy.GravityMagnitude, 0.0f, 20.0f, "%.2f m/s²");
+        
+        ImGui::Spacing();
+        
+        // Action buttons
+        if (ImGui::Button("Reset", ImVec2(120, 0)))
+        {
+            energy.Reset();
+        }
+        ImGui::Spacing();
+        
+        // Educational Info
+        ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.15f, 0.25f, 0.35f, 0.9f));
+        if (ImGui::BeginChild("EnergyInfo", ImVec2(-1, 100), true))
+        {
+            RenderPhysicsEquation("KE = ½mv²", "Kinetic Energy");
+            RenderPhysicsEquation("PE = mgh", "Gravitational Potential Energy");
+            ImGui::Spacing();
+            ImGui::TextWrapped("Law of Conservation of Energy: In a closed system, "
+                              "total energy remains constant. Energy can transform between "
+                              "kinetic and potential forms.");
+        }
+        ImGui::EndChild();
+        ImGui::PopStyleColor();
+        
+        ImGui::End();
+        ImGui::PopStyleVar();
+    }
+    
+    
+    /**
+     * @brief Renders a window for momentum analysis of physics data.
+     *
+     * This window allows the user to analyze momentum data with statistical tools.
+     * Features include mean, median, standard deviation, min/max value detection,
+     * peak detection for oscillations, numerical integration (area under curve),
+     * sample statistics and distributions.
+     *
+     * The user can select an object in the simulation watchlist to analyze its data.
+     * The analysis is split into two sections: linear motion and rotational motion.
+     * The linear motion section shows the statistical analysis of the object's linear velocity.
+     * The rotational motion section shows the statistical analysis of the object's angular velocity.
+     * A third section allows the user to compare the two types of motion.
+     *
+     * @param[in] context The current scene context.
+     */
+    void SceneEditorLayer::RenderMomentumPanel(SceneContext& context)
+    {
+        if (!m_PhysicsAnalysis.ShowMomentumPanel) return;
+        
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(16, 16));
+        ImGui::Begin("Momentum Analysis", &m_PhysicsAnalysis.ShowMomentumPanel);
+        
+        ImGui::TextColored(ImVec4(0.8f, 0.4f, 1.0f, 1.0f), "Momentum & Impulse");
+        ImGui::Separator();
+        ImGui::Spacing();
+        
+        auto& momentum = m_PhysicsAnalysis.Momentum;
+        
+        // Current Momentum Display
+        ImGui::Text("Linear Momentum");
+        ImGui::Text("Magnitude: %.2f kg⋅m/s", momentum.LinearMagnitude);
+        ImGui::Text("Direction: (%.2f, %.2f, %.2f)", 
+                   momentum.LinearMomentum.x, momentum.LinearMomentum.y, momentum.LinearMomentum.z);
+        
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+        
+        // Conservation Analysis
+        if (glm::length(momentum.InitialLinearMomentum) > EPSILON)
+        {
+            float conservation = momentum.GetConservationPercentage();
+            ImGui::Text("Momentum Conservation: ");
+            ImGui::SameLine();
+            
+            ImVec4 color = conservation > 95.0f ? ImVec4(0.2f, 1.0f, 0.2f, 1.0f) : 
+                          conservation > 85.0f ? ImVec4(1.0f, 0.8f, 0.2f, 1.0f) : 
+                          ImVec4(1.0f, 0.3f, 0.3f, 1.0f);
+            
+            ImGui::TextColored(color, "%.1f%%", conservation);
+            
+            ImGui::Text("Initial: %.2f kg⋅m/s", glm::length(momentum.InitialLinearMomentum));
+            ImGui::Text("Current: %.2f kg⋅m/s", momentum.LinearMagnitude);
+            
+            float change = momentum.LinearMagnitude - glm::length(momentum.InitialLinearMomentum);
+            ImGui::Text("Change: %.2f kg⋅m/s", change);
+        }
+        
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+        
+        // Visualization Options
+        ImGui::Text("Visualization");
+        ImGui::Checkbox("Show Momentum Vector", &momentum.ShowMomentumVector);
+        ImGui::SameLine(); ShowPhysicsTooltip("Momentum Vector", 
+            "Display the momentum vector from the object's center of mass");
+        
+        ImGui::Checkbox("Track Conservation", &momentum.TrackConservation);
+        ImGui::SameLine(); ShowPhysicsTooltip("Conservation Tracking", 
+            "Monitor how well momentum is conserved during collisions");
+        
+        ImGui::SliderFloat("Vector Scale", &momentum.VectorScale, 0.1f, 3.0f);
+        
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+        
+        // Momentum History Graph
+        if (!momentum.MomentumHistory.empty() && !momentum.TimeStamps.empty())
+        {
+            ImGui::Text("Momentum Magnitude Over Time");
+            
+            std::vector<ImVec2> graphData;
+            for (size_t i = 0; i < momentum.MomentumHistory.size() && i < momentum.TimeStamps.size(); ++i)
+            {
+                float mag = glm::length(momentum.MomentumHistory[i]);
+                graphData.push_back(ImVec2(momentum.TimeStamps[i], mag));
+            }
+            
+            if (graphData.size() > 1)
+            {
+                ImVec2 graphSize(ImGui::GetContentRegionAvail().x, 150);
+                if (ImGui::BeginChild("MomentumGraph", graphSize, true))
+                {
+                    ImDrawList* drawList = ImGui::GetWindowDrawList();
+                    ImVec2 graphMin = ImGui::GetCursorScreenPos();
+                    ImVec2 graphMax = ImVec2(graphMin.x + graphSize.x - 20, graphMin.y + graphSize.y - 20);
+                    
+                    drawList->AddRectFilled(graphMin, graphMax, IM_COL32(20, 20, 25, 255));
+                    
+                    float maxMomentum = 1.0f;
+                    for (const auto& point : graphData)
+                        maxMomentum = std::max(maxMomentum, point.y);
+                    
+                    float timeRange = graphData.back().x - graphData.front().x;
+                    if (timeRange < EPSILON) timeRange = 1.0f;
+                    
+                    for (size_t i = 0; i < graphData.size() - 1; ++i)
+                    {
+                        float x1 = graphMin.x + ((graphData[i].x - graphData.front().x) / timeRange) * 
+                                  (graphMax.x - graphMin.x);
+                        float y1 = graphMax.y - (graphData[i].y / maxMomentum) * (graphMax.y - graphMin.y);
+                        
+                        float x2 = graphMin.x + ((graphData[i+1].x - graphData.front().x) / timeRange) * 
+                                  (graphMax.x - graphMin.x);
+                        float y2 = graphMax.y - (graphData[i+1].y / maxMomentum) * (graphMax.y - graphMin.y);
+                        
+                        drawList->AddLine(ImVec2(x1, y1), ImVec2(x2, y2), 
+                                        IM_COL32(200, 100, 255, 255), 2.0f);
+                    }
+                    
+                    drawList->AddRect(graphMin, graphMax, IM_COL32(100, 100, 100, 255), 0, 0, 1.5f);
+                }
+                ImGui::EndChild();
+            }
+        }
+        
+        ImGui::Spacing();
+        
+        // Action Buttons
+        if (ImGui::Button("Reset", ImVec2(120, 0)))
+        {
+            momentum.Reset();
+        }
+        
+        ImGui::Spacing();
+        
+        // Educational Info
+        ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.15f, 0.25f, 0.35f, 0.9f));
+        if (ImGui::BeginChild("MomentumInfo", ImVec2(-1, 120), true))
+        {
+            RenderPhysicsEquation("p = mv", "Linear Momentum");
+            RenderPhysicsEquation("Δp = FΔt", "Impulse-Momentum Theorem");
+            ImGui::Spacing();
+            ImGui::TextWrapped("Law of Conservation of Momentum: In a closed system with "
+                              "no external forces, the total momentum remains constant. "
+                              "This is especially evident in collisions.");
+        }
+        ImGui::EndChild();
+        ImGui::PopStyleColor();
+        
+        ImGui::End();
+        ImGui::PopStyleVar();
+    }
+    
+    // ==================== COLLISION ANALYSIS PANEL ====================
+    
+    void SceneEditorLayer::RenderCollisionAnalysisPanel(SceneContext& context)
+    {
+        if (!m_PhysicsAnalysis.ShowCollisionPanel) return;
+        
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(16, 16));
+        ImGui::Begin("Collision Analysis", &m_PhysicsAnalysis.ShowCollisionPanel);
+        
+        ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.3f, 1.0f), "Collision Analysis");
+        ImGui::Separator();
+        ImGui::Spacing();
+        
+        auto& collisions = m_PhysicsAnalysis.Collisions;
+        
+        // Enable Analysis
+        ImGui::Checkbox("Enable Analysis", &collisions.EnableAnalysis);
+        ImGui::SameLine(); ShowPhysicsTooltip("Collision Analysis", 
+            "Record and analyze collision events including velocity changes and energy transfer");
+        
+        ImGui::Spacing();
+        
+        // Visualization Options
+        ImGui::Checkbox("Show Collision Points", &collisions.ShowCollisionPoints);
+        ImGui::Checkbox("Show Impulse Vectors", &collisions.ShowImpulseVectors);
+        
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+        
+        // Recent Collisions List
+        ImGui::Text("Recent Collisions (%zu)", collisions.RecentCollisions.size());
+        
+        if (collisions.RecentCollisions.empty())
+        {
+            ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), 
+                              "No collisions recorded yet");
+        }
+        else
+        {
+            if (ImGui::BeginChild("CollisionsList", ImVec2(-1, 300), true))
+            {
+                for (int i = static_cast<int>(collisions.RecentCollisions.size()) - 1; i >= 0; --i)
+                {
+                    const auto& event = collisions.RecentCollisions[i];
+                    
+                    ImGui::PushID(i);
+                    
+                    // Collision header with type indicator
+                    ImVec4 typeColor;
+                    switch (event.Type)
+                    {
+                        case CollisionEvent::CollisionType::Elastic:
+                            typeColor = ImVec4(0.2f, 1.0f, 0.2f, 1.0f);
+                            break;
+                        case CollisionEvent::CollisionType::Inelastic:
+                            typeColor = ImVec4(1.0f, 0.3f, 0.3f, 1.0f);
+                            break;
+                        case CollisionEvent::CollisionType::PartiallyElastic:
+                            typeColor = ImVec4(1.0f, 0.8f, 0.2f, 1.0f);
+                            break;
+                        default:
+                            typeColor = ImVec4(0.7f, 0.7f, 0.7f, 1.0f);
+                    }
+                    
+                    ImGui::TextColored(typeColor, "%s Collision", event.GetTypeName());
+                    ImGui::Text("Time: %.2f s", event.TimeStamp);
+                    
+                    if (ImGui::TreeNode("Details"))
+                    {
+                        ImGui::BulletText("Coefficient of Restitution: %.3f", event.CoefficientOfRestitution);
+                        ImGui::BulletText("Relative Velocity: %.2f m/s", event.RelativeVelocity);
+                        ImGui::BulletText("Impulse: %.2f N⋅s", event.ImpulseMagnitude);
+                        
+                        ImGui::Spacing();
+                        ImGui::Text("Velocities Before:");
+                        ImGui::Indent();
+                        ImGui::Text("Object A: (%.2f, %.2f, %.2f) m/s", 
+                                   event.VelocityABefore.x, event.VelocityABefore.y, event.VelocityABefore.z);
+                        ImGui::Text("Object B: (%.2f, %.2f, %.2f) m/s", 
+                                   event.VelocityBBefore.x, event.VelocityBBefore.y, event.VelocityBBefore.z);
+                        ImGui::Unindent();
+                        
+                        ImGui::Spacing();
+                        ImGui::Text("Velocities After:");
+                        ImGui::Indent();
+                        ImGui::Text("Object A: (%.2f, %.2f, %.2f) m/s", 
+                                   event.VelocityAAfter.x, event.VelocityAAfter.y, event.VelocityAAfter.z);
+                        ImGui::Text("Object B: (%.2f, %.2f, %.2f) m/s", 
+                                   event.VelocityBAfter.x, event.VelocityBAfter.y, event.VelocityBAfter.z);
+                        ImGui::Unindent();
+                        
+                        ImGui::Spacing();
+                        ImGui::Text("Energy Analysis:");
+                        ImGui::Indent();
+                        ImGui::Text("KE Before: %.2f J", event.KEBefore);
+                        ImGui::Text("KE After: %.2f J", event.KEAfter);
+                        ImGui::Text("Energy Lost: %.2f J (%.1f%%)", 
+                                   event.EnergyLoss, 
+                                   event.KEBefore > EPSILON ? (event.EnergyLoss / event.KEBefore * 100.0f) : 0.0f);
+                        ImGui::Unindent();
+                        
+                        ImGui::TreePop();
+                    }
+                    
+                    ImGui::PopID();
+                    
+                    if (i > 0)
+                        ImGui::Separator();
+                }
+            }
+            ImGui::EndChild();
+        }
+        
+        ImGui::Spacing();
+        
+        // Action Buttons
+        if (ImGui::Button("Clear History", ImVec2(150, 0)))
+        {
+            collisions.Clear();
+        }
+        
+        ImGui::Spacing();
+        
+        // Educational Info
+        ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.15f, 0.25f, 0.35f, 0.9f));
+        if (ImGui::BeginChild("CollisionInfo", ImVec2(-1, 130), true))
+        {
+            ImGui::TextWrapped("Collision Types:");
+            ImGui::BulletText("Elastic (e ≈ 1): Kinetic energy conserved");
+            ImGui::BulletText("Inelastic (e ≈ 0): Maximum energy lost, objects stick");
+            ImGui::BulletText("Partially Elastic (0 < e < 1): Some energy lost");
+            ImGui::Spacing();
+            RenderPhysicsEquation("e = (v₂ - v₁) / (u₁ - u₂)", "Coefficient of Restitution");
+        }
+        ImGui::EndChild();
+        ImGui::PopStyleColor();
+        
+        ImGui::End();
+        ImGui::PopStyleVar();
+    }
+    
+    // ==================== NEWTON'S LAWS PANEL ====================
+    
+    void SceneEditorLayer::RenderNewtonsLawsPanel(SceneContext& context)
+    {
+        if (!m_PhysicsAnalysis.ShowNewtonsLawsPanel) return;
+        
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(16, 16));
+        ImGui::Begin("Newton's Laws Interactive", &m_PhysicsAnalysis.ShowNewtonsLawsPanel);
+        
+        ImGui::TextColored(ImVec4(0.5f, 0.8f, 1.0f, 1.0f), "Newton's Laws of Motion");
+        ImGui::Separator();
+        ImGui::Spacing();
+        
+        auto& laws = m_PhysicsAnalysis.NewtonsLaws;
+        
+        // Law Selector Tabs
+        const char* lawNames[] = { "First Law", "Second Law", "Third Law" };
+        ImGui::Text("Select Law:");
+        for (int i = 0; i < 3; ++i)
+        {
+            if (i > 0) ImGui::SameLine();
+            
+            bool isSelected = (laws.CurrentLaw == i);
+            if (isSelected)
+                ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.3f, 0.6f, 1.0f, 1.0f));
+            
+            if (ImGui::Button(lawNames[i], ImVec2(150, 30)))
+                laws.CurrentLaw = i;
+            
+            if (isSelected)
+                ImGui::PopStyleColor();
+        }
+        
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+        
+        // Display selected law
+        switch (laws.CurrentLaw)
+        {
+            case 0: // First Law - Inertia
+            {
+                ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.6f, 1.0f), "Newton's First Law: Law of Inertia");
+                ImGui::Spacing();
+                
+                ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.1f, 0.15f, 0.2f, 1.0f));
+                if (ImGui::BeginChild("FirstLawStatement", ImVec2(-1, 80), true))
+                {
+                    ImGui::TextWrapped("An object at rest stays at rest, and an object in motion "
+                                      "stays in motion with the same velocity, unless acted upon "
+                                      "by a net external force.");
+                }
+                ImGui::EndChild();
+                ImGui::PopStyleColor();
+                
+                ImGui::Spacing();
+                ImGui::Text("Demonstration Controls:");
+                ImGui::Checkbox("Show Inertia Line", &laws.FirstLaw.ShowInertiaLine);
+                ImGui::SameLine(); ShowPhysicsTooltip("Inertia Line", 
+                    "Shows the path the object would follow without external forces");
+                
+                ImGui::Checkbox("Highlight Balanced Forces", &laws.FirstLaw.HighlightBalancedForces);
+                ImGui::SameLine(); ShowPhysicsTooltip("Balanced Forces", 
+                    "When forces are balanced (ΣF = 0), object maintains constant velocity");
+                
+                ImGui::SliderFloat("Friction", &laws.FirstLaw.FrictionCoefficient, 0.0f, 1.0f);
+                
+                ImGui::Spacing();
+                ImGui::Text("Key Concepts:");
+                ImGui::BulletText("Inertia: Resistance to changes in motion");
+                ImGui::BulletText("Velocity remains constant when ΣF = 0");
+                ImGui::BulletText("Friction acts to oppose motion");
+                
+                break;
+            }
+            
+            case 1: // Second Law - F=ma
+            {
+                ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.3f, 1.0f), "Newton's Second Law: F = ma");
+                ImGui::Spacing();
+                
+                ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.1f, 0.15f, 0.2f, 1.0f));
+                if (ImGui::BeginChild("SecondLawStatement", ImVec2(-1, 60), true))
+                {
+                    ImGui::TextWrapped("The acceleration of an object is directly proportional to "
+                                      "the net force acting on it and inversely proportional to its mass.");
+                }
+                ImGui::EndChild();
+                ImGui::PopStyleColor();
+                
+                ImGui::Spacing();
+                RenderPhysicsEquation("F = ma", "Force equals mass times acceleration");
+                RenderPhysicsEquation("a = F/m", "Acceleration equals force divided by mass");
+                
+                ImGui::Spacing();
+                ImGui::Separator();
+                ImGui::Spacing();
+                
+                ImGui::Text("Interactive Controls:");
+                ImGui::Checkbox("Show Force Equation", &laws.SecondLaw.ShowForceEquation);
+                ImGui::Checkbox("Show Acceleration Vector", &laws.SecondLaw.ShowAccelerationVector);
+                ImGui::Checkbox("Enable Mass Slider", &laws.SecondLaw.EnableMassSlider);
+                
+                if (laws.SecondLaw.EnableMassSlider)
+                {
+                    ImGui::SliderFloat("Target Mass", &laws.SecondLaw.TargetMass, 0.1f, 10.0f, "%.2f kg");
+                    ImGui::Text("Change mass to see how it affects acceleration!");
+                }
+                
+                ImGui::Spacing();
+                ImGui::Text("Applied Force:");
+                ImGui::DragFloat3("Force (N)", &laws.SecondLaw.AppliedForce.x, 0.1f, -100.0f, 100.0f);
+                
+                if (m_PhysicsAnalysis.SelectedEntity != entt::null && 
+                    context.Entities->Registry.valid(m_PhysicsAnalysis.SelectedEntity))
+                {
+                    if (auto* rb = context.Entities->Registry.try_get<RigidBodyComponent>(m_PhysicsAnalysis.SelectedEntity))
+                    {
+                        float mass = rb->PhysicsBody->getMass();
+                        if (laws.SecondLaw.EnableMassSlider)
+                            mass = laws.SecondLaw.TargetMass;
+                        
+                        glm::vec3 acceleration = laws.SecondLaw.AppliedForce / mass;
+                        float accelMag = glm::length(acceleration);
+                        
+                        ImGui::Spacing();
+                        ImGui::Text("Results:");
+                        ImGui::Text("Mass: %.2f kg", mass);
+                        ImGui::Text("Acceleration: %.2f m/s²", accelMag);
+                        ImGui::Text("Direction: (%.2f, %.2f, %.2f)", 
+                                   acceleration.x, acceleration.y, acceleration.z);
+                    }
+                }
+                
+                ImGui::Spacing();
+                ImGui::Text("Key Concepts:");
+                ImGui::BulletText("Greater force → greater acceleration");
+                ImGui::BulletText("Greater mass → less acceleration (same force)");
+                ImGui::BulletText("Acceleration is in direction of net force");
+                
+                break;
+            }
+            
+            case 2: // Third Law - Action-Reaction
+            {
+                ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.8f, 1.0f), "Newton's Third Law: Action-Reaction");
+                ImGui::Spacing();
+                
+                ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.1f, 0.15f, 0.2f, 1.0f));
+                if (ImGui::BeginChild("ThirdLawStatement", ImVec2(-1, 60), true))
+                {
+                    ImGui::TextWrapped("For every action, there is an equal and opposite reaction. "
+                                      "Forces always occur in pairs.");
+                }
+                ImGui::EndChild();
+                ImGui::PopStyleColor();
+                
+                ImGui::Spacing();
+                ImGui::Text("Visualization:");
+                ImGui::Checkbox("Show Reaction Forces", &laws.ThirdLaw.ShowReactionForces);
+                ImGui::SameLine(); ShowPhysicsTooltip("Reaction Forces", 
+                    "Display force pairs acting on different objects");
+                
+                ImGui::Checkbox("Highlight Force Pairs", &laws.ThirdLaw.HighlightPairs);
+                ImGui::SameLine(); ShowPhysicsTooltip("Force Pairs", 
+                    "Highlight corresponding action-reaction force pairs");
+                
+                ImGui::Spacing();
+                ImGui::Separator();
+                ImGui::Spacing();
+                
+                ImGui::Text("Select two objects to see their interaction forces:");
+                
+                // Entity selectors (simplified - you'd implement proper entity picking)
+                ImGui::Text("Object A: %s", laws.ThirdLaw.EntityA != entt::null ? "Selected" : "None");
+                ImGui::Text("Object B: %s", laws.ThirdLaw.EntityB != entt::null ? "Selected" : "None");
+                
+                if (laws.ThirdLaw.EntityA != entt::null && laws.ThirdLaw.EntityB != entt::null)
+                {
+                    ImGui::Spacing();
+                    ImGui::TextColored(ImVec4(0.3f, 1.0f, 0.5f, 1.0f), 
+                                      "Force pair detected! Watch the visualization.");
+                }
+                
+                ImGui::Spacing();
+                ImGui::Text("Key Concepts:");
+                ImGui::BulletText("Forces always occur in pairs");
+                ImGui::BulletText("Action and reaction are equal in magnitude");
+                ImGui::BulletText("Action and reaction are opposite in direction");
+                ImGui::BulletText("Forces act on different objects");
+                
+                ImGui::Spacing();
+                ImGui::Text("Examples:");
+                ImGui::BulletText("Rocket thrust: Gas pushed down, rocket pushed up");
+                ImGui::BulletText("Walking: Foot pushes ground back, ground pushes foot forward");
+                ImGui::BulletText("Collision: Both objects experience equal and opposite forces");
+                
+                break;
+            }
+        }
+        
+        ImGui::End();
+        ImGui::PopStyleVar();
+    }
+    
+    // ==================== ACCELERATION PANEL ====================
+    
+    void SceneEditorLayer::RenderAccelerationPanel(SceneContext& context)
+    {
+        if (!m_PhysicsAnalysis.ShowAccelerationPanel) return;
+        
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(16, 16));
+        ImGui::Begin("Acceleration Analysis", &m_PhysicsAnalysis.ShowAccelerationPanel);
+        
+        ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.2f, 1.0f), "Acceleration Tracking");
+        ImGui::Separator();
+        ImGui::Spacing();
+        
+        auto& accel = m_PhysicsAnalysis.Acceleration;
+        
+        // Current Acceleration
+        ImGui::Text("Current Acceleration");
+        ImGui::Text("Magnitude: %.2f m/s²", accel.AccelerationMagnitude);
+        ImGui::Text("Direction: (%.2f, %.2f, %.2f)", 
+                   accel.CurrentAcceleration.x, accel.CurrentAcceleration.y, accel.CurrentAcceleration.z);
+        
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+        
+        // Visualization
+        ImGui::Text("Visualization");
+        ImGui::Checkbox("Show Acceleration Vector", &accel.ShowVector);
+        ImGui::SliderFloat("Vector Scale", &accel.VectorScale, 0.1f, 5.0f);
+        ImGui::ColorEdit4("Vector Color", (float*)&accel.VectorColor, 
+                         ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel);
+        
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+        
+        // Acceleration Graph
+        if (!accel.AccelerationHistory.empty() && !accel.TimeStamps.empty())
+        {
+            ImGui::Text("Acceleration Magnitude Over Time");
+            
+            std::vector<ImVec2> graphData;
+            for (size_t i = 0; i < accel.AccelerationHistory.size() && i < accel.TimeStamps.size(); ++i)
+            {
+                float mag = glm::length(accel.AccelerationHistory[i]);
+                graphData.push_back(ImVec2(accel.TimeStamps[i], mag));
+            }
+            
+            if (graphData.size() > 1)
+            {
+                ImVec2 graphSize(ImGui::GetContentRegionAvail().x, 150);
+                if (ImGui::BeginChild("AccelGraph", graphSize, true))
+                {
+                    ImDrawList* drawList = ImGui::GetWindowDrawList();
+                    ImVec2 graphMin = ImGui::GetCursorScreenPos();
+                    ImVec2 graphMax = ImVec2(graphMin.x + graphSize.x - 20, graphMin.y + graphSize.y - 20);
+                    
+                    drawList->AddRectFilled(graphMin, graphMax, IM_COL32(20, 20, 25, 255));
+                    
+                    float maxAccel = 1.0f;
+                    for (const auto& point : graphData)
+                        maxAccel = std::max(maxAccel, point.y);
+                    
+                    float timeRange = graphData.back().x - graphData.front().x;
+                    if (timeRange < EPSILON) timeRange = 1.0f;
+                    
+                    for (size_t i = 0; i < graphData.size() - 1; ++i)
+                    {
+                        float x1 = graphMin.x + ((graphData[i].x - graphData.front().x) / timeRange) * 
+                                  (graphMax.x - graphMin.x);
+                        float y1 = graphMax.y - (graphData[i].y / maxAccel) * (graphMax.y - graphMin.y);
+                        
+                        float x2 = graphMin.x + ((graphData[i+1].x - graphData.front().x) / timeRange) * 
+                                  (graphMax.x - graphMin.x);
+                        float y2 = graphMax.y - (graphData[i+1].y / maxAccel) * (graphMax.y - graphMin.y);
+                        
+                        drawList->AddLine(ImVec2(x1, y1), ImVec2(x2, y2), 
+                                        IM_COL32(255, 200, 50, 255), 2.0f);
+                    }
+                    
+                    drawList->AddRect(graphMin, graphMax, IM_COL32(100, 100, 100, 255), 0, 0, 1.5f);
+                }
+                ImGui::EndChild();
+            }
+        }
+        
+        ImGui::Spacing();
+        
+        // Action Button
+        if (ImGui::Button(ICON_MD_REFRESH " Reset", ImVec2(120, 0)))
+        {
+            accel.Reset();
+        }
+        
+        ImGui::Spacing();
+        
+        // Educational Info
+        ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.15f, 0.25f, 0.35f, 0.9f));
+        if (ImGui::BeginChild("AccelInfo", ImVec2(-1, 100), true))
+        {
+            RenderPhysicsEquation("a = Δv/Δt", "Acceleration is change in velocity over time");
+            RenderPhysicsEquation("a = F/m", "Acceleration from Newton's Second Law");
+            ImGui::Spacing();
+            ImGui::TextWrapped("Acceleration is a vector quantity showing how quickly "
+                              "velocity changes. It has both magnitude and direction.");
+        }
+        ImGui::EndChild();
+        ImGui::PopStyleColor();
+        
+        ImGui::End();
+        ImGui::PopStyleVar();
+    }
+    
+    // ==================== TRAJECTORY PREDICTION PANEL ====================
+    
+    void SceneEditorLayer::RenderTrajectoryPanel(SceneContext& context)
+    {
+        if (!m_PhysicsAnalysis.ShowTrajectoryPanel) return;
+        
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(16, 16));
+        ImGui::Begin("Trajectory Prediction", &m_PhysicsAnalysis.ShowTrajectoryPanel);
+        
+        ImGui::TextColored(ImVec4(0.5f, 1.0f, 0.5f, 1.0f), ICON_MD_SHOW_CHART " Trajectory Prediction");
+        ImGui::Separator();
+        ImGui::Spacing();
+        
+        auto& traj = m_PhysicsAnalysis.Trajectory;
+        
+        // Enable/Disable
+        ImGui::Checkbox("Enable Prediction", &traj.EnablePrediction);
+        ImGui::SameLine(); ShowPhysicsTooltip("Trajectory Prediction", 
+            "Calculate and display the predicted path of the object based on current motion");
+        
+        ImGui::Checkbox("Show Path", &traj.ShowPredictionPath);
+        
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+        
+        // Settings
+        ImGui::Text("Prediction Settings");
+        ImGui::SliderInt("Steps", &traj.PredictionSteps, 10, 200);
+        ImGui::SameLine(); ShowPhysicsTooltip("Prediction Steps", 
+            "Number of points to calculate along the predicted path");
+        
+        ImGui::SliderFloat("Time Step", &traj.TimeStep, 0.01f, 0.5f, "%.3f s");
+        ImGui::SameLine(); ShowPhysicsTooltip("Time Step", 
+            "Time interval between predicted positions");
+        
+        ImGui::ColorEdit4("Path Color", (float*)&traj.PathColor, 
+                         ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel);
+        
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+        
+        // Prediction Info
+        if (traj.EnablePrediction && !traj.PredictedPath.empty())
+        {
+            ImGui::Text("Predicted Path: %zu points", traj.PredictedPath.size());
+            
+            float totalDistance = 0.0f;
+            for (size_t i = 1; i < traj.PredictedPath.size(); ++i)
+            {
+                totalDistance += glm::length(traj.PredictedPath[i] - traj.PredictedPath[i-1]);
+            }
+            
+            ImGui::Text("Total Distance: %.2f m", totalDistance);
+            ImGui::Text("Prediction Time: %.2f s", traj.TimeStep * traj.PredictionSteps);
+            
+            if (traj.PredictedPath.size() >= 2)
+            {
+                glm::vec3 start = traj.PredictedPath.front();
+                glm::vec3 end = traj.PredictedPath.back();
+                ImGui::Text("End Position: (%.2f, %.2f, %.2f)", end.x, end.y, end.z);
+            }
+        }
+        else
+        {
+            ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), 
+                              "Enable prediction and select an object to see trajectory");
+        }
+        
+        ImGui::Spacing();
+        
+        // Action Buttons
+        if (ImGui::Button(ICON_MD_REFRESH " Recalculate", ImVec2(140, 0)))
+        {
+            if (m_PhysicsAnalysis.SelectedEntity != entt::null)
+                UpdateTrajectoryPrediction(m_PhysicsAnalysis.SelectedEntity);
+        }
+        ImGui::SameLine();
+        
+        if (ImGui::Button(ICON_MD_CLEAR " Clear", ImVec2(140, 0)))
+        {
+            traj.Clear();
+        }
+        
+        ImGui::Spacing();
+        
+        // Educational Info
+        ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.15f, 0.25f, 0.35f, 0.9f));
+        if (ImGui::BeginChild("TrajInfo", ImVec2(-1, 100), true))
+        {
+            ImGui::TextWrapped("Trajectory prediction uses kinematic equations to calculate "
+                              "the future path of an object based on its current velocity and "
+                              "acceleration. Useful for projectile motion analysis.");
+            ImGui::Spacing();
+            ImGui::BulletText("Parabolic paths indicate constant downward acceleration");
+            ImGui::BulletText("Predictions assume no air resistance");
+        }
+        ImGui::EndChild();
+        ImGui::PopStyleColor();
+        
+        ImGui::End();
+        ImGui::PopStyleVar();
+    }
+    
+    // ==================== HELPER METHODS ====================
+    
+    void SceneEditorLayer::ShowPhysicsTooltip(const char* concepts, const char* explanation)
+    {
+        ImGui::TextDisabled(ICON_MD_HELP);
+        if (ImGui::IsItemHovered())
+        {
+            ImGui::BeginTooltip();
+            ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+            ImGui::TextColored(ImVec4(0.5f, 0.8f, 1.0f, 1.0f), "%s", concepts);
+            ImGui::Separator();
+            ImGui::TextUnformatted(explanation);
+            ImGui::PopTextWrapPos();
+            ImGui::EndTooltip();
+        }
+    }
+    
+    void SceneEditorLayer::RenderPhysicsEquation(const char* equation, const char* description)
+    {
+        ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.2f, 0.25f, 0.3f, 1.0f));
+        if (ImGui::BeginChild(equation, ImVec2(-1, 50), true))
+        {
+            ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 5);
+            ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.6f, 1.0f), "%s", equation);
+            ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 2);
+            ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "%s", description);
+        }
+        ImGui::EndChild();
+        ImGui::PopStyleColor();
+    }
+    
+    // ==================== PHYSICS UPDATE METHODS ====================
+    
+    void SceneEditorLayer::UpdateForceAnalysis(entt::entity entity, float deltaTime)
+    {
+        if (!m_Scene) return;
+
+        auto& context = m_Scene->GetContext();
+        auto* rb = context.Entities->Registry.try_get<RigidBodyComponent>(entity);
+        if (!rb) return;
+        
+        auto& analysis = m_PhysicsAnalysis.ForceAnalysis;
+        analysis.Forces.clear();
+        
+        // Add gravity force
+        ForceVector gravity;
+        float mass = rb->PhysicsBody->getMass();
+        gravity.Name = "Gravity";
+        gravity.Force = glm::vec3(0.0f, -mass * 9.81f, 0.0f);
+        gravity.Color = IM_COL32(100, 200, 255, 255);
+        analysis.Forces.push_back(gravity);
+        
+        // Add applied forces from physics body
+        // (You would extract actual forces from your physics engine here)
+        
+        // Update net force
+        analysis.UpdateNetForce();
+    }
+    
+    void SceneEditorLayer::UpdateEnergyTracking(entt::entity entity, float time)
+    {
+        if (!m_Scene) return;
+        if (!m_PhysicsAnalysis.Energy.TrackingEnabled) return;
+        
+        auto& context = m_Scene->GetContext();
+        auto* rb = context.Entities->Registry.try_get<RigidBodyComponent>(entity);
+        auto* transform = context.Entities->Registry.try_get<TransformComponent>(entity);
+        if (!rb || !transform) return;
+
+        auto mass = rb->PhysicsBody->getMass();
+        auto linearVelocity = ToVec3(rb->PhysicsBody->getLinearVelocity());
+        
+        // Calculate kinetic energy: KE = 0.5 * m * v²
+        float velocityMag = glm::length(linearVelocity);
+        float ke = 0.5f * mass * velocityMag * velocityMag;
+        
+        // Calculate potential energy: PE = m * g * h
+        float pe = mass * m_PhysicsAnalysis.Energy.GravityMagnitude * transform->Translation.y;
+        
+        m_PhysicsAnalysis.Energy.AddSample(ke, pe, time);
+    }
+    
+    void SceneEditorLayer::UpdateMomentumTracking(entt::entity entity, float time)
+    {
+        if (!m_Scene) return;
+        
+        auto& context = m_Scene->GetContext();
+        auto* rb = context.Entities->Registry.try_get<RigidBodyComponent>(entity);
+        if (!rb) return;
+
+        auto mass = rb->PhysicsBody->getMass();
+        auto linearVelocity = ToVec3(rb->PhysicsBody->getLinearVelocity());
+        
+        // Calculate momentum: p = m * v
+        glm::vec3 momentum = mass * linearVelocity;
+        m_PhysicsAnalysis.Momentum.Update(momentum, time);
+    }
+    
+    void SceneEditorLayer::UpdateAcceleration(entt::entity entity, float deltaTime)
+    {
+        if (!m_Scene) return;
+        
+        auto& context = m_Scene->GetContext();
+        auto* rb = context.Entities->Registry.try_get<RigidBodyComponent>(entity);
+        if (!rb) return;
+
+        auto linearVelocity = ToVec3(rb->PhysicsBody->getLinearVelocity());
+        m_PhysicsAnalysis.Acceleration.Update(linearVelocity, deltaTime);
+    }
+    
+    void SceneEditorLayer::UpdateTrajectoryPrediction(entt::entity entity)
+    {
+        if (!m_Scene) return;
+        if (!m_PhysicsAnalysis.Trajectory.EnablePrediction) return;
+        
+        auto& context = m_Scene->GetContext();
+        auto* rb = context.Entities->Registry.try_get<RigidBodyComponent>(entity);
+        auto* transform = context.Entities->Registry.try_get<TransformComponent>(entity);
+        if (!rb || !transform) return;
+        
+        // Use gravity as acceleration
+        glm::vec3 acceleration(0.0f, -9.81f, 0.0f);
+        auto mass = rb->PhysicsBody->getMass();
+        auto linearVelocity = ToVec3(rb->PhysicsBody->getLinearVelocity());
+        
+        m_PhysicsAnalysis.Trajectory.PredictTrajectory(
+            transform->Translation,
+            linearVelocity,
+            acceleration,
+            mass
+        );
+    }
+
+    // ==================== HELPER STRUCTURES ====================
+    
+    struct ScreenProjection
+    {
+        ImVec2 ScreenPos;
+        bool IsVisible;
+        float Depth; // Z-depth for sorting
+    };
+    
+    // ==================== PROJECTION HELPER ====================
+    
+    ScreenProjection ProjectWorldToScreen(const glm::vec3& worldPos, 
+                                          const glm::mat4& view, 
+                                          const glm::mat4& projection,
+                                          const ImVec2& viewportMin,
+                                          const ImVec2& viewportSize)
+    {
+        ScreenProjection result;
+        result.IsVisible = false;
+        result.Depth = 0.0f;
+        
+        // Transform to clip space
+        glm::vec4 clipPos = projection * view * glm::vec4(worldPos, 1.0f);
+        
+        // Check if behind camera
+        if (clipPos.w <= 0.0f)
+        {
+            return result;
+        }
+        
+        // Perspective divide
+        glm::vec3 ndcPos = glm::vec3(clipPos) / clipPos.w;
+        
+        // Check if outside NDC box
+        if (ndcPos.x < -1.0f || ndcPos.x > 1.0f ||
+            ndcPos.y < -1.0f || ndcPos.y > 1.0f ||
+            ndcPos.z < -1.0f || ndcPos.z > 1.0f)
+        {
+            return result;
+        }
+        
+        // Convert to screen space
+        result.ScreenPos.x = viewportMin.x + (ndcPos.x * 0.5f + 0.5f) * viewportSize.x;
+        result.ScreenPos.y = viewportMin.y + (1.0f - (ndcPos.y * 0.5f + 0.5f)) * viewportSize.y;
+        result.Depth = ndcPos.z;
+        result.IsVisible = true;
+        
+        return result;
+    }
+    
+    // ==================== ARROW DRAWING HELPER ====================
+    
+    void DrawArrow2D(ImDrawList* drawList,
+                    const ImVec2& start,
+                    const ImVec2& end,
+                    ImU32 color,
+                    float thickness = 2.0f,
+                    float arrowHeadSize = 10.0f)
+    {
+        if (!drawList) return;
+        
+        // Draw main line
+        drawList->AddLine(start, end, color, thickness);
+        
+        // Calculate arrow direction
+        ImVec2 direction = ImVec2(end.x - start.x, end.y - start.y);
+        float length = std::sqrt(direction.x * direction.x + direction.y * direction.y);
+        
+        if (length < 0.001f) return; // Too short to draw arrow
+        
+        // Normalize direction
+        direction.x /= length;
+        direction.y /= length;
+        
+        // Perpendicular vector
+        ImVec2 perpendicular(-direction.y, direction.x);
+        
+        // Arrow head points
+        float headLength = arrowHeadSize;
+        float headWidth = arrowHeadSize * 0.6f;
+        
+        ImVec2 arrowBase = ImVec2(
+            end.x - direction.x * headLength,
+            end.y - direction.y * headLength
+        );
+        
+        ImVec2 arrowLeft = ImVec2(
+            arrowBase.x + perpendicular.x * headWidth,
+            arrowBase.y + perpendicular.y * headWidth
+        );
+        
+        ImVec2 arrowRight = ImVec2(
+            arrowBase.x - perpendicular.x * headWidth,
+            arrowBase.y - perpendicular.y * headWidth
+        );
+        
+        // Draw arrow head as filled triangle
+        drawList->AddTriangleFilled(end, arrowLeft, arrowRight, color);
+        
+        // Optional: Add outline for better visibility
+        drawList->AddTriangle(end, arrowLeft, arrowRight, color, thickness * 0.5f);
+    }
+    
+    // ==================== GET CAMERA MATRICES ====================
+    
+    struct CameraMatrices
+    {
+        glm::mat4 View;
+        glm::mat4 Projection;
+        ImVec2 ViewportMin;
+        ImVec2 ViewportSize;
+        bool IsValid;
+    };
+    
+    CameraMatrices GetCurrentCameraMatrices(SceneContext& context)
+    {
+        CameraMatrices matrices;
+        matrices.IsValid = false;
+        
+        // Get current ImGui viewport
+        ImVec2 viewportMin = ImGui::GetCursorScreenPos();
+        ImVec2 viewportMax = ImVec2(
+            viewportMin.x + ImGui::GetContentRegionAvail().x,
+            viewportMin.y + ImGui::GetContentRegionAvail().y
+        );
+        
+        matrices.ViewportMin = viewportMin;
+        matrices.ViewportSize = ImVec2(
+            viewportMax.x - viewportMin.x,
+            viewportMax.y - viewportMin.y
+        );
+        
+        matrices.View = context.View->Camera.GetView();
+        matrices.Projection = context.View->Camera.GetProjection();
+        matrices.IsValid = true;
+        
+        return matrices;
+    }
+    
+    // ==================== FORCE VECTOR VISUALIZATION ====================
+    
+    void SceneEditorLayer::DrawForceVector(const glm::vec3& origin, 
+                                          const glm::vec3& force,
+                                          const ImU32& color, 
+                                          float scale)
+    {
+        if (!m_Scene) return;
+        
+        auto& context = m_Scene->GetContext();
+        auto matrices = GetCurrentCameraMatrices(context);
+        
+        if (!matrices.IsValid) return;
+        
+        // Calculate endpoint of force vector
+        glm::vec3 endpoint = origin + (force * scale);
+        
+        // Project to screen space
+        auto startProj = ProjectWorldToScreen(origin, matrices.View, matrices.Projection,
+                                             matrices.ViewportMin, matrices.ViewportSize);
+        auto endProj = ProjectWorldToScreen(endpoint, matrices.View, matrices.Projection,
+                                           matrices.ViewportMin, matrices.ViewportSize);
+        
+        if (!startProj.IsVisible || !endProj.IsVisible) return;
+        
+        // Get ImGui draw list
+        ImDrawList* drawList = ImGui::GetWindowDrawList();
+        if (!drawList) return;
+        
+        // Calculate arrow size based on screen distance
+        float screenDistance = std::sqrt(
+            (endProj.ScreenPos.x - startProj.ScreenPos.x) * (endProj.ScreenPos.x - startProj.ScreenPos.x) +
+            (endProj.ScreenPos.y - startProj.ScreenPos.y) * (endProj.ScreenPos.y - startProj.ScreenPos.y)
+        );
+        
+        float arrowHeadSize = std::min(15.0f, screenDistance * 0.2f);
+        float thickness = 3.0f;
+        
+        // Draw the arrow
+        DrawArrow2D(drawList, startProj.ScreenPos, endProj.ScreenPos, 
+                   color, thickness, arrowHeadSize);
+        
+        // Draw magnitude label
+        float magnitude = glm::length(force);
+        if (magnitude > EPSILON)
+        {
+            ImVec2 labelPos = ImVec2(
+                endProj.ScreenPos.x + 5.0f,
+                endProj.ScreenPos.y - 10.0f
+            );
+            
+            // Background for text
+            char labelText[64];
+            snprintf(labelText, sizeof(labelText), "%.2f N", magnitude);
+            
+            ImVec2 textSize = ImGui::CalcTextSize(labelText);
+            ImVec2 bgMin = ImVec2(labelPos.x - 2, labelPos.y - 2);
+            ImVec2 bgMax = ImVec2(labelPos.x + textSize.x + 2, labelPos.y + textSize.y + 2);
+            
+            // Semi-transparent background
+            drawList->AddRectFilled(bgMin, bgMax, IM_COL32(0, 0, 0, 180), 3.0f);
+            drawList->AddText(labelPos, color, labelText);
+        }
+        
+        // Draw origin point
+        auto originProj = ProjectWorldToScreen(origin, matrices.View, matrices.Projection,
+                                              matrices.ViewportMin, matrices.ViewportSize);
+        if (originProj.IsVisible)
+        {
+            drawList->AddCircleFilled(originProj.ScreenPos, 4.0f, color);
+            drawList->AddCircle(originProj.ScreenPos, 4.0f, IM_COL32(255, 255, 255, 200), 12, 1.5f);
+        }
+    }
+    
+    // ==================== MOMENTUM VECTOR VISUALIZATION ====================
+    
+    void SceneEditorLayer::DrawMomentumVector(const glm::vec3& position, 
+                                             const glm::vec3& momentum,
+                                             const ImU32& color, 
+                                             float scale)
+    {
+        if (!m_Scene) return;
+        
+        auto& context = m_Scene->GetContext();
+        auto matrices = GetCurrentCameraMatrices(context);
+        
+        if (!matrices.IsValid) return;
+        
+        // Calculate endpoint
+        glm::vec3 endpoint = position + (momentum * scale);
+        
+        // Project to screen
+        auto startProj = ProjectWorldToScreen(position, matrices.View, matrices.Projection,
+                                             matrices.ViewportMin, matrices.ViewportSize);
+        auto endProj = ProjectWorldToScreen(endpoint, matrices.View, matrices.Projection,
+                                           matrices.ViewportMin, matrices.ViewportSize);
+        
+        if (!startProj.IsVisible || !endProj.IsVisible) return;
+        
+        ImDrawList* drawList = ImGui::GetWindowDrawList();
+        if (!drawList) return;
+        
+        // Calculate sizes
+        float screenDistance = std::sqrt(
+            (endProj.ScreenPos.x - startProj.ScreenPos.x) * (endProj.ScreenPos.x - startProj.ScreenPos.x) +
+            (endProj.ScreenPos.y - startProj.ScreenPos.y) * (endProj.ScreenPos.y - startProj.ScreenPos.y)
+        );
+        
+        float arrowHeadSize = std::min(15.0f, screenDistance * 0.2f);
+        float thickness = 4.0f; // Slightly thicker for momentum
+        
+        // Draw with double-line style for momentum (makes it distinctive)
+        ImVec2 dir = ImVec2(
+            endProj.ScreenPos.x - startProj.ScreenPos.x,
+            endProj.ScreenPos.y - startProj.ScreenPos.y
+        );
+        float len = std::sqrt(dir.x * dir.x + dir.y * dir.y);
+        if (len > EPSILON)
+        {
+            dir.x /= len;
+            dir.y /= len;
+            
+            ImVec2 perp(-dir.y, dir.x);
+            float offset = 2.0f;
+            
+            // Draw two parallel lines
+            ImVec2 start1 = ImVec2(startProj.ScreenPos.x + perp.x * offset,
+                                  startProj.ScreenPos.y + perp.y * offset);
+            ImVec2 end1 = ImVec2(endProj.ScreenPos.x + perp.x * offset,
+                                endProj.ScreenPos.y + perp.y * offset);
+            
+            ImVec2 start2 = ImVec2(startProj.ScreenPos.x - perp.x * offset,
+                                  startProj.ScreenPos.y - perp.y * offset);
+            ImVec2 end2 = ImVec2(endProj.ScreenPos.x - perp.x * offset,
+                                endProj.ScreenPos.y - perp.y * offset);
+            
+            drawList->AddLine(start1, end1, color, thickness - 1.0f);
+            drawList->AddLine(start2, end2, color, thickness - 1.0f);
+        }
+        
+        // Draw arrow head
+        DrawArrow2D(drawList, startProj.ScreenPos, endProj.ScreenPos, 
+                   color, thickness, arrowHeadSize);
+        
+        // Draw magnitude label
+        float magnitude = glm::length(momentum);
+        if (magnitude > EPSILON)
+        {
+            ImVec2 labelPos = ImVec2(
+                endProj.ScreenPos.x + 5.0f,
+                endProj.ScreenPos.y - 10.0f
+            );
+            
+            char labelText[64];
+            snprintf(labelText, sizeof(labelText), "%.2f kg·m/s", magnitude);
+            
+            ImVec2 textSize = ImGui::CalcTextSize(labelText);
+            ImVec2 bgMin = ImVec2(labelPos.x - 2, labelPos.y - 2);
+            ImVec2 bgMax = ImVec2(labelPos.x + textSize.x + 2, labelPos.y + textSize.y + 2);
+            
+            drawList->AddRectFilled(bgMin, bgMax, IM_COL32(0, 0, 0, 180), 3.0f);
+            drawList->AddText(labelPos, color, labelText);
+        }
+    }
+    
+    // ==================== TRAJECTORY PATH VISUALIZATION ====================
+    
+    void SceneEditorLayer::DrawTrajectoryPath(const std::vector<glm::vec3>& path, 
+                                             const ImU32& color)
+    {
+        if (path.size() < 2 || !m_Scene) return;
+        
+        auto& context = m_Scene->GetContext();
+        auto matrices = GetCurrentCameraMatrices(context);
+        
+        if (!matrices.IsValid) return;
+        
+        ImDrawList* drawList = ImGui::GetWindowDrawList();
+        if (!drawList) return;
+        
+        // Project all points
+        std::vector<ScreenProjection> screenPoints;
+        screenPoints.reserve(path.size());
+        
+        for (const auto& worldPos : path)
+        {
+            screenPoints.push_back(
+                ProjectWorldToScreen(worldPos, matrices.View, matrices.Projection,
+                                   matrices.ViewportMin, matrices.ViewportSize)
+            );
+        }
+        
+        // Draw line segments between visible points
+        for (size_t i = 0; i < screenPoints.size() - 1; ++i)
+        {
+            if (screenPoints[i].IsVisible && screenPoints[i + 1].IsVisible)
+            {
+                // Fade color based on position in trajectory (future = more transparent)
+                float alpha = 1.0f - (static_cast<float>(i) / screenPoints.size()) * 0.5f;
+                ImU32 fadedColor = (color & 0x00FFFFFF) | (static_cast<ImU32>(alpha * 255) << 24);
+                
+                drawList->AddLine(
+                    screenPoints[i].ScreenPos,
+                    screenPoints[i + 1].ScreenPos,
+                    fadedColor,
+                    2.5f
+                );
+            }
+        }
+        
+        // Draw points along trajectory
+        for (size_t i = 0; i < screenPoints.size(); i += 5) // Every 5th point
+        {
+            if (screenPoints[i].IsVisible)
+            {
+                float alpha = 1.0f - (static_cast<float>(i) / screenPoints.size()) * 0.5f;
+                ImU32 fadedColor = (color & 0x00FFFFFF) | (static_cast<ImU32>(alpha * 255) << 24);
+                
+                drawList->AddCircleFilled(screenPoints[i].ScreenPos, 3.0f, fadedColor);
+            }
+        }
+        
+        // Highlight start and end points
+        if (screenPoints.front().IsVisible)
+        {
+            drawList->AddCircleFilled(screenPoints.front().ScreenPos, 5.0f, color);
+            drawList->AddCircle(screenPoints.front().ScreenPos, 6.0f, 
+                              IM_COL32(255, 255, 255, 255), 12, 2.0f);
+            
+            // "Start" label
+            ImVec2 labelPos = ImVec2(
+                screenPoints.front().ScreenPos.x + 10.0f,
+                screenPoints.front().ScreenPos.y - 5.0f
+            );
+            
+            ImVec2 textSize = ImGui::CalcTextSize("Start");
+            ImVec2 bgMin = ImVec2(labelPos.x - 2, labelPos.y - 2);
+            ImVec2 bgMax = ImVec2(labelPos.x + textSize.x + 2, labelPos.y + textSize.y + 2);
+            
+            drawList->AddRectFilled(bgMin, bgMax, IM_COL32(0, 0, 0, 180), 3.0f);
+            drawList->AddText(labelPos, IM_COL32(255, 255, 255, 255), "Start");
+        }
+        
+        if (screenPoints.back().IsVisible)
+        {
+            // Make end point blink
+            float time = static_cast<float>(ImGui::GetTime());
+            float pulse = (std::sin(time * 3.0f) * 0.5f + 0.5f);
+            ImU32 pulseColor = (color & 0x00FFFFFF) | (static_cast<ImU32>((128 + pulse * 127)) << 24);
+            
+            drawList->AddCircleFilled(screenPoints.back().ScreenPos, 5.0f, pulseColor);
+            drawList->AddCircle(screenPoints.back().ScreenPos, 6.0f, 
+                              IM_COL32(255, 255, 255, 200), 12, 2.0f);
+            
+            // "End" label
+            ImVec2 labelPos = ImVec2(
+                screenPoints.back().ScreenPos.x + 10.0f,
+                screenPoints.back().ScreenPos.y - 5.0f
+            );
+            
+            ImVec2 textSize = ImGui::CalcTextSize("End");
+            ImVec2 bgMin = ImVec2(labelPos.x - 2, labelPos.y - 2);
+            ImVec2 bgMax = ImVec2(labelPos.x + textSize.x + 2, labelPos.y + textSize.y + 2);
+            
+            drawList->AddRectFilled(bgMin, bgMax, IM_COL32(0, 0, 0, 180), 3.0f);
+            drawList->AddText(labelPos, IM_COL32(255, 255, 255, 255), "End");
+        }
+    }
+    
+    // ==================== COLLISION POINT VISUALIZATION ====================
+    
+    void SceneEditorLayer::DrawCollisionPoint(const glm::vec3& point, 
+                                             float radius, 
+                                             const ImU32& color)
+    {
+        if (!m_Scene) return;
+        
+        auto& context = m_Scene->GetContext();
+        auto matrices = GetCurrentCameraMatrices(context);
+        
+        if (!matrices.IsValid) return;
+        
+        // Project collision point
+        auto projection = ProjectWorldToScreen(point, matrices.View, matrices.Projection,
+                                              matrices.ViewportMin, matrices.ViewportSize);
+        
+        if (!projection.IsVisible) return;
+        
+        ImDrawList* drawList = ImGui::GetWindowDrawList();
+        if (!drawList) return;
+        
+        // Pulsing effect
+        float time = static_cast<float>(ImGui::GetTime());
+        float pulse = std::sin(time * 5.0f) * 0.5f + 0.5f;
+        float visualRadius = 8.0f + pulse * 4.0f;
+        
+        // Draw expanding rings (impact effect)
+        int numRings = 3;
+        for (int i = 0; i < numRings; ++i)
+        {
+            float ringPhase = std::fmod(time * 2.0f + i * 0.3f, 1.0f);
+            float ringRadius = visualRadius * (1.0f + ringPhase * 2.0f);
+            float ringAlpha = (1.0f - ringPhase) * 0.6f;
+            
+            ImU32 ringColor = (color & 0x00FFFFFF) | (static_cast<ImU32>(ringAlpha * 255) << 24);
+            drawList->AddCircle(projection.ScreenPos, ringRadius, ringColor, 24, 2.0f);
+        }
+        
+        // Draw main collision point
+        drawList->AddCircleFilled(projection.ScreenPos, visualRadius, color);
+        
+        // Draw cross at center
+        float crossSize = 6.0f;
+        drawList->AddLine(
+            ImVec2(projection.ScreenPos.x - crossSize, projection.ScreenPos.y),
+            ImVec2(projection.ScreenPos.x + crossSize, projection.ScreenPos.y),
+            IM_COL32(255, 255, 255, 255), 2.0f
+        );
+        drawList->AddLine(
+            ImVec2(projection.ScreenPos.x, projection.ScreenPos.y - crossSize),
+            ImVec2(projection.ScreenPos.x, projection.ScreenPos.y + crossSize),
+            IM_COL32(255, 255, 255, 255), 2.0f
+        );
+        
+        // Outer glow
+        drawList->AddCircle(projection.ScreenPos, visualRadius + 2.0f, 
+                          IM_COL32(255, 255, 255, 150), 24, 1.5f);
+        
+        // "IMPACT" label
+        ImVec2 labelPos = ImVec2(
+            projection.ScreenPos.x + visualRadius + 5.0f,
+            projection.ScreenPos.y - 10.0f
+        );
+        
+        ImVec2 textSize = ImGui::CalcTextSize("IMPACT");
+        ImVec2 bgMin = ImVec2(labelPos.x - 2, labelPos.y - 2);
+        ImVec2 bgMax = ImVec2(labelPos.x + textSize.x + 2, labelPos.y + textSize.y + 2);
+        
+        drawList->AddRectFilled(bgMin, bgMax, IM_COL32(0, 0, 0, 200), 3.0f);
+        drawList->AddRect(bgMin, bgMax, color, 3.0f, 0, 1.5f);
+        drawList->AddText(labelPos, IM_COL32(255, 255, 255, 255), "IMPACT");
+    }
+
+    void SceneEditorLayer::DetectAndAnalyzeCollisions(SceneContext& context)
+    {
+        if (!m_PhysicsAnalysis.Collisions.EnableAnalysis) return;
+        
+        // This would integrate with your physics engine's collision detection
+        // For now, this is a placeholder showing the structure
+        
+        // Example: When a collision is detected in your physics system:
+        // CollisionEvent event;
+        // event.EntityA = entityA;
+        // event.EntityB = entityB;
+        // event.CollisionPoint = contactPoint;
+        // event.CollisionNormal = normal;
+        // ... fill in other data ...
+        // m_PhysicsAnalysis.Collisions.RecordCollision(event);
     }
 
 }

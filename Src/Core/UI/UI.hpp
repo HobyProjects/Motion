@@ -16,6 +16,9 @@ namespace Motion
 
         static void LoadDefaultFonts(const char* fontPath = nullptr, float sizePx = 16.0f) noexcept;
         static void UseColor(const ImVec4& accent = ImVec4(0.13f, 0.59f, 0.95f, 1.0f)) noexcept;
+        
+        // Windows 11 Mica backdrop effect (Windows only)
+        static void EnableMicaEffect(WindowHandle windowHandle) noexcept;
     };
 
     inline ImGuiKey GetImGuiKeyCode(KeyCode key)

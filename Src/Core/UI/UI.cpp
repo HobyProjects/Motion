@@ -1,5 +1,15 @@
 #include "CorePCH.hpp"
 
+// Windows 11 Mica Effect Dependencies
+// ====================================
+#ifdef _WIN32
+    #include <Windows.h>
+    #include <dwmapi.h>
+     #define GLFW_EXPOSE_NATIVE_WIN32
+     #include <GLFW/glfw3native.h>
+     #pragma comment(lib, "dwmapi.lib")
+ #endif
+
 namespace Motion
 {
     void UserInterface::Init(WindowHandle windowHandle) noexcept
@@ -380,5 +390,57 @@ namespace Motion
   
         style.MouseCursorScale = 1.0f;
         SetImGuizmoStyleForFluent(accent, ImGui::GetIO().FontGlobalScale);
+    }
+
+    void UserInterface::EnableMicaEffect(WindowHandle windowHandle) noexcept
+    {
+#ifdef _WIN32
+        auto& windowManager = WindowManager::GetInstance();
+        std::weak_ptr<IWindow> window = windowManager.GetWindow(windowHandle);
+        if (!window.expired())
+        {
+            auto windowPtr = window.lock();
+            
+            // Get the native GLFW window and extract Win32 HWND
+            GLFWwindow* glfwWindow = (GLFWwindow*)windowPtr->GetNativeWindow();
+            if (glfwWindow)
+            {
+                HWND hwnd = glfwGetWin32Window(glfwWindow);
+                if (hwnd)
+                {
+                    // Enable Windows 11 Mica backdrop material
+                    // Note: Requires Windows 11 build 22000 or later
+                    typedef enum _DWM_SYSTEMBACKDROP_TYPE {
+                        DWMSBT_AUTO = 0,           // Let DWM automatically decide
+                        DWMSBT_NONE = 1,           // No backdrop
+                        DWMSBT_MAINWINDOW = 2,     // Mica
+                        DWMSBT_TRANSIENTWINDOW = 3,// Acrylic
+                        DWMSBT_TABBEDWINDOW = 4    // Tabbed Mica
+                    } DWM_SYSTEMBACKDROP_TYPE;
+
+                    const DWORD DWMWA_SYSTEMBACKDROP_TYPE = 38;
+                    DWM_SYSTEMBACKDROP_TYPE backdropType = DWMSBT_MAINWINDOW; // Mica effect
+
+                    HRESULT hr = DwmSetWindowAttribute(
+                        hwnd,
+                        DWMWA_SYSTEMBACKDROP_TYPE,
+                        &backdropType,
+                        sizeof(backdropType)
+                    );
+
+                    if (SUCCEEDED(hr))
+                    {
+                        MOTION_CORE_INFO("Windows 11 Mica effect enabled successfully");
+                    }
+                    else
+                    {
+                        MOTION_CORE_WARN("Failed to enable Mica effect. This feature requires Windows 11 build 22000+");
+                    }
+                }
+            }
+        }
+#else
+        MOTION_CORE_WARN("EnableMicaEffect is only supported on Windows 11");
+#endif
     }
 }

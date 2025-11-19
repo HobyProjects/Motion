@@ -17,6 +17,7 @@ set(
 		imgui/misc/cpp/imgui_stdlib.h
         imgui/backends/imgui_impl_glfw.h
         imgui/backends/imgui_impl_opengl3.h
+        imgui/backends/imgui_impl_win32.h
 
 		implot/implot.h
 		implot/implot_internal.h
@@ -31,6 +32,7 @@ set(
 		imgui/imgui_demo.cpp
 		imgui/misc/cpp/imgui_stdlib.cpp
 		imgui/backends/imgui_impl_glfw.cpp
+		imgui/backends/imgui_impl_win32.cpp
 		imgui/backends/imgui_impl_opengl3.cpp
 
 		implot/implot.cpp

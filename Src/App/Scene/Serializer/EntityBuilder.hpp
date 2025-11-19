@@ -183,8 +183,8 @@ namespace Motion
         void SetupPhysics(Scene* scene, entt::entity entity, const SerializedNode& nodeData, const MeshAsset& meshData)
         {
             auto& registry = scene->GetContext().Entities->Registry;
-            auto* physicsWorld = scene->GetContext().Physics->World;
-            auto* physicsCommon = &scene->GetContext().Physics->Properties;
+            auto* physicsWorld = scene->GetContext().PhysicsWorld->World;
+            auto* physicsCommon = &scene->GetContext().PhysicsWorld->Properties;
 
             CreateRigidBody(physicsWorld, &registry, entity);
             auto& collider = registry.get<ColliderComponent>(entity);

@@ -79,6 +79,7 @@ target_include_directories(
         ${CMAKE_SOURCE_DIR}/Src/App/Layers
         ${CMAKE_SOURCE_DIR}/Src/App/Scene
         ${CMAKE_SOURCE_DIR}/Src/App/Scene/Serializer
+        ${CMAKE_SOURCE_DIR}/Src/App/Scene/Panels
 )
 file(GLOB_RECURSE APP_CPP CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/Src/App/*.cpp")
 file(GLOB_RECURSE APP_HPP CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/Src/App/*.h" "${CMAKE_SOURCE_DIR}/Src/App/*.hpp")

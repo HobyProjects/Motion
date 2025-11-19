@@ -2,26 +2,21 @@
 
 namespace Motion
 {
-#ifdef MOTION_PLATFORM_WINDOWS 
-
-    /**
-     *  @note Since Win32 is not implemented yet, the platform base API is set to GLFW.
-     */
-    static PlatformBaseAPIs s_PlatformBaseAPI = PlatformBaseAPIs::GLFW;
-
-#elif defined(MOTION_PLATFORM_LINUX)
-
-    static PlatformBaseAPIs s_PlatformBaseAPI = PlatformBaseAPIs::GLFW;
-
-#endif
+    static PlatformBaseAPIs s_PlatformBaseAPI = PlatformBaseAPIs::GLFW;  
 
     bool CoreAPI::Init() noexcept
     {
         switch (s_PlatformBaseAPI)
         {
-            case PlatformBaseAPIs::GLFW:    m_PlatformBaseAPIService = std::make_shared<GLFW_BaseAPI>(); break;
-            case PlatformBaseAPIs::Win32:   MOTION_ASSERT(false, "Win32 is not supported yet"); break;
-            default:                        MOTION_ASSERT(false, "Unknown Base API"); break;
+            case PlatformBaseAPIs::GLFW:    
+                m_PlatformBaseAPIService = std::make_shared<GLFW_BaseAPI>(); 
+                break;
+            case PlatformBaseAPIs::Win32:   
+                MOTION_ASSERT(false, "Win32 is not supported yet");
+                break;
+            default:                        
+                MOTION_ASSERT(false, "Unknown Base API"); 
+                break;
         };
 
         return m_PlatformBaseAPIService->Init();
@@ -47,9 +42,14 @@ namespace Motion
     {
         switch(s_PlatformBaseAPI)
         {
-            case PlatformBaseAPIs::GLFW:    return std::make_shared<GLFW_GL_Context>();
-            case PlatformBaseAPIs::Win32:   MOTION_ASSERT(false, "Win32 is not supported yet"); return nullptr;
-            default:                        MOTION_ASSERT(false, "Unknown Base API"); return nullptr;
+            case PlatformBaseAPIs::GLFW:    
+                return std::make_shared<GLFW_GL_Context>();
+            case PlatformBaseAPIs::Win32:   
+                MOTION_ASSERT(false, "Win32 is not supported yet");
+                return nullptr;
+            default:                        
+                MOTION_ASSERT(false, "Unknown Base API"); 
+                return nullptr;
         }
 
         return nullptr;
@@ -66,7 +66,7 @@ namespace Motion
                 auto window = std::make_shared<GLFW_Window>(uniqueHandle, title, isVisible, sharedWindow);
                 m_WindowManagementService[uniqueHandle] = window;
 
-                MOTION_CORE_INFO("Window created with handle {:X}", uniqueHandle);
+                MOTION_CORE_INFO("GLFW Window created with handle {:X}", uniqueHandle);
                 return window;
             }
             case PlatformBaseAPIs::Win32:

@@ -1,29 +1,33 @@
 #include "CorePCH.hpp"
-#include "ImguiLayer.hpp"
+#include "PresentationLayer.hpp"
 
 namespace Motion
 {
-    ImGuiLayer::ImGuiLayer(WindowHandle handle) : m_WindowHandle(handle), Layer("ImGuiLayer") 
-    {
-    }
+    PresentationLayer::PresentationLayer(WindowHandle handle) : m_WindowHandle(handle), Layer("ImGuiLayer") {}
 
-    void ImGuiLayer::OnAttach()
+    void PresentationLayer::OnAttach()
     {
+        UserInterface::Init(m_WindowHandle);
         UserInterface::LoadDefaultFonts("Assets/Fonts/JetBrainsMono/JetBrainsMono-Regular.ttf", 17.5f);
         UserInterface::UseColor();
+
+#ifdef MOTION_PLATFORM_WINDOWS
+        UserInterface::EnableMicaEffect(m_WindowHandle);
+#endif
+
     }
 
-    void ImGuiLayer::OnDetach()
+    void PresentationLayer::OnDetach()
     {
-
+        UserInterface::Quit();
     }
 
-    void ImGuiLayer::OnUpdate(WindowHandle handle, Timer deltaTime)
+    void PresentationLayer::OnUpdate(WindowHandle handle, Timer deltaTime)
     {
 ;
     }
 
-    void ImGuiLayer::OnEvent(WindowHandle handle, IEvent& e)
+    void PresentationLayer::OnEvent(WindowHandle handle, IEvent& e)
     {
         if (m_AllowEvents)
         {
@@ -33,7 +37,7 @@ namespace Motion
         }
     }
 
-    void ImGuiLayer::Begin()
+    void PresentationLayer::Begin()
     {
         auto& coreAPI = CoreAPI::GetInstance();
         if (coreAPI.API() & PlatformBaseAPIs::GLFW && Renderer::GetAPI() & RenderingAPI::OpenGL)
@@ -45,9 +49,9 @@ namespace Motion
         }
     }
 
-    void ImGuiLayer::End()
+    void PresentationLayer::End()
     {
-        //RenderLogConsoleWindow();
+        RenderLogConsoleWindow();
 
         ImGuiIO& io = ImGui::GetIO();
         auto& coreAPI = CoreAPI::GetInstance();
@@ -75,7 +79,7 @@ namespace Motion
         }
     }
 
-    void ImGuiLayer::RenderLogConsoleWindow()
+    void PresentationLayer::RenderLogConsoleWindow()
     {
         ImGui::SetNextWindowSize(ImVec2(800, 400), ImGuiCond_FirstUseEver);
         if (ImGui::Begin("Console", &m_ShowLogConsole))

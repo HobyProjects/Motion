@@ -13,47 +13,50 @@ namespace Motion
 
     class Scene
     {
-        public:
-            Scene(const SceneSpecification& spec, const glm::vec2& viewport = glm::vec2(1280.0f, 720.0f));
-            ~Scene();
+    public:
+        Scene(const SceneSpecification& spec, const glm::vec2& viewport = glm::vec2(1280.0f, 720.0f));
+        ~Scene();
 
-            void OnUpdate(WindowHandle handle, Timer deltaTime);
-            void OnEvent(WindowHandle handle, IEvent& e);
-            
-            void Submit();
-            void SetApectRatio(const glm::vec2& size);
+        void OnUpdate(WindowHandle handle, Timer deltaTime);
+        void OnEvent(WindowHandle handle, IEvent& e);
+        
+        void Submit();
+        void SetApectRatio(const glm::vec2& size);
 
-            void SelectedEntity(const entt::entity& entt);
-            void EmplaceEntity(const entt::entity& entity);
-            void DestroyEntity(const entt::entity& entity, bool deleteResources = false);
-            bool DuplicateEntity(const entt::entity& entity);
+        void SelectedEntity(const entt::entity& entt);
+        void EmplaceEntity(const entt::entity& entity);
+        void DestroyEntity(const entt::entity& entity, bool deleteResources = false);
+        bool DuplicateEntity(const entt::entity& entity);
 
-            void ForEachActiveEntity(const std::function<void(entt::entity)>& fn);
-            void ForEachEntity(const std::function<void(entt::entity)>& fn);
-            void ForEachRootEntity(const std::function<void(entt::entity)>& fn);
-            void ForEachNodeEntity(const entt::entity root, const std::function<void(entt::entity)>& fn);
-            
-            void ApplyPhysics(float deltaTime);
-            void RefreshPhysicBodies();
-            
-            [[nodiscard]] const bool IsRootEntity(entt::entity entity) const;
-            [[nodiscard]] const bool IsNodeEntity(entt::entity entity) const;
-            [[nodiscard]] entt::entity FindRootOf(entt::entity entity);
-            [[nodiscard]] SceneContext& GetContext() { return m_Context; }
+        void ForEachActiveEntity(const std::function<void(entt::entity)>& fn);
+        void ForEachEntity(const std::function<void(entt::entity)>& fn);
+        void ForEachRootEntity(const std::function<void(entt::entity)>& fn);
+        void ForEachNodeEntity(const entt::entity root, const std::function<void(entt::entity)>& fn);
+        
+        void ApplyPhysics(float deltaTime);
+        void RefreshPhysicBodies();
+        
+        [[nodiscard]] const bool IsRootEntity(entt::entity entity) const;
+        [[nodiscard]] const bool IsNodeEntity(entt::entity entity) const;
+        [[nodiscard]] entt::entity FindRootOf(entt::entity entity);
+        [[nodiscard]] SceneContext& GetContext() { return m_Context; }
 
 
-        private:
-            bool OnMouseCursorPosChange(WindowHandle handle, EventMouseCursorMove& e);
-            bool OnMouseWheelScrollEvent(WindowHandle handle, EventMouseWheelScroll& e);
+    private:
+        bool OnMouseCursorPosChange(WindowHandle handle, EventMouseCursorMove& e);
+        bool OnMouseWheelScrollEvent(WindowHandle handle, EventMouseWheelScroll& e);
 
-        private:
-            SceneEntities       m_Entities{};
-            SceneViewport       m_Viewport{};
-            ScenePhysicsWorld   m_Physics{};
-            SceneSimulation     m_Simulation{};
-            SceneContext        m_Context{};
-            SceneSpecification  m_Specification{};
-            
-            friend class SceneSerializer;
+    private:
+        SceneEntities       m_Entities{};
+        SceneViewport       m_Viewport{};
+        ScenePhysics        m_Physics{};
+        ScenePhysicsWorld   m_PhysicsWorld{};
+        SceneSimulation     m_Simulation{};
+        ScenePanelsView     m_Panels{};
+        SceneSpecification  m_Specification{};
+        
+        SceneContext        m_Context{};
+        
+        friend class SceneSerializer;
     };
 }

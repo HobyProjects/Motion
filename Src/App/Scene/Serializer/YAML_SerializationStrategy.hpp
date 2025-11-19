@@ -64,9 +64,7 @@ namespace Motion
             }
         }
 
-        std::optional<SerializedScene> Deserialize(
-            const std::filesystem::path& path
-        ) override
+        std::optional<SerializedScene> Deserialize(const std::filesystem::path& path) override
         {
             try
             {

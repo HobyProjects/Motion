@@ -10,12 +10,14 @@ find_package(OpenGL REQUIRED)
 set(
     GLAD_HEADERS
         include/glad/glad.h
+        include/glad/glad_wgl.h
         include/KHR/khrplatform.h
 )
 
 set(
     GLAD_SOURCES
         src/glad.c
+        src/glad_wgl.c
 )
 
 add_library(
@@ -71,6 +73,11 @@ install(
 
 install(
 	FILES  include/glad/glad.h 
+	DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/glad
+)
+
+install(
+	FILES  include/glad/glad_wgl.h 
 	DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/glad
 )
 

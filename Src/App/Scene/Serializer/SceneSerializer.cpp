@@ -128,8 +128,8 @@ namespace Motion
             sceneData.SceneID = scene->GetContext().Specification->ID;
             sceneData.Name = scene->GetContext().Specification->Name;
             sceneData.SavedPath = scene->GetContext().Specification->SavedPath;
-            sceneData.Lighting = scene->GetContext().Physics->SunLight;
-            sceneData.PhysicsSettings = scene->GetContext().Physics->Settings;
+            sceneData.Lighting = scene->GetContext().PhysicsWorld->SunLight;
+            sceneData.PhysicsSettings = scene->GetContext().PhysicsWorld->Settings;
 
             auto& registry = scene->GetContext().Entities->Registry;
             scene->ForEachRootEntity([&](entt::entity root)
@@ -198,8 +198,8 @@ namespace Motion
             }
 
             SerializedScene& runtimeData = *sceneDataOpt;
-            scene->GetContext().Physics->SunLight = runtimeData.Lighting;
-            scene->GetContext().Physics->Settings = runtimeData.PhysicsSettings;
+            scene->GetContext().PhysicsWorld->SunLight = runtimeData.Lighting;
+            scene->GetContext().PhysicsWorld->Settings = runtimeData.PhysicsSettings;
 
             auto& registry = scene->GetContext().Entities->Registry;
             std::unordered_map<UUID, SerializedEntity*> entityLookup;
@@ -317,8 +317,8 @@ namespace Motion
         sceneData.SceneID = scene->GetContext().Specification->ID;
         sceneData.Name = scene->GetContext().Specification->Name;
         sceneData.SavedPath = scene->GetContext().Specification->SavedPath;
-        sceneData.Lighting = scene->GetContext().Physics->SunLight;
-        sceneData.PhysicsSettings = scene->GetContext().Physics->Settings;
+        sceneData.Lighting = scene->GetContext().PhysicsWorld->SunLight;
+        sceneData.PhysicsSettings = scene->GetContext().PhysicsWorld->Settings;
 
         auto& registry = scene->GetContext().Entities->Registry;
         scene->ForEachRootEntity([&](entt::entity root)
@@ -344,8 +344,8 @@ namespace Motion
 
     bool SceneSerializer::RestoreSceneData(Scene* scene, const SerializedScene& data)
     {
-        scene->GetContext().Physics->SunLight = data.Lighting;
-        scene->GetContext().Physics->Settings = data.PhysicsSettings;
+        scene->GetContext().PhysicsWorld->SunLight = data.Lighting;
+        scene->GetContext().PhysicsWorld->Settings = data.PhysicsSettings;
         if (!s_EntityBuilder)
         {
             s_EntityBuilder = std::make_shared<EntityBuilder>(

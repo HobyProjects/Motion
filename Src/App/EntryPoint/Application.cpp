@@ -19,22 +19,20 @@ namespace Motion
         }
 
         Renderer::Init();
-        UserInterface::Init(m_Window->GetHandle());
 
         LOADER::Create(m_Window->GetNativeWindow());
         LOADER::Start();
 
-        m_ImGuiLayer = std::make_shared<ImGuiLayer>(m_Window->GetHandle());
+        m_PresentationLayer = std::make_shared<PresentationLayer>(m_Window->GetHandle());
         m_EditorLayer = std::make_shared<SceneEditorLayer>();
 
-        PushOverlay(m_ImGuiLayer);
+        PushOverlay(m_PresentationLayer);
         PushLayer(m_EditorLayer);
     }
 
     Application::~Application()
     {
         LOADER::Stop();
-        UserInterface::Quit();
         Renderer::Quit();
 
         auto& windowManager = WindowManager::GetInstance();
@@ -66,12 +64,12 @@ namespace Motion
             for (auto& layer : lm) 
                 layer->OnUpdate(m_Window->GetHandle(), dt);
 
-            m_ImGuiLayer->Begin();
+            m_PresentationLayer->Begin();
 
             for (auto& layer : lm) 
                 layer->OnUIRender(m_Window->GetHandle());
                 
-            m_ImGuiLayer->End();
+            m_PresentationLayer->End();
 
             m_WindowContext->SwapBuffers(m_Window->GetNativeWindow());
         }

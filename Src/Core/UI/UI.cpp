@@ -1,14 +1,14 @@
 #include "CorePCH.hpp"
 
-// Windows 11 Mica Effect Dependencies
-// ====================================
-#ifdef _WIN32
+#ifdef MOTION_PLATFORM_WINDOWS
+#define GLFW_EXPOSE_NATIVE_WIN32
     #include <Windows.h>
     #include <dwmapi.h>
-     #define GLFW_EXPOSE_NATIVE_WIN32
-     #include <GLFW/glfw3native.h>
-     #pragma comment(lib, "dwmapi.lib")
- #endif
+    #ifdef GLFW_EXPOSE_NATIVE_WIN32
+        #include <GLFW/glfw3native.h>
+    #endif
+    #pragma comment(lib, "dwmapi.lib")
+#endif
 
 namespace Motion
 {
@@ -27,9 +27,10 @@ namespace Motion
             io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
             io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
             io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
-            io.ConfigWindowsMoveFromTitleBarOnly = true;
-            io.ConfigDockingAlwaysTabBar = true;
-            io.ConfigViewportsNoDecoration = false; 
+
+            io.ConfigWindowsMoveFromTitleBarOnly    = true;
+            io.ConfigDockingAlwaysTabBar            = true;
+            io.ConfigViewportsNoDecoration          = false; 
 
             auto& coreAPI = CoreAPI::GetInstance();
             switch (coreAPI.API())
@@ -50,8 +51,14 @@ namespace Motion
                     }
                     break;
                 }
-                case PlatformBaseAPIs::Win32:   MOTION_ASSERT(false, "Win32 is not implemented yet!"); break;
-                default:                        MOTION_ASSERT(false, "Unknown base API!"); break;
+                case PlatformBaseAPIs::Win32:
+                {
+                    MOTION_ASSERT(false, "Win32 is not supported yet");
+                    break;
+                }
+                default:                        
+                    MOTION_ASSERT(false, "Unknown base API!"); 
+                    break;
             }
 
             MOTION_CORE_INFO("IMGUI initialized successfully. IMGUI VERSION: {0}", IMGUI_VERSION);
@@ -74,9 +81,15 @@ namespace Motion
         auto& coreAPI = CoreAPI::GetInstance();
         switch (coreAPI.API())
         {
-            case PlatformBaseAPIs::GLFW:  ImGui_ImplGlfw_Shutdown(); break;
-            case PlatformBaseAPIs::Win32: MOTION_ASSERT(false, "Win32 is not implemented yet!"); break;
-            default:                      MOTION_ASSERT(false, "Unknown base API!"); break;
+            case PlatformBaseAPIs::GLFW:  
+                ImGui_ImplGlfw_Shutdown(); 
+                break;
+            case PlatformBaseAPIs::Win32: 
+                MOTION_ASSERT(false, "Win32 is not supported yet");
+                break;
+            default:                      
+                MOTION_ASSERT(false, "Unknown base API!"); 
+                break;
         }
 
         ImPlot::DestroyContext();
@@ -196,57 +209,35 @@ namespace Motion
 
     static void SetImGuizmoStyleForFluent(const ImVec4& accent, float dpiScale)
     {
-        const ImVec4 N00 = ImVec4(1.00f, 1.00f, 1.00f, 1.0f);
-        const ImVec4 N01 = RGBA(249, 249, 249);
-        const ImVec4 N02 = RGBA(243, 243, 243); 
-        const ImVec4 N03 = RGBA(237, 237, 237); 
-        const ImVec4 N04 = RGBA(230, 230, 230);
-        const ImVec4 BRD = RGBA(229, 229, 229, 0.4f); 
-        const ImVec4 TXT = RGBA(32, 33, 36); 
+        ImGuizmo::Style& style = ImGuizmo::GetStyle();
+        
+        style.TranslationLineThickness = 4.0f * dpiScale;
+        style.TranslationLineArrowSize = 8.0f * dpiScale;
+        style.RotationLineThickness = 3.0f * dpiScale;
+        style.RotationOuterLineThickness = 4.0f * dpiScale;
+        style.ScaleLineThickness = 4.0f * dpiScale;
+        style.ScaleLineCircleSize = 8.0f * dpiScale;
+        style.HatchedAxisLineThickness = 8.0f * dpiScale;
+        style.CenterCircleSize = 8.0f * dpiScale;
 
-        const ImVec4 AX_X = RGBA(232, 17, 35); 
-        const ImVec4 AX_Y = RGBA(16, 137, 62);  
-        const ImVec4 AX_Z = RGBA(0, 120, 215); 
-
-        ImGuizmo::Style& s = ImGuizmo::GetStyle();
-
-        s.TranslationLineThickness   = 4.0f  * dpiScale;
-        s.TranslationLineArrowSize   = 14.0f * dpiScale;
-        s.RotationLineThickness      = 4.0f  * dpiScale;
-        s.RotationOuterLineThickness = 4.5f  * dpiScale;
-        s.ScaleLineThickness         = 4.0f  * dpiScale;
-        s.ScaleLineCircleSize        = 10.0f * dpiScale;
-        s.HatchedAxisLineThickness   = 3.0f  * dpiScale;
-        s.CenterCircleSize           = 6.0f  * dpiScale;
-
-        s.Colors[ImGuizmo::DIRECTION_X] = AX_X;
-        s.Colors[ImGuizmo::DIRECTION_Y] = AX_Y;
-        s.Colors[ImGuizmo::DIRECTION_Z] = AX_Z;
-
-        s.Colors[ImGuizmo::PLANE_X] = ImVec4(AX_X.x, AX_X.y, AX_X.z, 0.50f);
-        s.Colors[ImGuizmo::PLANE_Y] = ImVec4(AX_Y.x, AX_Y.y, AX_Y.z, 0.50f);
-        s.Colors[ImGuizmo::PLANE_Z] = ImVec4(AX_Z.x, AX_Z.y, AX_Z.z, 0.50f);
-
-        s.Colors[ImGuizmo::SELECTION] = ImVec4(accent.x, accent.y, accent.z, 1.0f);
-
-        const ImVec4 inactiveBase = Mix(N02, N04, 0.50f);
-        s.Colors[ImGuizmo::INACTIVE] = ImVec4(inactiveBase.x, inactiveBase.y, inactiveBase.z, 0.60f);
-
-        const ImVec4 lineColor = Mix(N04, TXT, 0.20f);
-        s.Colors[ImGuizmo::TRANSLATION_LINE] = ImVec4(lineColor.x, lineColor.y, lineColor.z, 0.90f);
-        s.Colors[ImGuizmo::SCALE_LINE]       = ImVec4(lineColor.x, lineColor.y, lineColor.z, 0.95f);
-
-        s.Colors[ImGuizmo::ROTATION_USING_BORDER] = ImVec4(TXT.x, TXT.y, TXT.z, 0.90f);
-        s.Colors[ImGuizmo::ROTATION_USING_FILL]   = ImVec4(accent.x, accent.y, accent.z, 0.15f);
-
-        s.Colors[ImGuizmo::HATCHED_AXIS_LINES] = ImVec4(BRD.x, BRD.y, BRD.z, 0.90f);
-        s.Colors[ImGuizmo::TEXT]               = TXT;
-        s.Colors[ImGuizmo::TEXT_SHADOW]        = ImVec4(1.0f, 1.0f, 1.0f, 0.5f);  
+        for (int i = 0; i < 3; i++)
+        {
+            style.Colors[ImGuizmo::DIRECTION_X + i] = ImVec4(
+                (i == 0) ? 0.95f : 0.2f,
+                (i == 1) ? 0.95f : 0.2f,
+                (i == 2) ? 0.95f : 0.2f,
+                1.0f
+            );
+        }
+        
+        style.Colors[ImGuizmo::PLANE_X] = ImVec4(0.95f, 0.2f, 0.2f, 0.4f);
+        style.Colors[ImGuizmo::PLANE_Y] = ImVec4(0.2f, 0.95f, 0.2f, 0.4f);
+        style.Colors[ImGuizmo::PLANE_Z] = ImVec4(0.2f, 0.2f, 0.95f, 0.4f);
+        style.Colors[ImGuizmo::SELECTION] = accent;
     }
 
     void UserInterface::UseColor(const ImVec4& accent) noexcept
     {
-        ImGui::StyleColorsLight();
         ImGuiStyle& style = ImGui::GetStyle();
 
         style.AntiAliasedFill        = true;
@@ -400,43 +391,71 @@ namespace Motion
         if (!window.expired())
         {
             auto windowPtr = window.lock();
+            auto& coreAPI = CoreAPI::GetInstance();
             
-            // Get the native GLFW window and extract Win32 HWND
-            GLFWwindow* glfwWindow = (GLFWwindow*)windowPtr->GetNativeWindow();
-            if (glfwWindow)
+            HWND hwnd = nullptr;
+            
+            // Get HWND based on platform API
+            switch (coreAPI.API())
             {
-                HWND hwnd = glfwGetWin32Window(glfwWindow);
-                if (hwnd)
+                case PlatformBaseAPIs::GLFW:
                 {
-                    // Enable Windows 11 Mica backdrop material
-                    // Note: Requires Windows 11 build 22000 or later
-                    typedef enum _DWM_SYSTEMBACKDROP_TYPE {
-                        DWMSBT_AUTO = 0,           // Let DWM automatically decide
-                        DWMSBT_NONE = 1,           // No backdrop
-                        DWMSBT_MAINWINDOW = 2,     // Mica
-                        DWMSBT_TRANSIENTWINDOW = 3,// Acrylic
-                        DWMSBT_TABBEDWINDOW = 4    // Tabbed Mica
-                    } DWM_SYSTEMBACKDROP_TYPE;
-
-                    const DWORD DWMWA_SYSTEMBACKDROP_TYPE = 38;
-                    DWM_SYSTEMBACKDROP_TYPE backdropType = DWMSBT_MAINWINDOW; // Mica effect
-
-                    HRESULT hr = DwmSetWindowAttribute(
-                        hwnd,
-                        DWMWA_SYSTEMBACKDROP_TYPE,
-                        &backdropType,
-                        sizeof(backdropType)
-                    );
-
-                    if (SUCCEEDED(hr))
+#ifdef GLFW_EXPOSE_NATIVE_WIN32
+                    GLFWwindow* glfwWindow = (GLFWwindow*)windowPtr->GetNativeWindow();
+                    if (glfwWindow)
                     {
-                        MOTION_CORE_INFO("Windows 11 Mica effect enabled successfully");
+                        hwnd = glfwGetWin32Window(glfwWindow);
                     }
-                    else
-                    {
-                        MOTION_CORE_WARN("Failed to enable Mica effect. This feature requires Windows 11 build 22000+");
-                    }
+#else
+                    MOTION_CORE_WARN("GLFW_EXPOSE_NATIVE_WIN32 not defined. Cannot get HWND from GLFW window.");
+#endif
+                    break;
                 }
+                case PlatformBaseAPIs::Win32:
+                {
+                    // Direct Win32 window - already have HWND
+                    hwnd = static_cast<HWND>(windowPtr->GetNativeWindow());
+                    break;
+                }
+                default:
+                {
+                    MOTION_CORE_WARN("Unknown platform API. Cannot enable Mica effect.");
+                    break;
+                }
+            }
+            
+            if (hwnd)
+            {
+                typedef enum _DWM_SYSTEMBACKDROP_TYPE {
+                    DWMSBT_AUTO             = 0,        
+                    DWMSBT_NONE             = 1,          
+                    DWMSBT_MAINWINDOW       = 2,     
+                    DWMSBT_TRANSIENTWINDOW  = 3,
+                    DWMSBT_TABBEDWINDOW     = 4    
+                } DWM_SYSTEMBACKDROP_TYPE;
+
+                const DWORD DWMWA_SYSTEMBACKDROP_TYPE = 38;
+                DWM_SYSTEMBACKDROP_TYPE backdropType = DWMSBT_MAINWINDOW; 
+
+                HRESULT hr = DwmSetWindowAttribute(
+                    hwnd,
+                    DWMWA_SYSTEMBACKDROP_TYPE,
+                    &backdropType,
+                    sizeof(backdropType)
+                );
+
+                if (SUCCEEDED(hr))
+                {
+                    MOTION_CORE_INFO("Windows 11 Mica effect enabled successfully");
+                }
+                else
+                {
+                    MOTION_CORE_WARN("Failed to enable Mica effect. This feature requires Windows 11 build 22000+");
+                }
+            }
+            else
+            {
+                MOTION_CORE_ERROR("Failed to get HWND. Cannot enable Mica effect.");
             }
         }
 #else

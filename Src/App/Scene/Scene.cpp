@@ -33,22 +33,24 @@ namespace Motion
         frameSpec.Samples       = 1;
         m_Viewport.Framebuffer  = IFrameBuffer::Create(frameSpec);
 
-        auto& phySettings = m_Physics.Settings;
+        auto& phySettings = m_PhysicsWorld.Settings;
         phySettings.gravity = rp3d::Vector3(0.0f, -ScenePhysicsWorld::SI_GRAVITY, 0.0f);
         phySettings.defaultVelocitySolverNbIterations = 20;
         phySettings.isSleepingEnabled = true;
 
-        m_Physics.World = m_Physics.Properties.createPhysicsWorld(phySettings);
-        MOTION_ASSERT(m_Physics.World, "Failed to create physics world");
-        m_Physics.World->setNbIterationsVelocitySolver(15); 
-        m_Physics.World->setNbIterationsPositionSolver(6);
+        m_PhysicsWorld.World = m_PhysicsWorld.Properties.createPhysicsWorld(phySettings);
+        MOTION_ASSERT(m_PhysicsWorld.World, "Failed to create physics world");
+        m_PhysicsWorld.World->setNbIterationsVelocitySolver(15); 
+        m_PhysicsWorld.World->setNbIterationsPositionSolver(6);
 
         m_Context.MyScene       = this;
         m_Context.Physics       = &m_Physics;
+        m_Context.PhysicsWorld  = &m_PhysicsWorld;
         m_Context.Entities      = &m_Entities;
         m_Context.View          = &m_Viewport;
         m_Context.Simulation    = &m_Simulation;
         m_Context.Specification = &m_Specification;
+        m_Context.Panels        = &m_Panels;
     }
 
     /**
@@ -61,8 +63,8 @@ namespace Motion
     {
         m_Entities.EntryPoints.clear();
 
-        if (m_Physics.World) m_Physics.Properties.destroyPhysicsWorld(m_Physics.World);
-        m_Physics.World = nullptr;
+        if (m_PhysicsWorld.World) m_PhysicsWorld.Properties.destroyPhysicsWorld(m_PhysicsWorld.World);
+        m_PhysicsWorld.World = nullptr;
     }
 
     /**
@@ -216,14 +218,14 @@ namespace Motion
     void Scene::ApplyPhysics(float deltaTime)
     {
         deltaTime = std::clamp(deltaTime, 0.0f, 0.1f);
-        m_Physics.ACCUMULATOR = std::min<float>(m_Physics.ACCUMULATOR + deltaTime, 0.25f);
+        m_PhysicsWorld.ACCUMULATOR = std::min<float>(m_PhysicsWorld.ACCUMULATOR + deltaTime, 0.25f);
 
         std::int32_t steps = 0;
-        while(m_Physics.ACCUMULATOR >= ScenePhysicsWorld::FIXED_STEPS 
+        while(m_PhysicsWorld.ACCUMULATOR >= ScenePhysicsWorld::FIXED_STEPS 
             && steps < ScenePhysicsWorld::FIXED_STEPS_PERFRAME)
         {
-            m_Physics.World->update(ScenePhysicsWorld::FIXED_STEPS);
-            m_Physics.ACCUMULATOR -= ScenePhysicsWorld::FIXED_STEPS;
+            m_PhysicsWorld.World->update(ScenePhysicsWorld::FIXED_STEPS);
+            m_PhysicsWorld.ACCUMULATOR -= ScenePhysicsWorld::FIXED_STEPS;
             ++steps;
         }
 
@@ -387,9 +389,9 @@ namespace Motion
 
         const DirectionalLight sun
         {
-            .Direction = m_Physics.SunLight.Direction,
-            .Color     = m_Physics.SunLight.Color,
-            .Intensity = m_Physics.SunLight.Intensity
+            .Direction = m_PhysicsWorld.SunLight.Direction,
+            .Color     = m_PhysicsWorld.SunLight.Color,
+            .Intensity = m_PhysicsWorld.SunLight.Intensity
         };
 
         ForEachActiveEntity([&](entt::entity e)
@@ -495,12 +497,12 @@ namespace Motion
 
             if (RigidBodyComponent* rb = m_Entities.Registry.try_get<RigidBodyComponent>(entity))
             {
-                if (rb->PhysicsBody && m_Physics.World)
+                if (rb->PhysicsBody && m_PhysicsWorld.World)
                 {
                     if(ColliderComponent* col = m_Entities.Registry.try_get<ColliderComponent>(entity))
                         rb->PhysicsBody->removeCollider(col->Collider);
 
-                    m_Physics.World->destroyRigidBody(rb->PhysicsBody);
+                    m_PhysicsWorld.World->destroyRigidBody(rb->PhysicsBody);
                     rb->PhysicsBody = nullptr;
                 }
             }
@@ -509,13 +511,13 @@ namespace Motion
             {
                 if (col->Shape)
                 {
-                    if (col->Type == ShapeType::Box)      m_Physics.Properties.destroyBoxShape(dynamic_cast<rp3d::BoxShape*>(col->Shape));
-                    if (col->Type == ShapeType::Sphere)   m_Physics.Properties.destroySphereShape(dynamic_cast<rp3d::SphereShape*>(col->Shape));
-                    if (col->Type == ShapeType::Capsule)  m_Physics.Properties.destroyCapsuleShape(dynamic_cast<rp3d::CapsuleShape*>(col->Shape));
-                    if (col->Type == ShapeType::Convex)   m_Physics.Properties.destroyConvexMeshShape(dynamic_cast<rp3d::ConvexMeshShape*>(col->Shape));
-                    if (col->Type == ShapeType::Concave)  m_Physics.Properties.destroyConcaveMeshShape(dynamic_cast<rp3d::ConcaveMeshShape*>(col->Shape));
+                    if (col->Type == ShapeType::Box)      m_PhysicsWorld.Properties.destroyBoxShape(dynamic_cast<rp3d::BoxShape*>(col->Shape));
+                    if (col->Type == ShapeType::Sphere)   m_PhysicsWorld.Properties.destroySphereShape(dynamic_cast<rp3d::SphereShape*>(col->Shape));
+                    if (col->Type == ShapeType::Capsule)  m_PhysicsWorld.Properties.destroyCapsuleShape(dynamic_cast<rp3d::CapsuleShape*>(col->Shape));
+                    if (col->Type == ShapeType::Convex)   m_PhysicsWorld.Properties.destroyConvexMeshShape(dynamic_cast<rp3d::ConvexMeshShape*>(col->Shape));
+                    if (col->Type == ShapeType::Concave)  m_PhysicsWorld.Properties.destroyConcaveMeshShape(dynamic_cast<rp3d::ConcaveMeshShape*>(col->Shape));
 
-                    if(col->ConvexMesh) m_Physics.Properties.destroyConvexMesh(col->ConvexMesh);
+                    if(col->ConvexMesh) m_PhysicsWorld.Properties.destroyConvexMesh(col->ConvexMesh);
 
                     col->Shape    = nullptr;
                 }
@@ -605,14 +607,14 @@ namespace Motion
             auto& materialCompo = m_Entities.Registry.emplace<MaterialComponent>(e);
             materialCompo.MaterialPointer = Material::Create();
 
-            CreateRigidBody(m_Physics.World, &m_Entities.Registry, e);
+            CreateRigidBody(m_PhysicsWorld.World, &m_Entities.Registry, e);
 
             std::vector<glm::vec3> verts;
             verts.reserve(mesh.Vertices.size());
             std::transform(mesh.Vertices.begin(), mesh.Vertices.end(), std::back_inserter(verts),
                             [](const Vertex& v) { return v.Position; });
 
-            CreateConvexCollider(&m_Physics.Properties, &m_Entities.Registry, e, verts);
+            CreateConvexCollider(&m_PhysicsWorld.Properties, &m_Entities.Registry, e, verts);
             children.push_back(e);
         }
 

@@ -1,25 +1,24 @@
+
+# Version Control System
+find_package(Git QUIET)
+
 function(generate_version_header)
     set(options "")
     set(oneValueArgs TARGET VERSION_FILE)
     set(multiValueArgs "")
     cmake_parse_arguments(ARG "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
-    # Get version components
-    if(PROJECT_VERSION)
-        string(REGEX MATCH "^([0-9]+)\\.([0-9]+)\\.([0-9]+)" _ ${PROJECT_VERSION})
-        set(VERSION_MAJOR ${CMAKE_MATCH_1})
-        set(VERSION_MINOR ${CMAKE_MATCH_2})
-        set(VERSION_PATCH ${CMAKE_MATCH_3})
-    else()
-        set(VERSION_MAJOR 1)
-        set(VERSION_MINOR 0)
-        set(VERSION_PATCH 0)
+    if(NOT ARG_TARGET)
+        message(FATAL_ERROR "generate_version_header: TARGET argument is required")
     endif()
 
-    # Try to get Git information
-    find_package(Git QUIET)
+    if(NOT ARG_VERSION_FILE)
+        message(FATAL_ERROR "generate_version_header: VERSION_FILE argument is required")
+    endif()
+
+    # Get Git information
     if(GIT_FOUND)
-        # Get git commit hash
+        # Get Git commit hash
         execute_process(
             COMMAND ${GIT_EXECUTABLE} rev-parse --short HEAD
             WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
@@ -28,7 +27,7 @@ function(generate_version_header)
             ERROR_QUIET
         )
         
-        # Get git branch
+        # Get Git branch
         execute_process(
             COMMAND ${GIT_EXECUTABLE} rev-parse --abbrev-ref HEAD
             WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
@@ -37,50 +36,91 @@ function(generate_version_header)
             ERROR_QUIET
         )
         
-        # Check if working directory is dirty
+        # Get Git tag
         execute_process(
-            COMMAND ${GIT_EXECUTABLE} diff-index --quiet HEAD --
+            COMMAND ${GIT_EXECUTABLE} describe --tags --abbrev=0
             WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-            RESULT_VARIABLE GIT_DIRTY_RESULT
+            OUTPUT_VARIABLE GIT_TAG
+            OUTPUT_STRIP_TRAILING_WHITESPACE
             ERROR_QUIET
         )
         
-        if(GIT_DIRTY_RESULT EQUAL 0)
-            set(GIT_DIRTY "false")
+        # Check if working directory is clean
+        execute_process(
+            COMMAND ${GIT_EXECUTABLE} diff-index --quiet HEAD --
+            WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+            RESULT_VARIABLE GIT_IS_DIRTY
+            ERROR_QUIET
+        )
+        
+        if(GIT_IS_DIRTY)
+            set(GIT_IS_DIRTY_FLAG "true")
         else()
-            set(GIT_DIRTY "true")
+            set(GIT_IS_DIRTY_FLAG "false")
         endif()
+        
+        # Get commit count
+        execute_process(
+            COMMAND ${GIT_EXECUTABLE} rev-list --count HEAD
+            WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+            OUTPUT_VARIABLE GIT_COMMIT_COUNT
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+            ERROR_QUIET
+        )
     else()
         set(GIT_COMMIT_HASH "unknown")
         set(GIT_BRANCH "unknown")
-        set(GIT_DIRTY "false")
+        set(GIT_TAG "unknown")
+        set(GIT_IS_DIRTY_FLAG "false")
+        set(GIT_COMMIT_COUNT "0")
     endif()
 
     # Get build timestamp
     string(TIMESTAMP BUILD_TIMESTAMP "%Y-%m-%d %H:%M:%S UTC" UTC)
-    
-    # Get build type
-    if(CMAKE_BUILD_TYPE)
-        set(BUILD_TYPE ${CMAKE_BUILD_TYPE})
-    else()
-        set(BUILD_TYPE "Unknown")
+
+    # Get project version
+    if(NOT DEFINED PROJECT_VERSION_MAJOR)
+        set(PROJECT_VERSION_MAJOR 0)
+    endif()
+    if(NOT DEFINED PROJECT_VERSION_MINOR)
+        set(PROJECT_VERSION_MINOR 0)
+    endif()
+    if(NOT DEFINED PROJECT_VERSION_PATCH)
+        set(PROJECT_VERSION_PATCH 0)
     endif()
 
-    # Generate version string
-    set(VERSION_STRING "${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}")
-    if(GIT_COMMIT_HASH AND NOT GIT_COMMIT_HASH STREQUAL "unknown")
-        set(VERSION_STRING "${VERSION_STRING}-${GIT_COMMIT_HASH}")
-    endif()
-    if(GIT_DIRTY STREQUAL "true")
-        set(VERSION_STRING "${VERSION_STRING}-dirty")
+    # Set version string
+    set(PROJECT_VERSION_STRING "${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH}")
+
+    # Find the template file
+    set(TEMPLATE_FILE "${CMAKE_SOURCE_DIR}/cmake/MotionVersion.hpp.in")
+    if(NOT EXISTS ${TEMPLATE_FILE})
+        message(FATAL_ERROR "Template file not found: ${TEMPLATE_FILE}")
     endif()
 
     # Configure the header file
     configure_file(
-        ${CMAKE_SOURCE_DIR}/cmake/MotionVersion.hpp.in
+        ${TEMPLATE_FILE}
         ${ARG_VERSION_FILE}
         @ONLY
     )
+
+    message(STATUS "===============================================")
+    message(STATUS " Generated version header: ${ARG_VERSION_FILE}")
+    message(STATUS "===============================================")
+    message(STATUS " Version    : ${PROJECT_VERSION_STRING}")
+    message(STATUS " Git Hash   : ${GIT_COMMIT_HASH}")
+    message(STATUS " Git Branch : ${GIT_BRANCH}")
+    message(STATUS " Build Type : ${CMAKE_BUILD_TYPE}")
+    message(STATUS "===============================================")
+
+    # Make sure the generated directory is added to the target's include directories
+    # (Already handled in your CMakeLists.txt but documenting here for clarity)
     
-    message(STATUS "Generated version header: ${VERSION_STRING}")
+    # Make the version header a dependency of configure
+    set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+        ${CMAKE_SOURCE_DIR}/.git/HEAD
+        ${CMAKE_SOURCE_DIR}/.git/index
+    )
+
 endfunction()

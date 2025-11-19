@@ -6,7 +6,7 @@
 #include "LayersManager.hpp"
 #include "Timer.hpp"
 
-#include "ImguiLayer.hpp"
+#include "PresentationLayer.hpp"
 #include "SceneEditorLayer.hpp"
 
 namespace Motion
@@ -31,7 +31,7 @@ namespace Motion
             std::shared_ptr<IWindow> m_Window{ nullptr };
             std::shared_ptr<IContext> m_WindowContext{ nullptr };
 
-            std::shared_ptr<ImGuiLayer> m_ImGuiLayer{ nullptr };
+            std::shared_ptr<PresentationLayer> m_PresentationLayer{ nullptr };
             std::shared_ptr<SceneEditorLayer> m_EditorLayer{ nullptr };
     };
 }

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Base.hpp"
+
 //std
 #include <iostream>
 #include <memory>
@@ -35,6 +37,8 @@
 #define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
 #include <glad/glad.h>
+#include <glad/glad_wgl.h>
+
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/sinks/basic_file_sink.h>
 
@@ -62,11 +66,15 @@
 #include <glm/gtc/quaternion.hpp>
 
 #include <imgui/imgui.h>
-#include <imgui/imgui_impl_opengl3.h>
-#include <imgui/imgui_impl_glfw.h>
 #include <imgui/imgui_internal.h>
 #include <imgui/imgui_stdlib.h>
+
+#include <imgui/imgui_impl_win32.h>
+#include <imgui/imgui_impl_glfw.h>
+#include <imgui/imgui_impl_opengl3.h>
+
 #include <imguizmo/ImGuizmo.h>
+
 #include <imgui/implot.h>
 #include <imgui/implot_internal.h>
 
@@ -75,7 +83,6 @@
 #include <IconsFontAwesome6.h>
 
 //Base
-#include "Base.hpp"
 #include "Asserts.hpp"
 #include "Log.hpp"
 #include "UUID.hpp"
@@ -119,8 +126,9 @@
 #include "GL_Shaders.hpp"
 #include "GL_Texture.hpp"
 #include "GL_Arrays.hpp"
-#include "GLFW_GL_Context.hpp"
 #include "GL_PlotExporter.hpp"
+
+#include "GLFW_GL_Context.hpp"
 
 //Window
 #include "Window.hpp"

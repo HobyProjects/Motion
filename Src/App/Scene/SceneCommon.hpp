@@ -18,6 +18,7 @@
 #include "UUID.hpp"
 #include "Buffers.hpp"
 #include "Camera3D.hpp"
+#include "Components.hpp"
 
 #define EPSILON 1e-6f
 
@@ -25,7 +26,6 @@ namespace Motion
 {
     class Scene;
 
-    
     struct SceneEntities
     {
         entt::entity SelectedEntity{entt::null};
@@ -787,12 +787,12 @@ namespace Motion
             return ms * 3.6f;
         }
         
-        static const char* GetBodyTypeDescription(BodyType type)
+        static const char* GetBodyTypeDescription(Motion::BodyType type)
         {
             switch (type)
             {
-                case BodyType::Static:  return "Static (immovable, like walls or ground)";
-                case BodyType::Dynamic: return "Dynamic (moves and collides with forces)";
+                case Motion::BodyType::Static:  return "Static (immovable, like walls or ground)";
+                case Motion::BodyType::Dynamic: return "Dynamic (moves and collides with forces)";
                 default:                return "Unknown";
             }
         }

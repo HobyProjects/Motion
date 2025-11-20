@@ -16,6 +16,7 @@ namespace Motion
     {
         m_Layers.emplace(m_Layers.begin() + m_LayerInsertIndex, layer);
         m_LayerInsertIndex++;
+        layer->OnAttach();
     }
 
     void LayersManager::PopLayer(std::shared_ptr<Layer> layer)

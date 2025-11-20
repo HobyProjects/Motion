@@ -39,7 +39,7 @@ namespace Motion
         if (!context.Panels->ShowForceAnalysisPanel) return;
         
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(16, 16));
-        ImGui::SetNextWindowSize(ImVec2(500, 800), ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowSize(ImVec2(16, 16), ImGuiCond_FirstUseEver);
         ImGui::Begin("Force Analysis", &context.Panels->ShowForceAnalysisPanel);
 
         if(!context.Simulation->InSimulation)

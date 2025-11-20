@@ -264,36 +264,37 @@ namespace Motion
             const glm::mat4& view       = camera.View;
             const glm::mat4& projection = camera.Projection;
 
-            bool canPickEntites = false;
-            canPickEntites |= ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem);
-            canPickEntites |= ImGui::IsWindowFocused();
-            canPickEntites &= ImGui::IsMouseClicked(ImGuiMouseButton_Left);
-            canPickEntites |= !ImGuizmo::IsUsing();
-
-            if(canPickEntites && context.View->ViewportFocusedOrHovered)
-            {
-                glm::vec2 local = { mouse.x - rect.min.x, mouse.y - rect.min.y };
-                local.y = vpAvail.y - local.y;
-                
-                const auto& fbSpecs = context.View->FrameSpecification;
-                const glm::vec2 fbSize = { (float)fbSpecs.Width, (float)fbSpecs.Height };
-                const glm::vec2 mouseMapFB = { local.x * (fbSize.x / vpAvail.x), local.y * (fbSize.y / vpAvail.y) };
-                const SceneViewport::RayWS ray = BuildMouseRayFromFB(mouseMapFB, fbSize, view, projection);
-
-                static constexpr float MAX_DISTANCE = 5000.0f;
-                const glm::vec3 P0 = ray.Origin;
-                const glm::vec3 P1 = ray.Origin + ray.Direction * MAX_DISTANCE;
-
-                RayHitResults result{};
-                const bool hit = RaycastFirstHit(context.PhysicsWorld->World, P0, P1, result);
-                if (hit) 
-                {
-                    scene->SelectedEntity(result.Entity);
-                }
-            }
-
+            
             if(!context.Simulation->InSimulation)
             {
+                bool canPickEntites = false;
+                canPickEntites |= ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem);
+                canPickEntites |= ImGui::IsWindowFocused();
+                canPickEntites &= ImGui::IsMouseClicked(ImGuiMouseButton_Left);
+                canPickEntites |= !ImGuizmo::IsUsing();
+    
+                if(canPickEntites && context.View->ViewportFocusedOrHovered)
+                {
+                    glm::vec2 local = { mouse.x - rect.min.x, mouse.y - rect.min.y };
+                    local.y = vpAvail.y - local.y;
+                    
+                    const auto& fbSpecs = context.View->FrameSpecification;
+                    const glm::vec2 fbSize = { (float)fbSpecs.Width, (float)fbSpecs.Height };
+                    const glm::vec2 mouseMapFB = { local.x * (fbSize.x / vpAvail.x), local.y * (fbSize.y / vpAvail.y) };
+                    const SceneViewport::RayWS ray = BuildMouseRayFromFB(mouseMapFB, fbSize, view, projection);
+    
+                    static constexpr float MAX_DISTANCE = 5000.0f;
+                    const glm::vec3 P0 = ray.Origin;
+                    const glm::vec3 P1 = ray.Origin + ray.Direction * MAX_DISTANCE;
+    
+                    RayHitResults result{};
+                    const bool hit = RaycastFirstHit(context.PhysicsWorld->World, P0, P1, result);
+                    if (hit) 
+                    {
+                        scene->SelectedEntity(result.Entity);
+                    }
+                }
+                
                 static SceneViewport::GizmoState gizmo;
                 gizmo.HandleHotkeys();
                 ImGuizmo::SetDrawlist(windowDL);
@@ -346,7 +347,7 @@ namespace Motion
 
                         ImGui::Separator();
 
-                        if (context.Simulation->IsEntitySimulated(context.Entities->SelectedEntity))
+                        if (!context.Simulation->IsEntitySimulated(context.Entities->SelectedEntity))
                         {
                             if(ImGui::MenuItem("Add To Watchlist"))
                             {
@@ -480,66 +481,6 @@ namespace Motion
                     context.PhysicsWorld->SunLight.ShowGuizmo = true;
                     (void)DrawDirectionalLight(context.PhysicsWorld->SunLight, camera, rect, windowDL, lightCfg);
                 }
-            }
-            else
-            {
-                auto* rb = context.Entities->Registry.try_get<RigidBodyComponent>(context.Simulation->SelectedEntity);
-                if(rb)
-                {
-                    ImGui::BeginTooltip();
-                    auto* body = rb->PhysicsBody;
-
-                    // Linear Velocity
-                    auto linVel = body->getLinearVelocity();
-                    glm::vec3 velocity(linVel.x, linVel.y, linVel.z);
-                    float speed = ScenePhysics::GetSpeed(velocity);
-                    float speedKmh = ScenePhysics::MsToKmh(speed);
-                    glm::vec3 direction = ScenePhysics::GetDirection(velocity);
-                    
-                    ImGui::Text("Movement");
-                    ImGui::Indent(10.0f);
-                    ImGui::BulletText("Speed: %.2f m/s (%.1f km/h)", speed, speedKmh);
-                    if (speed > 0.001f)
-                    {
-                        ImGui::BulletText("Direction: (%.2f, %.2f, %.2f)", direction.x, direction.y, direction.z);
-                    }
-                    else
-                    {
-                        ImGui::BulletText("Direction: Not moving");
-                    }
-                    ImGui::Unindent(10.0f);
-                    ImGui::Spacing();
-                    
-                    // Angular Velocity
-                    auto angVel = body->getAngularVelocity();
-                    glm::vec3 angularVelocity(angVel.x, angVel.y, angVel.z);
-                    float rotSpeed = ScenePhysics::GetSpeed(angularVelocity);
-                    float rpm = ScenePhysics::RadPerSecToRPM(rotSpeed);
-                    glm::vec3 rotAxis = ScenePhysics::GetDirection(angularVelocity);
-                    
-                    ImGui::Text("Rotation");
-                    ImGui::Indent(10.0f);
-                    ImGui::BulletText("Spin Rate: %.2f rad/s (%.0f RPM)", rotSpeed, std::abs(rpm));
-                    if (rotSpeed > 0.001f)
-                    {
-                        ImGui::BulletText("Spin Axis: (%.2f, %.2f, %.2f)", rotAxis.x, rotAxis.y, rotAxis.z);
-                    }
-                    else
-                    {
-                        ImGui::BulletText("Spin Axis: Not rotating");
-                    }
-                    ImGui::Unindent(10.0f);
-                    ImGui::Spacing();
-                    
-                    // Energy Information
-                    float kineticEnergy = 0.5f * body->getMass() * speed * speed;
-                    ImGui::Text("Energy");
-                    ImGui::Indent(10.0f);
-                    ImGui::BulletText("Kinetic Energy: %.2f Joules", kineticEnergy);
-                    ImGui::Unindent(10.0f);
-                    
-                    ImGui::EndTooltip();
-                }  
             }
         }
 

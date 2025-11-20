@@ -79,13 +79,11 @@ namespace Motion
 
     void Application::PushLayer(const std::shared_ptr<Layer>& layer)
     {
-        layer->OnAttach();
         LayersManager::GetInstance().PushLayer(layer);
     }
 
     void Application::PushOverlay(const std::shared_ptr<Layer>& layer)
     {
-        layer->OnAttach();
         LayersManager::GetInstance().PushOverlay(layer);
     }
 

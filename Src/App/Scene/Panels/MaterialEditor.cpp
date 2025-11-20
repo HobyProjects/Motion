@@ -284,71 +284,42 @@ namespace Motion
 
     void MaterialEditor::OnRender(Scene* scene)
     {
-        if (!scene) return;
-
-        auto& context = scene->GetContext();
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(16.0f, 16.0f));
-        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(8.0f, 12.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
+        ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, 0.0f);
         
-        ImGui::SetNextWindowSize(ImVec2(580.0f, 720.0f), ImGuiCond_FirstUseEver);
-        
-        if (ImGui::Begin("Material Editor", &context.Panels->ShowEntityMaterials, ImGuiWindowFlags_NoDocking))
+        if (ImGui::Begin("Material Editor"))
         {
-            if (context.Entities->SelectedEntity == entt::null || 
-                !context.Entities->Registry.valid(context.Entities->SelectedEntity))
+            auto& context = scene->GetContext();
+            auto selectedEntity = context.Entities->SelectedEntity;
+            
+            if (context.Entities->Registry.valid(selectedEntity))
             {
-                ImVec2 center       = ImGui::GetMainViewport()->GetCenter();
-                ImVec2 windowSize   = ImGui::GetWindowSize();
-                ImVec2 textSize     = ImGui::CalcTextSize("No Entity Selected");
+                auto& materialComponent = context.Entities->Registry.get<MaterialComponent>(selectedEntity);
+                auto material = materialComponent.MaterialPointer;
                 
-                ImGui::SetCursorPos(ImVec2(
-                    (windowSize.x - textSize.x) * 0.5f,
-                    (windowSize.y - textSize.y) * 0.5f - 40.0f
-                ));
-                
-                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.5f, 0.5f, 0.5f, 1.0f));
-                ImGui::Text("No Entity Selected");
-                
-                ImGui::SetCursorPosX((windowSize.x - ImGui::CalcTextSize("Select an entity to edit its material").x) * 0.5f);
-                ImGui::TextWrapped("Select an entity to edit its material");
-                ImGui::PopStyleColor();
-                
-                ImGui::End();
-                ImGui::PopStyleVar(2);
-                return;
-            }
-
-            auto* mat = context.Entities->Registry.try_get<MaterialComponent>(context.Entities->SelectedEntity);
-            if (!mat)
-            {
-                ImVec2 windowSize = ImGui::GetWindowSize();
-                ImVec2 textSize = ImGui::CalcTextSize("No Material Component");
-                
-                ImGui::SetCursorPos(ImVec2(
-                    (windowSize.x - textSize.x) * 0.5f,
-                    (windowSize.y - textSize.y) * 0.5f - 40.0f
-                ));
-                
-                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.5f, 0.5f, 0.5f, 1.0f));
-                ImGui::Text("No Material Component");
-                
-                ImGui::SetCursorPosX((windowSize.x - ImGui::CalcTextSize("This entity doesn't have a material").x) * 0.5f);
-                ImGui::TextWrapped("This entity doesn't have a material");
-                ImGui::PopStyleColor();
-                
-                ImGui::End();
-                ImGui::PopStyleVar(2);
-                return;      
-            }
-
-            if (mat->MaterialPointer)
-            {
-                DrawMaterialUI(mat->MaterialPointer);
+                if (material)
+                {
+                    DrawMaterialUI(material);
+                }
+                else
+                {
+                    ImVec2 windowSize = ImGui::GetWindowSize();
+                    ImVec2 textSize = ImGui::CalcTextSize("No Material Assigned");
+                    
+                    ImGui::SetCursorPos(ImVec2(
+                        (windowSize.x - textSize.x) * 0.5f,
+                        (windowSize.y - textSize.y) * 0.5f - 40.0f
+                    ));
+                    
+                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.5f, 0.5f, 0.5f, 1.0f));
+                    ImGui::Text("No Material Assigned");
+                    ImGui::PopStyleColor();
+                }
             }
             else
             {
                 ImVec2 windowSize = ImGui::GetWindowSize();
-                ImVec2 textSize = ImGui::CalcTextSize("No Material Assigned");
+                ImVec2 textSize = ImGui::CalcTextSize("Select an entity with a mesh to edit materials");
                 
                 ImGui::SetCursorPos(ImVec2(
                     (windowSize.x - textSize.x) * 0.5f,
@@ -356,7 +327,7 @@ namespace Motion
                 ));
                 
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.5f, 0.5f, 0.5f, 1.0f));
-                ImGui::Text("No Material Assigned");
+                ImGui::Text("Select an entity with a mesh to edit materials");
                 ImGui::PopStyleColor();
             }
 
@@ -369,32 +340,38 @@ namespace Motion
     void MaterialEditor::DrawMaterialUI(std::shared_ptr<Material>& mat)
     {
         if (!mat) return;
-        if (ImGui::BeginChild("##MaterialContent", ImVec2(0, 0), false, 
-                             ImGuiWindowFlags_AlwaysVerticalScrollbar))
+        
+        if (ImGui::BeginChild("##MaterialContent", ImVec2(0, 0), false, ImGuiWindowFlags_AlwaysVerticalScrollbar))
         {
+            // Increase padding for better breathing room
+            ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(12.0f, 12.0f));
+            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(8.0f, 6.0f));
+            
             ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.08f, 0.12f, 0.18f, 0.5f));
             if (ImGui::BeginChild("##InfoPanel", ImVec2(0, 80.0f), true, 
                                  ImGuiWindowFlags_NoScrollbar))
             {
                 ImGui::Spacing();
-                ImGui::Indent(12.0f);
+                ImGui::Indent(16.0f);
                 
-                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.4f, 0.7f, 1.0f, 1.0f));
+                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.9f, 0.3f, 1.0f, 1.0f));
                 ImGui::TextWrapped("Materials define how light interacts with surfaces - "
                                  "controlling color, reflectivity, and surface details");
                 ImGui::PopStyleColor();
                 
-                ImGui::Unindent(12.0f);
+                ImGui::Unindent(16.0f);
             }
             ImGui::EndChild();
             ImGui::PopStyleColor();
             
             ImGui::Spacing();
             ImGui::Spacing();
+            ImGui::Spacing();
             
             if (ImGui::CollapsingHeader("Material Preset", ImGuiTreeNodeFlags_DefaultOpen))
             {
-                ImGui::Indent(8.0f);
+                ImGui::Indent(16.0f);
+                ImGui::Spacing();
                 
                 auto base = mat->GetBaseMaterial();
                 std::vector<std::string> names;
@@ -429,15 +406,19 @@ namespace Motion
                     }
                 }
                 
-                ImGui::Unindent(8.0f);
+                ImGui::Unindent(16.0f);
+                ImGui::Spacing();
                 ImGui::Spacing();
             }
             
             if (!mat->Has<CoreMaterialComponents>())
             {
+                ImGui::Indent(16.0f);
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.6f, 0.6f, 0.6f, 1.0f));
                 ImGui::TextWrapped("No material properties available");
                 ImGui::PopStyleColor();
+                ImGui::Unindent(16.0f);
+                ImGui::PopStyleVar(2);
                 ImGui::EndChild();
                 return;
             }
@@ -446,74 +427,86 @@ namespace Motion
             
             if (ImGui::CollapsingHeader("Surface Properties", ImGuiTreeNodeFlags_DefaultOpen))
             {
-                ImGui::Indent(8.0f);
+                ImGui::Indent(16.0f);
+                ImGui::Spacing();
                 
-                const int columns = 2;
-                float availWidth = ImGui::GetContentRegionAvail().x;
-                float cardWidth = (availWidth - 16.0f) / columns; 
+                float spacing = 16.0f;
                 
                 ColorCard("Base Color", C.BaseColorFactor, 
                          "Main surface color", true);
                 
-                ImGui::SameLine();
+                ImGui::SameLine(0.0f, spacing);
                 
                 SliderCard("Metallic", C.MetallicFactor, 0.0f, 1.0f,
                           "0=Dielectric, 1=Metal");
                 
+                ImGui::Spacing();
+                
                 SliderCard("Roughness", C.RoughnessFactor, 0.0f, 1.0f,
                           "0=Smooth, 1=Rough");
                 
-                ImGui::SameLine();
+                ImGui::SameLine(0.0f, spacing);
                 
                 SliderCard("Opacity", C.OpacityFactor, 0.0f, 1.0f,
                           "Surface transparency");
                 
-                ImGui::Unindent(8.0f);
+                ImGui::Unindent(16.0f);
+                ImGui::Spacing();
                 ImGui::Spacing();
             }
             
             if (ImGui::CollapsingHeader("Surface Details"))
             {
-                ImGui::Indent(8.0f);
+                ImGui::Indent(16.0f);
+                ImGui::Spacing();
+                
+                float spacing = 16.0f;
                 
                 SliderCard("Normal Strength", C.NormalScale, 0.0f, 2.0f,
                           "Surface bump intensity");
                 
-                ImGui::SameLine();
+                ImGui::SameLine(0.0f, spacing);
                 
                 SliderCard("Ambient Occlusion", C.OcclusionStrength, 0.0f, 1.0f,
                           "Shadow depth in crevices");
                 
-                ImGui::Unindent(8.0f);
+                ImGui::Unindent(16.0f);
+                ImGui::Spacing();
                 ImGui::Spacing();
             }
             
             
             if (ImGui::CollapsingHeader("Emission"))
             {
-                ImGui::Indent(8.0f);
+                ImGui::Indent(16.0f);
+                ImGui::Spacing();
+                
+                float spacing = 16.0f;
                 
                 glm::vec4 emissiveColor(C.EmissiveFactor.r, C.EmissiveFactor.g, C.EmissiveFactor.b, 1.0f);
                 ColorCard("Emissive Color", 
                          emissiveColor,
                          "Glow color", false);
                 
-                ImGui::SameLine();
+                ImGui::SameLine(0.0f, spacing);
                 
                 SliderCard("Emission Strength", C.EmissiveStrength, 0.0f, 10.0f,
                           "Brightness of glow", "%.1f");
                 
-                ImGui::Unindent(8.0f);
+                ImGui::Unindent(16.0f);
+                ImGui::Spacing();
                 ImGui::Spacing();
             }
             
             if (ImGui::CollapsingHeader("Texture Maps", ImGuiTreeNodeFlags_DefaultOpen))
             {
-                ImGui::Indent(8.0f);
+                ImGui::Indent(16.0f);
+                ImGui::Spacing();
                 
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.7f, 0.7f, 0.5f, 1.0f));
                 ImGui::TextWrapped("Click slots to load textures. Right-click for options.");
                 ImGui::PopStyleColor();
+                ImGui::Spacing();
                 ImGui::Spacing();
                 
                 struct TexRow 
@@ -533,21 +526,36 @@ namespace Motion
                     {"Emissive",    C.EmissiveTexture,  TextureType::EmissiveTexture},
                 };
 
-                const int texColumns = 3;
+                // Calculate available width and determine columns dynamically
+                float availWidth = ImGui::GetContentRegionAvail().x;
+                float textureSlotWidth = 140.0f;
+                float textureSpacing = 20.0f;
+                int texColumns = std::max(1, static_cast<int>((availWidth + textureSpacing) / (textureSlotWidth + textureSpacing)));
+                
                 for (size_t i = 0; i < textures.size(); ++i)
                 {
                     TextureSlot(textures[i].Label, textures[i].Tex, textures[i].Type, 
-                               nullptr, false, 140);
+                               nullptr, false, static_cast<int>(textureSlotWidth));
                     
                     if ((i + 1) % texColumns != 0 && i < textures.size() - 1)
-                        ImGui::SameLine();
+                    {
+                        ImGui::SameLine(0.0f, textureSpacing);
+                    }
+                    else
+                    {
+                        ImGui::Spacing();
+                    }
                 }
                 
-                ImGui::Unindent(8.0f);
+                ImGui::Unindent(16.0f);
+                ImGui::Spacing();
             }
             
             ImGui::Spacing();
             ImGui::Spacing();
+            ImGui::Spacing();
+            
+            ImGui::PopStyleVar(2);
         }
         ImGui::EndChild();
     }

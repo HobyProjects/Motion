@@ -4,6 +4,8 @@
 #include "SceneSerializer.hpp"
 #include "SceneEditorLayer.hpp"
 
+#include "MotionVersion.hpp"
+
 namespace Motion
 {
     /**
@@ -15,7 +17,6 @@ namespace Motion
     void SceneEditorLayer::OnAttach()
     {
         std::memset(m_SearchBuf, 0, sizeof(m_SearchBuf));
-        m_ToastManager = std::make_unique<ToastManager>(5.0f, 0.5f);
         m_ScenePanel = std::make_unique<ScenePanel>();
 
         m_ScenePanel->Register<SceneEnvironmentSettings>();
@@ -29,6 +30,8 @@ namespace Motion
         m_ScenePanel->Register<MomentumTracker>();
         m_ScenePanel->Register<TrajectoryTracker>();
         m_ScenePanel->Register<ForceAnalysis>();
+
+        if(m_Scene) m_ScenePanel->OnCreate(m_Scene.get());
     }
 
     /**
@@ -57,7 +60,6 @@ namespace Motion
     {
         if (!m_Scene) return;
 
-        m_ToastManager->Update();
         m_Scene->OnUpdate(handle, deltaTime);
         m_ScenePanel->OnUpdate(m_Scene.get(), deltaTime.GetDeltaTimeSeconds());
         m_Scene->Submit();
@@ -89,7 +91,6 @@ namespace Motion
     {
         BuildDockspace();
         
-        m_ToastManager->Render();
         HandleSceneCreation();
         HandleSceneLoading();
         HandleEntityImport();
@@ -110,8 +111,6 @@ namespace Motion
         {
             RenderErrorModal();
         }
-
-        m_ScenePanel->OnRender(m_Scene.get());
     }
 
     /**
@@ -666,7 +665,8 @@ namespace Motion
                     io.IniFilename = nullptr;
                     std::string layoutFile = std::format("{}/mes-config.ini", m_SceneLoadRequest.FilePath.string());
                     ImGui::LoadIniSettingsFromDisk(layoutFile.c_str());
-                    
+
+                    m_ScenePanel->OnCreate(m_Scene.get()); 
                     MOTION_CORE_INFO("{} loaded successfully", m_SceneLoadRequest.FilePath.string());
                 }
                 else
@@ -1208,7 +1208,38 @@ namespace Motion
                 RequestEntityImport(false, true, "Assets/Primitives/Torus.obj");
             ImGui::EndMenu();
         }
+
+        if(ImGui::BeginMenu("View"))
+        {
+            auto& context = m_Scene->GetContext();
+
+            if(ImGui::MenuItem("Entity Hierarchy", nullptr, &context.Panels->ShowEntityHierarchy, m_Scene != nullptr));
+            if(ImGui::MenuItem("Entity Properties", nullptr, &context.Panels->ShowEntityComponents, m_Scene != nullptr));
+            if(ImGui::MenuItem("Material Editor", nullptr, &context.Panels->ShowEntityMaterials, m_Scene != nullptr));
+            if(ImGui::MenuItem("Simulation WatchList", nullptr, &context.Panels->ShowEntitySimulated, m_Scene != nullptr));
+            if(ImGui::MenuItem("Scene Environment", nullptr, &context.Panels->ShowEnvironmentSettings, m_Scene != nullptr));
+
+            ImGui::Separator();
+
+            if(ImGui::MenuItem("Force Analyser", nullptr, &context.Panels->ShowForceAnalysisPanel, m_Scene != nullptr));
+            if(ImGui::MenuItem("Energy Analyser", nullptr, &context.Panels->ShowEnergyPanel, m_Scene != nullptr));
+            if(ImGui::MenuItem("Momentum Analyser", nullptr, &context.Panels->ShowMomentumPanel, m_Scene != nullptr));
+            if(ImGui::MenuItem("Acceleration Analyser", nullptr, &context.Panels->ShowAccelerationPanel, m_Scene != nullptr));
+            if(ImGui::MenuItem("Trajectory Analyser", nullptr, &context.Panels->ShowTrajectoryPanel, m_Scene != nullptr));
+
+            ImGui::EndMenu();
+        }
         ImGui::EndDisabled();
+
+        if(ImGui::BeginMenu("About"))
+        {
+            if(ImGui::MenuItem("About Motion Engine", nullptr))
+            {
+                m_ShowAboutBox = !m_ShowAboutBox;
+            };
+
+            ImGui::EndMenu();   
+        }
 
         const float pad_x = style.ItemSpacing.x;
         const float content_min_x = ImGui::GetWindowContentRegionMin().x;
@@ -1312,6 +1343,7 @@ namespace Motion
         }
 
         ImGui::EndMenuBar();
+        RenderAbout();
     }
 
     /**
@@ -1412,6 +1444,8 @@ namespace Motion
             RenderEntityHierarchy(context);
         }
         ImGui::End();
+
+        m_ScenePanel->OnRender(m_Scene.get());
     }
 
     /**
@@ -1552,6 +1586,97 @@ namespace Motion
         
             ImGui::PopID();
         });
+    }
+
+    /**
+     * Renders a professional about dialog with comprehensive version information.
+     * Displays engine name, version, build details, and git information in a structured layout.
+     */
+    void SceneEditorLayer::RenderAbout()
+    {
+        if(!m_ShowAboutBox) return;
+
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(20, 20));
+        ImGui::SetNextWindowSize(ImVec2(500, 0), ImGuiCond_FirstUseEver);
+
+        if (ImGui::Begin("About Motion Engine", &m_ShowAboutBox, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoCollapse))
+        {
+            // Header - Engine name and version
+            ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[0]); // Use default font for consistency
+            ImGui::SetCursorPosX((ImGui::GetWindowWidth() - ImGui::CalcTextSize("MOTION ENGINE").x) * 0.5f);
+            ImGui::TextColored(ImVec4(0.2f, 0.6f, 1.0f, 1.0f), "MOTION ENGINE");
+            ImGui::PopFont();
+
+            ImGui::SetCursorPosX((ImGui::GetWindowWidth() - ImGui::CalcTextSize(Motion::VERSION).x) * 0.5f);
+            ImGui::Text("Version %s", Motion::VERSION);
+
+            ImGui::Spacing();
+            ImGui::Separator();
+            ImGui::Spacing();
+
+            // Description
+            ImGui::TextWrapped("Physics Simulation for Educational Purposes");
+
+            ImGui::Spacing();
+            ImGui::Separator();
+            ImGui::Spacing();
+
+            // Build Information Section
+            ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.2f, 1.0f), "Build Information");
+            ImGui::Spacing();
+
+            ImGui::Indent(10);
+            ImGui::Text("Configuration:"); ImGui::SameLine(150); ImGui::Text("%s", Motion::BUILD_TYPE);
+            ImGui::Text("Timestamp:"); ImGui::SameLine(150); ImGui::Text("%s", Motion::BUILD_TIMESTAMP);
+            ImGui::Unindent(10);
+
+            ImGui::Spacing();
+            ImGui::Separator();
+            ImGui::Spacing();
+
+            // Git Information Section (only if available)
+            std::string gitHash = Motion::GIT_COMMIT_HASH;
+            if (gitHash != "unknown" && !gitHash.empty())
+            {
+                ImGui::TextColored(ImVec4(0.2f, 0.8f, 0.4f, 1.0f), "Version Control");
+                ImGui::Spacing();
+
+                ImGui::Indent(10);
+                ImGui::Text("Branch:"); ImGui::SameLine(150); ImGui::Text("%s", Motion::GIT_BRANCH);
+                ImGui::Text("Commit:"); ImGui::SameLine(150); ImGui::Text("%s", Motion::GIT_COMMIT_HASH);
+
+                // Show dirty status if applicable
+                if (Motion::GIT_IS_DIRTY)
+                {
+                    ImGui::SameLine();
+                    ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "(modified)");
+                }
+
+                // Show tag if available
+                std::string gitTag = Motion::GIT_TAG;
+                if (!gitTag.empty() && gitTag != "unknown")
+                {
+                    ImGui::Text("Tag:"); ImGui::SameLine(150); ImGui::Text("%s", gitTag);
+                }
+
+                ImGui::Text("Total Commits:"); ImGui::SameLine(150); ImGui::Text("%s", Motion::GIT_COMMIT_COUNT);
+                ImGui::Unindent(10);
+
+                ImGui::Spacing();
+                ImGui::Separator();
+                ImGui::Spacing();
+            }
+
+            // Footer with close button
+            float buttonWidth = 120.0f;
+            ImGui::SetCursorPosX((ImGui::GetWindowWidth() - buttonWidth) * 0.5f);
+            if (ImGui::Button("Close", ImVec2(buttonWidth, 0)))
+            {
+                m_ShowAboutBox = false;
+            }
+        }
+        ImGui::End();
+        ImGui::PopStyleVar();
     }
 
 }

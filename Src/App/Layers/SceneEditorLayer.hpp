@@ -27,14 +27,15 @@ namespace Motion
         virtual void OnUIRender(WindowHandle handle) override;
 
     private:
-        std::unique_ptr<ToastManager> m_ToastManager;
         std::unique_ptr<ScenePanel> m_ScenePanel;
 
         glm::vec2               m_CurrentViewportSize{ 1280.0f, 720.0f };
         std::shared_ptr<Scene>  m_Scene{ nullptr };
         std::string             m_SceneName{};
         std::filesystem::path   m_ScenePath{};
+
         char m_SearchBuf[1024] = {};
+        bool m_ShowAboutBox{false};
 
         enum class AsyncOperationState
         {
@@ -169,6 +170,7 @@ namespace Motion
         void RenderEntityHierarchy(SceneContext& context);
         void RenderTagAndModel(SceneContext& context, entt::entity e);
         void RenderNodeEntities(SceneContext& context, entt::entity root);
+        void RenderAbout();
     
         bool RequestEntityImport(bool showDialog, bool shouldExport, std::filesystem::path path = {});
     };

@@ -51,7 +51,7 @@ namespace Motion
 
     void PresentationLayer::End()
     {
-        RenderLogConsoleWindow();
+        //RenderLogConsoleWindow();
 
         ImGuiIO& io = ImGui::GetIO();
         auto& coreAPI = CoreAPI::GetInstance();

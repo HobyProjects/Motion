@@ -25,8 +25,19 @@ find_package(reactphysics3d CONFIG REQUIRED)
 
 # Core library
 add_library(MotionCore STATIC)
-target_compile_definitions(MotionCore PUBLIC NOMINMAX WIN32_LEAN_AND_MEAN)
+target_compile_definitions(MotionCore PUBLIC 
+    NOMINMAX 
+    WIN32_LEAN_AND_MEAN
+    UNICODE
+    _UNICODE
+)
 target_compile_features(MotionCore PUBLIC cxx_std_20)
+
+# Enable UTF-8 source and execution character sets
+if(MSVC)
+    target_compile_options(MotionCore PUBLIC /utf-8)
+endif()
+
 target_include_directories(
     MotionCore 
         PUBLIC 
@@ -69,8 +80,19 @@ target_precompile_headers(MotionCore PUBLIC Src/Core/Base/CorePCH.hpp)
 
 # App
 add_executable(MotionEngine)
-target_compile_definitions(MotionEngine PUBLIC NOMINMAX WIN32_LEAN_AND_MEAN)
+target_compile_definitions(MotionEngine PUBLIC 
+    NOMINMAX 
+    WIN32_LEAN_AND_MEAN
+    UNICODE
+    _UNICODE
+)
 target_compile_features(MotionEngine PRIVATE cxx_std_20)
+
+# Enable UTF-8 source and execution character sets
+if(MSVC)
+    target_compile_options(MotionEngine PRIVATE /utf-8)
+endif()
+
 target_include_directories(
     MotionEngine 
         PUBLIC 

@@ -33,6 +33,7 @@ namespace Motion
         std::shared_ptr<Scene>  m_Scene{ nullptr };
         std::string             m_SceneName{};
         std::filesystem::path   m_ScenePath{};
+        std::uint32_t           m_CurrentTheme{ 0 };
 
         char m_SearchBuf[1024] = {};
         bool m_ShowAboutBox{false};

@@ -50,6 +50,7 @@ target_include_directories(
         ${CMAKE_SOURCE_DIR}/Src/Core/Layer
         ${CMAKE_SOURCE_DIR}/Src/Core/UI
         ${CMAKE_SOURCE_DIR}/Src/Core/UI/IconFonts
+        ${CMAKE_SOURCE_DIR}/Src/Core/UI/Controls
         ${CMAKE_SOURCE_DIR}/Src/Core/Platform
         ${CMAKE_SOURCE_DIR}/Src/Core/Renderer
         ${CMAKE_SOURCE_DIR}/Src/Core/Renderer/Backends/OpenGL

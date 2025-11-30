@@ -10,12 +10,19 @@ namespace Motion
         auto& context = scene->GetContext();
         if(!context.Panels->ShowEntityComponents) return;
         
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(16, 16));
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(20, 20));
         ImGui::Begin("Entity Properties", &context.Panels->ShowEntityComponents);
 
         if (context.Entities->SelectedEntity == entt::null)
         {
-            ImGui::TextDisabled("No entity selected.");
+            HeadingConfig selctionConfig{};
+            selctionConfig.Separator = true;
+            Heading("No Entity Selected", HeadingLevel::H2, selctionConfig);
+
+            LabelConfig lblConfig{};
+            lblConfig.Wrapped = true;
+            LabelSimple("Select an entity in the viewport to view its properties.", lblConfig);
+
             ImGui::End();
             ImGui::PopStyleVar();
             return;
@@ -24,16 +31,33 @@ namespace Motion
         auto* tc = context.Entities->Registry.try_get<TransformComponent>(context.Entities->SelectedEntity);
         auto* cc = context.Entities->Registry.try_get<ColliderComponent>(context.Entities->SelectedEntity);
         auto* rb = context.Entities->Registry.try_get<RigidBodyComponent>(context.Entities->SelectedEntity);
+        
         if (!tc || !cc || !rb)
         {
-            ImGui::TextDisabled("This entity does not have any components.");
+            HeadingConfig invalidConfig{};
+            invalidConfig.Separator = true;
+            Heading("Invalid Entity", HeadingLevel::H2, invalidConfig);
+
+            LabelConfig lblConfig{};
+            lblConfig.Wrapped = true;
+            LabelSimple("This entity is missing required components.", lblConfig);
+            
             ImGui::End();
             ImGui::PopStyleVar();
             return;
         }
 
         RenderTransform(tc);
+
+        ImGui::Spacing();
+        ImGui::Spacing();
+
+        
         RenderRigidBody(rb);
+
+        ImGui::Spacing();
+        ImGui::Spacing();
+        
         RenderCollider(cc);
 
         ImGui::End();
@@ -42,339 +66,179 @@ namespace Motion
 
     void EntityProperties::RenderTransform(TransformComponent* tc)
     {
-        if (ImGui::CollapsingHeader("Transform", ImGuiTreeNodeFlags_DefaultOpen))
-        {
-            ImGui::Spacing();
-            
-            // Position
+        HeadingConfig headerConfig;
+        headerConfig.Separator = true;
+        Heading(ICON_MD_3D_ROTATION " Transform Component", HeadingLevel::H3, headerConfig);
+
+        ImGui::Indent();
+        {                
             glm::vec3 translation = tc->Translation;
-            ImGui::Text("Position (m)");
-            ImGui::SameLine();
-            ImGui::TextDisabled("(?)");
-            if (ImGui::IsItemHovered())
-            {
-                ImGui::BeginTooltip();
-                ImGui::Text("The position of the object in 3D space (X, Y, Z coordinates).");
-                ImGui::Text("Measured in meters.");
-                ImGui::EndTooltip();
-            }
             
-            ImGui::PushItemWidth(-1);
-            if (ImGui::DragFloat3("##position", &translation.x, 0.1f))
-            {
-                tc->Translation = translation;
-            }
-            ImGui::PopItemWidth();
-            
-            ImGui::Spacing();
-            ImGui::Separator();
-            ImGui::Spacing();
-            
-            // Rotation
+            DragFloatConfig dragConfig;
+            dragConfig.Speed = 0.1f;
+            dragConfig.Fmt = "%.2f m";
+            dragConfig.ResetValue = 0.0f;
+            dragConfig.Tooltip = "The position of the object in 3D space (X, Y, Z coordinates)\nMeasured in meters";
+            DragFloat3("Position", translation, dragConfig, [&](const glm::vec3& newTranslation){
+                tc->Translation = newTranslation;
+            });
+        }            
+        {                
             glm::vec3 eulerDeg = glm::degrees(glm::eulerAngles(tc->Rotation));
-            ImGui::Text("Rotation (deg)");
-            ImGui::SameLine();
-            ImGui::TextDisabled("(?)");
-            if (ImGui::IsItemHovered())
-            {
-                ImGui::BeginTooltip();
-                ImGui::Text("The rotation of the object around each axis.");
-                ImGui::Text("Measured in degrees (0-360).");
-                ImGui::EndTooltip();
-            }
             
-            ImGui::PushItemWidth(-1);
-            if (ImGui::DragFloat3("##rotation", &eulerDeg.x, 1.0f))
-            {
-                tc->Rotation = glm::normalize(glm::quat(glm::radians(eulerDeg)));
-            }
-            ImGui::PopItemWidth();
-            
-            ImGui::Spacing();
-            ImGui::Separator();
-            ImGui::Spacing();
-            
-            // Scale
-            glm::vec3 scale = tc->Scale;
-            ImGui::Text("Scale");
-            ImGui::SameLine();
-            ImGui::TextDisabled("(?)");
-            if (ImGui::IsItemHovered())
-            {
-                ImGui::BeginTooltip();
-                ImGui::Text("The size multiplier for each axis.");
-                ImGui::Text("1.0 = original size, 2.0 = double size, 0.5 = half size");
-                ImGui::EndTooltip();
-            }
-            
-            ImGui::PushItemWidth(-1);
-            if (ImGui::DragFloat3("##scale", &scale.x, 0.1f, 0.01f, 100.0f))
-            {
-                tc->Scale = scale;
-            }
-            ImGui::PopItemWidth();
-            
-            ImGui::Spacing();
+            DragFloatConfig rotConfig;
+            rotConfig.Speed = 1.0f;
+            rotConfig.Fmt = "%.1f°";
+            rotConfig.ResetValue = 0.0f;
+            rotConfig.Tooltip = "The rotation of the object around each axis\nMeasured in degrees (0-360)";
+            DragFloat3("Rotation", eulerDeg, rotConfig, [&](const glm::vec3& newEuler){
+                glm::vec3 radians = glm::radians(newEuler);
+                tc->Rotation = glm::quat(radians);
+            });
         }
+        {                
+            glm::vec3 scale = tc->Scale;
+            
+            DragFloatConfig scaleConfig;
+            scaleConfig.Speed = 0.01f;
+            scaleConfig.MinV = 1.0f;
+            scaleConfig.ResetValue = 1.0f;
+            scaleConfig.Fmt = "%.2f";
+            scaleConfig.Tooltip = "The size multiplier for each axis\n1.0 = original size\n2.0 = double size\n0.5 = half size";
+            DragFloat3("Scale", scale, scaleConfig, [&](const glm::vec3& newScale){
+                tc->Scale = newScale;
+            });
+        }
+        ImGui::Unindent();
     }
+
     void EntityProperties::RenderRigidBody(RigidBodyComponent* rb)
     {
-        if (ImGui::CollapsingHeader("Rigid Body Properties", ImGuiTreeNodeFlags_DefaultOpen))
+        auto* body = rb->PhysicsBody;
+
+        HeadingConfig headerConfig;
+        headerConfig.Separator = true;
+        Heading(ICON_MD_NOW_WIDGETS " Rigid Body Properties", HeadingLevel::H3, headerConfig); 
+
+
+        ImGui::Indent();            
         {
-            ImGui::Spacing();
-            
-            auto* body = rb->PhysicsBody;
-            
-            // Allow Sleeping
             bool allowSleeping = body->isAllowedToSleep();
-            if (ImGui::Checkbox("Allow Sleeping", &allowSleeping))
-            {
-                body->setIsAllowedToSleep(allowSleeping);
-            }
-            ImGui::SameLine();
-            ImGui::TextDisabled("(?)");
-            if (ImGui::IsItemHovered())
-            {
-                ImGui::BeginTooltip();
-                ImGui::Text("Allow the body to sleep if it is not moving");
-                ImGui::EndTooltip();
-            }
+            ToggleSwitch("Allow Sleeping", &allowSleeping, ToggleSwitchPresets::iOS(), [&](bool enabled) {
+                body->setIsAllowedToSleep(enabled);
+            });
             
-            ImGui::Spacing();
-            ImGui::Separator();
-            ImGui::Spacing();
-            
-            // Body Type
-            ImGui::Text("Body Type");
-            ImGui::SameLine();
-            ImGui::TextDisabled("(?)");
-            if (ImGui::IsItemHovered())
+            if(ImGui::IsItemHovered())
             {
-                ImGui::BeginTooltip();
-                ImGui::Text("Static: Immovable objects like walls, floors, and obstacles");
-                ImGui::Text("Dynamic: Objects that move and respond to forces like balls, boxes, characters");
-                ImGui::EndTooltip();
+                ImGui::SetTooltip("Allow the body to enter sleep mode when stationary\nThis improves performance by not simulating inactive objects");
             }
-            
-            const char* bodyTypes[] = { "Static", "Dynamic" };
-            int currentBodyType = (body->getType() == rp3d::BodyType::DYNAMIC) ? 1 : 0;
-            ImGui::PushItemWidth(-1);
-            if (ImGui::Combo("##bodytype", &currentBodyType, bodyTypes, IM_ARRAYSIZE(bodyTypes)))
-            {
-                if (currentBodyType == 0)
+        }
+        {   
+            bool isStatic = (body->getType() == rp3d::BodyType::STATIC);
+
+            ComboBoxConfig comboConfig;
+            comboConfig.Tooltip = "Select the type of body";
+            static int currentTypeIndex = isStatic ? 0 : 1;
+
+            ComboBox("Body Type", currentTypeIndex, {"Static", "Dynamic"}, comboConfig, [&](const std::string& item, int index){
+                if(index == 0)
                 {
                     rb->Type = BodyType::Static;
                     body->setType(rp3d::BodyType::STATIC);
                 }
-                else if (currentBodyType == 1)
+                else if(index == 1)
                 {
                     rb->Type = BodyType::Dynamic;
                     body->setType(rp3d::BodyType::DYNAMIC);
                 }
-            }
-            ImGui::PopItemWidth();
-            
-            ImGui::Spacing();
-            ImGui::Separator();
-            ImGui::Spacing();
-            
-            // Computed Mass (read-only)
-            ImGui::Text("Computed Mass (kg)");
-            ImGui::SameLine();
-            ImGui::TextDisabled("(?)");
-            if (ImGui::IsItemHovered())
-            {
-                ImGui::BeginTooltip();
-                ImGui::Text("How heavy the object is in kilograms.");
-                ImGui::Text("Heavier objects need more force to move and have more momentum.");
-                ImGui::Separator();
-                ImGui::Text("Examples: Basketball ≈0.6kg, Car ≈1500kg, Person ≈70kg");
-                ImGui::EndTooltip();
-            }
-            
-            ImGui::PushItemWidth(-1);
-            ImGui::BeginDisabled();
-            float mass = static_cast<float>(body->getMass());
-            ImGui::DragFloat("##mass", &mass, 0.1f, 0.01f, 10000.0f);
-            ImGui::EndDisabled();
-            ImGui::PopItemWidth();
-            
-            ImGui::Spacing();
-            ImGui::Separator();
-            ImGui::Spacing();
-            
-            // Linear Damping
-            ImGui::Text("Linear Damping");
-            ImGui::SameLine();
-            ImGui::TextDisabled("(?)");
-            if (ImGui::IsItemHovered())
-            {
-                ImGui::BeginTooltip();
-                ImGui::Text("Air resistance for movement. Higher = slows down faster.");
-                ImGui::Separator();
-                ImGui::BulletText("0 = No air resistance (moves forever like in space)");
-                ImGui::BulletText("0.5 = Medium resistance (normal physics)");
-                ImGui::BulletText("1.0 = High resistance (moving through water)");
-                ImGui::EndTooltip();
-            }
-            
-            ImGui::PushItemWidth(-1);
-            float linDamp = static_cast<float>(body->getLinearDamping());
-            if (ImGui::SliderFloat("##lindamp", &linDamp, 0.0f, 1.0f, "%.3f"))
-            {
-                body->setLinearDamping(linDamp);
-            }
-            ImGui::PopItemWidth();
-            
-            ImGui::Spacing();
-            ImGui::Separator();
-            ImGui::Spacing();
-            
-            // Angular Damping
-            ImGui::Text("Angular Damping");
-            ImGui::SameLine();
-            ImGui::TextDisabled("(?)");
-            if (ImGui::IsItemHovered())
-            {
-                ImGui::BeginTooltip();
-                ImGui::Text("Air resistance for rotation/spinning. Higher = stops spinning faster.");
-                ImGui::Separator();
-                ImGui::BulletText("0 = Spins forever like in space");
-                ImGui::BulletText("0.5 = Normal spinning (like a basketball)");
-                ImGui::BulletText("1.0 = Stops spinning quickly");
-                ImGui::EndTooltip();
-            }
-            
-            ImGui::PushItemWidth(-1);
-            float angDamp = static_cast<float>(body->getAngularDamping());
-            if (ImGui::SliderFloat("##angdamp", &angDamp, 0.0f, 1.0f, "%.3f"))
-            {
-                body->setAngularDamping(angDamp);
-            }
-            ImGui::PopItemWidth();
-            
-            ImGui::Spacing();
+            });
         }
+        {
+            LabelConfig massConfig{};
+            massConfig.Tooltip = "How heavy the object is in kilograms\nHeavier objects need more force to move and have more momentum\nExamples:\n- Basketball ≈ 0.6 kg\n- Person ≈ 70 kg\n- Car ≈ 1500 kg";
+            LabelValue("Computed Mass", body->getMass(), "%.2f kg", massConfig);
+        }
+        {                
+            float linDamp = static_cast<float>(body->getLinearDamping());
+            
+            SliderFloatConfig dampConfig;
+            dampConfig.MinV = 0.0f;
+            dampConfig.MaxV = 1.0f;
+            dampConfig.Fmt = "%.2f";
+            dampConfig.Tooltip = "How quickly the object stops moving due to air resistance\nHigher values make it stop faster\nExamples:\n- A hockey puck has low linear damping (glides far on ice)\n- A rolling ball has medium linear damping (slows down over time)\n- A parachute has high linear damping (quickly loses speed)";
+            
+            SliderFloat("Linear Damping", &linDamp, dampConfig, [&](float value){
+                body->setLinearDamping(linDamp);
+            });
+        }            
+        {
+            float angDamp = static_cast<float>(body->getAngularDamping());
+            
+            SliderFloatConfig angDampConfig;
+            angDampConfig.MinV = 0.0f;
+            angDampConfig.MaxV = 1.0f;
+            angDampConfig.Fmt = "%.2f";
+            angDampConfig.Tooltip = "How quickly the object stops spinning due to air resistance\nHigher values make it stop faster\nExamples:\n- A spinning top has low angular damping (spins for a long time)\n- A thrown frisbee has medium angular damping (slows rotation moderately)\n- A spinning fan blade has high angular damping (stops quickly when power is off)";
+            SliderFloat("Angular Damping", &angDamp, angDampConfig, [&](float value){
+                body->setAngularDamping(angDamp);
+            });
+        }
+        ImGui::Unindent();
     }
 
     void EntityProperties::RenderCollider(ColliderComponent* cc)
     {
-        if (ImGui::CollapsingHeader("Collider Properties", ImGuiTreeNodeFlags_DefaultOpen))
-        {
-            ImGui::Spacing();
-            
-            // Bounciness (Restitution)
-            ImGui::Text("Bounciness");
-            ImGui::SameLine();
-            ImGui::TextDisabled("(?)");
-            if (ImGui::IsItemHovered())
-            {
-                ImGui::BeginTooltip();
-                ImGui::Text("How bouncy the object is when it hits something.");
-                ImGui::Separator();
-                ImGui::BulletText("0.0 = No bounce (like clay or putty)");
-                ImGui::BulletText("0.5 = Medium bounce (like a basketball)");
-                ImGui::BulletText("0.9 = Very bouncy (like a rubber super ball)");
-                ImGui::BulletText("1.0 = Perfect bounce (no energy lost)");
-                ImGui::EndTooltip();
-            }
-            
-            ImGui::PushItemWidth(-1);
+        HeadingConfig headerConfig{};
+        headerConfig.Separator = true;
+        Heading(ICON_MD_VIEW_IN_AR " Collider Properties", HeadingLevel::H3, headerConfig);
+
+        ImGui::Indent();
+        {                
+            float volume = cc->Shape->getVolume();
+            LabelConfig volumeConfig;
+            volumeConfig.Tooltip = "The volume of the object, in cubic meters.\nAutomatically calculated based on object size";
+            LabelValue("Volume", volume, "%.2f m³", volumeConfig);
+        } 
+        {                
             float bounce = cc->Restitution;
-            if (ImGui::SliderFloat("##bounciness", &bounce, 0.0f, 1.0f, "%.3f"))
-            {
+            
+            SliderFloatConfig bounceConfig;
+            bounceConfig.MinV = 0.0f;
+            bounceConfig.MaxV = 1.0f;
+            bounceConfig.Fmt = "%.2f";
+            bounceConfig.Tooltip = "How bouncy the object is when it hits something\nBounciness affects how much energy is lost when the object hits something\n- 0.0 = No bounce (like clay or putty)\n- 0.5 = Medium bounce (like a basketball)\n- 0.9 = Very bouncy (like a rubber super ball)\n- 1.0 = Perfect bounce (no energy lost)";
+            SliderFloat("Bounciness", &bounce, bounceConfig, [&](float value){
                 cc->Collider->getMaterial().setBounciness(bounce);
                 cc->Restitution = bounce;
-            }
-            ImGui::PopItemWidth();
-            
-            ImGui::Spacing();
-            ImGui::Separator();
-            ImGui::Spacing();
-            
-            // Friction
-            ImGui::Text("Friction");
-            ImGui::SameLine();
-            ImGui::TextDisabled("(?)");
-            if (ImGui::IsItemHovered())
-            {
-                ImGui::BeginTooltip();
-                ImGui::Text("How much the object resists sliding.");
-                ImGui::Separator();
-                ImGui::BulletText("0.0 = Ice (super slippery)");
-                ImGui::BulletText("0.5 = Wood or plastic");
-                ImGui::BulletText("0.8 = Rubber");
-                ImGui::BulletText("1.0 = Maximum grip");
-                ImGui::EndTooltip();
-            }
-            
-            ImGui::PushItemWidth(-1);
+            });
+        }            
+        {                
             float friction = cc->Friction;
-            if (ImGui::SliderFloat("##friction", &friction, 0.0f, 1.0f, "%.3f"))
-            {
+
+            SliderFloatConfig frictionConfig;
+            frictionConfig.MinV = 0.0f;
+            frictionConfig.MaxV = 1.0f;
+            frictionConfig.Fmt = "%.2f";
+            frictionConfig.Tooltip = "How much the object resists sliding against other surfaces\nLower values make it more slippery\nExamples:\n- Ice has low friction (around 0.1)\n- Wood or plastic has medium friction (around 0.5)\n- Rubber has high friction (around 0.8)";
+            SliderFloat("Friction", &friction, frictionConfig, [&](float value){
                 cc->Collider->getMaterial().setFrictionCoefficient(friction);
                 cc->Friction = friction;
-            }
-            ImGui::PopItemWidth();
-            
-            ImGui::Spacing();
-            ImGui::Separator();
-            ImGui::Spacing();
-            
-            // Density
-            ImGui::Text("Density (kg/m³)");
-            ImGui::SameLine();
-            ImGui::TextDisabled("(?)");
-            if (ImGui::IsItemHovered())
-            {
-                ImGui::BeginTooltip();
-                ImGui::Text("How dense the material is (mass per volume).");
-                ImGui::Text("This affects the calculated mass based on object size.");
-                ImGui::Separator();
-                ImGui::Text("Common densities:");
-                ImGui::BulletText("Water: 1000 kg/m³");
-                ImGui::BulletText("Wood: 500-800 kg/m³");
-                ImGui::BulletText("Concrete: 2400 kg/m³");
-                ImGui::BulletText("Steel: 7850 kg/m³");
-                ImGui::BulletText("Gold: 19300 kg/m³");
-                ImGui::EndTooltip();
-            }
-            
-            ImGui::PushItemWidth(-1);
+            });
+        }
+        {
             float density = cc->MassDensity;
-            if (ImGui::DragFloat("##density", &density, 1.0f, 0.1f, 10000.0f))
-            {
+            
+            DragFloatConfig densityConfig;
+            densityConfig.Speed = 10.0f;
+            densityConfig.MinV = 0.1f;
+            densityConfig.MaxV = 20000.0f;
+            densityConfig.Fmt = "%.2f kg/m³";
+            densityConfig.Tooltip = "The mass per unit volume of the material,\nHigher density materials result in heavier objects\nExamples:\n- Water: 1000 kg/m³\n- Wood: 500-800 kg/m³\n- Concrete: 2400 kg/m³\n- Steel: 7850 kg/m³";
+            DragFloat("Density", &density, densityConfig, [&](float value){
                 cc->Collider->getMaterial().setMassDensity(density);
                 cc->MassDensity = density;
-            }
-            ImGui::PopItemWidth();
-            
-            ImGui::Spacing();
-            ImGui::Separator();
-            ImGui::Spacing();
-            
-            // Volume (read-only)
-            ImGui::Text("Volume (m³)");
-            ImGui::SameLine();
-            ImGui::TextDisabled("(?)");
-            if (ImGui::IsItemHovered())
-            {
-                ImGui::BeginTooltip();
-                ImGui::Text("The volume of the object.");
-                ImGui::Text("This is automatically calculated based on object size.");
-                ImGui::EndTooltip();
-            }
-            
-            ImGui::PushItemWidth(-1);
-            ImGui::BeginDisabled();
-            float volume = cc->Shape->getVolume();
-            ImGui::DragFloat("##volume", &volume, 0.1f, 0.0f, 1000000.0f);
-            ImGui::EndDisabled();
-            ImGui::PopItemWidth();
-            
-            ImGui::Spacing();
+            });
         }
+        ImGui::Unindent();
     }
-
-
 }

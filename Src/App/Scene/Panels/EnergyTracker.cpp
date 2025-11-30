@@ -17,14 +17,11 @@ namespace Motion
         auto mass = rb->PhysicsBody->getMass();
         auto linearVelocity = ToVec3(rb->PhysicsBody->getLinearVelocity());
         
-        // Calculate kinetic energy: KE = 0.5 * m * v²
         float velocityMag = glm::length(linearVelocity);
         float ke = 0.5f * mass * velocityMag * velocityMag;
-        
-        // Calculate potential energy: PE = m * g * h
         float pe = mass * context.Physics->PhysicsAnalysis.Energy.GravityMagnitude * transform->Translation.y;
         
-        context.Physics->PhysicsAnalysis.Energy.AddSample(ke, pe, dt);
+        context.Physics->PhysicsAnalysis.Energy.Update(ke, pe, dt);
     }
 
     void EnergyTracker::OnRender(Scene* scene)
@@ -34,218 +31,208 @@ namespace Motion
         auto& context = scene->GetContext();
         if (!context.Panels->ShowEnergyPanel) return;
         
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(16, 16));
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(20, 20));
         ImGui::Begin("Energy Analysis", &context.Panels->ShowEnergyPanel);
+        bool inSimulation = context.Simulation->InSimulation;
 
-        if(!context.Simulation->InSimulation)
+        if(!inSimulation)
         {
-            ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Start simulation to record data...");
-            ImGui::End();
-            ImGui::PopStyleVar();
-            return;
+            HeadingConfig config;
+            config.Separator = true;
+            Heading(ICON_MD_INFO_OUTLINE " Simulation Mode Required", HeadingLevel::H2, config);
+
+            LabelConfig lblConfig;
+            lblConfig.Wrapped = true;
+            LabelSimple("Energy tracking is only available during active simulation. Please start the simulation to view energy data.", lblConfig);
         }
-        
-        ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.2f, 1.0f), "Energy Tracking");
-        ImGui::Separator();
-        ImGui::Spacing();
         
         auto& energy = context.Physics->PhysicsAnalysis.Energy;
         
-        // Enable/Disable Tracking
-        ImGui::Checkbox("Enable Tracking", &energy.TrackingEnabled);
-        ImGui::SameLine(); 
-        ShowPhysicsTooltip("Energy Tracking", 
-            "Record kinetic and potential energy over time to analyze energy conservation");
-        
-        ImGui::Spacing();
-        
-        // Current Energy Values - Large Display
-        ImGui::BeginGroup();
         {
-            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.3f, 1.0f, 0.5f, 1.0f));
-            ImGui::Text("Kinetic Energy");
-            ImGui::PopStyleColor();
-            ImGui::SameLine(200);
-            ImGui::Text("%.2f J", energy.CurrentKE);
-            
-            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.5f, 0.7f, 1.0f, 1.0f));
-            ImGui::Text("Potential Energy");
-            ImGui::PopStyleColor();
-            ImGui::SameLine(200);
-            ImGui::Text("%.2f J", energy.CurrentPE);
-            
-            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.8f, 0.2f, 1.0f));
-            ImGui::Text("Total Energy");
-            ImGui::PopStyleColor();
-            ImGui::SameLine(200);
-            ImGui::Text("%.2f J", energy.CurrentTotal);
+            HeadingConfig config;
+            config.Separator = true;
+            Heading(ICON_MD_ENERGY_SAVINGS_LEAF " Energy Tracking", HeadingLevel::H3, config);
+            ToggleSwitch("Enable Tracking", &energy.TrackingEnabled, ToggleSwitchPresets::iOS());
+            if(ImGui::IsItemHovered()) ImGui::SetTooltip("Record kinetic and potential energy over time to analyze energy conservation");
         }
-        ImGui::EndGroup();
         
-        ImGui::Spacing();
-        ImGui::Separator();
+        ImGui::BeginDisabled(!inSimulation);
         ImGui::Spacing();
         
-        // Conservation Analysis
-        float conservation = energy.GetEnergyConservation();
-        ImGui::Text("Energy Conservation: ");
-        ImGui::SameLine();
-        
-        ImVec4 conservationColor;
-        if (conservation > 95.0f)
-            conservationColor = ImVec4(0.2f, 1.0f, 0.2f, 1.0f); // Green - excellent
-        else if (conservation > 85.0f)
-            conservationColor = ImVec4(1.0f, 0.8f, 0.2f, 1.0f); // Yellow - good
-        else
-            conservationColor = ImVec4(1.0f, 0.3f, 0.3f, 1.0f); // Red - poor
-        
-        ImGui::TextColored(conservationColor, "%.1f%%", conservation);
-        
-        if (energy.InitialTotal > EPSILON)
         {
-            ImGui::Text("Initial Total: %.2f J", energy.InitialTotal);
-            ImGui::Text("Energy Lost: %.2f J", energy.EnergyLoss);
+            HeadingConfig config;
+            config.Separator = true;
+            Heading(ICON_MD_WIND_POWER " Current Energy Values", HeadingLevel::H3, config);
+
+            LabelConfig kineticConfig;
+            kineticConfig.Color = ImVec4(0.3f, 1.0f, 0.5f, 1.0f);
+            kineticConfig.Tooltip = "Energy of motion: KE = ½mv²";
+            LabelValue("Kinetic Energy  ", energy.CurrentKE, "%.2f J", kineticConfig);
+            
+            LabelConfig potentialConfig;
+            potentialConfig.Color = ImVec4(0.5f, 0.7f, 1.0f, 1.0f);
+            potentialConfig.Tooltip = "Stored energy due to position: PE = mgh";
+            LabelValue("Potential Energy  ", energy.CurrentPE, "%.2f J", potentialConfig);
+            
+            LabelConfig totalConfig;
+            totalConfig.Color = ImVec4(1.0f, 0.5f, 0.5f, 1.0f);
+            totalConfig.Tooltip = "Total energy: KE + PE";
+            LabelValue("Total Energy  ", energy.CurrentTotal, "%.2f J", totalConfig);
         }
         
         ImGui::Spacing();
-        ImGui::Separator();
-        ImGui::Spacing();
         
-        // Energy Graph using ImPlot
-        ImGui::Text("Energy Over Time");
-        
-        ImGui::Checkbox("Show KE", &energy.ShowKE);
-        ImGui::SameLine();
-        ImGui::Checkbox("Show PE", &energy.ShowPE);
-        ImGui::SameLine();
-        ImGui::Checkbox("Show Total", &energy.ShowTotal);
-        
-        if (!energy.TimeStamps.empty() && energy.TimeStamps.size() == energy.TotalEnergyHistory.size())
         {
-            // Convert deques to vectors for ImPlot
-            std::vector<float> timeData(energy.TimeStamps.begin(), energy.TimeStamps.end());
-            std::vector<float> keData(energy.KineticEnergyHistory.begin(), energy.KineticEnergyHistory.end());
-            std::vector<float> peData(energy.PotentialEnergyHistory.begin(), energy.PotentialEnergyHistory.end());
-            std::vector<float> totalData(energy.TotalEnergyHistory.begin(), energy.TotalEnergyHistory.end());
-            
-            // Find max energy for y-axis limits
-            float maxEnergy = 1.0f;
-            if (!totalData.empty())
+            HeadingConfig config;
+            config.Separator = true;
+            Heading(ICON_MD_TIMELINE " Energy Conservation Status", HeadingLevel::H3, config);
+
+            float conservation = energy.GetConservationPercentage();
+            ImVec4 conservationColor;
+            const char* conservationLabel;
+            if (conservation > 95.0f)
             {
-                maxEnergy = *std::max_element(totalData.begin(), totalData.end());
-                maxEnergy = std::max(maxEnergy, 1.0f); // Ensure minimum scale
+                conservationColor = ImVec4(0.2f, 1.0f, 0.2f, 1.0f); // Green - excellent
+                conservationLabel = "Excellent";
             }
-            
-            ImPlot::PushStyleVar(ImPlotStyleVar_LineWeight, 2.0f);
-            
-            if (ImPlot::BeginPlot("##EnergyPlot", ImVec2(-1, 250), ImPlotFlags_NoLegend))
+            else if (conservation > 85.0f)
             {
-                // Setup axes
-                ImPlot::SetupAxes("Time (s)", "Energy (J)", ImPlotAxisFlags_AutoFit, ImPlotAxisFlags_AutoFit);
-                ImPlot::SetupAxisLimits(ImAxis_Y1, 0, maxEnergy * 1.1, ImPlotCond_Always);
+                conservationColor = ImVec4(1.0f, 0.8f, 0.2f, 1.0f); // Yellow - good
+                conservationLabel = "Good";
+            }
+            else
+            {
+                conservationColor = ImVec4(1.0f, 0.3f, 0.3f, 1.0f); // Red - poor
+                conservationLabel = "Poor";
+            }
+
+            LabelConfig energyConfig;
+            energyConfig.Color = conservationColor;
+            Label("Energy Conservation ", conservationLabel, energyConfig);
+            if (energy.InitialTotal > EPSILON)
+            {
+                ImGui::Separator();
                 
-                // Plot kinetic energy
-                if (energy.ShowKE && keData.size() == timeData.size())
+                LabelConfig metricsConfig;
+                metricsConfig.Disabled = false;
+                LabelValue("Initial Total ", energy.InitialTotal, "%.2f J", metricsConfig);
+                
+                LabelConfig lossConfig;
+                lossConfig.Color = energy.EnergyLoss > 0.1f ? ImVec4(1.0f, 0.5f, 0.3f, 1.0f) : ImVec4(0.7f, 0.7f, 0.7f, 1.0f);
+                LabelValue("Energy Lost ", energy.EnergyLoss, "%.2f J", lossConfig);
+            }
+        }
+        
+        ImGui::Spacing();
+        
+        {
+            if (!energy.TimeStamps.empty() && energy.TimeStamps.size() == energy.TotalEnergyHistory.size() && inSimulation)
+            {
+
+                std::vector<float> timeData(energy.TimeStamps.begin(), energy.TimeStamps.end());
+                std::vector<float> keData(energy.KineticEnergyHistory.begin(), energy.KineticEnergyHistory.end());
+                std::vector<float> peData(energy.PotentialEnergyHistory.begin(), energy.PotentialEnergyHistory.end());
+                std::vector<float> totalData(energy.TotalEnergyHistory.begin(), energy.TotalEnergyHistory.end());
+                
+                float maxEnergy = 1.0f;
+                if (!totalData.empty())
                 {
-                    ImPlot::PushStyleColor(ImPlotCol_Line, ImVec4(0.2f, 1.0f, 0.4f, 1.0f));
-                    ImPlot::PlotLine("Kinetic Energy", timeData.data(), keData.data(), 
-                                    static_cast<int>(timeData.size()));
-                    ImPlot::PopStyleColor();
+                    maxEnergy = *std::max_element(totalData.begin(), totalData.end());
+                    maxEnergy = std::max(maxEnergy, 1.0f);
                 }
                 
-                // Plot potential energy
-                if (energy.ShowPE && peData.size() == timeData.size())
-                {
-                    ImPlot::PushStyleColor(ImPlotCol_Line, ImVec4(0.4f, 0.6f, 1.0f, 1.0f));
-                    ImPlot::PlotLine("Potential Energy", timeData.data(), peData.data(), 
-                                    static_cast<int>(timeData.size()));
-                    ImPlot::PopStyleColor();
-                }
+                PlotConfig plotConfig;
+                plotConfig.Size             = ImVec2(-1, 350);
+                plotConfig.XAxis.Label      = "Time (s)";
+                plotConfig.YAxis.Label      = "Energy (J)";
+                plotConfig.XAxis.AutoFit    = true;
+                plotConfig.YAxis.AutoFit    = false;
+                plotConfig.YAxis.Min        = 0.0;
+                plotConfig.YAxis.Max        = maxEnergy * 1.1;
+                plotConfig.NoLegend         = false;
                 
-                // Plot total energy
-                if (energy.ShowTotal && totalData.size() == timeData.size())
+                if(BeginPlot("Energy Analysis", plotConfig))
                 {
-                    ImPlot::PushStyleColor(ImPlotCol_Line, ImVec4(1.0f, 0.8f, 0.2f, 1.0f));
-                    ImPlot::PlotLine("Total Energy", timeData.data(), totalData.data(), 
-                                    static_cast<int>(timeData.size()));
-                    ImPlot::PopStyleColor();
+                    SetupPlotAxes(plotConfig);
+                    if (energy.ShowKE && keData.size() == timeData.size())
+                    {
+                        PlotLineConfig keStyle;
+                        keStyle.Color = Colors::DarkSlateBlue;
+                        keStyle.Thickness = 1.5f;
+                        keStyle.MarkerStyle = ImPlotMarker_Circle;
+                        keStyle.MarkerSize = 1.5f;
+                        keStyle.Stems = true;
+                        PlotLine("Kinetic Energy", timeData, keData, keStyle);
+                    }
+                    
+                    if (energy.ShowPE && peData.size() == timeData.size())
+                    {
+                        PlotLineConfig peStyle;
+                        peStyle.Color = Colors::DarkMagenta;
+                        peStyle.Thickness = 1.5f;
+                        peStyle.MarkerStyle = ImPlotMarker_Square;
+                        peStyle.MarkerSize = 1.5f;
+                        peStyle.Stems = true;
+                        PlotLine("Potential Energy", timeData, peData, peStyle);
+                    }
+                    
+                    if (energy.ShowTotal && totalData.size() == timeData.size())
+                    {
+                        PlotLineConfig totalStyle;
+                        totalStyle.Color = Colors::DarkOrchid;
+                        totalStyle.Thickness = 2.0f;
+                        totalStyle.MarkerStyle = ImPlotMarker_Diamond;
+                        totalStyle.MarkerSize = 2.0f;
+                        totalStyle.Stems = true;
+                        PlotLine("Total Energy", timeData, totalData, totalStyle);
+                    }
+                    
+                    if(energy.InitialTotal > EPSILON)
+                    {
+                        PlotLineConfig refStyle;
+                        refStyle.Color = Colors::MediumSlateBlue;
+                        refStyle.Thickness = 1.5f;
+                        refStyle.Stems = true;
+                        PlotHLine("Initial Energy", energy.InitialTotal, refStyle);
+                    }
+                    
+                    EndPlot();
                 }
+            }
+            else
+            {
+                PlotConfig emptyConfig;
+                emptyConfig.Size = ImVec2(-1, 280);
+                emptyConfig.XAxis.Label = "Time (s)";
+                emptyConfig.YAxis.Label = "Energy (J)";
                 
-                ImPlot::EndPlot();
+                if(BeginPlot("Energy Analysis", emptyConfig))
+                {
+                    SetupPlotAxes(emptyConfig);
+                    EndPlot();
+                }
             }
-            
-            ImPlot::PopStyleVar();
-            
-            // Legend
-            ImGui::Spacing();
-            if (energy.ShowKE)
-            {
-                ImGui::ColorButton("##ke", ImVec4(0.2f, 1.0f, 0.4f, 1.0f), 
-                                  ImGuiColorEditFlags_NoTooltip, ImVec2(15, 15));
-                ImGui::SameLine();
-                ImGui::Text("Kinetic Energy");
-                ImGui::SameLine(200);
-            }
-            if (energy.ShowPE)
-            {
-                ImGui::ColorButton("##pe", ImVec4(0.4f, 0.6f, 1.0f, 1.0f), 
-                                  ImGuiColorEditFlags_NoTooltip, ImVec2(15, 15));
-                ImGui::SameLine();
-                ImGui::Text("Potential Energy");
-                ImGui::SameLine(200);
-            }
-            if (energy.ShowTotal)
-            {
-                ImGui::ColorButton("##total", ImVec4(1.0f, 0.8f, 0.2f, 1.0f), 
-                                  ImGuiColorEditFlags_NoTooltip, ImVec2(15, 15));
-                ImGui::SameLine();
-                ImGui::Text("Total Energy");
-            }
+
+            ToggleSwitch("Show Kinetic ", &energy.ShowKE, ToggleSwitchPresets::iOS());
+            ToggleSwitch("Show Potential ", &energy.ShowPE, ToggleSwitchPresets::iOS());
+            ToggleSwitch("Show Total ", &energy.ShowTotal, ToggleSwitchPresets::iOS());
         }
-        else
+        
+        ImGui::Spacing();
+        
         {
-            // Empty plot placeholder
-            if (ImPlot::BeginPlot("##EnergyPlot", ImVec2(-1, 250)))
-            {
-                ImPlot::SetupAxes("Time (s)", "Energy (J)");
-                ImPlot::EndPlot();
-            }
-            
-            ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), 
-                              "Start simulation to track energy data");
+            ButtonConfig btnConfig;
+            btnConfig.Size = ImVec2(150, 0);
+            btnConfig.Style = ButtonStyle::Primary;
+            btnConfig.Tooltip = "Clear all recorded energy data";
+
+            Button("Reset Data", btnConfig, [&](){
+                energy.Reset();
+            });
         }
         
-        ImGui::Spacing();
-        ImGui::Separator();
-        ImGui::Spacing();
-        
-        // Settings
-        ImGui::Text("Settings");
-        ImGui::SliderFloat("Gravity", &energy.GravityMagnitude, 0.0f, 20.0f, "%.2f m/s²");
-        
-        ImGui::Spacing();
-        
-        // Action buttons
-        if (ImGui::Button("Reset", ImVec2(120, 0)))
-        {
-            energy.Reset();
-        }
-        ImGui::Spacing();
-        
-        // Educational Info
-        ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.15f, 0.25f, 0.35f, 0.9f));
-        if (ImGui::BeginChild("EnergyInfo", ImVec2(-1, 100), true))
-        {
-            RenderPhysicsEquation("KE = ½mv²", "Kinetic Energy");
-            RenderPhysicsEquation("PE = mgh", "Gravitational Potential Energy");
-            ImGui::Spacing();
-            ImGui::TextWrapped("Law of Conservation of Energy: In a closed system, "
-                              "total energy remains constant. Energy can transform between "
-                              "kinetic and potential forms.");
-        }
-        ImGui::EndChild();
-        ImGui::PopStyleColor();
-        
+        ImGui::EndDisabled();
+
         ImGui::End();
         ImGui::PopStyleVar();
     }

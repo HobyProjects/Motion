@@ -16,19 +16,14 @@ namespace Motion
         auto& analysis = context.Physics->PhysicsAnalysis.ForceAnalysis;
         analysis.Forces.clear();
         
-        // Add gravity force
         ScenePhysics::ForceVector gravity;
         float mass = rb->PhysicsBody->getMass();
         gravity.Name = "Gravity";
         gravity.Force = glm::vec3(0.0f, -mass * 9.81f, 0.0f);
         gravity.Color = IM_COL32(100, 200, 255, 255);
-        analysis.Forces.push_back(gravity);
+        analysis.AddForce(gravity);
         
-        //TODO: Add applied forces from physics body
-
-        
-        // Update net force
-        analysis.UpdateNetForce();
+        analysis.Update();
     }
 
     void ForceAnalysis::OnRender(Scene* scene)
@@ -39,416 +34,388 @@ namespace Motion
         if (!context.Panels->ShowForceAnalysisPanel) return;
         
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(16, 16));
-        ImGui::SetNextWindowSize(ImVec2(16, 16), ImGuiCond_FirstUseEver);
         ImGui::Begin("Force Analysis", &context.Panels->ShowForceAnalysisPanel);
 
         if(!context.Simulation->InSimulation)
         {
-            ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Start simulation to record data...");
-            ImGui::End();
-            ImGui::PopStyleVar();
-            return;
-        }
-        
-        ImGui::TextColored(ImVec4(0.4f, 0.7f, 1.0f, 1.0f), "Force Vector Analysis");
-        ImGui::Separator();
-        ImGui::Spacing();
-        
-        auto& analysis = context.Physics->PhysicsAnalysis.ForceAnalysis;
-        
-        // ============================================================================
-        // VISUALIZATION SECTION
-        // ============================================================================
-        if (ImGui::CollapsingHeader("Visualization Options", ImGuiTreeNodeFlags_DefaultOpen))
-        {
-            ImGui::Indent(10);
-            
-            ImGui::Checkbox("Show Force Vectors", &analysis.ShowForceVectors);
-            ImGui::SameLine(); 
-            ShowPhysicsTooltip("Force Vectors", "Display arrows representing the magnitude and direction of forces acting on the object");
-            
-            ImGui::Checkbox("Show Net Force", &analysis.ShowNetForce);
-            ImGui::SameLine(); 
-            ShowPhysicsTooltip("Net Force", "The vector sum of all forces acting on the object (resultant force)");
-            
-            ImGui::Checkbox("Show Components", &analysis.ShowComponents);
-            ImGui::SameLine(); 
-            ShowPhysicsTooltip("Components", "Break down forces into X, Y, and Z components");
+            HeadingConfig config;
+            config.Separator = true;
+            Heading("Simulation Mode Required", HeadingLevel::H2, config);
+
+            LabelConfig lblConfig;
+            lblConfig.Wrapped = true;
+            LabelSimple("Force tracking is only available during active simulation. Please start the simulation to view force data.", lblConfig);
             
             ImGui::Spacing();
-            ImGui::SliderFloat("Vector Scale", &analysis.VectorScale, 0.1f, 5.0f, "%.2fx");
-            ImGui::SliderFloat("Arrow Size", &analysis.ArrowHeadSize, 0.05f, 0.5f);
+            ImGui::Spacing();
+            ImGui::Spacing();
+            ImGui::Separator();
+        }
+        
+        ImGui::BeginDisabled(!context.Simulation->InSimulation);
+        auto& analysis = context.Physics->PhysicsAnalysis.ForceAnalysis;
+        
+        {
+            HeadingConfig config;
+            config.Separator = true;
+            Heading(ICON_MD_AUTO_GRAPH " Visualization Options", HeadingLevel::H3, config);
             
-            ImGui::Unindent(10);
-        }
-        
-        ImGui::Spacing();
-        ImGui::Separator();
-        ImGui::Spacing();
-        
-        // ============================================================================
-        // NET FORCE SUMMARY
-        // ============================================================================
-        ImGui::TextColored(ImVec4(0.3f, 1.0f, 0.3f, 1.0f), "Net Force Summary");
-        ImGui::Spacing();
-        
-        ImGui::Text("Magnitude: %.2f N", analysis.NetForceMagnitude);
-        
-        if (analysis.NetForceMagnitude > EPSILON)
-        {
-            ImGui::Text("Direction: (%.2f, %.2f, %.2f)", 
-                    analysis.NetForce.x, analysis.NetForce.y, analysis.NetForce.z);
+            ToggleSwitch("Show Force Vectors", &analysis.ShowForceVectors, ToggleSwitchPresets::iOS());
+            if(ImGui::IsItemHovered()) ImGui::SetTooltip("Display arrows representing the magnitude and direction\nof forces acting on the object");
             
-            glm::vec3 unitDir = glm::normalize(analysis.NetForce);
-            ImGui::Text("Unit Vector: (%.3f, %.3f, %.3f)", 
-                    unitDir.x, unitDir.y, unitDir.z);
-        }
-        else
-        {
-            ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), 
-                            "Object is in equilibrium (ΣF = 0)");
+            ToggleSwitch("Show Net Force", &analysis.ShowNetForce, ToggleSwitchPresets::iOS());
+            if(ImGui::IsItemHovered()) ImGui::SetTooltip("The vector sum of all forces acting on the object\n(resultant force)");
+            
+            ToggleSwitch("Show Components", &analysis.ShowComponents, ToggleSwitchPresets::iOS());
+            if(ImGui::IsItemHovered()) ImGui::SetTooltip("Break down forces into X, Y, and Z components");
         }
         
         ImGui::Spacing();
-        ImGui::Separator();
+        
+        {
+            HeadingConfig config;
+            config.Separator = true;
+            Heading(ICON_MD_ROCKET_LAUNCH " Net Force Summary", HeadingLevel::H3, config);
+            
+            LabelConfig magConfig;
+            LabelValue("Magnitude", analysis.NetForceMagnitude, "%.2f N", magConfig);
+            
+            if (analysis.NetForceMagnitude > EPSILON)
+            {
+                LabelConfig dirConfig;
+                LabelValue("Direction", analysis.NetForce, "%.2f", dirConfig);
+
+                glm::vec3 unitDir = glm::normalize(analysis.NetForce);
+                LabelConfig unitConfig;
+                LabelValue("Unit Vector", unitDir, "%.2f", unitConfig);
+            }
+            else
+            {
+                LabelSimple("Equilibrium State! ΣF = 0");
+            }
+        }
+        
         ImGui::Spacing();
         
-        // ============================================================================
-        // ACTIVE FORCES LIST
-        // ============================================================================
-        ImGui::Text("Active Forces (%zu)", analysis.Forces.size());    
-        if (ImGui::BeginChild("ForcesList", ImVec2(0, 250), true))
         {
+            HeadingConfig config;
+            config.Separator = true;
+            std::string headerText = fmt::format(ICON_MD_ROCKET " Active Forces ({})", analysis.Forces.size());
+            Heading(headerText.c_str(), HeadingLevel::H3, config);
+
             for (size_t i = 0; i < analysis.Forces.size(); ++i)
             {
                 auto& force = analysis.Forces[i];
                 
                 ImGui::PushID(static_cast<int>(i));
-                ImGui::ColorButton("##color", ImGui::ColorConvertU32ToFloat4(force.Color), 
-                                ImGuiColorEditFlags_NoTooltip, ImVec2(20, 20));
-                ImGui::SameLine();
-                
-                ImGui::Checkbox(force.Name.c_str(), &force.IsActive);
-                
-                if (force.IsActive)
+                std::string activeForceName = std::format("Force {}: {}", i, force.Name);
+                if(ImGui::CollapsingHeader(activeForceName.c_str()))
                 {
-                    ImGui::Indent(30);
-                    ImGui::Text("Magnitude: %.2f N", force.GetMagnitude());
-                    ImGui::Text("Force: (%.2f, %.2f, %.2f) N", 
-                            force.Force.x, force.Force.y, force.Force.z);
-                    
-                    if (analysis.ShowComponents && force.GetMagnitude() > EPSILON)
+                    ImGui::BeginGroup();
                     {
-                        ImGui::Text("Components:");
-                        ImGui::BulletText("Fx: %.2f N", force.Force.x);
-                        ImGui::BulletText("Fy: %.2f N", force.Force.y);
-                        ImGui::BulletText("Fz: %.2f N", force.Force.z);
+                        ImVec4 forceColor = ImGui::ColorConvertU32ToFloat4(force.Color);
+
+                        ColorEditConfig colorConfig;
+                        colorConfig.Flags = ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_NoAlpha;
+                        ColorEdit4("Force Display Color", forceColor, colorConfig, [&](glm::vec4 color){
+                            force.Color = ImGui::ColorConvertFloat4ToU32(ImVec4(color.r, color.g, color.b, color.a));
+                        });
+
+                        ToggleSwitch("Active", &force.IsActive, ToggleSwitchPresets::iOS());
+                        
+                        if (force.IsActive)
+                        {
+                            ImGui::Spacing();
+                            LabelConfig detailConfig;
+                            LabelValue("Magnitude", force.GetMagnitude(), "%.2f N", detailConfig);
+                            LabelValue("Force Vector", force.Force, "%.2f N", detailConfig);
+                            
+                            if (analysis.ShowComponents && force.GetMagnitude() > EPSILON)
+                            {
+                                ImGui::Spacing();
+                                ImGui::TextDisabled("Components:");
+                                ImGui::Indent(20);
+                                ImGui::BulletText("Fx: %.2f N", force.Force.x);
+                                ImGui::BulletText("Fy: %.2f N", force.Force.y);
+                                ImGui::BulletText("Fz: %.2f N", force.Force.z);
+                                ImGui::Unindent(20);
+                            }
+                        }
                     }
-                    ImGui::Unindent(30);
+                    ImGui::EndGroup();
                 }
                 
                 ImGui::PopID();
-                
-                if (i < analysis.Forces.size() - 1)
-                    ImGui::Separator();
+                if (i < analysis.Forces.size() - 1) ImGui::Spacing();
             }
         }
-        ImGui::EndChild();
         
         ImGui::Spacing();
-        ImGui::Separator();
-        ImGui::Spacing();
-        
-        // ============================================================================
-        // APPLY FORCES SECTION
-        // ============================================================================
-        if (ImGui::CollapsingHeader("Apply Forces & Impulses", ImGuiTreeNodeFlags_DefaultOpen))
+
         {
-            ImGui::Indent(10);
+            HeadingConfig config;
+            config.Separator = true;
+            Heading(ICON_MD_GESTURE " Apply Forces & Impulses", HeadingLevel::H3, config);
             
-            // Get selected entity
             auto selectedEntity = context.Simulation->SelectedEntity;
             if (selectedEntity == entt::null)
             {
-                ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), 
-                                "Select an object in the scene to apply forces");
-                ImGui::Unindent(10);
+                HeadingConfig config;
+                config.Separator = true;
+                Heading(ICON_MD_INFO_OUTLINE " Valid Entity Required!", HeadingLevel::H2, config);
+
+                LabelConfig lblConfig;
+                lblConfig.Wrapped = true;
+                LabelSimple("Select an object in the scene to apply forces.");
+        
                 ImGui::End();
                 ImGui::PopStyleVar();
                 return;
             }
             
             auto* rb = context.Entities->Registry.try_get<RigidBodyComponent>(selectedEntity);
-            if (!rb || !rb->PhysicsBody)
+            if (!rb)
             {
-                ImGui::TextColored(ImVec4(1.0f, 0.3f, 0.3f, 1.0f), 
-                                "Selected object doesn't have a physics body!");
-                ImGui::Unindent(10);
+                HeadingConfig config;
+                config.Separator = true;
+                Heading(ICON_MD_INFO_OUTLINE " Invalid Entity!", HeadingLevel::H2, config);
+
+                LabelConfig lblConfig;
+                lblConfig.Wrapped = true;
+                LabelSimple("Selected object has no RigidBody component. Please select a valid physics object.");
+
                 ImGui::End();
                 ImGui::PopStyleVar();
                 return;
             }
             
-            auto* tag = context.Entities->Registry.try_get<TagComponent>(selectedEntity);
-            ImGui::TextColored(ImVec4(0.4f, 0.7f, 1.0f, 1.0f), 
-                            "Target: %s", tag ? tag->Tag.c_str() : "Unknown");
-            
-            ImGui::Spacing();
             ImGui::Separator();
             ImGui::Spacing();
-            
-            // Force/Impulse type selection
-            static int forceType = 0; // 0 = Force, 1 = Impulse
-            ImGui::Text("Application Type:");
-            ImGui::RadioButton("Continuous Force", &forceType, 0);
-            ImGui::SameLine();
-            ShowPhysicsTooltip("Continuous Force", 
-                "Applied every frame while active\n"
-                "F = ma (Force = mass × acceleration)\n"
-                "Good for: Wind, thrust, sustained pushes");
-            
-            ImGui::SameLine(0, 20);
-            ImGui::RadioButton("Instant Impulse", &forceType, 1);
-            ImGui::SameLine();
-            ShowPhysicsTooltip("Instant Impulse",
-                "Applied once, instant velocity change\n"
-                "J = mΔv (Impulse = mass × change in velocity)\n"
-                "Good for: Collisions, explosions, kicks");
+
+
+            static int forceType = 0;
+            ComboBoxConfig forceTypeConfig;
+            forceTypeConfig.Tooltip = "Select the Force Type";
+            ComboBox("Force Type", forceType, { "Force", "Impulse" }, forceTypeConfig);
             
             ImGui::Spacing();
-            ImGui::Separator();
-            ImGui::Spacing();
-            
-            // Direction controls
-            static glm::vec3 forceDirection(0.0f, 1.0f, 0.0f);
-            ImGui::Text("Direction:");
-            ImGui::SetNextItemWidth(280.0f);
-            ImGui::DragFloat3("##force_dir", &forceDirection.x, 0.01f, -1.0f, 1.0f, "%.2f");
-            ImGui::SameLine();
-            if (ImGui::Button("Normalize"))
             {
-                if (glm::length(forceDirection) > EPSILON)
-                    forceDirection = glm::normalize(forceDirection);
-            }
-            ImGui::SameLine();
-            ShowPhysicsTooltip("Direction", "The direction in which the force/impulse will be applied");
-            
-            // Direction presets
-            ImGui::Spacing();
-            ImGui::Text("Quick Directions:");
-            ImGui::Indent(10);
-            if (ImGui::Button("Up (Y+)")) forceDirection = glm::vec3(0, 1, 0);
-            ImGui::SameLine();
-            if (ImGui::Button("Down (Y-)")) forceDirection = glm::vec3(0, -1, 0);
-            ImGui::SameLine();
-            if (ImGui::Button("Right (X+)")) forceDirection = glm::vec3(1, 0, 0);
-            ImGui::SameLine();
-            if (ImGui::Button("Left (X-)")) forceDirection = glm::vec3(-1, 0, 0);
-            
-            if (ImGui::Button("Forward (Z+)")) forceDirection = glm::vec3(0, 0, 1);
-            ImGui::SameLine();
-            if (ImGui::Button("Back (Z-)")) forceDirection = glm::vec3(0, 0, -1);
-            ImGui::Unindent(10);
-            
-            ImGui::Spacing();
-            ImGui::Separator();
-            ImGui::Spacing();
-            
-            // Magnitude control
-            static float forceMagnitude = 10.0f;
-            ImGui::Text("Magnitude:");
-            ImGui::SetNextItemWidth(350.0f);
-            
-            if (forceType == 0)
-            {
-                ImGui::SliderFloat("##force_mag", &forceMagnitude, 0.1f, 1000.0f, 
-                                "%.2f N", ImGuiSliderFlags_Logarithmic);
-                ImGui::SameLine();
-                ShowPhysicsTooltip("Force Magnitude", 
-                    "Strength of the force in Newtons (N)\n\n"
-                    "Reference values:\n"
-                    "• 1 N = ~100g weight\n"
-                    "• 10 N = ~1kg weight\n"
-                    "• 100 N = Strong push");
-            }
-            else
-            {
-                ImGui::SliderFloat("##impulse_mag", &forceMagnitude, 0.1f, 1000.0f, 
-                                "%.2f N·s", ImGuiSliderFlags_Logarithmic);
-                ImGui::SameLine();
-                ShowPhysicsTooltip("Impulse Magnitude",
-                    "Strength of the impulse in Newton-seconds (N·s)\n\n"
-                    "Reference values:\n"
-                    "• 1 N·s = Gentle tap\n"
-                    "• 10 N·s = Moderate hit\n"
-                    "• 100 N·s = Strong impact");
-            }
-            
-            // Magnitude presets
-            ImGui::Spacing();
-            ImGui::Text("Preset Magnitudes:");
-            ImGui::Indent(10);
-            if (ImGui::Button("Weak (1)")) forceMagnitude = 1.0f;
-            ImGui::SameLine();
-            if (ImGui::Button("Light (5)")) forceMagnitude = 5.0f;
-            ImGui::SameLine();
-            if (ImGui::Button("Medium (10)")) forceMagnitude = 10.0f;
-            ImGui::SameLine();
-            if (ImGui::Button("Strong (50)")) forceMagnitude = 50.0f;
-            ImGui::SameLine();
-            if (ImGui::Button("Very Strong (100)")) forceMagnitude = 100.0f;
-            ImGui::Unindent(10);
-            
-            ImGui::Spacing();
-            ImGui::Separator();
-            ImGui::Spacing();
-            
-            // Application point
-            static bool useLocalPosition = false;
-            static glm::vec3 applicationPoint(0.0f);
-            
-            ImGui::Text("Application Point:");
-            ImGui::Checkbox("Use Local Position", &useLocalPosition);
-            ImGui::SameLine();
-            ShowPhysicsTooltip("Local vs World",
-                "Local: Relative to object's center (moves with object)\n"
-                "World: Absolute position in world space (fixed location)\n\n"
-                "Applying force off-center creates torque (rotation)");
-            
-            ImGui::SetNextItemWidth(280.0f);
-            ImGui::DragFloat3("##app_point", &applicationPoint.x, 0.1f, -100.0f, 100.0f, "%.2f");
-            ImGui::SameLine();
-            if (ImGui::Button("Reset##point"))
-                applicationPoint = glm::vec3(0.0f);
-            
-            ImGui::Spacing();
-            ImGui::Separator();
-            ImGui::Spacing();
-            
-            // Application mode
-            static int applicationMode = 0; // 0 = Linear, 1 = Torque, 2 = At Point
-            ImGui::Text("Application Mode:");
-            ImGui::RadioButton("Linear (Center of Mass)", &applicationMode, 0);
-            ImGui::SameLine();
-            ShowPhysicsTooltip("Linear Force", "Applied at center of mass, causes only translation (no rotation)");
-            
-            ImGui::RadioButton("Torque (Rotational)", &applicationMode, 1);
-            ImGui::SameLine();
-            ShowPhysicsTooltip("Torque", "Causes rotation around the direction vector as axis");
-            
-            ImGui::RadioButton("At Specific Point", &applicationMode, 2);
-            ImGui::SameLine();
-            ShowPhysicsTooltip("Force at Point", "Applied at specified point, can cause both translation and rotation");
-            
-            ImGui::Spacing();
-            ImGui::Separator();
-            ImGui::Spacing();
-            
-            // Apply buttons
-            ImVec4 buttonColor = forceType == 0 ? 
-                ImVec4(0.3f, 0.7f, 0.3f, 1.0f) : ImVec4(1.0f, 0.6f, 0.0f, 1.0f);
-            
-            ImGui::PushStyleColor(ImGuiCol_Button, buttonColor);
-            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, 
-                ImVec4(buttonColor.x * 1.2f, buttonColor.y * 1.2f, buttonColor.z * 1.2f, 1.0f));
-            ImGui::PushStyleColor(ImGuiCol_ButtonActive,
-                ImVec4(buttonColor.x * 0.8f, buttonColor.y * 0.8f, buttonColor.z * 0.8f, 1.0f));
-            
-            const char* buttonText = forceType == 0 ? "Apply Force" : "Apply Impulse";
-            if (ImGui::Button(buttonText, ImVec2(-1, 40)))
-            {
-                glm::vec3 vector = forceDirection * forceMagnitude;
-                reactphysics3d::Vector3 rp3dVector(vector.x, vector.y, vector.z);
+                static glm::vec3 forceDirection(1.0f, 0.0f, 0.0f);
+                static float forceMagnitude = 10.0f;
                 
-                if (forceType == 0) // Continuous Force
+                HeadingConfig config;
+                config.Separator = true;
+                Heading("Direction Vector", HeadingLevel::H3, config);
+                
+                DragFloatConfig dirConfig;
+                dirConfig.Speed = 0.1f;
+                dirConfig.MinV = -1.0f;
+                dirConfig.MaxV = 1.0f;
+                dirConfig.Fmt = "%.2f";
+                DragFloat3("Direction", forceDirection, dirConfig);
+                
+                ImGui::SameLine();
+                if(ImGui::Button("Normalize"))
                 {
-                    if (applicationMode == 0) // Linear
-                    {
-                        rb->PhysicsBody->applyWorldForceAtCenterOfMass(rp3dVector);
-                        MOTION_INFO("Applied force: ({:.2f}, {:.2f}, {:.2f}) N", 
-                                vector.x, vector.y, vector.z);
-                    }
-                    else if (applicationMode == 1) // Torque
-                    {
-                        rb->PhysicsBody->applyWorldTorque(rp3dVector);
-                        MOTION_INFO("Applied torque: ({:.2f}, {:.2f}, {:.2f}) N·m", 
-                                vector.x, vector.y, vector.z);
-                    }
-                    else // At Point
-                    {
-                        reactphysics3d::Vector3 point(applicationPoint.x, applicationPoint.y, applicationPoint.z);
-                        if (useLocalPosition)
-                            rb->PhysicsBody->applyWorldForceAtLocalPosition(rp3dVector, point);
-                        else
-                            rb->PhysicsBody->applyWorldForceAtWorldPosition(rp3dVector, point);
-                        
-                        MOTION_INFO("Applied force at point ({:.2f}, {:.2f}, {:.2f})", 
-                                applicationPoint.x, applicationPoint.y, applicationPoint.z);
-                    }
+                    float length = glm::length(forceDirection);
+                    if(length > EPSILON)
+                        forceDirection = glm::normalize(forceDirection);
                 }
-                else // Instant Impulse
+                
+                
+                ImGui::TextDisabled("Quick Directions:");
+                ImGui::BeginGroup();
                 {
-                    if (applicationMode == 0) // Linear
+                    if(ImGui::Button("+X")) forceDirection = glm::vec3(1, 0, 0);
+                    ImGui::SameLine();
+                    if(ImGui::Button("-X")) forceDirection = glm::vec3(-1, 0, 0);
+                    ImGui::SameLine();
+                    if(ImGui::Button("+Y")) forceDirection = glm::vec3(0, 1, 0);
+                    ImGui::SameLine();
+                    if(ImGui::Button("-Y")) forceDirection = glm::vec3(0, -1, 0);
+                    ImGui::SameLine();
+                    if(ImGui::Button("+Z")) forceDirection = glm::vec3(0, 0, 1);
+                    ImGui::SameLine();
+                    if(ImGui::Button("-Z")) forceDirection = glm::vec3(0, 0, -1);
+                }
+                ImGui::EndGroup();
+                
+
+                ImGui::TextColored(ImVec4(0.8f, 0.9f, 1.0f, 1.0f), "Magnitude");
+                Heading(ICON_MD_FLASH_ON " Magnitude", HeadingLevel::H3, config);
+                if(ImGui::IsItemHovered())
+                {
+                    ImGui::BeginTooltip();
+                    if(forceType == 0)
                     {
-                        reactphysics3d::Vector3 currentVel = rb->PhysicsBody->getLinearVelocity();
-                        reactphysics3d::Vector3 newVel = currentVel + rp3dVector / rb->PhysicsBody->getMass();
-                        rb->PhysicsBody->setLinearVelocity(newVel);
-                        MOTION_INFO("Applied impulse: ({:.2f}, {:.2f}, {:.2f}) N·s", 
-                                vector.x, vector.y, vector.z);
+                        ImGui::Text("Force examples:");
+                        ImGui::BulletText("1 N = Weight of a small apple");
+                        ImGui::BulletText("10 N = Gentle push");
+                        ImGui::BulletText("100 N = Strong push");
                     }
-                    else if (applicationMode == 1) // Angular Impulse
+                    else
                     {
-                        reactphysics3d::Vector3 currentAngVel = rb->PhysicsBody->getAngularVelocity();
-                        // Simplified angular impulse (you may need proper inertia tensor calculation)
-                        rb->PhysicsBody->setAngularVelocity(currentAngVel + rp3dVector * 0.1f);
-                        MOTION_INFO("Applied angular impulse: ({:.2f}, {:.2f}, {:.2f}) N·m·s", 
-                                vector.x, vector.y, vector.z);
+                        ImGui::Text("Impulse examples:");
+                        ImGui::BulletText("1 N·s = Gentle tap");
+                        ImGui::BulletText("10 N·s = Moderate hit");
+                        ImGui::BulletText("100 N·s = Strong impact");
+                    }
+                    ImGui::EndTooltip();
+                }
+                ImGui::Spacing();
+
+
+                DragFloatConfig magConfig;
+                magConfig.Speed = 1.0f;
+                magConfig.MinV = 0.0f;
+                magConfig.MaxV = 1000.0f;
+                magConfig.Fmt = forceType == 0 ? "%.1f N" : "%.1f N·s";
+                DragFloat("Magnitude Value", &forceMagnitude, magConfig);
+                
+                ImGui::Spacing();
+                ImGui::TextDisabled("Preset Magnitudes:");
+                ImGui::BeginGroup();
+                {
+                    if(ImGui::Button("Weak (1)")) forceMagnitude = 1.0f;
+                    ImGui::SameLine();
+                    if(ImGui::Button("Light (5)")) forceMagnitude = 5.0f;
+                    ImGui::SameLine();
+                    if(ImGui::Button("Medium (10)")) forceMagnitude = 10.0f;
+                    ImGui::SameLine();
+                    if(ImGui::Button("Strong (50)")) forceMagnitude = 50.0f;
+                    ImGui::SameLine();
+                    if(ImGui::Button("Very Strong (100)")) forceMagnitude = 100.0f;
+                }
+                ImGui::EndGroup();
+                ImGui::Spacing();
+                
+
+                static bool useLocalPosition = false;
+                static glm::vec3 applicationPoint(0.0f);
+                static int applicationMode = 0; // 0 = Linear, 1 = Torque, 2 = At Point
+                Heading("Application Point", HeadingLevel::H3, config);          
+                ToggleSwitch("Use Local Position", &useLocalPosition, ToggleSwitchPresets::iOS());
+                if(ImGui::IsItemHovered())
+                {
+                    ImGui::BeginTooltip();
+                    ImGui::Text("Local: Relative to object's center (moves with object)");
+                    ImGui::Text("World: Absolute position in world space (fixed location)");
+                    ImGui::Separator();
+                    ImGui::Text("Applying force off-center creates torque (rotation)");
+                    ImGui::EndTooltip();
+                }
+                
+                ImGui::Spacing();
+                
+                DragFloatConfig pointConfig;
+                pointConfig.Speed = 0.1f;
+                pointConfig.MinV = -100.0f;
+                pointConfig.MaxV = 100.0f;
+                pointConfig.Fmt = "%.2f";
+                DragFloat3("Point", applicationPoint, pointConfig);
+                
+                ImGui::SameLine();
+                if(ImGui::Button("Reset##point"))
+                    applicationPoint = glm::vec3(0.0f);
+                
+                ImGui::Spacing();
+                
+
+                Heading("Application Mode", HeadingLevel::H3, config);  
+                ImGui::Spacing();
+                
+                ImGui::RadioButton("Linear (Center of Mass)", &applicationMode, 0);
+                if(ImGui::IsItemHovered()) ImGui::SetTooltip("Applied at center of mass\nCauses only translation (no rotation)");
+                
+                ImGui::RadioButton("Torque (Rotational)", &applicationMode, 1);
+                if(ImGui::IsItemHovered()) ImGui::SetTooltip("Causes rotation around the direction vector as axis");
+                
+                ImGui::RadioButton("At Specific Point", &applicationMode, 2);
+                if(ImGui::IsItemHovered()) ImGui::SetTooltip("Applied at specified point\nCan cause both translation and rotation");
+                
+                ImGui::Spacing();
+
+                ImVec4 buttonColor = forceType == 0 ? ImVec4(0.3f, 0.7f, 0.3f, 1.0f) : ImVec4(1.0f, 0.6f, 0.2f, 1.0f);   
+                ImGui::PushStyleColor(ImGuiCol_Button, buttonColor);
+                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(buttonColor.x * 1.2f, buttonColor.y * 1.2f, buttonColor.z * 1.2f, 1.0f));
+                ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(buttonColor.x * 0.8f, buttonColor.y * 0.8f, buttonColor.z * 0.8f, 1.0f));
+                 
+                const char* buttonText = forceType == 0 ? "Apply Force" : "Apply Impulse";
+                if (ImGui::Button(buttonText, ImVec2(-1, 45)))
+                {
+                    glm::vec3 vector = forceDirection * forceMagnitude;
+                    reactphysics3d::Vector3 rp3dVector(vector.x, vector.y, vector.z);
+                    
+                    if (forceType == 0) 
+                    {
+                        if (applicationMode == 0)
+                        {
+                            rb->PhysicsBody->applyWorldForceAtCenterOfMass(rp3dVector);
+                            MOTION_INFO("Applied force: ({:.2f}, {:.2f}, {:.2f}) N", 
+                                    vector.x, vector.y, vector.z);
+                        }
+                        else if (applicationMode == 1) 
+                        {
+                            rb->PhysicsBody->applyWorldTorque(rp3dVector);
+                            MOTION_INFO("Applied torque: ({:.2f}, {:.2f}, {:.2f}) N·m", 
+                                    vector.x, vector.y, vector.z);
+                        }
+                        else 
+                        {
+                            reactphysics3d::Vector3 point(applicationPoint.x, applicationPoint.y, applicationPoint.z);
+                            if (useLocalPosition)
+                                rb->PhysicsBody->applyWorldForceAtLocalPosition(rp3dVector, point);
+                            else
+                                rb->PhysicsBody->applyWorldForceAtWorldPosition(rp3dVector, point);
+                            
+                            MOTION_INFO("Applied force at point ({:.2f}, {:.2f}, {:.2f})", 
+                                    applicationPoint.x, applicationPoint.y, applicationPoint.z);
+                        }
                     }
                     else 
                     {
-                        // Calculate impulse components
-                        reactphysics3d::Vector3 point(applicationPoint.x, applicationPoint.y, applicationPoint.z);
-                        reactphysics3d::Vector3 centerOfMass = rb->PhysicsBody->getTransform().getPosition();
-                        reactphysics3d::Vector3 r = useLocalPosition ? 
-                            rb->PhysicsBody->getTransform().getOrientation() * point : 
-                            point - centerOfMass;
-                        
-                        // Linear impulse
-                        reactphysics3d::Vector3 linearImpulse = rp3dVector / rb->PhysicsBody->getMass();
-                        rb->PhysicsBody->setLinearVelocity(
-                            rb->PhysicsBody->getLinearVelocity() + linearImpulse);
-                        
-                        // Angular impulse (torque = r × F)
-                        reactphysics3d::Vector3 torqueImpulse = r.cross(rp3dVector);
-                        rb->PhysicsBody->setAngularVelocity(
-                            rb->PhysicsBody->getAngularVelocity() + torqueImpulse * 0.01f);
-                        
-                        MOTION_INFO("Applied impulse at point");
+                        if (applicationMode == 0)
+                        {
+                            reactphysics3d::Vector3 currentVel = rb->PhysicsBody->getLinearVelocity();
+                            reactphysics3d::Vector3 newVel = currentVel + rp3dVector / rb->PhysicsBody->getMass();
+                            rb->PhysicsBody->setLinearVelocity(newVel);
+                            MOTION_INFO("Applied impulse: ({:.2f}, {:.2f}, {:.2f}) N·s", 
+                                    vector.x, vector.y, vector.z);
+                        }
+                        else if (applicationMode == 1) 
+                        {
+                            reactphysics3d::Vector3 currentAngVel = rb->PhysicsBody->getAngularVelocity();
+                            rb->PhysicsBody->setAngularVelocity(currentAngVel + rp3dVector * 0.1f);
+                            MOTION_INFO("Applied angular impulse: ({:.2f}, {:.2f}, {:.2f}) N·m·s", 
+                                    vector.x, vector.y, vector.z);
+                        }
+                        else 
+                        {
+                            reactphysics3d::Vector3 point(applicationPoint.x, applicationPoint.y, applicationPoint.z);
+                            reactphysics3d::Vector3 centerOfMass = rb->PhysicsBody->getTransform().getPosition();
+                            reactphysics3d::Vector3 r = useLocalPosition ? 
+                                rb->PhysicsBody->getTransform().getOrientation() * point : 
+                                point - centerOfMass;
+                            
+                            reactphysics3d::Vector3 linearImpulse = rp3dVector / rb->PhysicsBody->getMass();
+                            rb->PhysicsBody->setLinearVelocity(
+                                rb->PhysicsBody->getLinearVelocity() + linearImpulse);
+                            
+                            reactphysics3d::Vector3 torqueImpulse = r.cross(rp3dVector);
+                            rb->PhysicsBody->setAngularVelocity(
+                                rb->PhysicsBody->getAngularVelocity() + torqueImpulse * 0.01f);
+                            
+                            MOTION_INFO("Applied impulse at point");
+                        }
                     }
                 }
+                
+                ImGui::PopStyleColor(3);
             }
-            
-            ImGui::PopStyleColor(3);
-            
-            ImGui::Spacing();
-            
-            // Info about selected mode
-            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.7f, 0.7f, 0.7f, 1.0f));
-            if (forceType == 0)
-            {
-                ImGui::TextWrapped("Note: Continuous forces are applied every physics step while the simulation runs. "
-                                "They will continue until you stop the simulation or the object leaves the force field.");
-            }
-            else
-            {
-                ImGui::TextWrapped("Note: Impulses provide an instant change in velocity. "
-                                "Click the button each time you want to apply an impulse.");
-            }
-            ImGui::PopStyleColor();
-            
-            ImGui::Unindent(10);
+                
         }
         
+        ImGui::EndDisabled();
         ImGui::End();
         ImGui::PopStyleVar();
     }

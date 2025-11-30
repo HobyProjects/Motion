@@ -24,134 +24,105 @@ namespace Motion
         auto& context = scene->GetContext();
         if (!context.Panels->ShowAccelerationPanel) return;
         
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(16, 16));
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(20, 20));
         ImGui::Begin("Acceleration Analysis", &context.Panels->ShowAccelerationPanel);
+        bool inSimulation = context.Simulation->InSimulation;
 
-        if(!context.Simulation->InSimulation)
+        if(!inSimulation)
         {
-            ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Start simulation to record data...");
-            ImGui::End();
-            ImGui::PopStyleVar();
-            return;
+            HeadingConfig config;
+            config.Separator = true;
+            Heading("Simulation Mode Required", HeadingLevel::H2, config);
+
+            LabelConfig lblConfig;
+            lblConfig.Wrapped = true;
+            LabelSimple("Acceleration tracking is only available during active simulation. Please start the simulation to view acceleration data.", lblConfig);
         }
-        
-        ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.2f, 1.0f), "Acceleration Tracking");
-        ImGui::Separator();
-        ImGui::Spacing();
-        
+
+        ImGui::BeginDisabled(!inSimulation);
         auto& accel = context.Physics->PhysicsAnalysis.Acceleration;
-        
-        // Current Acceleration
-        ImGui::Text("Current Acceleration");
-        ImGui::Text("Magnitude: %.2f m/s²", accel.AccelerationMagnitude);
-        ImGui::Text("Direction: (%.2f, %.2f, %.2f)", 
-                   accel.CurrentAcceleration.x, accel.CurrentAcceleration.y, accel.CurrentAcceleration.z);
-        
-        ImGui::Spacing();
-        ImGui::Separator();
-        ImGui::Spacing();
-        
-        // Visualization
-        ImGui::Text("Visualization");
-        ImGui::Checkbox("Show Acceleration Vector", &accel.ShowVector);
-        ImGui::SliderFloat("Vector Scale", &accel.VectorScale, 0.1f, 5.0f);
-        ImGui::SameLine();
-        ImGui::ColorEdit4("Vector Color", (float*)&accel.VectorColor, 
-                         ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel);
+
+        {   
+            HeadingConfig config;
+            config.Separator = true;
+            Heading(ICON_MD_SPEED " Current Acceleration Vector", HeadingLevel::H3, config);
+            LabelValue("Magnitude", accel.AccelerationMagnitude, "%.2f m/s²");
+            LabelValue("Direction", accel.CurrentAcceleration, "%.2f");
+        }
         
         ImGui::Spacing();
-        ImGui::Separator();
-        ImGui::Spacing();
-        
-        // Acceleration Graph using ImPlot
-        ImGui::Text("Acceleration Magnitude Over Time");
-        
-        if (!accel.AccelerationHistory.empty() && !accel.TimeStamps.empty())
+
         {
-            // Calculate acceleration magnitudes
-            std::vector<float> timeData(accel.TimeStamps.begin(), accel.TimeStamps.end());
-            std::vector<float> magnitudeData;
-            magnitudeData.reserve(accel.AccelerationHistory.size());
-            
-            for (const auto& accelVec : accel.AccelerationHistory)
+            if (!accel.AccelerationHistory.empty() && !accel.TimeStamps.empty() && inSimulation)
             {
-                magnitudeData.push_back(glm::length(accelVec));
-            }
-            
-            // Ensure data sizes match
-            size_t dataSize = std::min(timeData.size(), magnitudeData.size());
-            
-            if (dataSize > 1)
-            {
-                // Find max acceleration for y-axis scaling
-                float maxAccel = *std::max_element(magnitudeData.begin(), magnitudeData.end());
-                maxAccel = std::max(maxAccel, 1.0f); // Ensure minimum scale
+                std::vector<float> timeData(accel.TimeStamps.begin(), accel.TimeStamps.end());
+                std::vector<float> magnitudeData;
+                magnitudeData.reserve(accel.AccelerationHistory.size());
                 
-                ImPlot::PushStyleVar(ImPlotStyleVar_LineWeight, 2.5f);
+                for (const auto& accelVec : accel.AccelerationHistory)
+                    magnitudeData.push_back(glm::length(accelVec));
                 
-                if (ImPlot::BeginPlot("##AccelPlot", ImVec2(-1, 200), ImPlotFlags_NoLegend))
+                size_t dataSize = std::min(timeData.size(), magnitudeData.size());
+                
+                if (dataSize > 1)
                 {
-                    // Setup axes
-                    ImPlot::SetupAxes("Time (s)", "Acceleration (m/s²)", 
-                                     ImPlotAxisFlags_AutoFit, ImPlotAxisFlags_AutoFit);
-                    ImPlot::SetupAxisLimits(ImAxis_Y1, 0, maxAccel * 1.1, ImPlotCond_Always);
+                    float maxAccel = *std::max_element(magnitudeData.begin(), magnitudeData.end());
+                    maxAccel = std::max(maxAccel, 1.0f);
                     
-                    // Plot acceleration magnitude
-                    ImPlot::PushStyleColor(ImPlotCol_Line, ImVec4(1.0f, 0.8f, 0.2f, 1.0f));
-                    ImPlot::PlotLine("Acceleration", timeData.data(), magnitudeData.data(), 
-                                    static_cast<int>(dataSize));
-                    ImPlot::PopStyleColor();
+                    PlotConfig plotConfig;
+                    plotConfig.Size             = ImVec2(-1, 350);
+                    plotConfig.XAxis.Label      = "Time (s)";
+                    plotConfig.YAxis.Label      = "Acceleration (m/s²)";
+                    plotConfig.XAxis.AutoFit    = true;
+                    plotConfig.YAxis.AutoFit    = false;
+                    plotConfig.YAxis.Min        = 0.0;
+                    plotConfig.YAxis.Max        = maxAccel * 1.1;
+                    plotConfig.Crosshairs       = true;
+                    plotConfig.NoLegend         = false;
                     
-                    ImPlot::EndPlot();
+                    PlotLineConfig lineStyle;
+                    lineStyle.Color         = Colors::MaterialOrange400; 
+                    lineStyle.Thickness     = 2.5f;
+                    lineStyle.Stems         = true;
+                    
+                    if(BeginPlot("Acceleration Magnitude", plotConfig))
+                    {
+                        SetupPlotAxes(plotConfig);
+                        PlotLine("Acceleration", timeData, magnitudeData, lineStyle);
+                        EndPlot();
+                    }
                 }
-                
-                ImPlot::PopStyleVar();
-                
-                // Legend
-                ImGui::Spacing();
-                ImGui::ColorButton("##accel", ImVec4(1.0f, 0.8f, 0.2f, 1.0f), 
-                                  ImGuiColorEditFlags_NoTooltip, ImVec2(15, 15));
-                ImGui::SameLine();
-                ImGui::Text("Acceleration Magnitude");
             }
-        }
-        else
-        {
-            // Empty plot placeholder
-            if (ImPlot::BeginPlot("##AccelPlot", ImVec2(-1, 200)))
+            else
             {
-                ImPlot::SetupAxes("Time (s)", "Acceleration (m/s²)");
-                ImPlot::EndPlot();
+                PlotConfig emptyConfig;
+                emptyConfig.Size        = ImVec2(-1, 250);
+                emptyConfig.XAxis.Label = "Time (s)";
+                emptyConfig.YAxis.Label = "Acceleration (m/s²)";
+                
+                if(BeginPlot("Acceleration Magnitude", emptyConfig))
+                {
+                    SetupPlotAxes(emptyConfig);
+                    EndPlot();
+                }
             }
+        }
+        
+        ImGui::Spacing();
+        
+        {
+            ButtonConfig resetConfig;
+            resetConfig.Size = ImVec2(150, 0);
+            resetConfig.Style = ButtonStyle::Primary;
+            resetConfig.Tooltip = "Clear all recorded acceleration data";
             
-            ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), 
-                              "Start simulation to track acceleration data");
+            Button("Reset Data", resetConfig, [&]()
+            {
+                accel.Reset();
+            });
         }
-        
-        ImGui::Spacing();
-        ImGui::Separator();
-        ImGui::Spacing();
-        
-        // Action Button
-        if (ImGui::Button(ICON_MD_REFRESH " Reset", ImVec2(120, 0)))
-        {
-            accel.Reset();
-        }
-        
-        ImGui::Spacing();
-        
-        // Educational Info
-        ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.15f, 0.25f, 0.35f, 0.9f));
-        if (ImGui::BeginChild("AccelInfo", ImVec2(-1, 100), true))
-        {
-            RenderPhysicsEquation("a = Δv/Δt", "Acceleration is change in velocity over time");
-            RenderPhysicsEquation("a = F/m", "Acceleration from Newton's Second Law");
-            ImGui::Spacing();
-            ImGui::TextWrapped("Acceleration is a vector quantity showing how quickly "
-                              "velocity changes. It has both magnitude and direction.");
-        }
-        ImGui::EndChild();
-        ImGui::PopStyleColor();
+
+        ImGui::EndDisabled();
         
         ImGui::End();
         ImGui::PopStyleVar();

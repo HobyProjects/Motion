@@ -206,13 +206,6 @@ namespace Motion
             ImGui::Text("Scene Name:");
             ImGui::PopStyleColor();
             ImGui::SameLine();
-            HelpMarker("Choose a descriptive name for your scene.\n\n"
-                    "Good examples:\n"
-                    "• 'Projectile Motion Experiment'\n"
-                    "• 'Collision Test Scene'\n"
-                    "• 'Pendulum Simulation'\n\n"
-                    "The name should only contain letters, numbers,\n"
-                    "spaces, hyphens, and underscores.");
             
             ImGui::SetNextItemWidth(450.0f);
             std::string name = m_SceneCreationRequest.Name;
@@ -248,12 +241,6 @@ namespace Motion
             ImGui::Text("Save Location:");
             ImGui::PopStyleColor();
             ImGui::SameLine();
-            HelpMarker("Choose where to save your scene files.\n\n"
-                    "The scene folder will contain:\n"
-                    "• Scene data file (.mes)\n"
-                    "• Assets folder (for textures, models, etc.)\n"
-                    "• Temporary files folder\n\n"
-                    "Make sure you have write permissions for the selected location.");
             
             std::string pathStr = m_SceneCreationRequest.FilePath.string();
             bool pathHasError = m_SceneCreationRequest.FilePath.empty() || 
@@ -1182,6 +1169,69 @@ namespace Motion
             ImGui::EndDisabled();
 
             ImGui::Separator();
+
+            if (ImGui::BeginMenu("  Themes"))
+            {
+                if (ImGui::MenuItem("Dark", nullptr, m_CurrentTheme == 0))
+                {
+                    UserInterface::ThemeManager::ApplyDarkTheme();
+                    m_CurrentTheme = 0;
+                }
+                
+                if (ImGui::MenuItem("Light", nullptr, m_CurrentTheme == 1))
+                {
+                    UserInterface::ThemeManager::ApplyLightTheme();
+                    m_CurrentTheme = 1;
+                }
+                
+                if (ImGui::MenuItem("Classic", nullptr, m_CurrentTheme == 2))
+                {
+                    UserInterface::ThemeManager::ApplyClassicTheme();
+                    m_CurrentTheme = 2;
+                }
+                
+                if (ImGui::MenuItem("Material Design", nullptr, m_CurrentTheme == 3))
+                {
+                    auto scheme = UserInterface::ThemeManager::GetMaterialDesignScheme();
+                    UserInterface::ThemeManager::UseColorScheme(scheme);
+                    m_CurrentTheme = 3;
+                }
+
+                if (ImGui::MenuItem("Neumorphic", nullptr, m_CurrentTheme == 4))
+                {
+                    auto scheme = UserInterface::ThemeManager::GetNeumorphicScheme();
+                    UserInterface::ThemeManager::UseColorScheme(scheme);
+                    m_CurrentTheme = 4;
+                }
+
+
+                
+                ImGui::Separator();
+                
+                if (ImGui::BeginMenu("Accent Color"))
+                {
+                    if (ImGui::MenuItem("Blue"))
+                        UserInterface::ThemeManager::SetAccentColor(ImVec4(0.13f, 0.59f, 0.95f, 1.0f));
+                    
+                    if (ImGui::MenuItem("Red"))
+                        UserInterface::ThemeManager::SetAccentColor(ImVec4(0.96f, 0.26f, 0.21f, 1.0f));
+                    
+                    if (ImGui::MenuItem("Green"))
+                        UserInterface::ThemeManager::SetAccentColor(ImVec4(0.30f, 0.69f, 0.31f, 1.0f));
+                    
+                    if (ImGui::MenuItem("Purple"))
+                        UserInterface::ThemeManager::SetAccentColor(ImVec4(0.61f, 0.15f, 0.69f, 1.0f));
+                    
+                    if (ImGui::MenuItem("Orange"))
+                        UserInterface::ThemeManager::SetAccentColor(ImVec4(1.00f, 0.60f, 0.00f, 1.0f));
+                    
+                    ImGui::EndMenu();
+                }
+                
+                ImGui::EndMenu();
+            }
+
+            ImGui::Separator();
             
             if (ImGui::MenuItem("  Quit ", "Alt+F4"))
             {
@@ -1461,21 +1511,16 @@ namespace Motion
         if (!context.Entities->Registry.any_of<TagComponent>(e)) return;
         auto& tag = context.Entities->Registry.get<TagComponent>(e);
 
-        ImGui::PushID("##tag-inspector");
-        BeginPropertyGrid("##tag-grid");
+        ImGui::PushID(entt::to_integral(e));
+        
+        TextBoxConfig nameConfig;
+        nameConfig.ReadOnly = false;
+        TextBox("Name Tag", tag.Tag, nameConfig);
+        if(ImGui::IsItemHovered()) ImGui::SetTooltip("The identifier name for this entity");
 
-        TextBox("Name Tag", tag.Tag, false);
-        ToggleSwitch("Is Active", tag.IsActive);
-        if (context.Entities->Registry.try_get<ModelComponent>(e))
-        {
-            const auto& model = context.Entities->Registry.get<ModelComponent>(e);
-            std::string file  = model.FilePath.filename().string();
-            std::string mesh  = std::to_string(model.MeshCount);
-            TextBox("File Path", file, true);
-            TextBox("Mesh Count", mesh, true);
-        }
-
-        EndPropertyGrid();
+        ToggleSwitch("Is Active", &tag.IsActive, ToggleSwitchPresets::iOS());
+        if(ImGui::IsItemHovered()) ImGui::SetTooltip("Enable or disable this entity in the scene");
+    
         ImGui::PopID();
     }
 

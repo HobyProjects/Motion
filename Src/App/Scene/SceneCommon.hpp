@@ -283,103 +283,8 @@ namespace Motion
 
     struct ScenePhysics
     {
-        struct StatisticalData
-        {
-            float Mean = 0.0f;
-            float Median = 0.0f;
-            float StdDev = 0.0f;
-            float Min = 0.0f;
-            float Max = 0.0f;
-            float Range = 0.0f;
-            int SampleCount = 0;
-            
-            std::vector<float> Peaks;
-            std::vector<float> PeakTimes;
-            
-            float IntegralValue = 0.0f;
-            
-            void Calculate(std::vector<ImVec2>& data)
-            {
-                if (data.empty())
-                {
-                    Reset();
-                    return;
-                }
-                
-                SampleCount = (int)data.size();
-                
-                std::vector<float> values;
-                values.reserve(data.size());
-                for (const auto& point : data)
-                    values.push_back(point.y);
-                
-                float sum = std::accumulate(values.begin(), values.end(), 0.0f);
-                Mean = sum / values.size();
-                
-                std::vector<float> sortedValues = values;
-                std::sort(sortedValues.begin(), sortedValues.end());
-                if (sortedValues.size() % 2 == 0)
-                    Median = (sortedValues[sortedValues.size()/2 - 1] + sortedValues[sortedValues.size()/2]) / 2.0f;
-                else
-                    Median = sortedValues[sortedValues.size()/2];
-                
-                Min = *std::min_element(values.begin(), values.end());
-                Max = *std::max_element(values.begin(), values.end());
-                Range = Max - Min;
-                
-                float variance = 0.0f;
-                for (float val : values)
-                    variance += (val - Mean) * (val - Mean);
-                variance /= values.size();
-                StdDev = std::sqrt(variance);
-                
-                DetectPeaks(data);
-                CalculateIntegral(data);
-            }
-            
-            void DetectPeaks(std::vector<ImVec2>& data, float threshold = 0.1f)
-            {
-                Peaks.clear();
-                PeakTimes.clear();
-                
-                if (data.size() < 3) return;
-                
-                for (size_t i = 1; i < data.size() - 1; i++)
-                {
-                    float prev = data[i-1].y;
-                    float curr = data[i].y;
-                    float next = data[i+1].y;
-                    
-                    if (curr > prev && curr > next && curr > (Mean + threshold * Range))
-                    {
-                        Peaks.push_back(curr);
-                        PeakTimes.push_back(data[i].x);
-                    }
-                }
-            }
-            
-            void CalculateIntegral(std::vector<ImVec2>& data)
-            {
-                IntegralValue = 0.0f;
-                
-                if (data.size() < 2) return;
-                for (size_t i = 0; i < data.size() - 1; i++)
-                {
-                    float dt = data[i+1].x - data[i].x;
-                    float avgHeight = (data[i].y + data[i+1].y) / 2.0f;
-                    IntegralValue += avgHeight * dt;
-                }
-            }
-            
-            void Reset()
-            {
-                Mean = Median = StdDev = Min = Max = Range = IntegralValue = 0.0f;
-                SampleCount = 0;
-                Peaks.clear();
-                PeakTimes.clear();
-            }
-        };
-
+        static constexpr size_t MAX_HISTORY = 1000;
+    
         struct ForceVector
         {
             glm::vec3 Force{0.0f};
@@ -398,18 +303,20 @@ namespace Motion
         
         struct ForceAnalysisData
         {
+            // Force Data
             std::vector<ForceVector> Forces;
             glm::vec3 NetForce{0.0f};
             glm::vec3 NetTorque{0.0f};
             float NetForceMagnitude{0.0f};
             
+            // Visualization Settings
             bool ShowForceVectors{true};
             bool ShowNetForce{true};
             bool ShowComponents{false};
             float VectorScale{1.0f};
             float ArrowHeadSize{0.15f};
             
-            void UpdateNetForce()
+            void Update()
             {
                 NetForce = glm::vec3(0.0f);
                 for (const auto& force : Forces)
@@ -420,7 +327,22 @@ namespace Motion
                 NetForceMagnitude = glm::length(NetForce);
             }
             
-            void Clear()
+            void AddForce(const ForceVector& force)
+            {
+                Forces.push_back(force);
+                Update();
+            }
+            
+            void RemoveForce(size_t index)
+            {
+                if (index < Forces.size())
+                {
+                    Forces.erase(Forces.begin() + index);
+                    Update();
+                }
+            }
+            
+            void Reset()
             {
                 Forces.clear();
                 NetForce = glm::vec3(0.0f);
@@ -431,26 +353,29 @@ namespace Motion
         
         struct EnergyTracker
         {
-            static constexpr size_t MAX_HISTORY = 500;
-            
-            std::deque<float> KineticEnergyHistory;
-            std::deque<float> PotentialEnergyHistory;
-            std::deque<float> TotalEnergyHistory;
-            std::deque<float> TimeStamps;
-            
+            // Current Energy State
             float CurrentKE{0.0f};
             float CurrentPE{0.0f};
             float CurrentTotal{0.0f};
             float InitialTotal{0.0f};
             float EnergyLoss{0.0f};
             
+            // Energy History
+            std::deque<float> KineticEnergyHistory;
+            std::deque<float> PotentialEnergyHistory;
+            std::deque<float> TotalEnergyHistory;
+            std::deque<float> TimeStamps;
+            
+            // Configuration
+            float GravityMagnitude{9.81f};
             bool TrackingEnabled{false};
+            
+            // Visualization Settings
             bool ShowKE{true};
             bool ShowPE{true};
             bool ShowTotal{true};
-            float GravityMagnitude{9.81f};
             
-            void AddSample(float ke, float pe, float time)
+            void Update(float ke, float pe, float time)
             {
                 CurrentKE = ke;
                 CurrentPE = pe;
@@ -461,62 +386,71 @@ namespace Motion
                 
                 EnergyLoss = InitialTotal - CurrentTotal;
                 
-                KineticEnergyHistory.push_back(ke);
-                PotentialEnergyHistory.push_back(pe);
-                TotalEnergyHistory.push_back(CurrentTotal);
-                TimeStamps.push_back(time);
-                
-                if (KineticEnergyHistory.size() > MAX_HISTORY)
+                if (TrackingEnabled)
                 {
-                    KineticEnergyHistory.pop_front();
-                    PotentialEnergyHistory.pop_front();
-                    TotalEnergyHistory.pop_front();
-                    TimeStamps.pop_front();
+                    KineticEnergyHistory.push_back(ke);
+                    PotentialEnergyHistory.push_back(pe);
+                    TotalEnergyHistory.push_back(CurrentTotal);
+                    TimeStamps.push_back(time);
+                    
+                    if (KineticEnergyHistory.size() > MAX_HISTORY)
+                    {
+                        KineticEnergyHistory.pop_front();
+                        PotentialEnergyHistory.pop_front();
+                        TotalEnergyHistory.pop_front();
+                        TimeStamps.pop_front();
+                    }
                 }
             }
             
-            float GetEnergyConservation() const
+            float GetConservationPercentage() const
             {
                 if (InitialTotal < EPSILON) return 100.0f;
                 return (CurrentTotal / InitialTotal) * 100.0f;
             }
             
-            void Reset()
+            void ClearHistory()
             {
                 KineticEnergyHistory.clear();
                 PotentialEnergyHistory.clear();
                 TotalEnergyHistory.clear();
                 TimeStamps.clear();
+            }
+            
+            void Reset()
+            {
                 CurrentKE = CurrentPE = CurrentTotal = InitialTotal = EnergyLoss = 0.0f;
+                ClearHistory();
             }
         };
 
         struct MomentumTracker
         {
-            // Linear Momentum Data
+            // Linear Momentum State
             glm::vec3 LinearMomentum{0.0f};
             float LinearMagnitude{0.0f};
             glm::vec3 InitialLinearMomentum{0.0f};
             
-            // Angular Momentum Data
+            // Angular Momentum State
             glm::vec3 AngularMomentum{0.0f};
             float AngularMagnitude{0.0f};
             glm::vec3 InitialAngularMomentum{0.0f};
             
-            // Motion Graph Data
+            // Motion History
             std::deque<ImVec2> LinearSpeedHistory;
             std::deque<ImVec2> AngularSpeedHistory;
-            std::deque<ImVec2> MomentumHistory;
+            std::deque<ImVec2> MomentumMagnitudeHistory;
             float TimeAccumulator{0.0f};
             
-            static constexpr size_t MAX_HISTORY = 1000;
+            // Configuration
+            bool TrackingEnabled{true};
+            bool TrackConservation{true};
+            float GraphTimeWindow{10.0f};
             
             // Visualization Settings
-            bool ShowMomentumVector{true};
-            bool ShowAngularMomentumVector{false};
-            bool TrackConservation{true};
+            bool ShowLinearVector{true};
+            bool ShowAngularVector{false};
             float VectorScale{0.5f};
-            float GraphTimeWindow{10.0f};
             
             void Update(const glm::vec3& linearMom, const glm::vec3& angularMom, 
                         float linearSpeed, float angularSpeed, float deltaTime)
@@ -525,7 +459,6 @@ namespace Motion
                 LinearMomentum = linearMom;
                 LinearMagnitude = glm::length(linearMom);
                 
-                // Set initial momentum if not set
                 if (glm::length(InitialLinearMomentum) < EPSILON && LinearMagnitude > EPSILON)
                     InitialLinearMomentum = linearMom;
                 
@@ -539,17 +472,19 @@ namespace Motion
                 // Update time
                 TimeAccumulator += deltaTime;
                 
-                // Add data points for graphs
-                LinearSpeedHistory.push_back(ImVec2(TimeAccumulator, linearSpeed));
-                AngularSpeedHistory.push_back(ImVec2(TimeAccumulator, angularSpeed));
-                MomentumHistory.push_back(ImVec2(TimeAccumulator, LinearMagnitude));
-                
-                // Maintain history size
-                if (LinearSpeedHistory.size() > MAX_HISTORY)
+                // Record history
+                if (TrackingEnabled)
                 {
-                    LinearSpeedHistory.pop_front();
-                    AngularSpeedHistory.pop_front();
-                    MomentumHistory.pop_front();
+                    LinearSpeedHistory.push_back(ImVec2(TimeAccumulator, linearSpeed));
+                    AngularSpeedHistory.push_back(ImVec2(TimeAccumulator, angularSpeed));
+                    MomentumMagnitudeHistory.push_back(ImVec2(TimeAccumulator, LinearMagnitude));
+                    
+                    if (LinearSpeedHistory.size() > MAX_HISTORY)
+                    {
+                        LinearSpeedHistory.pop_front();
+                        AngularSpeedHistory.pop_front();
+                        MomentumMagnitudeHistory.pop_front();
+                    }
                 }
             }
             
@@ -567,11 +502,11 @@ namespace Motion
                 return (AngularMagnitude / initialMag) * 100.0f;
             }
             
-            void ClearGraphData()
+            void ClearHistory()
             {
                 LinearSpeedHistory.clear();
                 AngularSpeedHistory.clear();
-                MomentumHistory.clear();
+                MomentumMagnitudeHistory.clear();
                 TimeAccumulator = 0.0f;
             }
             
@@ -582,74 +517,87 @@ namespace Motion
                 InitialLinearMomentum = glm::vec3(0.0f);
                 InitialAngularMomentum = glm::vec3(0.0f);
                 LinearMagnitude = AngularMagnitude = 0.0f;
-                ClearGraphData();
+                ClearHistory();
             }
         };
         
         struct CollisionEvent
         {
+            // Entity References
             entt::entity EntityA{entt::null};
             entt::entity EntityB{entt::null};
+            
+            // Collision Geometry
             glm::vec3 CollisionPoint{0.0f};
             glm::vec3 CollisionNormal{0.0f};
+            
+            // Physics Data
             float RelativeVelocity{0.0f};
             float CoefficientOfRestitution{0.0f};
             float ImpulseMagnitude{0.0f};
             float TimeStamp{0.0f};
             
+            // Velocity Analysis
             glm::vec3 VelocityABefore{0.0f};
             glm::vec3 VelocityBBefore{0.0f};
             glm::vec3 VelocityAAfter{0.0f};
             glm::vec3 VelocityBAfter{0.0f};
             
+            // Energy Analysis
             float KEBefore{0.0f};
             float KEAfter{0.0f};
             float EnergyLoss{0.0f};
             
-            enum class CollisionType
+            // Collision Classification
+            enum class Type
             {
                 Elastic,
                 Inelastic,
                 PartiallyElastic,
                 Unknown
-            } Type{CollisionType::Unknown};
+            } CollisionType{Type::Unknown};
             
-            void ClassifyCollision()
+            void Classify()
             {
                 if (std::abs(CoefficientOfRestitution - 1.0f) < 0.05f)
-                    Type = CollisionType::Elastic;
+                    CollisionType = Type::Elastic;
                 else if (CoefficientOfRestitution < 0.1f)
-                    Type = CollisionType::Inelastic;
+                    CollisionType = Type::Inelastic;
                 else
-                    Type = CollisionType::PartiallyElastic;
+                    CollisionType = Type::PartiallyElastic;
             }
             
             const char* GetTypeName() const
             {
-                switch (Type)
+                switch (CollisionType)
                 {
-                    case CollisionType::Elastic: return "Elastic";
-                    case CollisionType::Inelastic: return "Inelastic";
-                    case CollisionType::PartiallyElastic: return "Partially Elastic";
-                    default: return "Unknown";
+                    case Type::Elastic:           return "Elastic";
+                    case Type::Inelastic:         return "Inelastic";
+                    case Type::PartiallyElastic:  return "Partially Elastic";
+                    default:                      return "Unknown";
                 }
             }
         };
         
         struct CollisionAnalyzer
         {
+            // Collision History
             std::vector<CollisionEvent> RecentCollisions;
             static constexpr size_t MAX_COLLISIONS = 50;
             
-            bool EnableAnalysis{false};
+            // Configuration
+            bool AnalysisEnabled{false};
+            bool PlayCollisionSound{false};
+            
+            // Visualization Settings
             bool ShowCollisionPoints{true};
             bool ShowImpulseVectors{true};
-            bool PlayCollisionSound{false};
+            bool ShowVelocityVectors{false};
             
             void RecordCollision(const CollisionEvent& event)
             {
                 CollisionEvent evt = event;
-                evt.ClassifyCollision();
+                evt.Classify();
                 
                 RecentCollisions.push_back(evt);
                 
@@ -657,27 +605,40 @@ namespace Motion
                     RecentCollisions.erase(RecentCollisions.begin());
             }
             
-            void Clear()
-            {
-                RecentCollisions.clear();
-            }
-            
             CollisionEvent* GetMostRecent()
             {
                 return RecentCollisions.empty() ? nullptr : &RecentCollisions.back();
             }
+            
+            size_t GetCollisionCount() const
+            {
+                return RecentCollisions.size();
+            }
+            
+            void Reset()
+            {
+                RecentCollisions.clear();
+            }
         };
         
+
         struct AccelerationTracker
         {
+            // Current Acceleration State
             glm::vec3 CurrentAcceleration{0.0f};
-            glm::vec3 PreviousVelocity{0.0f};
             float AccelerationMagnitude{0.0f};
+            glm::vec3 PreviousVelocity{0.0f};
             
+            // Acceleration History
             std::deque<glm::vec3> AccelerationHistory;
+            std::deque<float> MagnitudeHistory;
             std::deque<float> TimeStamps;
-            static constexpr size_t MAX_HISTORY = 300;
+            static constexpr size_t MAX_ACCEL_HISTORY = 500;
             
+            // Configuration
+            bool TrackingEnabled{true};
+            
+            // Visualization Settings
             bool ShowVector{true};
             float VectorScale{1.0f};
             ImU32 VectorColor{IM_COL32(255, 200, 0, 255)};
@@ -692,14 +653,31 @@ namespace Motion
                 
                 PreviousVelocity = velocity;
                 
-                AccelerationHistory.push_back(CurrentAcceleration);
-                TimeStamps.push_back(TimeStamps.empty() ? 0.0f : TimeStamps.back() + deltaTime);
-                
-                if (AccelerationHistory.size() > MAX_HISTORY)
+                if (TrackingEnabled)
                 {
-                    AccelerationHistory.pop_front();
-                    TimeStamps.pop_front();
+                    AccelerationHistory.push_back(CurrentAcceleration);
+                    MagnitudeHistory.push_back(AccelerationMagnitude);
+                    TimeStamps.push_back(TimeStamps.empty() ? 0.0f : TimeStamps.back() + deltaTime);
+                    
+                    if (AccelerationHistory.size() > MAX_ACCEL_HISTORY)
+                    {
+                        AccelerationHistory.pop_front();
+                        MagnitudeHistory.pop_front();
+                        TimeStamps.pop_front();
+                    }
                 }
+            }
+            
+            glm::vec3 GetDirection() const
+            {
+                return AccelerationMagnitude > EPSILON ? CurrentAcceleration / AccelerationMagnitude : glm::vec3(0.0f);
+            }
+            
+            void ClearHistory()
+            {
+                AccelerationHistory.clear();
+                MagnitudeHistory.clear();
+                TimeStamps.clear();
             }
             
             void Reset()
@@ -707,22 +685,27 @@ namespace Motion
                 CurrentAcceleration = glm::vec3(0.0f);
                 PreviousVelocity = glm::vec3(0.0f);
                 AccelerationMagnitude = 0.0f;
-                AccelerationHistory.clear();
-                TimeStamps.clear();
+                ClearHistory();
             }
         };
-          
+        
         struct TrajectoryPredictor
         {
+            // Predicted Path
             std::vector<glm::vec3> PredictedPath;
-            bool EnablePrediction{false};
-            bool ShowPredictionPath{true};
+            
+            // Configuration
+            bool PredictionEnabled{false};
             int PredictionSteps{50};
             float TimeStep{0.1f};
+            
+            // Visualization Settings
+            bool ShowPredictionPath{true};
             ImU32 PathColor{IM_COL32(100, 255, 100, 150)};
+            float PathWidth{2.0f};
             
             void PredictTrajectory(const glm::vec3& position, const glm::vec3& velocity, 
-                                  const glm::vec3& acceleration, float mass)
+                                const glm::vec3& acceleration)
             {
                 PredictedPath.clear();
                 PredictedPath.reserve(PredictionSteps);
@@ -738,7 +721,12 @@ namespace Motion
                 }
             }
             
-            void Clear()
+            size_t GetPathPointCount() const
+            {
+                return PredictedPath.size();
+            }
+            
+            void Reset()
             {
                 PredictedPath.clear();
             }
@@ -746,7 +734,6 @@ namespace Motion
         
         struct PhysicsAnalysisState
         {
-            StatisticalData Statistics;
             ForceAnalysisData ForceAnalysis;
             EnergyTracker Energy;
             MomentumTracker Momentum;
@@ -756,12 +743,12 @@ namespace Motion
             
             void ResetAll()
             {
-                ForceAnalysis.Clear();
+                ForceAnalysis.Reset();
                 Energy.Reset();
                 Momentum.Reset();
-                Collisions.Clear();
+                Collisions.Reset();
                 Acceleration.Reset();
-                Trajectory.Clear();
+                Trajectory.Reset();
             }
         };
 
@@ -773,8 +760,7 @@ namespace Motion
         static glm::vec3 GetDirection(const glm::vec3& velocity)
         {
             float speed = GetSpeed(velocity);
-            if (speed < 0.0001f) return glm::vec3(0.0f);
-            return velocity / speed;
+            return speed > EPSILON ? velocity / speed : glm::vec3(0.0f);
         }
         
         static float RadPerSecToRPM(float radPerSec)
@@ -793,7 +779,7 @@ namespace Motion
             {
                 case Motion::BodyType::Static:  return "Static (immovable, like walls or ground)";
                 case Motion::BodyType::Dynamic: return "Dynamic (moves and collides with forces)";
-                default:                return "Unknown";
+                default:                        return "Unknown";
             }
         }
         
@@ -801,6 +787,7 @@ namespace Motion
         {
             ImVec4 color = active ? ImVec4(0.1f, 0.9f, 0.3f, 1.0f) : ImVec4(0.6f, 0.6f, 0.6f, 1.0f);
             ImGui::TextColored(color, "%s %s", active ? "●" : "○", label);
+            
             if (tooltip && ImGui::IsItemHovered())
             {
                 ImGui::BeginTooltip();
@@ -811,6 +798,7 @@ namespace Motion
             }
         }
         
+
         PhysicsAnalysisState PhysicsAnalysis;
     };
 

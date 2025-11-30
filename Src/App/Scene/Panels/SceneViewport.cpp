@@ -442,7 +442,7 @@ namespace Motion
                         
                         // Draw momentum vector
                         if (context.Panels->ShowMomentumPanel && 
-                            context.Physics->PhysicsAnalysis.Momentum.ShowMomentumVector)
+                            context.Physics->PhysicsAnalysis.Momentum.ShowLinearVector)
                         {
                             DrawMomentumVector(context, transform->Translation, 
                                             context.Physics->PhysicsAnalysis.Momentum.LinearMomentum,

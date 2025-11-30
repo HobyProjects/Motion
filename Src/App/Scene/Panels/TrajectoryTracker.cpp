@@ -13,104 +13,126 @@ namespace Motion
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(16, 16));
         ImGui::Begin("Trajectory Prediction", &context.Panels->ShowTrajectoryPanel);
 
-        if(!context.Simulation->InSimulation)
-        {
-            ImGui::End();
-            ImGui::PopStyleVar();
-            return;
-        }
-        
-        ImGui::TextColored(ImVec4(0.5f, 1.0f, 0.5f, 1.0f), ICON_MD_SHOW_CHART " Trajectory Prediction");
-        ImGui::Separator();
-        ImGui::Spacing();
-        
         auto& traj = context.Physics->PhysicsAnalysis.Trajectory;
-        
-        // Enable/Disable
-        ImGui::Checkbox("Enable Prediction", &traj.EnablePrediction);
-        ImGui::SameLine(); ShowPhysicsTooltip("Trajectory Prediction", 
-            "Calculate and display the predicted path of the object based on current motion");
-        
-        ImGui::Checkbox("Show Path", &traj.ShowPredictionPath);
-        
-        ImGui::Spacing();
-        ImGui::Separator();
-        ImGui::Spacing();
-        
-        // Settings
-        ImGui::Text("Prediction Settings");
-        ImGui::SliderInt("Steps", &traj.PredictionSteps, 10, 200);
-        ImGui::SameLine(); ShowPhysicsTooltip("Prediction Steps", 
-            "Number of points to calculate along the predicted path");
-        
-        ImGui::SliderFloat("Time Step", &traj.TimeStep, 0.01f, 0.5f, "%.3f s");
-        ImGui::SameLine(); ShowPhysicsTooltip("Time Step", 
-            "Time interval between predicted positions");
-        
-        ImGui::ColorEdit4("Path Color", (float*)&traj.PathColor, 
-                         ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel);
-        
-        ImGui::Spacing();
-        ImGui::Separator();
-        ImGui::Spacing();
-        
-        // Prediction Info
-        if (traj.EnablePrediction && !traj.PredictedPath.empty())
         {
-            ImGui::Text("Predicted Path: %zu points", traj.PredictedPath.size());
+            HeadingConfig config;
+            config.Separator = true;
+            Heading("Trajectory Prediction", HeadingLevel::H3, config);
+        
+            ToggleSwitch("Enable Prediction", &traj.PredictionEnabled, ToggleSwitchPresets::iOS());
+            if(ImGui::IsItemHovered()) ImGui::SetTooltip("Calculate and display the predicted path\nof the object based on current motion");
             
-            float totalDistance = 0.0f;
-            for (size_t i = 1; i < traj.PredictedPath.size(); ++i)
-            {
-                totalDistance += glm::length(traj.PredictedPath[i] - traj.PredictedPath[i-1]);
+            ToggleSwitch("Show Path", &traj.ShowPredictionPath, ToggleSwitchPresets::iOS());
+            if(ImGui::IsItemHovered()) ImGui::SetTooltip("Visualize the predicted trajectory in the 3D viewport");
+        }
+        
+        ImGui::Spacing();
+        
+        {
+            HeadingConfig config;
+            config.Separator = true;
+            Heading("Prediction Settings", HeadingLevel::H3, config);
+
+            {                    
+                float stepsFloat = static_cast<float>(traj.PredictionSteps);
+                
+                SliderFloatConfig stepsConfig;
+                stepsConfig.MinV = 10.0f;
+                stepsConfig.MaxV = 200.0f;
+                stepsConfig.Fmt = "%.0f";
+                stepsConfig.Tooltip = "Number of points to calculate along the path\n-More steps = smoother curve\n-More steps = slower calculation\nRecommended: 50-100 steps";
+                
+                SliderFloat("Prediction Steps", &stepsFloat, stepsConfig, [&](float value){
+                    traj.PredictionSteps = static_cast<int>(value);
+                });
             }
-            
-            ImGui::Text("Total Distance: %.2f m", totalDistance);
-            ImGui::Text("Prediction Time: %.2f s", traj.TimeStep * traj.PredictionSteps);
-            
-            if (traj.PredictedPath.size() >= 2)
-            {
-                glm::vec3 start = traj.PredictedPath.front();
-                glm::vec3 end = traj.PredictedPath.back();
-                ImGui::Text("End Position: (%.2f, %.2f, %.2f)", end.x, end.y, end.z);
+                 
+            {                    
+                SliderFloatConfig timeConfig;
+                timeConfig.MinV = 0.01f;
+                timeConfig.MaxV = 0.5f;
+                timeConfig.Fmt = "%.3f s";
+                timeConfig.Tooltip = "Time interval between predicted positions\nSmaller = more detailed prediction\nLarger = longer prediction time\nRecommended: 0.05-0.1 seconds";
+                
+                SliderFloat("Time Step", &traj.TimeStep, timeConfig);
             }
         }
-        else
+        
+        ImGui::Spacing();
+        
         {
-            ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), 
-                              "Enable prediction and select an object to see trajectory");
+            if (traj.PredictionEnabled && !traj.PredictedPath.empty())
+            {
+                float totalDistance = 0.0f;
+                float predictionTime = traj.TimeStep * traj.PredictionSteps;
+                int pointCount = static_cast<int>(traj.PredictedPath.size());
+
+                for (size_t i = 1; i < traj.PredictedPath.size(); ++i)
+                    totalDistance += glm::length(traj.PredictedPath[i] - traj.PredictedPath[i-1]);
+                
+
+                LabelConfig labelConfig;
+                labelConfig.Tooltip = "Number of points along the trajectory";
+                LabelValue("Path Points", pointCount, "%d", labelConfig);
+
+                labelConfig.Tooltip = "Total path length along the trajectory";
+                LabelValue("Total Distance", totalDistance, "%.2f m", labelConfig);
+
+                labelConfig.Tooltip = "Duration of predicted trajectory";
+                LabelValue("Prediction Time", predictionTime, "%.2f s", labelConfig);
+
+                if(totalDistance > EPSILON && predictionTime > EPSILON)
+                {
+                    float avgSpeed = totalDistance / predictionTime;
+                    labelConfig.Tooltip = "Average speed along the path";
+                    LabelValue("Average Speed", avgSpeed, "%.2f m/s", labelConfig);
+                }
+        
+                if (traj.PredictedPath.size() >= 2)
+                {
+                    glm::vec3 start = traj.PredictedPath.front();
+                    glm::vec3 end = traj.PredictedPath.back();
+                    
+                    glm::vec3 displacement = end - start;
+                    float displacementMag = glm::length(displacement);
+
+                    LabelValue("Start Psition",  glm::length(start), "%.2f m");
+                    LabelValue("End Position",  glm::length(end), "%.2f m");
+                    LabelValue("Displacement", displacement, "%.2f m");
+                }
+            }
+            else
+            {
+                HeadingConfig config;
+                config.Separator = true;
+                Heading("No Trajectory Data", HeadingLevel::H2, config);
+                LabelSimple("Enable prediction and select an object");
+            }
         }
         
         ImGui::Spacing();
         
-        // Action Buttons
-        if (ImGui::Button(ICON_MD_REFRESH " Recalculate", ImVec2(140, 0)))
         {
-            if (context.Simulation->SelectedEntity != entt::null)
-                UpdateTrajectoryPrediction(context, context.Simulation->SelectedEntity);
+            ButtonGroupConfig buttonConfig;
+            buttonConfig.SameLine = true;
+
+            ButtonGroup controlButtons(buttonConfig);
+
+            ButtonConfig recalConfig;
+            recalConfig.Style = ButtonStyle::Primary;
+            recalConfig.Tooltip = "Recalculate trajectory";
+            controlButtons.AddButton("Recalculate", recalConfig, [&](){
+                if (context.Simulation->SelectedEntity != entt::null)
+                    UpdateTrajectoryPrediction(context, context.Simulation->SelectedEntity);
+            });
+
+            ButtonConfig clearConfig;
+            clearConfig.Style = ButtonStyle::Secondary;
+            clearConfig.Tooltip = "Clear all trajectory data";
+            controlButtons.AddButton("Clear", clearConfig, [&](){
+                traj.Reset();
+            });
         }
-        ImGui::SameLine();
-        
-        if (ImGui::Button(ICON_MD_CLEAR " Clear", ImVec2(140, 0)))
-        {
-            traj.Clear();
-        }
-        
-        ImGui::Spacing();
-        
-        // Educational Info
-        ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.15f, 0.25f, 0.35f, 0.9f));
-        if (ImGui::BeginChild("TrajInfo", ImVec2(-1, 100), true))
-        {
-            ImGui::TextWrapped("Trajectory prediction uses kinematic equations to calculate "
-                              "the future path of an object based on its current velocity and "
-                              "acceleration. Useful for projectile motion analysis.");
-            ImGui::Spacing();
-            ImGui::BulletText("Parabolic paths indicate constant downward acceleration");
-            ImGui::BulletText("Predictions assume no air resistance");
-        }
-        ImGui::EndChild();
-        ImGui::PopStyleColor();
         
         ImGui::End();
         ImGui::PopStyleVar();
@@ -118,22 +140,19 @@ namespace Motion
 
     void TrajectoryTracker::UpdateTrajectoryPrediction(SceneContext& context, entt::entity entity)
     {
-        if (!context.Physics->PhysicsAnalysis.Trajectory.EnablePrediction) return;
+        if (!context.Physics->PhysicsAnalysis.Trajectory.PredictionEnabled) return;
+        
         auto* rb = context.Entities->Registry.try_get<RigidBodyComponent>(entity);
         auto* transform = context.Entities->Registry.try_get<TransformComponent>(entity);
         if (!rb || !transform) return;
         
-        // Use gravity as acceleration
-        glm::vec3 acceleration(0.0f, -9.81f, 0.0f);
-        auto mass = rb->PhysicsBody->getMass();
+        glm::vec3 acceleration = context.Physics->PhysicsAnalysis.Acceleration.CurrentAcceleration;
         auto linearVelocity = ToVec3(rb->PhysicsBody->getLinearVelocity());
-        
+
         context.Physics->PhysicsAnalysis.Trajectory.PredictTrajectory(
             transform->Translation,
             linearVelocity,
-            acceleration,
-            mass
+            acceleration
         );
     }
-
 }

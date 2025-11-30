@@ -3,152 +3,240 @@
 
 namespace Motion
 {
-    void SceneEnvironmentSettings::OnRender(Scene * scene)
+    void SceneEnvironmentSettings::OnRender(Scene* scene)
     {
         if(!scene) return;
-
-        const ImGuiTreeNodeFlags flags =
-              ImGuiTreeNodeFlags_Framed
-            | ImGuiTreeNodeFlags_SpanAvailWidth
-            | ImGuiTreeNodeFlags_AllowItemOverlap
-            | ImGuiTreeNodeFlags_FramePadding
-            | ImGuiTreeNodeFlags_DefaultOpen;
 
         auto& context = scene->GetContext();
         if(!context.Panels->ShowEnvironmentSettings) return;
 
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(16, 16));
         ImGui::Begin("Environment Settings", &context.Panels->ShowEnvironmentSettings);
+
+        bool simulationRunning = context.Simulation->InSimulation;
+        if (simulationRunning)
         {
-            if (ImGui::TreeNodeEx("##environment", flags, "Environment"))
+            HeadingConfig config;
+            config.Separator = true;
+            config.Color = ImVec4(0.3f, 0.2f, 0.1f, 0.3f);
+            Heading("Simulation Mode Required", HeadingLevel::H2, config);
+
+            LabelConfig lblConfig;
+            lblConfig.Wrapped = true;
+            LabelSimple("Environment settings can only be modified when the simulation is stopped. Please stop the simulation to make changes.", lblConfig);
+
+            ImGui::End();
+            ImGui::PopStyleVar();
+            return;
+        }
+        
+        {
+            HeadingConfig config;
+            config.Separator = true;
+            Heading(ICON_MD_LIGHT_MODE " Lighting", HeadingLevel::H3, config);            
+            ImGui::BeginDisabled(simulationRunning);
+
+            auto& light = context.PhysicsWorld->SunLight;
+            {                    
+                DragFloatConfig dirConfig;
+                dirConfig.Speed = 0.01f;
+                dirConfig.MinV = -1.0f;
+                dirConfig.MaxV = 1.0f;
+                dirConfig.Fmt = "%.2f";
+                dirConfig.ResetValue = -100.0f;
+                dirConfig.Tooltip = "The direction vector for the light source\nThink of this as the sun position\n(-100, 0, 0) = Light from left\n(0, -100, 0) = Light from above\n(-100, 0, 0) = Light from right";
+                DragFloat3("Direction", light.Direction, dirConfig);
+
+                ColorEditConfig colorConfig;
+                colorConfig.Flags = ImGuiColorEditFlags_NoAlpha | ImGuiColorEditFlags_Float;
+                ColorEdit3("Light Color", light.Color, colorConfig);
+
+                DragFloatConfig intensityConfig;
+                intensityConfig.Speed = 0.1f;
+                intensityConfig.MinV = 0.0f;
+                intensityConfig.MaxV = 50.0f;
+                intensityConfig.Fmt = "%.1f";
+                intensityConfig.ResetValue = 1.0f;
+                intensityConfig.Tooltip = "How bright the light is, A higher intensity\nmeans a brighter light source\n0.1 = Dim\n1.0 = Normal daylight\n5.0 = Very bright";
+                DragFloat("Intensity", &light.Intensity, intensityConfig);
+
+                ToggleSwitch("Show Light Gizmo", &light.ShowGuizmo, ToggleSwitchPresets::iOS());
+                if(ImGui::IsItemHovered()) ImGui::SetTooltip("Show a visual indicator for light direction\nin the viewport");
+            } 
+
+            ImGui::EndDisabled();
+        }
+        
+        ImGui::Spacing();
+        
+        {
+            HeadingConfig config;
+            config.Separator = true;
+            Heading(ICON_MD_FOREST " Physics World", HeadingLevel::H3, config);            
+            ImGui::BeginDisabled(simulationRunning);
+
+            auto& world = context.PhysicsWorld->Settings;
+            std::string worldName = world.worldName.empty() ? "New World" : world.worldName;
+            TextBoxConfig nameConfig;
+            nameConfig.ReadOnly = false;
+            TextBox("World Name", worldName, nameConfig, [&](const std::string& val){
+                world.worldName = val;
+            });
+
+            glm::vec3 gravity = ToVec3(world.gravity);
+            DragFloatConfig gravityConfig;
+            gravityConfig.Speed = 0.1f;
+            gravityConfig.MinV = -50.0f;
+            gravityConfig.MaxV = 50.0f;
+            gravityConfig.Fmt = "%.2f m/s²";
+            gravityConfig.ResetValue = 0.0f;
+            gravityConfig.Tooltip = "The pull of gravity on all objects\n(0, -9.81, 0) = Earth\n(0, -1.62, 0) = Moon\n(0, -3.71, 0) = Mars\n(0, 0, 0) = Space";
+            DragFloat3("Gravity Vector", gravity, gravityConfig, [&](const glm::vec3& val){
+                world.gravity = reactphysics3d::Vector3(val.x, val.y, val.z);
+            });
+
+            ImGui::Spacing();
+            ImGui::TextDisabled("Quick Presets:");
+            ImGui::BeginGroup();
             {
-                ImGui::Indent();
-
-                // Lighting Section
-                if (ImGui::CollapsingHeader("Lighting"))
+                if(ImGui::Button("Earth"))
                 {
-                    ImGui::Indent(10.0f);
-                    auto& light = context.PhysicsWorld->SunLight;
-                    
-                    if (BeginPropertyGrid("##sun-properties"))
-                    {
-                        ImGui::BeginDisabled(context.Simulation->InSimulation);
-                        DragFloat3("Light Direction", light.Direction, 0.01f);
-                        HelpMarker("The direction the main light comes from.\n"
-                                "Think of this as the sun position.\n"
-                                "(-1,0,0) = light from left, (0,-1,0) = light from above");
-                        
-                        ColorEdit3("Light Color", light.Color);
-                        HelpMarker("The color of the light source.\n"
-                                "White = natural sunlight, Yellow = warm light, Blue = cold light");
-                        
-                        DragFloat("Intensity", &light.Intensity, 0.1f, 0.0f, 50.0f);
-                        HelpMarker("How bright the light is.\n"
-                                "1.0 = normal daylight, 5.0 = very bright, 0.1 = dim");
-                        
-                        ToggleSwitch("Show Gizmo", light.ShowGuizmo);
-                        HelpMarker("Show a visual indicator for light direction in the viewport");
-
-                        ImGui::EndDisabled();
-                        EndPropertyGrid();
-                    }
-                    ImGui::Unindent(10.0f);
+                    world.gravity = reactphysics3d::Vector3(0.0f, -9.81f, 0.0f);
                 }
-
-                // Physics World Settings
-                if (ImGui::CollapsingHeader("Physics World"))
+                ImGui::SameLine();
+                if(ImGui::Button("Moon"))
                 {
-                    ImGui::Indent(10.0f);
-                    auto& world = context.PhysicsWorld->Settings;
-                    
-                    if (BeginPropertyGrid("##world-properties"))
-                    {
-                        ImGui::BeginDisabled(context.Simulation->InSimulation);
-                        std::string worldName = world.worldName.empty() ? "New World" : world.worldName;
-                        TextBox("World Name", worldName);
-                        HelpMarker("A name for your physics world");
-
-                        glm::vec3 gravity = ToVec3(world.gravity);
-                        if (DragFloat3("Gravity (m/s²)", gravity, 0.1f, -50.0f, 50.0f))
-                            world.gravity = ToVec3(gravity);
-                        HelpMarker("The pull of gravity on all objects.\n"
-                                "Earth = (0, -9.81, 0) downward\n"
-                                "Moon = (0, -1.62, 0) weaker gravity\n"
-                                "Space = (0, 0, 0) zero gravity");
-
-                        float defaultRestitution = world.defaultBounciness;
-                        if (SliderFloat("Default Bounciness", &defaultRestitution, 0.0f, 1.0f, "%.3f"))
-                            world.defaultBounciness = defaultRestitution;
-                        HelpMarker("Default bounciness for new objects");
-
-                        float defaultFriction = world.defaultFrictionCoefficient;
-                        if (SliderFloat("Default Friction", &defaultFriction, 0.0f, 1.0f, "%.3f"))
-                            world.defaultFrictionCoefficient = defaultFriction;
-                        HelpMarker("Default friction for new objects");
-
-                        bool sleeping = world.isSleepingEnabled;
-                        if (ToggleSwitch("Enable Sleep", sleeping))
-                            world.isSleepingEnabled = sleeping;
-                        HelpMarker("Allow objects to 'sleep' when not moving.\n"
-                                "This saves CPU by not updating still objects.\n"
-                                "Turn off for precise simulations.");
-
-                        ImGui::EndDisabled();
-                        EndPropertyGrid();
-                    }
-                    
-                    // Advanced Physics Settings
-                    if (ImGui::TreeNode("Advanced Settings"))
-                    {
-                        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.8f, 0.3f, 1.0f));
-                        ImGui::TextWrapped("Advanced: These settings affect simulation accuracy and performance");
-                        ImGui::PopStyleColor();
-                        ImGui::Spacing();
-                        
-                        if (BeginPropertyGrid("##advanced-physics"))
-                        {
-                            int velIter = world.defaultVelocitySolverNbIterations;
-                            if (DragFloat("Velocity Iterations", (float*)&velIter, 0.1f, 1.0f, 50.0f))
-                                world.defaultVelocitySolverNbIterations = (unsigned int)velIter;
-                            HelpMarker("Higher = more accurate velocity calculations but slower.\n"
-                                    "Typical: 10-20 iterations");
-
-                            int posIter = world.defaultPositionSolverNbIterations;
-                            if (DragFloat("Position Iterations", (float*)&posIter, 0.1f, 1.0f, 50.0f))
-                                world.defaultPositionSolverNbIterations = (unsigned int)posIter;
-                            HelpMarker("Higher = objects penetrate less but slower.\n"
-                                    "Typical: 5-10 iterations");
-
-                            float sleepLinVel = world.defaultSleepLinearVelocity;
-                            if (DragFloat("Sleep Linear Velocity", &sleepLinVel, 0.01f, 0.0f, 5.0f))
-                                world.defaultSleepLinearVelocity = sleepLinVel;
-                            HelpMarker("Objects slower than this can go to sleep");
-
-                            float sleepAngVel = world.defaultSleepAngularVelocity;
-                            if (DragFloat("Sleep Angular Velocity", &sleepAngVel, 0.01f, 0.0f, 5.0f))
-                                world.defaultSleepAngularVelocity = sleepAngVel;
-                            HelpMarker("Objects rotating slower than this can go to sleep");
-
-                            float timeBeforeSleep = world.defaultTimeBeforeSleep;
-                            if (DragFloat("Time Before Sleep (s)", &timeBeforeSleep, 0.1f, 0.0f, 10.0f))
-                                world.defaultTimeBeforeSleep = timeBeforeSleep;
-                            HelpMarker("How long an object must be still before sleeping");
-
-                            EndPropertyGrid();
-                        }
-                        
-                        ImGui::TreePop();
-                    }
-                    
-                    ImGui::Unindent(10.0f);
+                    world.gravity = reactphysics3d::Vector3(0.0f, -1.62f, 0.0f);
                 }
+                ImGui::SameLine();
+                if(ImGui::Button("Mars"))
+                {
+                    world.gravity = reactphysics3d::Vector3(0.0f, -3.71f, 0.0f);
+                }
+                ImGui::SameLine();
+                if(ImGui::Button("Zero-G"))
+                {
+                    world.gravity = reactphysics3d::Vector3(0.0f, 0.0f, 0.0f);
+                }
+            }
+            ImGui::EndGroup();
 
-                ImGui::Unindent();
-                ImGui::TreePop();
+            float defaultRestitution = world.defaultBounciness;
+            SliderFloatConfig bounceConfig;
+            bounceConfig.MinV = 0.0f;
+            bounceConfig.MaxV = 1.0f;
+            bounceConfig.Fmt = "%.3f";
+            
+            SliderFloat("Default Bounciness", &defaultRestitution, bounceConfig, [&](float val){
+                world.defaultBounciness = defaultRestitution;
+            });
+
+            float defaultFriction = world.defaultFrictionCoefficient;
+            SliderFloatConfig frictionConfig;
+            frictionConfig.MinV = 0.0f;
+            frictionConfig.MaxV = 1.0f;
+            frictionConfig.Fmt = "%.3f";
+            
+            SliderFloat("Default Friction", &defaultFriction, frictionConfig, [&](float val){
+                world.defaultFrictionCoefficient = defaultFriction;
+            });
+
+            bool sleeping = world.isSleepingEnabled;
+            if(ToggleSwitch(ICON_MD_NIGHTS_STAY " Enable Sleep Mode", &sleeping, ToggleSwitchPresets::iOS()))
+                world.isSleepingEnabled = sleeping;
+            
+            if(ImGui::IsItemHovered())
+            {
+                ImGui::BeginTooltip();
+                ImGui::Text("Allow objects to 'sleep' when not moving");
+                ImGui::Separator();
+                ImGui::BulletText("Saves CPU by not updating still objects");
+                ImGui::BulletText("Turn off for precise simulations");
+                ImGui::EndTooltip();
             }
 
+            ImGui::EndDisabled();
         }
+        
+        ImGui::Spacing();
+        
+        {
+            HeadingConfig config;
+            config.Separator = true;
+            Heading(ICON_MD_LANDSLIDE " Advanced Physics", HeadingLevel::H3, config);
+            
+            LabelConfig lblConfig;
+            lblConfig.Wrapped = true;
+            LabelSimple("These settings affect simulation accuracy and performance", lblConfig);
+            ImGui::BeginDisabled(simulationRunning);
+            
+            auto& world = context.PhysicsWorld->Settings;
+            {
+                int velIter = world.defaultVelocitySolverNbIterations;
+                float velIterFloat = static_cast<float>(velIter);
+                
+                DragFloatConfig velConfig;
+                velConfig.Speed = 0.1f;
+                velConfig.MinV = 1.0f;
+                velConfig.MaxV = 50.0f;
+                velConfig.Fmt = "%.0f";
+                velConfig.Tooltip = "Solver iterations for velocity constraints\n-Higher = More accurate velocities\n-Higher = Slower performance\n-Typical: 10-20 iterations";
+                DragFloat("Velocity Iterations", &velIterFloat, velConfig, [&](float val){
+                    world.defaultVelocitySolverNbIterations = static_cast<unsigned int>(velIterFloat);
+                });
+
+                int posIter = world.defaultPositionSolverNbIterations;
+                float posIterFloat = static_cast<float>(posIter);
+                
+                DragFloatConfig posConfig;
+                posConfig.Speed = 0.1f;
+                posConfig.MinV = 1.0f;
+                posConfig.MaxV = 50.0f;
+                posConfig.Fmt = "%.0f";
+                posConfig.Tooltip = "Solver iterations for position constraints\n-Higher = More accurate positions\n-Higher = Slower performance\n-Typical: 5-10 iterations";
+                DragFloat("Position Iterations", &posIterFloat, posConfig, [&](float val){
+                    world.defaultPositionSolverNbIterations = static_cast<unsigned int>(posIterFloat);
+                });
+
+
+                float sleepLinVel = world.defaultSleepLinearVelocity;
+                DragFloatConfig sleepLinConfig;
+                sleepLinConfig.Speed = 0.01f;
+                sleepLinConfig.MinV = 0.0f;
+                sleepLinConfig.MaxV = 5.0f;
+                sleepLinConfig.Fmt = "%.2f m/s";
+                
+                DragFloat("Linear Velocity", &sleepLinVel, sleepLinConfig, [&](float val){
+                    world.defaultSleepLinearVelocity = sleepLinVel;
+                });
+
+                float sleepAngVel = world.defaultSleepAngularVelocity;
+                DragFloatConfig sleepAngConfig;
+                sleepAngConfig.Speed = 0.01f;
+                sleepAngConfig.MinV = 0.0f;
+                sleepAngConfig.MaxV = 5.0f;
+                sleepAngConfig.Fmt = "%.2f rad/s";
+                
+                DragFloat("Angular Velocity", &sleepAngVel, sleepAngConfig, [&](float val){
+                    world.defaultSleepAngularVelocity = sleepAngVel;
+                });
+
+                float timeBeforeSleep = world.defaultTimeBeforeSleep;
+                DragFloatConfig timeConfig;
+                timeConfig.Speed = 0.1f;
+                timeConfig.MinV = 0.0f;
+                timeConfig.MaxV = 10.0f;
+                timeConfig.Fmt = "%.1f s";
+                
+                DragFloat("##timesleep", &timeBeforeSleep, timeConfig, [&](float val){
+                    world.defaultTimeBeforeSleep = timeBeforeSleep;
+                });
+            }
+        
+            ImGui::EndDisabled();
+        }
+        
         ImGui::End();
+        ImGui::PopStyleVar();
     }
-
-
 }

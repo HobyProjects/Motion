@@ -110,7 +110,7 @@ namespace Motion
      * @return A string containing the hash value of the input string in hexadecimal format.
      * @example HashString("Hello World") returns "6597fabe95561fb93".
      */
-    static std::string HashString(const std::string& input)
+    [[maybe_unused]] static std::string HashString(const std::string& input)
     {
         return std::format("{:X}", std::hash<std::string>{}(input));
     }
@@ -300,7 +300,7 @@ namespace Motion
                 return "UnknownMaterial";
             };
 
-            auto loadMesh = [&](std::uint32_t index, aiMesh* mesh)
+            auto loadMesh = [&]([[maybe_unused]] std::uint32_t index, aiMesh* mesh)
             {
                 if (!mesh || mesh->mNumVertices == 0 || mesh->mNumFaces == 0)
                     return;

@@ -5,7 +5,6 @@
     #include <dwmapi.h>
     #define GLFW_EXPOSE_NATIVE_WIN32
     #include <GLFW/glfw3native.h>
-#include "UI.hpp"
     #pragma comment(lib, "dwmapi.lib")
 #endif
 
@@ -253,7 +252,7 @@ namespace Motion
         // ====================================================================
         if (includeMaterialIcons)
         {
-            static const ImWchar materialRange[] = { (ImWchar)ICON_MIN_MD, (ImWchar)ICON_MAX_MD, 0 };
+            static const ImWchar materialRange[] = { ICON_MIN_MD, ICON_MAX_MD, 0 };
             
             ImFontConfig iconCfg{};
             iconCfg.MergeMode = true;           // ✅ CRITICAL

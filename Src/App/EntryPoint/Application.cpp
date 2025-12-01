@@ -100,7 +100,7 @@ namespace Motion
         }
     }
 
-    bool Application::OnWindowClose(WindowHandle handle, EventWindowClose& e)
+    bool Application::OnWindowClose([[maybe_unused]] WindowHandle handle, [[maybe_unused]] EventWindowClose& e)
     {
         if (m_Window->IsActive())
         {
@@ -110,7 +110,7 @@ namespace Motion
         return false;
     }
 
-    bool Application::OnWindowResize(WindowHandle handle, EventWindowResize& e)
+    bool Application::OnWindowResize([[maybe_unused]] WindowHandle handle, EventWindowResize& e)
     {
         if (m_Window->GetProperties().State != WindowState::Minimized)
             Renderer::SetViewport(0, 0, e.Width(), e.Height());

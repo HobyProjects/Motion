@@ -77,7 +77,7 @@ namespace Motion
         UserInterface::Quit();
     }
 
-    void PresentationLayer::OnEvent(WindowHandle handle, IEvent& e)
+    void PresentationLayer::OnEvent([[maybe_unused]] WindowHandle handle, IEvent& e)
     {
         if (m_AllowEvents)
         {

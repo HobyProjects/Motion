@@ -51,8 +51,6 @@ namespace Motion
                 MOTION_ASSERT(false, "Unknown Base API"); 
                 return nullptr;
         }
-
-        return nullptr;
     }
 
     std::shared_ptr<IWindow> WindowManager::Create(const std::string& title, bool isVisible, NativeWindow sharedWindow) noexcept
@@ -62,7 +60,6 @@ namespace Motion
         {
             case PlatformBaseAPIs::GLFW:
             {
-                auto& coreAPI = CoreAPI::GetInstance();
                 auto window = std::make_shared<GLFW_Window>(uniqueHandle, title, isVisible, sharedWindow);
                 m_WindowManagementService[uniqueHandle] = window;
 

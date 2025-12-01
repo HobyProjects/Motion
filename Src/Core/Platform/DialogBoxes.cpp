@@ -145,8 +145,6 @@ namespace Motion
                 case SystemFolder::UserFolder:      return FOLDERID_UsersFiles;
                 default:                            return FOLDERID_Documents;
             };
-
-            return FOLDERID_Documents;
         }
     } 
 

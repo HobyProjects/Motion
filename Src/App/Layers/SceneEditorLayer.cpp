@@ -87,7 +87,7 @@ namespace Motion
      *
      * @param handle The window handle of the application.
      */
-    void SceneEditorLayer::OnUIRender(WindowHandle handle)
+    void SceneEditorLayer::OnUIRender([[maybe_unused]] WindowHandle handle)
     {
         BuildDockspace();
         
@@ -249,8 +249,12 @@ namespace Motion
 
                 std::string nameStr(m_SceneCreationRequest.Name);
                 TextBoxWithHint("Scene Name", nameStr, "Enter scene name...", nameConfig);
+#ifdef MOTION_PLATFORM_WINDOWS
+                strncpy_s(m_SceneCreationRequest.Name, sizeof(m_SceneCreationRequest.Name), nameStr.c_str(), _TRUNCATE);
+#else
                 strncpy(m_SceneCreationRequest.Name, nameStr.c_str(), sizeof(m_SceneCreationRequest.Name) - 1);
                 m_SceneCreationRequest.Name[sizeof(m_SceneCreationRequest.Name) - 1] = '\0';
+#endif
                 if (nameHasError) ImGui::PopStyleColor(2);
                 
                 ImGui::Spacing();
@@ -878,7 +882,7 @@ namespace Motion
             
             if (ImGui::BeginChild("LoadingContent", cardSize, true, ImGuiWindowFlags_NoScrollbar))
             {
-                const float time = ImGui::GetTime();
+                const float time = static_cast<float>(ImGui::GetTime());
                 
                 // Determine operation details
                 const char* loadingTitle = "Processing";

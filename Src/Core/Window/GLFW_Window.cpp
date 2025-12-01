@@ -244,7 +244,7 @@ namespace Motion
     void GLFW_Window::RegisterEventsCallBacks()
     {
         EventRegistry<GLFWwindow*>::Register(EventType::WindowClose,
-            [this](GLFWwindow* window)
+            [this]([[maybe_unused]] GLFWwindow* window)
             {
                 EventWindowClose windowCloseEvent;
                 m_CallbackFunc(m_Properties.Handle, windowCloseEvent);
@@ -252,7 +252,7 @@ namespace Motion
         );
 
         EventRegistry<GLFWwindow*, int, int>::Register(EventType::WindowResize,
-            [this](GLFWwindow* window, int width, int height)
+            [this]([[maybe_unused]] GLFWwindow* window, int width, int height)
             {
                 EventWindowResize windowResizeEvent(width, height);
                 m_Properties.Width = width;
@@ -262,7 +262,7 @@ namespace Motion
         );
 
         EventRegistry<GLFWwindow*, int>::Register(EventType::WindowFocusGain,
-            [this](GLFWwindow* window, int focused)
+            [this]([[maybe_unused]] GLFWwindow* window, int focused)
             {
                 if (focused)
                 {
@@ -280,7 +280,7 @@ namespace Motion
         );
 
         EventRegistry<GLFWwindow*, int>::Register(EventType::WindowMinimize,
-            [this](GLFWwindow* window, int iconified)
+            [this]([[maybe_unused]] GLFWwindow* window, int iconified)
             {
                 if (iconified)
                 {
@@ -292,7 +292,7 @@ namespace Motion
         );
 
         EventRegistry<GLFWwindow*, int>::Register(EventType::WindowMaximize,
-            [this](GLFWwindow* window, int maximized)
+            [this]([[maybe_unused]] GLFWwindow* window, int maximized)
             {
                 if (maximized)
                 {
@@ -304,7 +304,7 @@ namespace Motion
         );
 
         EventRegistry<GLFWwindow*, int, int>::Register(EventType::WindowPosChange,
-            [this](GLFWwindow* window, int x, int y)
+            [this]([[maybe_unused]] GLFWwindow* window, int x, int y)
             {
                 EventWindowPosChange windowMoveEvent(x, y);
                 m_Properties.PosX = x;
@@ -314,7 +314,7 @@ namespace Motion
         );
 
         EventRegistry<GLFWwindow*, int, int>::Register(EventType::WindowFrameBufferSizeChange,
-            [this](GLFWwindow* window, int width, int height)
+            [this]([[maybe_unused]] GLFWwindow* window, int width, int height)
             {
                 EventWindowFrameBufferSizeChange windowPixelSizeEvent(width, height);
                 m_Properties.PixelWidth = width;
@@ -324,7 +324,7 @@ namespace Motion
         );
 
         EventRegistry<GLFWwindow*, int, int, int, int>::Register(EventType::KeyboardKeyPress,
-            [this](GLFWwindow* window, int key, int scancode, int action, int mods)
+            [this]([[maybe_unused]] GLFWwindow* window, int key, int scancode, int action, int mods)
             {
                 if (action == KeyState::KEY_PRESSED)
                 {
@@ -347,7 +347,7 @@ namespace Motion
         );
 
         EventRegistry<GLFWwindow*, unsigned int>::Register(EventType::KeyboardKeyChar,
-            [this](GLFWwindow* window, unsigned int codepoint)
+            [this]([[maybe_unused]] GLFWwindow* window, unsigned int codepoint)
             {
                 EventKeyboardKeyChar keyCharEvent(codepoint);
                 m_CallbackFunc(m_Properties.Handle, keyCharEvent);
@@ -355,7 +355,7 @@ namespace Motion
         );
 
         EventRegistry<GLFWwindow*, int, int, int>::Register(EventType::MouseButtonDown,
-            [this](GLFWwindow* window, int button, int action, int mods)
+            [this]([[maybe_unused]] GLFWwindow* window, int button, int action, int mods)
             {
                 if (action == MouseButtonState::MOUSE_BUTTON_PRESSED)
                 {
@@ -372,7 +372,7 @@ namespace Motion
         );
 
         EventRegistry<GLFWwindow*, double, double>::Register(EventType::MouseCursorPosChange,
-            [this](GLFWwindow* window, double x, double y)
+            [this]([[maybe_unused]] GLFWwindow* window, double x, double y)
             {
                 EventMouseCursorMove mouseCursorPosEvent(x, y);
                 m_CallbackFunc(m_Properties.Handle, mouseCursorPosEvent);
@@ -380,7 +380,7 @@ namespace Motion
         );
 
         EventRegistry<GLFWwindow*, int>::Register(EventType::MouseCursorWindowEnter,
-            [this](GLFWwindow* window, int entered)
+            [this]([[maybe_unused]] GLFWwindow* window, int entered)
             {
                 if (entered)
                 {
@@ -396,7 +396,7 @@ namespace Motion
         );
 
         EventRegistry<GLFWwindow*, double, double>::Register(EventType::MouseWheelScroll,
-            [this](GLFWwindow* window, double x, double y)
+            [this]([[maybe_unused]] GLFWwindow* window, double x, double y)
             {
                 EventMouseWheelScroll mouseWheelScrollEvent(x, y);
                 m_CallbackFunc(m_Properties.Handle, mouseWheelScrollEvent);

@@ -87,7 +87,7 @@ class BuildGUI:
         
         ttk.Label(
             title_frame, 
-            text="🏗️ Motion Engine Build System",
+            text="Motion Engine Build System",
             style='Title.TLabel'
         ).pack(side=tk.LEFT)
         

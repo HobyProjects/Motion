@@ -31,20 +31,20 @@ namespace Motion
          * @brief Called once when the panel is first created
          * @param scene Pointer to the active scene
          */
-        virtual void OnCreate(Scene* scene) {}
+        virtual void OnCreate([[maybe_unused]] Scene* scene) {}
 
         /**
          * @brief Called every frame to update panel state
          * @param scene Pointer to the active scene
          * @param dt Delta time in seconds since last frame
          */
-        virtual void OnUpdate(Scene* scene, float dt) {}
+        virtual void OnUpdate([[maybe_unused]] Scene* scene, [[maybe_unused]] float dt) {}
 
         /**
          * @brief Called every frame to render the panel UI
          * @param scene Pointer to the active scene
          */
-        virtual void OnRender(Scene* scene) {}
+        virtual void OnRender([[maybe_unused]] Scene* scene) {}
 
     protected:
         /**

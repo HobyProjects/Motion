@@ -127,9 +127,9 @@ namespace Motion
 
         for (size_t i = 0; i < shaderPositions.size(); ++i)
         {
-            size_t begin = source.find('\n', shaderPositions[i].first) + 1;
-            size_t end = (i + 1 < shaderPositions.size()) ? shaderPositions[i + 1].first : source.size();
-            shaderSources[shaderPositions[i].second] = source.substr(begin, end - begin);
+            size_t begin_size = source.find('\n', shaderPositions[i].first) + 1;
+            size_t end_size = (i + 1 < shaderPositions.size()) ? shaderPositions[i + 1].first : source.size();
+            shaderSources[shaderPositions[i].second] = source.substr(begin_size, end_size - begin_size);
         }
 
         return shaderSources;
@@ -165,8 +165,6 @@ namespace Motion
             case RenderingAPI::DirectX:        MOTION_ASSERT(false, "DirectX is not implemented yet!"); return nullptr;
             default:                           MOTION_ASSERT(false, "Unknown rendering API!");          return nullptr;
         };
-
-        return nullptr;
     }
 
     static std::string CreateDefinitions(ShaderFeatureMask features)
@@ -256,10 +254,7 @@ namespace Motion
             return nullptr;
         }
 
-
-        UUID vID        = UniqueIdentity::GetUniqueID();
         auto name       = std::format("{}_{}", sourceFile.filename().stem().string(), static_cast<std::uint32_t>(features));
-
         for (auto& [type, src] : shaderSources)
         {
             src = InjectDefinitions(src, defineBlock);

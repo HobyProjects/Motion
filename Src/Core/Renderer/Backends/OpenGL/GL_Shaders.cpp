@@ -105,7 +105,7 @@ namespace Motion
                 }
                 else
                 {
-                    MOTION_CORE_ERROR(line);
+                    MOTION_CORE_ERROR("Line: {}", line);
                 }
             }
 

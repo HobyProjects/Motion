@@ -885,12 +885,12 @@ namespace Motion
         bool ShowEntityMaterials{true};
         bool ShowEntityComponents{true};
 
-        bool ShowEnvironmentPanel{false};
-        bool ShowForceAnalysisPanel{false};
-        bool ShowEnergyPanel{false};
-        bool ShowMomentumPanel{false};
-        bool ShowAccelerationPanel{false};
-        bool ShowTrajectoryPanel{false};
+        bool ShowEnvironmentPanel{true};
+        bool ShowForceAnalysisPanel{true};
+        bool ShowEnergyPanel{true};
+        bool ShowMomentumPanel{true};
+        bool ShowAccelerationPanel{true};
+        bool ShowTrajectoryPanel{true};
 
         bool ShowConsole{true};
     };

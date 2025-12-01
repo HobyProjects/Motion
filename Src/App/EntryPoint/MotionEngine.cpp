@@ -8,6 +8,7 @@ int main(int argc, char* argv[])
 {
     auto& logger = Loggers::GetInstance();
     logger.Initialize();
+    logger.EnableNotifications(true);
 
     auto& coreAPI = CoreAPI::GetInstance();
     if (coreAPI.Init())

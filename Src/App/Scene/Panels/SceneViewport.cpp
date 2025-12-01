@@ -320,6 +320,12 @@ namespace Motion
                         ImGui::OpenPopup("ViewportContextMenu");
                     }
 
+                    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8.0f, 8.0f));
+                    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(8.0f, 5.0f));
+                    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(10.0f, 5.0f));
+                    ImGui::PushStyleVar(ImGuiStyleVar_ItemInnerSpacing, ImVec2(10.0f, 4.0f));
+
+
                     if (ImGui::BeginPopupContextWindow("ViewportContextMenu", ImGuiPopupFlags_MouseButtonMiddle))
                     {
                         ImGui::Indent(5.0f);
@@ -368,7 +374,9 @@ namespace Motion
                         ImGui::EndPopup();
                     }
 
-                    if (isActive && hasTransform)
+                    ImGui::PopStyleVar(4);
+
+                    if (isActive && hasTransform && context.Entities->SelectedEntity != entt::null)
                     {
                         ImGuizmo::PushID(1);
                         auto& TRS = context.Entities->Registry.get<TransformComponent>(context.Entities->SelectedEntity);

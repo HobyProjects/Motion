@@ -39,7 +39,7 @@ namespace Motion
         {
             HeadingConfig config;
             config.Separator = true;
-            Heading(ICON_MD_INFO_OUTLINE " Simulation Mode Required", HeadingLevel::H2, config);
+            Heading(ICON_MD_INFO_OUTLINE " Simulation Mode Required", HeadingLevel::H1, config);
 
             LabelConfig lblConfig;
             lblConfig.Wrapped = true;
@@ -51,7 +51,7 @@ namespace Motion
         {
             HeadingConfig config;
             config.Separator = true;
-            Heading(ICON_MD_ENERGY_SAVINGS_LEAF " Energy Tracking", HeadingLevel::H3, config);
+            Heading(ICON_MD_ENERGY_SAVINGS_LEAF " Energy Tracking", HeadingLevel::H2, config);
             ToggleSwitch("Enable Tracking", &energy.TrackingEnabled, ToggleSwitchPresets::iOS());
             if(ImGui::IsItemHovered()) ImGui::SetTooltip("Record kinetic and potential energy over time to analyze energy conservation");
         }
@@ -62,7 +62,7 @@ namespace Motion
         {
             HeadingConfig config;
             config.Separator = true;
-            Heading(ICON_MD_WIND_POWER " Current Energy Values", HeadingLevel::H3, config);
+            Heading(ICON_MD_WIND_POWER " Current Energy Values", HeadingLevel::H2, config);
 
             LabelConfig kineticConfig;
             kineticConfig.Color = ImVec4(0.3f, 1.0f, 0.5f, 1.0f);
@@ -85,7 +85,7 @@ namespace Motion
         {
             HeadingConfig config;
             config.Separator = true;
-            Heading(ICON_MD_TIMELINE " Energy Conservation Status", HeadingLevel::H3, config);
+            Heading(ICON_MD_TIMELINE " Energy Conservation Status", HeadingLevel::H2, config);
 
             float conservation = energy.GetConservationPercentage();
             ImVec4 conservationColor;

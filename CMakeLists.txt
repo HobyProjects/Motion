@@ -23,6 +23,8 @@ find_package(MikkTSpace CONFIG REQUIRED)
 find_package(imguizmo CONFIG REQUIRED)
 find_package(reactphysics3d CONFIG REQUIRED)
 
+
+
 # Core library
 add_library(MotionCore STATIC)
 target_compile_definitions(MotionCore PUBLIC 

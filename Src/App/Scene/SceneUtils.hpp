@@ -964,7 +964,7 @@ namespace Motion
         if(!hull.ok())
         {
             for(const auto& msg : hull.log)
-                MOTION_CORE_WARN(msg);
+                MOTION_CORE_WARN("Convex hull log: {}", msg);
 
             MOTION_CORE_ERROR("Failed to compute convex hull");
             return;
@@ -1023,7 +1023,7 @@ namespace Motion
         if(!hull.ok())
         {
             for(const auto& msg : hull.log)
-                MOTION_CORE_WARN(msg);
+                MOTION_CORE_WARN("Convex hull log: {}", msg);
 
             MOTION_CORE_ERROR("Failed to compute convex hull");
             return;

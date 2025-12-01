@@ -127,19 +127,21 @@ namespace Motion
      */
     void SceneEditorLayer::HandleSceneCreation()
     {
-        const ImVec4 CARD_BG        = ImVec4(255.0f/255.0f, 255.0f/255.0f, 255.0f/255.0f, 0.98f);
-        const ImVec4 CONTROL_BG     = ImVec4(251.0f/255.0f, 251.0f/255.0f, 251.0f/255.0f, 1.0f);
-        const ImVec4 HOVER_BG       = ImVec4(246.0f/255.0f, 246.0f/255.0f, 246.0f/255.0f, 1.0f);
-        const ImVec4 TEXT_PRIMARY   = ImVec4(32.0f/255.0f, 33.0f/255.0f, 36.0f/255.0f, 1.0f);
-        const ImVec4 TEXT_SECONDARY = ImVec4(96.0f/255.0f, 94.0f/255.0f, 92.0f/255.0f, 1.0f);
-        const ImVec4 TEXT_DISABLED  = ImVec4(161.0f/255.0f, 159.0f/255.0f, 157.0f/255.0f, 1.0f);
-        const ImVec4 BORDER         = ImVec4(229.0f/255.0f, 229.0f/255.0f, 229.0f/255.0f, 0.50f);
-        const ImVec4 SUCCESS        = ImVec4(16.0f/255.0f, 137.0f/255.0f, 62.0f/255.0f, 1.0f);
-        const ImVec4 WARNING        = ImVec4(255.0f/255.0f, 185.0f/255.0f, 0.0f/255.0f, 1.0f);
-        const ImVec4 ERROR_COLOR    = ImVec4(232.0f/255.0f, 17.0f/255.0f, 35.0f/255.0f, 1.0f);
+        auto& style = ImGui::GetStyle();
+
+        ImVec4 ACCENT           = UserInterface::ThemeManager::GetAccentColor();
+        ImVec4 OVERLAY_DIM      = ImVec4(0.0f, 0.0f, 0.0f, 0.50f);
+        ImVec4 CARD_BG          = style.Colors[ImGuiCol_WindowBg];
+        ImVec4 TEXT_PRIMARY     = style.Colors[ImGuiCol_Text];
+        ImVec4 TEXT_SECONDARY   = style.Colors[ImGuiCol_TextDisabled];
+        ImVec4 BORDER           = style.Colors[ImGuiCol_Border];
         
-        ImVec4 ACCENT = ImGui::GetStyleColorVec4(ImGuiCol_CheckMark);
-        auto MixColors = [](const ImVec4& a, const ImVec4& b, float t) -> ImVec4 {
+        const ImVec4 SUCCESS        = ImVec4(0.06f, 0.54f, 0.24f, 1.0f);
+        const ImVec4 WARNING        = ImVec4(1.0f, 0.73f, 0.0f, 1.0f);
+        const ImVec4 ERROR_COLOR    = ImVec4(0.91f, 0.07f, 0.14f, 1.0f);
+        
+        auto MixColors = [](const ImVec4& a, const ImVec4& b, float t) -> ImVec4 
+        {
             return ImVec4(
                 a.x + (b.x - a.x) * t,
                 a.y + (b.y - a.y) * t,
@@ -147,9 +149,25 @@ namespace Motion
                 a.w + (b.w - a.w) * t
             );
         };
-        
-        const ImVec4 ACCENT_HOVER = MixColors(ACCENT, ImVec4(1, 1, 1, 1), 0.12f);
-        const ImVec4 ACCENT_ACTIVE = MixColors(ACCENT, ImVec4(0, 0, 0, 1), 0.15f);
+
+        auto trim = [](std::string& s)
+        {
+            const auto wsfront = s.find_first_not_of(" \t\r\n");
+            const auto wsback  = s.find_last_not_of(" \t\r\n");
+            if (wsfront == std::string::npos) { s.clear(); return; }
+            s = s.substr(wsfront, wsback - wsfront + 1);
+        };
+
+        auto has_invalid_win_chars = [](const std::string& s)
+        {
+    #ifdef MOTION_PLATFORM_WINDOWS
+            static const char* bad = "<>:\"/\\|?*";
+            return s.find_first_of(bad) != std::string::npos;
+    #else
+            (void)s;
+            return false;
+    #endif
+        };
 
         if (m_SceneCreationRequest.ShowDialog)
         {
@@ -157,348 +175,332 @@ namespace Motion
             m_SceneCreationRequest.ShowDialog = false;
         }
 
-        ImVec2 center = ImGui::GetMainViewport()->GetCenter();
-        ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+        ImGuiViewport* viewport = ImGui::GetMainViewport();
+        ImGui::SetNextWindowPos(viewport->WorkPos);
+        ImGui::SetNextWindowSize(viewport->WorkSize);
+        ImGui::SetNextWindowViewport(viewport->ID);
         
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(20, 20));
-        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(8, 12));
-        
-        if (ImGui::BeginPopupModal("Create New Scene", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoScrollbar))
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
+        ImGui::PushStyleColor(ImGuiCol_WindowBg, OVERLAY_DIM);
+
+        ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
+                                ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar |
+                                ImGuiWindowFlags_NoSavedSettings;
+    
+        if (ImGui::BeginPopupModal("Create New Scene", nullptr, flags))
         {
+            ImGui::SetCursorPos(ImVec2(0, 0));
+            ImGui::InvisibleButton("##overlay_blocker", viewport->WorkSize);
+            
             std::vector<std::string> errors;
             std::vector<std::string> warnings;
             
-            auto trim = [](std::string& s)
-            {
-                const auto wsfront = s.find_first_not_of(" \t\r\n");
-                const auto wsback  = s.find_last_not_of(" \t\r\n");
-                if (wsfront == std::string::npos) { s.clear(); return; }
-                s = s.substr(wsfront, wsback - wsfront + 1);
-            };
+            ImVec2 center = ImGui::GetMainViewport()->GetCenter();
+            ImGui::SetNextWindowPos(center, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+            
+            ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(50, 45));
+            ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 12.0f);
+            ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, 1.0f);
+            
+            ImGui::PushStyleColor(ImGuiCol_WindowBg, CARD_BG);
+            ImGui::PushStyleColor(ImGuiCol_Border, BORDER);
 
-            auto has_invalid_win_chars = [](const std::string& s)
-            {
-    #ifdef MOTION_PLATFORM_WINDOWS
-                static const char* bad = "<>:\"/\\|?*";
-                return s.find_first_of(bad) != std::string::npos;
-    #else
-                (void)s;
-                return false;
-    #endif
-            };
+            static bool useMaxHeight = false;
+            const float maxHeight = viewport->WorkSize.y * 0.85f;
+            const ImVec2 cardSize = (useMaxHeight ? ImVec2(800, maxHeight) : ImVec2(800, 0));
 
-            ImGui::PushStyleColor(ImGuiCol_Text, ACCENT);
-            ImGui::Text("Create a New Physics Scene");
-            ImGui::PopStyleColor();
-            
-            ImGui::Spacing();
-            ImGui::PushStyleColor(ImGuiCol_Text, TEXT_SECONDARY);
-            ImGui::TextWrapped("Set up a new scene to start building and simulating your physics experiments.");
-            ImGui::PopStyleColor();
-            
-            ImGui::Spacing();
-            ImGui::Separator();
-            ImGui::Spacing();
-            ImGui::Spacing();
-
-            ImGui::PushStyleColor(ImGuiCol_Text, TEXT_PRIMARY);
-            ImGui::AlignTextToFramePadding();
-            ImGui::Text("Scene Name:");
-            ImGui::PopStyleColor();
-            ImGui::SameLine();
-            
-            ImGui::SetNextItemWidth(450.0f);
-            std::string name = m_SceneCreationRequest.Name;
-            trim(name);
-            bool nameHasError = false;
-            
-            if (name.empty() || has_invalid_win_chars(name))
+            if (ImGui::BeginChild("LoadingContent", cardSize, ImGuiChildFlags_Border | ImGuiChildFlags_AutoResizeY, ImGuiWindowFlags_NoScrollbar))
             {
-                nameHasError = true;
-                ImVec4 errorBg = MixColors(ERROR_COLOR, CONTROL_BG, 0.90f);
-                ImGui::PushStyleColor(ImGuiCol_FrameBg, errorBg);
-                ImGui::PushStyleColor(ImGuiCol_Border, MixColors(ERROR_COLOR, BORDER, 0.30f));
-            }
-            
-            ImGui::InputTextWithHint("##scenename", "Enter scene name...", 
-                                    m_SceneCreationRequest.Name, 
-                                    sizeof(m_SceneCreationRequest.Name));
-            
-            if (nameHasError)
-                ImGui::PopStyleColor(2);
-            
-            ImGui::SameLine();
-            int nameLen = (int)strlen(m_SceneCreationRequest.Name);
-            ImGui::PushStyleColor(ImGuiCol_Text, TEXT_DISABLED);
-            ImGui::Text("(%d chars)", nameLen);
-            ImGui::PopStyleColor();
-            
-            ImGui::Spacing();
-            ImGui::Spacing();
-
-            ImGui::PushStyleColor(ImGuiCol_Text, TEXT_PRIMARY);
-            ImGui::AlignTextToFramePadding();
-            ImGui::Text("Save Location:");
-            ImGui::PopStyleColor();
-            ImGui::SameLine();
-            
-            std::string pathStr = m_SceneCreationRequest.FilePath.string();
-            bool pathHasError = m_SceneCreationRequest.FilePath.empty() || 
-                                !std::filesystem::exists(m_SceneCreationRequest.FilePath);
-            
-            if (pathHasError)
-            {
-                ImVec4 errorBg = MixColors(ERROR_COLOR, CONTROL_BG, 0.90f);
-                ImGui::PushStyleColor(ImGuiCol_FrameBg, errorBg);
-                ImGui::PushStyleColor(ImGuiCol_Border, MixColors(ERROR_COLOR, BORDER, 0.30f));
-            }
-            
-            ImGui::SetNextItemWidth(340.0f);
-            if (ImGui::InputTextWithHint("##path", "Click Browse to select a folder...", 
-                                        &pathStr, ImGuiInputTextFlags_ReadOnly))
-            {
-                m_SceneCreationRequest.FilePath = std::filesystem::path(pathStr);
-            }
-            
-            if (pathHasError)
-                ImGui::PopStyleColor(2);
-            
-            ImGui::SameLine();
-            ImGui::PushStyleColor(ImGuiCol_Button, ACCENT);
-            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ACCENT_HOVER);
-            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ACCENT_ACTIVE);
-            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1, 1, 1, 1));
-            
-            if (ImGui::Button("Browse", ImVec2(120, 0)))
-            {
-                DialogBoxes::InitializeCOM();
-                if (auto folder = DialogBoxes::SelectFolderDialog(L"Select where to save your scene"); !folder.empty())
-                {
-                    m_SceneCreationRequest.FilePath = folder;
-                }
-                DialogBoxes::UninitializeCOM();
-            }
-            ImGui::PopStyleColor(4);
-
-            ImGui::Spacing();
-            ImGui::Spacing();
-
-            if (name.empty())
-            {
-                errors.emplace_back("Scene name is required");
-            }
-            else 
-            {
-                if (has_invalid_win_chars(name))
-                {
-                    errors.emplace_back("Name contains invalid characters: < > : \" / \\ | ? *");
-                }
-
-    #ifdef MOTION_PLATFORM_WINDOWS
-                if (!name.empty() && (name.back() == ' ' || name.back() == '.'))
-                {
-                    errors.emplace_back("Name cannot end with a space or period on Windows");
-                }
-    #endif
-
-                // Check if scene already exists
-                if (!m_SceneCreationRequest.FilePath.empty())
-                {
-                    auto potentialPath = m_SceneCreationRequest.FilePath / name;
-                    if (std::filesystem::exists(potentialPath))
-                    {
-                        warnings.emplace_back("A folder with this name already exists at this location");
-                    }
-                }
-            }
-
-            if (m_SceneCreationRequest.FilePath.empty())
-            {
-                errors.emplace_back("Please select a save location");
-            }
-            else if (!std::filesystem::exists(m_SceneCreationRequest.FilePath))
-            {
-                errors.emplace_back("The selected folder does not exist or is not accessible");
-            }
-            else if (!std::filesystem::is_directory(m_SceneCreationRequest.FilePath))
-            {
-                errors.emplace_back("The selected path is not a valid folder");
-            }
-
-            // Preview the final path
-            if (errors.empty())
-            {
-                ImGui::Spacing();
-                ImVec4 successBg = MixColors(SUCCESS, CARD_BG, 0.93f);
-                ImGui::PushStyleColor(ImGuiCol_ChildBg, successBg);
-                ImGui::PushStyleColor(ImGuiCol_Border, MixColors(SUCCESS, BORDER, 0.40f));
-                ImGui::BeginChild("PathPreview", ImVec2(450, 65), ImGuiChildFlags_AutoResizeX | ImGuiChildFlags_AutoResizeY, ImGuiWindowFlags_None);
+                ImVec2 childSize = ImGui::GetWindowSize();
+                if (childSize.y > maxHeight) { useMaxHeight = true; }
                 
-                ImGui::PushStyleColor(ImGuiCol_Text, MixColors(SUCCESS, TEXT_PRIMARY, 0.30f));
-                ImGui::Text("Scene will be created at:");
-                ImGui::PopStyleColor();
+                // Header
+                HeadingConfig headerConfig;
+                headerConfig.Color = ACCENT;
+                headerConfig.Separator = false;
+                Heading("Create a New Physics Scene", HeadingLevel::H2, headerConfig);
+
+                LabelConfig descConfig;
+                descConfig.Color = TEXT_SECONDARY;
+                descConfig.Wrapped = true;
+                LabelSimple("Set up a new scene to start building and simulating your physics experiments.", descConfig);
                 
                 ImGui::Spacing();
-                auto fullPath = m_SceneCreationRequest.FilePath / name;
-                ImGui::PushStyleColor(ImGuiCol_Text, TEXT_SECONDARY);
-                ImGui::TextWrapped("%s", fullPath.string().c_str());
-                ImGui::PopStyleColor();
-                
-                ImGui::EndChild();
-                ImGui::PopStyleColor(2);
-                ImGui::Spacing();
-            }
-
-            // Display warnings
-            if (!warnings.empty())
-            {
                 ImGui::Separator();
                 ImGui::Spacing();
-                
-                ImVec4 warningBg = MixColors(WARNING, CARD_BG, 0.95f);
-                ImGui::PushStyleColor(ImGuiCol_ChildBg, warningBg);
-                ImGui::PushStyleColor(ImGuiCol_Border, MixColors(WARNING, BORDER, 0.40f));
-                ImGui::BeginChild("WarningList", ImVec2(450, 0), ImGuiChildFlags_AutoResizeX | ImGuiChildFlags_AutoResizeY, ImGuiWindowFlags_None);
-                
-                ImGui::PushStyleColor(ImGuiCol_Text, MixColors(WARNING, TEXT_PRIMARY, 0.20f));
-                for (const auto& warning : warnings)
-                {
-                    ImGui::TextWrapped("%s", warning.c_str());
-                }
-                ImGui::PopStyleColor();
-                
-                ImGui::EndChild();
-                ImGui::PopStyleColor(2);
-                ImGui::Spacing();
-            }
 
-            // Display errors
-            if (!errors.empty())
-            {
+                // Scene Name Input
+                std::string name = m_SceneCreationRequest.Name;
+                trim(name);
+                bool nameHasError = name.empty() || has_invalid_win_chars(name);
+                
+                TextBoxConfig nameConfig;
+                nameConfig.Layout.LabelWidthRatio = 0.25f;
+                
+                // Custom styling for error state
+                if (nameHasError)
+                {
+                    ImVec4 errorBg = MixColors(ERROR_COLOR, CARD_BG, 0.90f);
+                    ImGui::PushStyleColor(ImGuiCol_FrameBg, errorBg);
+                    ImGui::PushStyleColor(ImGuiCol_Border, MixColors(ERROR_COLOR, BORDER, 0.30f));
+                }
+
+                std::string nameStr(m_SceneCreationRequest.Name);
+                TextBoxWithHint("Scene Name", nameStr, "Enter scene name...", nameConfig);
+                strncpy(m_SceneCreationRequest.Name, nameStr.c_str(), sizeof(m_SceneCreationRequest.Name) - 1);
+                m_SceneCreationRequest.Name[sizeof(m_SceneCreationRequest.Name) - 1] = '\0';
+                if (nameHasError) ImGui::PopStyleColor(2);
+                
+                ImGui::Spacing();
+
+                // Save Location Input
+                std::string pathStr = m_SceneCreationRequest.FilePath.string();
+                bool pathHasError = m_SceneCreationRequest.FilePath.empty() || 
+                                    !std::filesystem::exists(m_SceneCreationRequest.FilePath);
+                
+                if (pathHasError)
+                {
+                    ImVec4 errorBg = MixColors(ERROR_COLOR, CARD_BG, 0.90f);
+                    ImGui::PushStyleColor(ImGuiCol_FrameBg, errorBg);
+                    ImGui::PushStyleColor(ImGuiCol_Border, MixColors(ERROR_COLOR, BORDER, 0.30f));
+                }
+                
+                TextBoxConfig pathConfig;
+                pathConfig.ReadOnly = true;
+                pathConfig.Layout.LabelWidthRatio = 0.25f;
+                pathConfig.Layout.MaxLabelWidth = 150.0f;
+                
+                ImGui::AlignTextToFramePadding();
+                ImGui::Text("Save Location:");
+                ImGui::SameLine(150.0f + 12.0f);
+                
+                ImGui::SetNextItemWidth(280.0f);
+                std::string tempPath = pathStr;
+                TextBoxWithHint("##pathInput", tempPath, "Click Browse to select a folder...", pathConfig);
+                
+                if (pathHasError)
+                    ImGui::PopStyleColor(2);
+
+                ImGui::SameLine();
+            
+                ButtonConfig browseConfig;
+                browseConfig.Style = ButtonStyle::Primary;
+                browseConfig.Size = ImVec2(120, 0);
+                
+                Button("Browse", browseConfig, [this]()
+                {
+                    DialogBoxes::InitializeCOM();
+                    if (auto folder = DialogBoxes::SelectFolderDialog(L"Select where to save your scene"); !folder.empty())
+                    {
+                        m_SceneCreationRequest.FilePath = folder;
+                    }
+                    DialogBoxes::UninitializeCOM();
+                });
+
+                ImGui::Spacing();
+                ImGui::Spacing();
+
+                {
+                    // Validation
+                    if (name.empty())
+                    {
+                        errors.emplace_back("Scene name is required");
+                    }
+                    else 
+                    {
+                        if (has_invalid_win_chars(name))
+                        {
+                            errors.emplace_back("Name contains invalid characters: < > : \" / \\ | ? *");
+                        }
+
+#ifdef MOTION_PLATFORM_WINDOWS
+                        if (!name.empty() && (name.back() == ' ' || name.back() == '.'))
+                        {
+                            errors.emplace_back("Name cannot end with a space or period on Windows");
+                        }
+#endif
+
+                        if (!m_SceneCreationRequest.FilePath.empty())
+                        {
+                            auto potentialPath = m_SceneCreationRequest.FilePath / name;
+                            if (std::filesystem::exists(potentialPath))
+                            {
+                                warnings.emplace_back("A folder with this name already exists at this location");
+                            }
+                        }
+                    }
+
+                    if (m_SceneCreationRequest.FilePath.empty())
+                    {
+                        errors.emplace_back("Please select a save location");
+                    }
+                    else if (!std::filesystem::exists(m_SceneCreationRequest.FilePath))
+                    {
+                        errors.emplace_back("The selected folder does not exist or is not accessible");
+                    }
+                    else if (!std::filesystem::is_directory(m_SceneCreationRequest.FilePath))
+                    {
+                        errors.emplace_back("The selected path is not a valid folder");
+                    }
+                }
+
+                // Path Preview (Success State)
+                if (errors.empty())
+                {
+                    ImGui::Spacing();
+                    auto fullPath = m_SceneCreationRequest.FilePath / name;
+                    
+                    LabelConfig pathLabelConfig;
+                    pathLabelConfig.Color = SUCCESS;
+                    pathLabelConfig.Bullet = true;
+                    pathLabelConfig.Wrapped = true;
+
+                    std::string creationPath = std::format("Scene will be created at: {}", fullPath.string());
+                    LabelSimple(creationPath, pathLabelConfig);
+                    ImGui::Spacing();
+                }
+
+                // Display Warnings
+                if (!warnings.empty())
+                {
+                    ImGui::Spacing();
+                    ImGui::Separator();
+                    ImGui::Spacing();
+                    
+                    HeadingConfig warningHeaderConfig;
+                    warningHeaderConfig.Color = WARNING;
+                    warningHeaderConfig.Separator = false;
+                    Heading("Warning!", HeadingLevel::H4, warningHeaderConfig);
+
+                    ImGui::Spacing();
+
+                    LabelConfig warnConfig;
+                    warnConfig.Color = MixColors(WARNING, TEXT_PRIMARY, 0.20f);
+                    warnConfig.Wrapped = true;
+                    warnConfig.Bullet = true;
+
+                    ImGui::Indent(10.0f);
+                    for (const auto& warning : warnings)
+                    {
+                        LabelSimple(warning, warnConfig);
+                    }
+                    ImGui::Unindent(10.0f);
+                    ImGui::Spacing();
+                }
+
+                // Display Errors
+                if (!errors.empty())
+                {
+                    ImGui::Spacing();
+                    ImGui::Separator();
+                    ImGui::Spacing();
+                    
+                    HeadingConfig errorHeaderConfig;
+                    errorHeaderConfig.Color = ERROR_COLOR;
+                    errorHeaderConfig.Separator = false;
+                    Heading("Error!", HeadingLevel::H4, errorHeaderConfig);
+                    
+                    ImGui::Spacing();
+                    
+                    LabelConfig errorDescConfig;
+                    errorDescConfig.Color = TEXT_SECONDARY;
+                    LabelSimple("Please fix the following issues:", errorDescConfig);
+
+                    ImGui::Spacing();
+
+                    LabelConfig errorConfig;
+                    errorConfig.Color = MixColors(ERROR_COLOR, TEXT_PRIMARY, 0.30f);
+                    errorConfig.Bullet = true;
+                    
+                    ImGui::Indent(10.0f);
+                    for (const auto& error : errors)
+                    {
+                        LabelSimple(error, errorConfig);
+                    }
+                    ImGui::Unindent(10.0f);
+                    ImGui::Spacing();
+                }
+
+                ImGui::Spacing();
                 ImGui::Separator();
                 ImGui::Spacing();
+
+                // Action Buttons
+                bool canCreate = errors.empty();
                 
-                ImVec4 errorBg = MixColors(ERROR_COLOR, CARD_BG, 0.95f);
-                ImGui::PushStyleColor(ImGuiCol_ChildBg, errorBg);
-                ImGui::PushStyleColor(ImGuiCol_Border, MixColors(ERROR_COLOR, BORDER, 0.40f));
-                ImGui::BeginChild("ErrorList", ImVec2(450, 0), ImGuiChildFlags_AutoResizeX | ImGuiChildFlags_AutoResizeY, ImGuiWindowFlags_None);
+                // Center the buttons
+                float buttonGroupWidth = 140.0f + 8.0f + 120.0f; // Create + spacing + Cancel
+                ImGui::SetCursorPosX((ImGui::GetWindowSize().x - buttonGroupWidth) * 0.5f);
                 
-                ImGui::PushStyleColor(ImGuiCol_Text, MixColors(ERROR_COLOR, TEXT_PRIMARY, 0.20f));
-                ImGui::TextWrapped("Please fix the following issues:");
-                ImGui::PopStyleColor();
+                ButtonConfig createConfig;
+                createConfig.Style = ButtonStyle::Success;
+                createConfig.Size = ImVec2(140, 35);
+                createConfig.Disabled = !canCreate;
+                createConfig.Tooltip = !canCreate ? "Please fix all errors before creating the scene" : nullptr;
                 
-                ImGui::Spacing();
-                ImGui::Indent(10.0f);
-                
-                ImGui::PushStyleColor(ImGuiCol_Text, MixColors(ERROR_COLOR, TEXT_PRIMARY, 0.30f));
-                for (const auto& error : errors)
+                Button("Create Scene", createConfig, [this, &name]()
                 {
-                    ImGui::BulletText("%s", error.c_str());
-                }
-                ImGui::PopStyleColor();
+                    std::string sceneName = name;
+                    auto scenePath = m_SceneCreationRequest.FilePath / sceneName;
+                    m_SceneCreationOp.Start(LOADER::Submit([sceneName, scenePath]() -> std::shared_ptr<Scene>
+                    {
+                        try
+                        {
+                            SceneSpecification spec;
+                            spec.ID = UniqueIdentity::GetUniqueID();
+                            spec.Name = sceneName;
+                            spec.SavedPath = scenePath;
+                            auto scene = std::make_shared<Scene>(spec);
+                            
+                            if (!scene)
+                                throw std::runtime_error("Failed to create scene object");
+
+                            std::filesystem::create_directories(scenePath);
+                            std::filesystem::create_directory(scenePath / "Assets");
+                            std::filesystem::create_directory(scenePath / ".motion_temp");
+                            
+                            return scene;
+                        }
+                        catch (const std::exception& e)
+                        {
+                            MOTION_CORE_ERROR("Scene creation error: {}", e.what());
+                            throw;
+                        }
+                    }));
+
+                    m_ScenePath = scenePath;
+                    m_SceneName = sceneName;
+                    m_SceneCreationRequest.Reset();
+                    ImGui::CloseCurrentPopup();
+                });
                 
-                ImGui::Unindent(10.0f);
+                ImGui::SameLine();
+                
+                ButtonConfig cancelConfig;
+                cancelConfig.Style = ButtonStyle::Secondary;
+                cancelConfig.Size = ImVec2(120, 35);
+                
+                Button("Cancel", cancelConfig, [this]()
+                {
+                    m_SceneCreationRequest.Reset();
+                    ImGui::CloseCurrentPopup();
+                });
+
                 ImGui::Spacing();
-                
                 ImGui::EndChild();
-                ImGui::PopStyleColor(2);
-                
-                ImGui::Spacing();
-            }
-
-            ImGui::Spacing();
-            ImGui::Separator();
-            ImGui::Spacing();
-
-            // Action Buttons
-            bool canCreate = errors.empty();
-            ImGui::SetCursorPosX((ImGui::GetWindowWidth() - 270) * 0.5f);
-            
-            if (!canCreate) 
-            {
-                ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 0.5f);
-                ImGui::BeginDisabled();
-            }
-        
-            ImVec4 successHover = MixColors(SUCCESS, ImVec4(1, 1, 1, 1), 0.12f);
-            ImVec4 successActive = MixColors(SUCCESS, ImVec4(0, 0, 0, 1), 0.15f);
-            ImGui::PushStyleColor(ImGuiCol_Button, SUCCESS);
-            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, successHover);
-            ImGui::PushStyleColor(ImGuiCol_ButtonActive, successActive);
-            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1, 1, 1, 1)); 
-            
-            if (ImGui::Button("Create Scene", ImVec2(140, 35)))
-            {
-                std::string sceneName = name;
-                auto scenePath = m_SceneCreationRequest.FilePath / sceneName;
-                m_SceneCreationOp.Start(LOADER::Submit([sceneName, scenePath]() -> std::shared_ptr<Scene>
-                {
-                    try
-                    {
-                        SceneSpecification spec;
-                        spec.ID = UniqueIdentity::GetUniqueID();
-                        spec.Name = sceneName;
-                        spec.SavedPath = scenePath;
-                        auto scene = std::make_shared<Scene>(spec);
-                        
-                        if (!scene)
-                            throw std::runtime_error("Failed to create scene object");
-
-                        // Create directory structure
-                        std::filesystem::create_directories(scenePath);
-                        std::filesystem::create_directory(scenePath / "Assets");
-                        std::filesystem::create_directory(scenePath / ".motion_temp");
-                        
-                        return scene;
-                    }
-                    catch (const std::exception& e)
-                    {
-                        MOTION_CORE_ERROR("Scene creation error: {}", e.what());
-                        throw;
-                    }
-                }));
-
-                m_ScenePath = scenePath;
-                m_SceneName = sceneName;
-                m_SceneCreationRequest.Reset();
-                ImGui::CloseCurrentPopup();
             }
             
-            ImGui::PopStyleColor(4);
-            
-            if (!canCreate) 
-            {
-                ImGui::EndDisabled();
-                ImGui::PopStyleVar();
-            }
-            
-            if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled) && !canCreate)
-            {
-                ImGui::BeginTooltip();
-                ImGui::PushStyleColor(ImGuiCol_Text, ERROR_COLOR);
-                ImGui::TextWrapped("Please fix all errors before creating the scene");
-                ImGui::PopStyleColor();
-                ImGui::EndTooltip();
-            }
-            
-            ImGui::SameLine();
-            ImGui::PushStyleColor(ImGuiCol_Button, CONTROL_BG);
-            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, HOVER_BG);
-            ImGui::PushStyleColor(ImGuiCol_ButtonActive, MixColors(ACCENT, CONTROL_BG, 0.85f));
-            ImGui::PushStyleColor(ImGuiCol_Text, TEXT_PRIMARY);
-            
-            if (ImGui::Button("Cancel", ImVec2(120, 35)))
-            {
-                m_SceneCreationRequest.Reset();
-                ImGui::CloseCurrentPopup();
-            }
-            
-            ImGui::PopStyleColor(4);
-            ImGui::Spacing();
+            ImGui::PopStyleColor(2);
+            ImGui::PopStyleVar(3);
             ImGui::EndPopup();
         }
+
+        ImGui::PopStyleColor();
+        ImGui::PopStyleVar(3);
         
-        ImGui::PopStyleVar(2);
+        // Handle scene creation completion
         if (m_SceneCreationOp.IsReady())
         {
             try
@@ -507,13 +509,11 @@ namespace Motion
                 
                 if (m_Scene)
                 {
-                    // Save ImGui layout
                     ImGuiIO& io = ImGui::GetIO();
                     io.IniFilename = nullptr;
                     std::string layoutFile = std::format("{}/mes-config.ini", m_ScenePath.string());
                     ImGui::SaveIniSettingsToDisk(layoutFile.c_str());
 
-                    // Serialize the scene
                     std::string sceneName = m_SceneName;
                     std::filesystem::path savePath = m_ScenePath / std::format("{}.mes", sceneName);
                     
@@ -548,27 +548,33 @@ namespace Motion
         
         if (ImGui::BeginPopupModal("SceneCreationError", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
         {
-            ImGui::PushStyleColor(ImGuiCol_Text, ERROR_COLOR);
-            ImGui::Text("Scene Creation Failed");
-            ImGui::PopStyleColor();
+            HeadingConfig errorHeaderConfig;
+            errorHeaderConfig.Color = ERROR_COLOR;
+            errorHeaderConfig.Separator = false;
+            Heading("Scene Creation Failed", HeadingLevel::H4, errorHeaderConfig);
             
             ImGui::Spacing();
             ImGui::Separator();
             ImGui::Spacing();
             
-            ImGui::PushStyleColor(ImGuiCol_Text, TEXT_PRIMARY);
-            ImGui::TextWrapped("An error occurred while creating the scene.");
-            ImGui::PopStyleColor();
+            LabelSimple("An error occurred while creating the scene.");
             
             ImGui::Spacing();
             
-            ImGui::PushStyleColor(ImGuiCol_Text, TEXT_SECONDARY);
-            ImGui::TextWrapped("Please check the following:");
-            ImGui::BulletText("You have write permissions for the selected folder");
-            ImGui::BulletText("There is enough disk space available");
-            ImGui::BulletText("The folder path is valid and accessible");
-            ImGui::BulletText("No other application is blocking the folder");
-            ImGui::PopStyleColor();
+            LabelConfig checkConfig;
+            checkConfig.Color = TEXT_SECONDARY;
+            checkConfig.Wrapped = true;
+            LabelSimple("Please check the following:", checkConfig);
+            
+            ImGui::Spacing();
+            
+            checkConfig.Bullet = true;
+            ImGui::Indent(10.0f);
+            LabelSimple("You have write permissions for the selected folder", checkConfig);
+            LabelSimple("There is enough disk space available", checkConfig);
+            LabelSimple("The folder path is valid and accessible", checkConfig);
+            LabelSimple("No other application is blocking the folder", checkConfig);
+            ImGui::Unindent(10.0f);
             
             ImGui::Spacing();
             ImGui::Separator();
@@ -576,17 +582,14 @@ namespace Motion
             
             ImGui::SetCursorPosX((ImGui::GetWindowWidth() - 120) * 0.5f);
             
-            ImGui::PushStyleColor(ImGuiCol_Button, ACCENT);
-            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ACCENT_HOVER);
-            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ACCENT_ACTIVE);
-            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1, 1, 1, 1));
+            ButtonConfig okConfig;
+            okConfig.Style = ButtonStyle::Primary;
+            okConfig.Size = ImVec2(120, 30);
             
-            if (ImGui::Button("OK", ImVec2(120, 30)))
+            Button("OK", okConfig, []()
             {
                 ImGui::CloseCurrentPopup();
-            }
-            
-            ImGui::PopStyleColor(4);
+            });
             
             ImGui::EndPopup();
         }
@@ -797,10 +800,9 @@ namespace Motion
 
                         std::vector<glm::vec3> verts;
                         verts.reserve(mesh.Vertices.size());
-                        std::transform(mesh.Vertices.begin(), mesh.Vertices.end(), std::back_inserter(verts),
-                                      [](const Vertex& v) { return v.Position; });
-
+                        std::transform(mesh.Vertices.begin(), mesh.Vertices.end(), std::back_inserter(verts), [](const Vertex& v) { return v.Position; });
                         CreateConvexCollider(&context.PhysicsWorld->Properties, &context.Entities->Registry, e, verts);
+
                         children.push_back(e);
                     }
 
@@ -818,8 +820,7 @@ namespace Motion
 
                     m_Scene->EmplaceEntity(root);
                     
-                    MOTION_CORE_INFO("Entity imported successfully: {}", 
-                                    m_EntityImportRequest.FilePath.string());
+                    MOTION_CORE_INFO("Entity imported successfully: {}",  m_EntityImportRequest.FilePath.string());
                 }
             }
             catch (const std::exception& e)
@@ -838,11 +839,14 @@ namespace Motion
      */
     void SceneEditorLayer::RenderLoadingOverlay()
     {
-        const ImVec4 OVERLAY_DIM    = ImVec4(0.0f, 0.0f, 0.0f, 0.50f);
-        const ImVec4 CARD_BG        = ImVec4(255.0f/255.0f, 255.0f/255.0f, 255.0f/255.0f, 0.98f);
-        const ImVec4 TEXT_PRIMARY   = ImVec4(32.0f/255.0f, 33.0f/255.0f, 36.0f/255.0f, 1.0f);
-        const ImVec4 TEXT_SECONDARY = ImVec4(96.0f/255.0f, 94.0f/255.0f, 92.0f/255.0f, 1.0f);
-        const ImVec4 BORDER         = ImVec4(229.0f/255.0f, 229.0f/255.0f, 229.0f/255.0f, 0.50f);
+        // Get theme colors
+        auto& style = ImGui::GetStyle();
+        ImVec4 OVERLAY_DIM = ImVec4(0.0f, 0.0f, 0.0f, 0.50f);
+        ImVec4 CARD_BG = style.Colors[ImGuiCol_WindowBg];
+        ImVec4 TEXT_PRIMARY = style.Colors[ImGuiCol_Text];
+        ImVec4 TEXT_SECONDARY = style.Colors[ImGuiCol_TextDisabled];
+        ImVec4 BORDER = style.Colors[ImGuiCol_Border];
+        ImVec4 ACCENT = UserInterface::ThemeManager::GetAccentColor();
         
         ImGuiViewport* viewport = ImGui::GetMainViewport();
         ImGui::SetNextWindowPos(viewport->WorkPos);
@@ -870,17 +874,17 @@ namespace Motion
             ImGui::PushStyleColor(ImGuiCol_WindowBg, CARD_BG);
             ImGui::PushStyleColor(ImGuiCol_Border, BORDER);
             
-            if (ImGui::BeginChild("LoadingContent", ImVec2(520, 320), true, 
-                                ImGuiWindowFlags_NoScrollbar))
+            const ImVec2 cardSize = ImVec2(540, 540);
+            
+            if (ImGui::BeginChild("LoadingContent", cardSize, true, ImGuiWindowFlags_NoScrollbar))
             {
                 const float time = ImGui::GetTime();
-                const float contentWidth = 520.0f;
                 
-                // Determine what operation is in progress
+                // Determine operation details
                 const char* loadingTitle = "Processing";
                 const char* loadingDescription = "Please wait while the operation completes.";
                 const char* operationIcon = ICON_MD_HOURGLASS_EMPTY;
-                ImVec4 accentColor = ImGui::GetStyleColorVec4(ImGuiCol_CheckMark);
+                ImVec4 accentColor = ACCENT;
                 float elapsedTime = 0.0f;
                 
                 if (m_SceneCreationOp.State == AsyncOperationState::InProgress)
@@ -888,7 +892,7 @@ namespace Motion
                     loadingTitle = "Creating Your Scene";
                     loadingDescription = "Setting up the scene structure, creating folders, and initializing physics simulation...";
                     operationIcon = ICON_MD_CREATE_NEW_FOLDER;
-                    accentColor = ImVec4(16.0f/255.0f, 137.0f/255.0f, 62.0f/255.0f, 1.0f); // SUCCESS color
+                    accentColor = ImVec4(0.06f, 0.54f, 0.24f, 1.0f);
                     elapsedTime = m_SceneCreationOp.GetElapsedSeconds();
                 }
                 else if (m_SceneLoadOp.State == AsyncOperationState::InProgress)
@@ -903,88 +907,174 @@ namespace Motion
                     loadingTitle = "Importing 3D Model";
                     loadingDescription = "Processing geometry, materials, and textures from the imported model file...";
                     operationIcon = ICON_MD_INVENTORY_2;
-                    accentColor = ImVec4(255.0f/255.0f, 185.0f/255.0f, 0.0f/255.0f, 1.0f); // WARNING color
+                    accentColor = ImVec4(1.0f, 0.73f, 0.0f, 1.0f);
                     elapsedTime = m_EntityImportOp.GetElapsedSeconds();
                 }
                 
                 ImGui::Spacing();
                 ImGui::Spacing();
-                ImGui::Spacing();
                 
-                // Animated Loading Spinner
-                const float radius = 38.0f;
-                const float thickness = 3.5f;
-                const ImVec2 spinnerPos = ImVec2(contentWidth * 0.5f, 90.0f);
-                ImDrawList* draw_list = ImGui::GetWindowDrawList();
-                ImVec2 windowPos = ImGui::GetCursorScreenPos();
+                // === BEAUTIFUL ANIMATED LOADING SPINNER ===
+                const float spinnerSize = 90.0f;
+                const float spinnerTopMargin = 70.0f;
                 
-                // Draw outer rotating arc
-                const int num_segments = 48;
-                const float angle_offset = time * 5.0f;
-                const float arc_length = 0.75f; // 75% of circle
+                // Get the content region and calculate perfect center
+                ImVec2 contentMin = ImGui::GetWindowContentRegionMin();
+                ImVec2 contentMax = ImGui::GetWindowContentRegionMax();
+                ImVec2 windowPos = ImGui::GetWindowPos();
                 
-                for (int i = 0; i < num_segments; i++)
-                {
-                    float t = (float)i / (float)num_segments;
-                    if (t > arc_length) break;
-                    
-                    const float a_start = (t * 2.0f * 3.14159f) + angle_offset;
-                    const float a_end = ((t + 0.02f) * 2.0f * 3.14159f) + angle_offset;
-                    
-                    // Gradient alpha from bright to dim
-                    const float alpha = 0.2f + (0.8f * (1.0f - t / arc_length));
-                    
-                    ImVec4 segmentColor = accentColor;
-                    segmentColor.w = alpha;
-                    const ImU32 col = ImGui::GetColorU32(segmentColor);
-                    
-                    draw_list->PathArcTo(
-                        ImVec2(windowPos.x + spinnerPos.x, windowPos.y + spinnerPos.y),
-                        radius, a_start, a_end, 6
-                    );
-                    draw_list->PathStroke(col, 0, thickness);
-                }
-                
-                // Draw inner subtle circle
-                ImVec4 innerCircleColor = accentColor;
-                innerCircleColor.w = 0.08f;
-                draw_list->AddCircleFilled(
-                    ImVec2(windowPos.x + spinnerPos.x, windowPos.y + spinnerPos.y),
-                    radius - thickness * 2, 
-                    ImGui::GetColorU32(innerCircleColor),
-                    48
+                // Calculate the center of the content area
+                ImVec2 spinnerCenter = ImVec2(
+                    windowPos.x + contentMin.x + ((contentMax.x - contentMin.x) * 0.5f),
+                    windowPos.y + contentMin.y + spinnerTopMargin
                 );
                 
-                // Draw icon in center
-                ImGui::SetCursorPosY(55.0f);
-                ImGui::PushStyleColor(ImGuiCol_Text, accentColor);
-                float iconWidth = ImGui::CalcTextSize(operationIcon).x;
-                ImGui::SetCursorPosX((contentWidth - iconWidth) * 0.5f);
-                ImGui::Text("%s", operationIcon);
-                ImGui::PopStyleColor();
+                ImDrawList* drawList = ImGui::GetWindowDrawList();
                 
-                ImGui::SetCursorPosY(160.0f);
+                // Draw Background Glow Effect
+                const int glowLayers = 3;
+                for (int layer = 0; layer < glowLayers; layer++)
+                {
+                    float glowRadius = spinnerSize * 0.5f + (layer * 8.0f);
+                    float glowAlpha = 0.08f * (1.0f - (float)layer / glowLayers);
+                    
+                    ImVec4 glowColor = accentColor;
+                    glowColor.w = glowAlpha;
+                    
+                    drawList->AddCircleFilled(
+                        spinnerCenter,
+                        glowRadius,
+                        ImGui::GetColorU32(glowColor),
+                        64
+                    );
+                }
+                
+                // Draw Outer Ring (Stationary)
+                const float outerRadius = spinnerSize * 0.45f;
+                const float ringThickness = 2.0f;
+                ImVec4 ringColor = accentColor;
+                ringColor.w = 0.15f;
+                
+                drawList->AddCircle(
+                    spinnerCenter,
+                    outerRadius,
+                    ImGui::GetColorU32(ringColor),
+                    64,
+                    ringThickness
+                );
+                
+                // Draw Multiple Rotating Arcs with Different Speeds
+                const int numArcs = 3;
+                const float arcRadii[] = { outerRadius * 0.85f, outerRadius * 0.65f, outerRadius * 0.45f };
+                const float arcSpeeds[] = { 3.5f, -2.8f, 4.2f }; // Different speeds, some reverse
+                const float arcLengths[] = { 0.25f, 0.35f, 0.20f }; // Different arc lengths
+                const float arcThicknesses[] = { 3.5f, 3.0f, 2.5f };
+                
+                for (int arc = 0; arc < numArcs; arc++)
+                {
+                    const int segments = 48;
+                    const float angleOffset = time * arcSpeeds[arc];
+                    const float arcLength = arcLengths[arc];
+                    const float radius = arcRadii[arc];
+                    const float thickness = arcThicknesses[arc];
+                    
+                    for (int i = 0; i < segments; i++)
+                    {
+                        float t = (float)i / (float)segments;
+                        if (t > arcLength) continue;
+                        
+                        const float aStart = (t * 2.0f * IM_PI) + angleOffset;
+                        const float aEnd = ((t + 0.015f) * 2.0f * IM_PI) + angleOffset;
+                        
+                        // Smooth gradient from bright to dim
+                        const float alpha = 0.3f + (0.7f * (1.0f - (t / arcLength)));
+                        
+                        ImVec4 segmentColor = accentColor;
+                        segmentColor.w = alpha;
+                        
+                        drawList->PathArcTo(spinnerCenter, radius, aStart, aEnd, 6);
+                        drawList->PathStroke(ImGui::GetColorU32(segmentColor), 0, thickness);
+                    }
+                }
+                
+                // Draw Pulsing Center Circle
+                const float pulseFreq = 2.0f;
+                const float pulseAmount = 0.15f;
+                const float pulse = 1.0f + (pulseAmount * sinf(time * pulseFreq));
+                const float centerRadius = outerRadius * 0.25f * pulse;
+                
+                ImVec4 centerColor = accentColor;
+                centerColor.w = 0.2f;
+                
+                drawList->AddCircleFilled(
+                    spinnerCenter,
+                    centerRadius,
+                    ImGui::GetColorU32(centerColor),
+                    32
+                );
+                
+                // Draw Icon in Center with Pulse
+                ImFont* iconFont = UserInterface::FontManager::GetFont("MaterialIcons-48");
+                if (iconFont)
+                {
+                    ImGui::PushFont(iconFont);
+                    ImVec2 iconSize = ImGui::CalcTextSize(operationIcon);
+                    
+                    // Draw icon centered in the spinner
+                    drawList->AddText(
+                        iconFont,
+                        iconFont->Scale,
+                        ImVec2(
+                            spinnerCenter.x - (iconSize.x * 0.5f),
+                            spinnerCenter.y - (iconSize.y * 0.5f)
+                        ),
+                        ImGui::GetColorU32(accentColor),
+                        operationIcon
+                    );
+                    
+                    ImGui::PopFont();
+                }
+                
+                // Set cursor position for content below spinner
+                ImGui::SetCursorPosY(spinnerTopMargin + spinnerSize + 20.0f);
+                
                 ImGui::Spacing();
                 ImGui::Spacing();
+                
+                // === CONTENT SECTION ===
+                
+                // Get content width for centering
+                float contentWidth = contentMax.x - contentMin.x;
                 
                 // Title
-                ImGui::PushStyleColor(ImGuiCol_Text, TEXT_PRIMARY);
+                ImFont* titleFont = UserInterface::FontManager::GetFont("JetBrainsMono-Bold-H4");
+                if (titleFont) ImGui::PushFont(titleFont);
+                
                 float titleWidth = ImGui::CalcTextSize(loadingTitle).x;
-                ImGui::SetCursorPosX((contentWidth - titleWidth) * 0.5f);
+                ImGui::SetCursorPosX(contentMin.x + ((contentWidth - titleWidth) * 0.5f));
+                
+                ImGui::PushStyleColor(ImGuiCol_Text, TEXT_PRIMARY);
                 ImGui::Text("%s", loadingTitle);
                 ImGui::PopStyleColor();
                 
+                if (titleFont) ImGui::PopFont();
+                
                 ImGui::Spacing();
                 
-                // Description
+                // Description - centered and wrapped
                 ImGui::PushStyleColor(ImGuiCol_Text, TEXT_SECONDARY);
-                ImGui::PushTextWrapPos(ImGui::GetCursorPosX() + 440.0f);
-                ImGui::SetCursorPosX(40.0f);
+                
+                // Calculate wrapped text size for centering
+                float descWidth = contentWidth - 80.0f; // Some margin
+                ImGui::PushTextWrapPos(ImGui::GetCursorPosX() + descWidth);
+                
+                // Center the wrapped text block
+                ImGui::SetCursorPosX(contentMin.x + 40.0f);
                 ImGui::TextWrapped("%s", loadingDescription);
+                
                 ImGui::PopTextWrapPos();
                 ImGui::PopStyleColor();
                 
-                ImGui::Spacing();
                 ImGui::Spacing();
                 ImGui::Spacing();
                 
@@ -995,56 +1085,60 @@ namespace Motion
                 
                 ImGui::Spacing();
                 
-                // Animated status indicator
+                // Animated Status Indicator
                 int numDots = ((int)(time * 2.5f)) % 4;
-                char dots[5] = "";
+                std::string statusText = "Processing";
                 for (int i = 0; i < numDots; i++)
-                    dots[i] = '.';
-                dots[numDots] = '\0';
+                    statusText += ".";
                 
-                char statusText[64];
-                snprintf(statusText, sizeof(statusText), "Processing%s", dots);
+                float statusWidth = ImGui::CalcTextSize(statusText.c_str()).x;
+                ImGui::SetCursorPosX(contentMin.x + ((contentWidth - statusWidth) * 0.5f));
                 
                 ImGui::PushStyleColor(ImGuiCol_Text, accentColor);
-                float statusWidth = ImGui::CalcTextSize(statusText).x;
-                ImGui::SetCursorPosX((contentWidth - statusWidth) * 0.5f);
-                ImGui::Text("%s", statusText);
+                ImGui::Text("%s", statusText.c_str());
                 ImGui::PopStyleColor();
                 
                 ImGui::Spacing();
                 
-                // Elapsed time
-                char timeBuffer[64];
+                // Elapsed Time
+                std::string timeText;
                 if (elapsedTime < 60.0f)
                 {
-                    snprintf(timeBuffer, sizeof(timeBuffer), "%.1f seconds elapsed", elapsedTime);
+                    char buffer[64];
+                    snprintf(buffer, sizeof(buffer), "%.1f seconds elapsed", elapsedTime);
+                    timeText = buffer;
                 }
                 else
                 {
                     int minutes = (int)(elapsedTime / 60.0f);
                     int seconds = (int)(elapsedTime) % 60;
-                    snprintf(timeBuffer, sizeof(timeBuffer), "%d:%02d elapsed", minutes, seconds);
+                    char buffer[64];
+                    snprintf(buffer, sizeof(buffer), "%d:%02d elapsed", minutes, seconds);
+                    timeText = buffer;
                 }
                 
+                float timeWidth = ImGui::CalcTextSize(timeText.c_str()).x;
+                ImGui::SetCursorPosX(contentMin.x + ((contentWidth - timeWidth) * 0.5f));
+                
                 ImGui::PushStyleColor(ImGuiCol_Text, TEXT_SECONDARY);
-                float timeWidth = ImGui::CalcTextSize(timeBuffer).x;
-                ImGui::SetCursorPosX((contentWidth - timeWidth) * 0.5f);
-                ImGui::TextDisabled("%s", timeBuffer);
+                ImGui::TextDisabled("%s", timeText.c_str());
                 ImGui::PopStyleColor();
                 
-                ImGui::Spacing();
-                
-                // Optional: Progress hint
+                // Long Operation Hint
                 if (elapsedTime > 5.0f)
                 {
                     ImGui::Spacing();
+                    
                     const char* hintText = "This is taking longer than usual...";
-                    ImGui::PushStyleColor(ImGuiCol_Text, TEXT_SECONDARY);
                     float hintWidth = ImGui::CalcTextSize(hintText).x;
-                    ImGui::SetCursorPosX((contentWidth - hintWidth) * 0.5f);
+                    ImGui::SetCursorPosX(contentMin.x + ((contentWidth - hintWidth) * 0.5f));
+                    
+                    ImGui::PushStyleColor(ImGuiCol_Text, TEXT_SECONDARY);
                     ImGui::TextDisabled("%s", hintText);
                     ImGui::PopStyleColor();
                 }
+                
+                ImGui::Spacing();
             }
             ImGui::EndChild();
             
@@ -1056,7 +1150,6 @@ namespace Motion
         ImGui::PopStyleColor();
         ImGui::PopStyleVar(3);
     }
-
     /**
      * @brief Renders an error modal in the event of an operation failure.
      * 
@@ -1136,247 +1229,306 @@ namespace Motion
      */
     void SceneEditorLayer::DrawMenuBar()
     {
-        if (!ImGui::BeginMenuBar())
+        if (!ImGui::BeginMenuBar()) return;
+
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8.0f, 8.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(8.0f, 5.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(10.0f, 5.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemInnerSpacing, ImVec2(10.0f, 4.0f));
+
+        DrawFileMenu();
+        DrawShapesMenu();
+        DrawViewMenu();
+        DrawAboutMenu();
+        
+        ImGui::PopStyleVar(4);
+
+        DrawSimulationControls();
+
+        ImGui::EndMenuBar();
+        RenderAbout();
+    }
+
+    void SceneEditorLayer::DrawFileMenu()
+    {
+        if (!ImGui::BeginMenu("File"))
             return;
 
-        ImGuiStyle& style = ImGui::GetStyle();
-        if (ImGui::BeginMenu("Files"))
+        if (ImGui::MenuItem("New Scene", nullptr))
         {
-            if (ImGui::MenuItem("  New Scene ", "Ctrl+N"))
-            {
-                m_SceneCreationRequest.ShowDialog = true;
-            }
-
-            if (ImGui::MenuItem("  Open... ", "Ctrl+O"))
-            {
-                m_SceneLoadRequest.ShowDialog = true;
-            }
-
-            ImGui::Separator();
-            
-            ImGui::BeginDisabled(m_Scene == nullptr);
-            if (ImGui::MenuItem("  Save ", "Ctrl+S"))
-            {
-                if (m_Scene && !m_ScenePath.empty())
-                {
-                    auto scene = m_Scene.get();
-                    auto path = m_ScenePath;
-                    auto sceneName = m_SceneName;
-                    std::string filename = std::format("{}.mes", sceneName);
-                    SceneSerializer::Serialize(scene, path / filename);
-                }
-            }
-            ImGui::EndDisabled();
-
-            ImGui::Separator();
-
-            if (ImGui::BeginMenu("  Themes"))
-            {
-                if (ImGui::MenuItem("Dark", nullptr, m_CurrentTheme == 0))
-                {
-                    UserInterface::ThemeManager::ApplyDarkTheme();
-                    m_CurrentTheme = 0;
-                }
-                
-                if (ImGui::MenuItem("Light", nullptr, m_CurrentTheme == 1))
-                {
-                    UserInterface::ThemeManager::ApplyLightTheme();
-                    m_CurrentTheme = 1;
-                }
-                
-                if (ImGui::MenuItem("Classic", nullptr, m_CurrentTheme == 2))
-                {
-                    UserInterface::ThemeManager::ApplyClassicTheme();
-                    m_CurrentTheme = 2;
-                }
-                
-                if (ImGui::MenuItem("Material Design", nullptr, m_CurrentTheme == 3))
-                {
-                    auto scheme = UserInterface::ThemeManager::GetMaterialDesignScheme();
-                    UserInterface::ThemeManager::UseColorScheme(scheme);
-                    m_CurrentTheme = 3;
-                }
-
-                if (ImGui::MenuItem("Neumorphic", nullptr, m_CurrentTheme == 4))
-                {
-                    auto scheme = UserInterface::ThemeManager::GetNeumorphicScheme();
-                    UserInterface::ThemeManager::UseColorScheme(scheme);
-                    m_CurrentTheme = 4;
-                }
-
-
-                
-                ImGui::Separator();
-                
-                if (ImGui::BeginMenu("Accent Color"))
-                {
-                    if (ImGui::MenuItem("Blue"))
-                        UserInterface::ThemeManager::SetAccentColor(ImVec4(0.13f, 0.59f, 0.95f, 1.0f));
-                    
-                    if (ImGui::MenuItem("Red"))
-                        UserInterface::ThemeManager::SetAccentColor(ImVec4(0.96f, 0.26f, 0.21f, 1.0f));
-                    
-                    if (ImGui::MenuItem("Green"))
-                        UserInterface::ThemeManager::SetAccentColor(ImVec4(0.30f, 0.69f, 0.31f, 1.0f));
-                    
-                    if (ImGui::MenuItem("Purple"))
-                        UserInterface::ThemeManager::SetAccentColor(ImVec4(0.61f, 0.15f, 0.69f, 1.0f));
-                    
-                    if (ImGui::MenuItem("Orange"))
-                        UserInterface::ThemeManager::SetAccentColor(ImVec4(1.00f, 0.60f, 0.00f, 1.0f));
-                    
-                    ImGui::EndMenu();
-                }
-                
-                ImGui::EndMenu();
-            }
-
-            ImGui::Separator();
-            
-            if (ImGui::MenuItem("  Quit ", "Alt+F4"))
-            {
-
-            }
-
-            ImGui::EndMenu();
+            m_SceneCreationRequest.ShowDialog = true;
         }
 
+        if (ImGui::MenuItem("Open...", nullptr))
+        {
+            m_SceneLoadRequest.ShowDialog = true;
+        }
+
+        ImGui::Separator();
+        
         ImGui::BeginDisabled(m_Scene == nullptr);
-        if (ImGui::BeginMenu("Shapes"))
+        if (ImGui::MenuItem("Save", nullptr))
         {
-            if (ImGui::MenuItem("  Cube"))
-                RequestEntityImport(false, true, "Assets/Primitives/Cube.obj");
-            if (ImGui::MenuItem("  Cone"))
-                RequestEntityImport(false, true, "Assets/Primitives/Cone.obj");
-            if (ImGui::MenuItem("  Cylinder"))
-                RequestEntityImport(false, true, "Assets/Primitives/Cylinder.obj");
-            if (ImGui::MenuItem("  Plane"))
-                RequestEntityImport(false, true, "Assets/Primitives/Plane.obj");
-            if (ImGui::MenuItem("  Sphere"))
-                RequestEntityImport(false, true, "Assets/Primitives/Sphere.obj");
-            if (ImGui::MenuItem("  Torus"))
-                RequestEntityImport(false, true, "Assets/Primitives/Torus.obj");
-            ImGui::EndMenu();
-        }
-
-        if(ImGui::BeginMenu("View"))
-        {
-            auto& context = m_Scene->GetContext();
-
-            if(ImGui::MenuItem("Entity Hierarchy", nullptr, &context.Panels->ShowEntityHierarchy, m_Scene != nullptr));
-            if(ImGui::MenuItem("Entity Properties", nullptr, &context.Panels->ShowEntityComponents, m_Scene != nullptr));
-            if(ImGui::MenuItem("Material Editor", nullptr, &context.Panels->ShowEntityMaterials, m_Scene != nullptr));
-            if(ImGui::MenuItem("Simulation WatchList", nullptr, &context.Panels->ShowEntitySimulated, m_Scene != nullptr));
-            if(ImGui::MenuItem("Scene Environment", nullptr, &context.Panels->ShowEnvironmentSettings, m_Scene != nullptr));
-
-            ImGui::Separator();
-
-            if(ImGui::MenuItem("Force Analyser", nullptr, &context.Panels->ShowForceAnalysisPanel, m_Scene != nullptr));
-            if(ImGui::MenuItem("Energy Analyser", nullptr, &context.Panels->ShowEnergyPanel, m_Scene != nullptr));
-            if(ImGui::MenuItem("Momentum Analyser", nullptr, &context.Panels->ShowMomentumPanel, m_Scene != nullptr));
-            if(ImGui::MenuItem("Acceleration Analyser", nullptr, &context.Panels->ShowAccelerationPanel, m_Scene != nullptr));
-            if(ImGui::MenuItem("Trajectory Analyser", nullptr, &context.Panels->ShowTrajectoryPanel, m_Scene != nullptr));
-
-            ImGui::EndMenu();
+            if (m_Scene && !m_ScenePath.empty())
+            {
+                auto scene = m_Scene.get();
+                auto path = m_ScenePath;
+                auto sceneName = m_SceneName;
+                std::string filename = std::format("{}.mes", sceneName);
+                SceneSerializer::Serialize(scene, path / filename);
+            }
         }
         ImGui::EndDisabled();
 
-        if(ImGui::BeginMenu("About"))
-        {
-            if(ImGui::MenuItem("About Motion Engine", nullptr))
-            {
-                m_ShowAboutBox = !m_ShowAboutBox;
-            };
+        ImGui::Separator();
 
-            ImGui::EndMenu();   
+        DrawThemeMenu();
+
+        ImGui::Separator();
+        
+        if (ImGui::MenuItem("Quit", nullptr))
+        {
+            // Handle quit
         }
 
-        const float pad_x = style.ItemSpacing.x;
-        const float content_min_x = ImGui::GetWindowContentRegionMin().x;
-        const float content_max_x = ImGui::GetWindowContentRegionMax().x;
-        const float bar_w = content_max_x - content_min_x;
-        const float cur_x = ImGui::GetCursorPosX();
+        ImGui::EndMenu();
+    }
 
-        const char* kPlay  = ICON_MD_PLAY_ARROW;
-        const char* kPause = ICON_MD_PAUSE;
-        const char* kStop  = ICON_MD_STOP;
+    void SceneEditorLayer::DrawThemeMenu()
+    {
+        if (!ImGui::BeginMenu("Themes"))
+            return;
 
-        const float button_h = ImGui::GetFrameHeight();
-        const float pad_w   = style.FramePadding.x * 2.0f;
-        const float w_play  = ImGui::CalcTextSize(kPlay).x   + pad_w;
-        const float w_pause = ImGui::CalcTextSize(kPause).x  + pad_w;
-        const float w_stop  = ImGui::CalcTextSize(kStop).x   + pad_w;
-
-        const float min_w   = 72.0f;
-        const float button_w = ImMax(min_w, ImMax(w_play, ImMax(w_pause, w_stop)));
-        const ImVec2 btnSz(button_w, button_h);
-
-        const float label_w       = ImGui::CalcTextSize("Simulation:").x + pad_x * 0.5f;
-        const float state_w       = ImGui::CalcTextSize("RUNNING").x;
-        const float sim_buttons_w = (btnSz.x * 3.0f) + (pad_x * 2.0f);
-        const float center_w      = sim_buttons_w + pad_x * 1.5f + label_w + state_w;
-
-        float desired_center_x = content_min_x + (bar_w - center_w) * 0.5f;
-        desired_center_x = ImClamp(desired_center_x, cur_x + pad_x, content_max_x - center_w);
-
-        ImGui::SameLine(0, 0);
-        ImGui::SetCursorPosX(desired_center_x);
-
-        SceneSimulation::SimulationState simState = SceneSimulation::SimulationState::IDLE;
-        auto* sim = (m_Scene ? m_Scene->GetContext().Simulation : nullptr);
-        if (sim) simState = sim->State;
-
-        bool canPlay  = (sim != nullptr) && (simState == SceneSimulation::SimulationState::IDLE || 
-                                              simState == SceneSimulation::SimulationState::PAUSED);
-        bool canPause = (sim != nullptr) && (simState == SceneSimulation::SimulationState::RUNNING);
-        bool canStop  = (sim != nullptr) && (simState == SceneSimulation::SimulationState::RUNNING || 
-                                              simState == SceneSimulation::SimulationState::PAUSED);
-
-        ImGui::PushID("transport");
-
-        ImGui::BeginDisabled(!canPlay);
-        if (ImGui::Button(kPlay, btnSz) && sim && canPlay)
+        if (ImGui::MenuItem("Dark", nullptr, m_CurrentTheme == 0))
         {
-            SceneSerializer::SerializeRuntime(m_Scene.get(), m_ScenePath / ".motion_temp"/ "scene_sim.mes");
+            UserInterface::ThemeManager::ApplyDarkTheme();
+            m_CurrentTheme = 0;
+        }
+        
+        if (ImGui::MenuItem("Light", nullptr, m_CurrentTheme == 1))
+        {
+            UserInterface::ThemeManager::ApplyLightTheme();
+            m_CurrentTheme = 1;
+        }
+        
+        if (ImGui::MenuItem("Classic", nullptr, m_CurrentTheme == 2))
+        {
+            UserInterface::ThemeManager::ApplyClassicTheme();
+            m_CurrentTheme = 2;
+        }
+        
+        if (ImGui::MenuItem("Material Design", nullptr, m_CurrentTheme == 3))
+        {
+            auto scheme = UserInterface::ThemeManager::GetMaterialDesignScheme();
+            UserInterface::ThemeManager::UseColorScheme(scheme);
+            m_CurrentTheme = 3;
+        }
+
+        if (ImGui::MenuItem("Neumorphic", nullptr, m_CurrentTheme == 4))
+        {
+            auto scheme = UserInterface::ThemeManager::GetNeumorphicScheme();
+            UserInterface::ThemeManager::UseColorScheme(scheme);
+            m_CurrentTheme = 4;
+        }
+        
+        ImGui::Separator();
+        
+        DrawAccentColorMenu();
+        
+        ImGui::EndMenu();
+    }
+
+    void SceneEditorLayer::DrawAccentColorMenu()
+    {
+        if (!ImGui::BeginMenu("Accent Color"))
+            return;
+
+        struct AccentColor { const char* name; ImVec4 color; };
+        const AccentColor colors[] = {
+            { "Blue",   ImVec4(0.13f, 0.59f, 0.95f, 1.0f) },
+            { "Red",    ImVec4(0.96f, 0.26f, 0.21f, 1.0f) },
+            { "Green",  ImVec4(0.30f, 0.69f, 0.31f, 1.0f) },
+            { "Purple", ImVec4(0.61f, 0.15f, 0.69f, 1.0f) },
+            { "Orange", ImVec4(1.00f, 0.60f, 0.00f, 1.0f) }
+        };
+
+        for (const auto& accent : colors)
+        {
+            if (ImGui::MenuItem(accent.name))
+            {
+                UserInterface::ThemeManager::SetAccentColor(accent.color);
+            }
+        }
+        
+        ImGui::EndMenu();
+    }
+
+    void SceneEditorLayer::DrawShapesMenu()
+    {
+        ImGui::BeginDisabled(m_Scene == nullptr);
+        
+        if (!ImGui::BeginMenu("Shapes") || !m_Scene)
+        {
+            ImGui::EndDisabled();
+            return;
+        }
+
+        struct Primitive { const char* name; const char* path; };
+        const Primitive primitives[] = {
+            { "Cube",     "Assets/Primitives/Cube.obj" },
+            { "Cone",     "Assets/Primitives/Cone.obj" },
+            { "Cylinder", "Assets/Primitives/Cylinder.obj" },
+            { "Plane",    "Assets/Primitives/Plane.obj" },
+            { "Sphere",   "Assets/Primitives/Sphere.obj" },
+            { "Torus",    "Assets/Primitives/Torus.obj" }
+        };
+
+        for (const auto& prim : primitives)
+        {
+            if (ImGui::MenuItem(prim.name))
+            {
+                RequestEntityImport(false, true, prim.path);
+            }
+        }
+
+        ImGui::EndMenu();
+        ImGui::EndDisabled();
+    }
+
+    void SceneEditorLayer::DrawViewMenu()
+    {
+        ImGui::BeginDisabled(m_Scene == nullptr);
+        
+        if (!ImGui::BeginMenu("View") || !m_Scene)
+        {
+            ImGui::EndDisabled();
+            return;
+        }
+
+        auto& context = m_Scene->GetContext();
+        auto* panels = context.Panels;
+
+        // Core Panels
+        ImGui::MenuItem("Entity Hierarchy", nullptr, &panels->ShowEntityHierarchy);
+        ImGui::MenuItem("Entity Properties", nullptr, &panels->ShowEntityComponents);
+        ImGui::MenuItem("Material Editor", nullptr, &panels->ShowEntityMaterials);
+        ImGui::MenuItem("Simulation WatchList", nullptr, &panels->ShowEntitySimulated);
+        ImGui::MenuItem("Scene Environment", nullptr, &panels->ShowEnvironmentSettings);
+
+        ImGui::Separator();
+
+        // Analysis Panels
+        ImGui::MenuItem("Force Analyser", nullptr, &panels->ShowForceAnalysisPanel);
+        ImGui::MenuItem("Energy Analyser", nullptr, &panels->ShowEnergyPanel);
+        ImGui::MenuItem("Momentum Analyser", nullptr, &panels->ShowMomentumPanel);
+        ImGui::MenuItem("Acceleration Analyser", nullptr, &panels->ShowAccelerationPanel);
+        ImGui::MenuItem("Trajectory Analyser", nullptr, &panels->ShowTrajectoryPanel);
+
+        ImGui::EndMenu();
+
+        ImGui::EndDisabled();
+    }
+
+    void SceneEditorLayer::DrawAboutMenu()
+    {
+        if (!ImGui::BeginMenu("About"))
+            return;
+
+        if (ImGui::MenuItem("About Motion Engine"))
+        {
+            m_ShowAboutBox = !m_ShowAboutBox;
+        }
+
+        ImGui::EndMenu();
+    }
+
+    void SceneEditorLayer::DrawSimulationControls()
+    {
+        // Get simulation state
+        auto* sim = (m_Scene ? m_Scene->GetContext().Simulation : nullptr);
+        SceneSimulation::SimulationState simState = sim ? sim->State : SceneSimulation::SimulationState::IDLE;
+
+        // Determine button states
+        bool canPlay  = sim && (simState == SceneSimulation::SimulationState::IDLE || 
+                                simState == SceneSimulation::SimulationState::PAUSED);
+        bool canPause = sim && (simState == SceneSimulation::SimulationState::RUNNING);
+        bool canStop  = sim && (simState == SceneSimulation::SimulationState::RUNNING || 
+                                simState == SceneSimulation::SimulationState::PAUSED);
+
+        // Calculate centering
+        ImGuiStyle& style = ImGui::GetStyle();
+        const float contentWidth = ImGui::GetContentRegionAvail().x;
+        
+        const ImVec2 buttonSize(72.0f, ImGui::GetFrameHeight());
+        const float spacing = style.ItemSpacing.x;
+        const float controlsWidth = (buttonSize.x * 3) + (spacing * 2) + 
+                                    spacing * 1.5f + 
+                                    ImGui::CalcTextSize("Simulation: RUNNING").x;
+        
+        const float offsetX = (contentWidth - controlsWidth) * 0.5f;
+        if (offsetX > 0.0f)
+        {
+            ImGui::SameLine(0.0f, offsetX);
+        }
+
+        // Draw transport controls
+        ImGui::PushID("SimulationControls");
+        
+        ImGui::BeginDisabled(!canPlay);
+        if (ImGui::Button(ICON_MD_PLAY_ARROW, buttonSize))
+        {
+            SceneSerializer::SerializeRuntime(m_Scene.get(), m_ScenePath / ".motion_temp" / "scene_sim.mes");
             sim->State = SceneSimulation::SimulationState::RUNNING;
             sim->InSimulation = true;
         }
-        if (ImGui::IsItemHovered())
-            ImGui::SetTooltip(canPlay ? "Play / Resume" : "Play (disabled)");
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+        {
+            ImGui::SetTooltip("%s", canPlay ? "Play / Resume" : "Play (disabled)");
+        }
         ImGui::EndDisabled();
 
         ImGui::SameLine();
 
         ImGui::BeginDisabled(!canPause);
-        if (ImGui::Button(kPause, btnSz) && sim && canPause)
+        if (ImGui::Button(ICON_MD_PAUSE, buttonSize))
         {
             sim->State = SceneSimulation::SimulationState::PAUSED;
             sim->InSimulation = true;
         }
-        if (ImGui::IsItemHovered())
-            ImGui::SetTooltip(canPause ? "Pause" : "Pause (disabled)");
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+        {
+            ImGui::SetTooltip("%s", canPause ? "Pause" : "Pause (disabled)");
+        }
         ImGui::EndDisabled();
 
         ImGui::SameLine();
 
         ImGui::BeginDisabled(!canStop);
-        if (ImGui::Button(kStop, btnSz) && sim && canStop)
+        if (ImGui::Button(ICON_MD_STOP, buttonSize))
         {
             sim->InSimulation = false;
             sim->State = SceneSimulation::SimulationState::IDLE;
             SceneSerializer::DeserializeRuntime(m_Scene.get(), m_ScenePath / ".motion_temp" / "scene_sim.mes");
         }
-        if (ImGui::IsItemHovered())
-            ImGui::SetTooltip(canStop ? "Stop" : "Stop (disabled)");
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+        {
+            ImGui::SetTooltip("%s", canStop ? "Stop" : "Stop (disabled)");
+        }
         ImGui::EndDisabled();
 
         ImGui::PopID();
 
-        ImGui::SameLine(0.0f, style.ItemSpacing.x * 1.5f);
+        // Draw status label
+        ImGui::SameLine(0.0f, spacing * 1.5f);
         ImGui::TextUnformatted("Simulation:");
         ImGui::SameLine();
 
-        switch (simState)
+        DrawSimulationStatus(simState);
+    }
+
+    void SceneEditorLayer::DrawSimulationStatus(SceneSimulation::SimulationState state)
+    {
+        switch (state)
         {
             case SceneSimulation::SimulationState::IDLE:
                 ImGui::TextColored(ImVec4(0.60f, 0.60f, 0.65f, 1.0f), "IDLE");
@@ -1391,9 +1543,6 @@ namespace Motion
                 ImGui::TextUnformatted("UNKNOWN");
                 break;
         }
-
-        ImGui::EndMenuBar();
-        RenderAbout();
     }
 
     /**
@@ -1457,13 +1606,13 @@ namespace Motion
                 ImGui::DockBuilderDockWindow("Scene Hierarchy", dock_right_id);
                 ImGui::DockBuilderDockWindow("Entity Properties", dock_rbottom_id);
                 ImGui::DockBuilderDockWindow("Environment Settings", dock_rbottom_id);
+                ImGui::DockBuilderDockWindow("Simulation Watch List", dock_rbottom_id);
 
-                ImGui::DockBuilderDockWindow("Simulation Watch List", dock_left_id);
-                ImGui::DockBuilderDockWindow("Acceleration Analysis", dock_lbottom_id);
-                ImGui::DockBuilderDockWindow("Energy Analysis", dock_lbottom_id);
-                ImGui::DockBuilderDockWindow("Force Analysis", dock_lbottom_id);
-                ImGui::DockBuilderDockWindow("Momentum Analysis", dock_lbottom_id);
-                ImGui::DockBuilderDockWindow("Trajectory Prediction", dock_lbottom_id);
+                ImGui::DockBuilderDockWindow("Acceleration Analysis", dock_bottom_id);
+                ImGui::DockBuilderDockWindow("Energy Analysis", dock_bottom_id);
+                ImGui::DockBuilderDockWindow("Force Analysis", dock_bottom_id);
+                ImGui::DockBuilderDockWindow("Momentum Analysis", dock_bottom_id);
+                ImGui::DockBuilderDockWindow("Trajectory Prediction", dock_bottom_id);
 
                 ImGui::DockBuilderDockWindow("Material Editor", dock_bottom_id);
                 ImGui::DockBuilderDockWindow("Console", dock_bottom_id);

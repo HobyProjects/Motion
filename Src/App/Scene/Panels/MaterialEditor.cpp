@@ -243,18 +243,19 @@ namespace Motion
                 {"Emissive",    C.EmissiveTexture,   TextureType::EmissiveTexture},
             };
             
+            TextureSlotConfig slotConfig = TextureSlotPresets::Card();
+            slotConfig.ShowFilename = false;
+            slotConfig.CardPadding = 10.0f;
+
             for (size_t i = 0; i < textures.size(); ++i)
             {
                 auto& mapping = textures[i];
-                
-                TextureSlotConfig slotConfig = TextureSlotPresets::Gallery();
-                slotConfig.ShowFilename = false;
-                slotConfig.CardPadding = 10.0f;
-                
                 TextureSlot(mapping.Label, mapping.Texture, mapping.Type, slotConfig, [&](TextureSlotAction action, std::shared_ptr<ITexture>& tex) {
                     if(action == TextureSlotAction::Upload)
                         MOTION_INFO("Texture uploaded: {}", mapping.Label);
                 });
+
+                ImGui::SameLine();
             }
         }
     }

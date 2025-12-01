@@ -32,7 +32,7 @@ namespace Motion
         {
             HeadingConfig config;
             config.Separator = true;
-            Heading("Simulation Mode Required", HeadingLevel::H2, config);
+            Heading("Simulation Mode Required", HeadingLevel::H1, config);
 
             LabelConfig lblConfig;
             lblConfig.Wrapped = true;
@@ -45,7 +45,7 @@ namespace Motion
         {   
             HeadingConfig config;
             config.Separator = true;
-            Heading(ICON_MD_SPEED " Current Acceleration Vector", HeadingLevel::H3, config);
+            Heading(ICON_MD_SPEED " Current Acceleration Vector", HeadingLevel::H2, config);
             LabelValue("Magnitude", accel.AccelerationMagnitude, "%.2f m/s²");
             LabelValue("Direction", accel.CurrentAcceleration, "%.2f");
         }

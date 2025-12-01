@@ -137,6 +137,7 @@
 
 //User Interface
 #include "UI.hpp"
+#include "Notific.hpp"
 #include "Controls.hpp"
 
 //Platform

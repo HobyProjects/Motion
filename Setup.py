@@ -2,7 +2,7 @@
 
 """
 Motion Engine Build System
-Version: 2.2.0
+Version: 2.3.0 - Enhanced CMakePresets Generation
 """
 
 import os
@@ -18,9 +18,10 @@ import threading
 import queue
 import time
 import re
+
 from pathlib import Path
 from dataclasses import dataclass, field, asdict
-from typing import List, Dict, Optional, Set
+from typing import List, Dict, Optional, Set, Any
 from datetime import datetime, timedelta
 from enum import Enum
 from abc import ABC, abstractmethod
@@ -44,7 +45,7 @@ except ImportError:
 # ===================== Configuration =====================
 class BuildConfig:
     """Central configuration for the build system"""
-    VERSION = "2.2.0"
+    VERSION = "2.3.0"
     CACHE_FILE = "build/.build_cache.json"
     STATE_FILE = "build/.build_state.json"
     STATS_FILE = "build/.build_stats.json"
@@ -206,7 +207,7 @@ class BuildCache:
         self.last_config = config
 
 
-# ==================== NEW: Build Profiles ====================
+# ==================== Build Profiles ====================
 class BuildProfile(Enum):
     """Predefined build profiles for different scenarios"""
     QUICK = "quick"      # Essential packages only
@@ -237,7 +238,7 @@ class BuildProfile(Enum):
         return all_packages
 
 
-# ==================== NEW: Version Control Setup ====================
+# ==================== Version Control Setup ====================
 class VersionControlSetup:
     """Setup handler for Motion Engine Version Control System"""
     
@@ -370,10 +371,7 @@ function(generate_version_header)
 endfunction()
 """,
 
-    "cmake/MotionVersion.hpp.in": 
-    
-r"""
-
+        "cmake/MotionVersion.hpp.in": r"""
 #pragma once
 /**
  * @file MotionVersion.hpp
@@ -521,12 +519,12 @@ namespace Motion
 
 } 
 
-#define MOTION_VERSION Motion::Version::VERSION
-#define MOTION_VERSION_MAJOR Motion::Version::MAJOR
-#define MOTION_VERSION_MINOR Motion::Version::MINOR
-#define MOTION_VERSION_PATCH Motion::Version::PATCH
-#define MOTION_GIT_HASH Motion::Version::GIT_COMMIT_HASH
-#define MOTION_BUILD_TYPE Motion::Version::BUILD_TYPE
+#define MOTION_VERSION Motion::VERSION
+#define MOTION_VERSION_MAJOR Motion::MAJOR
+#define MOTION_VERSION_MINOR Motion::MINOR
+#define MOTION_VERSION_PATCH Motion::PATCH
+#define MOTION_GIT_HASH Motion::GIT_COMMIT_HASH
+#define MOTION_BUILD_TYPE Motion::BUILD_TYPE
 
 """
     }
@@ -652,14 +650,14 @@ set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
             print("3. Include version info in your code:")
             print(f"   {Color.CYAN}#include <MotionVersion.hpp>{Color.RESET}")
             print("4. Access version information:")
-            print(f"   {Color.CYAN}Motion::Version::GetFullVersion(){Color.RESET}\n")
+            print(f"   {Color.CYAN}Motion::GetFullVersion(){Color.RESET}\n")
             
             print(f"{Color.BOLD}Usage Example:{Color.RESET}")
             print(f"{Color.DIM}#include <MotionVersion.hpp>")
             print(f"#include <iostream>")
             print()
             print(f"int main() {{")
-            print(f"    std::cout << Motion::Version::GetDetailedVersion();")
+            print(f"    std::cout << Motion::GetDetailedVersion();")
             print(f"    return 0;")
             print(f"}}{Color.RESET}\n")
             
@@ -672,14 +670,394 @@ set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
             return False
 
 
+# ==================== Enhanced Preset Generator ====================
+class PresetGenerator:
+    """
+    Enhanced CMakePresets.json generator with proper compiler flags
+    for each build configuration (Debug, Release, RelWithDebInfo, MinSizeRel)
+    """
+    
+    def __init__(self, packages: List[Package], compiler_c: Optional[str] = None, compiler_cxx: Optional[str] = None):
+        self.packages = packages
+        self.system = platform.system()
+        self.is_windows = self.system == "Windows"
+        self.is_linux = self.system == "Linux"
+        self.is_macos = self.system == "Darwin"
+        self.compiler_c = compiler_c
+        self.compiler_cxx = compiler_cxx
+    
+    def generate(self, project_root: Path):
+        """Generate comprehensive CMakePresets.json with proper compiler settings"""
+        presets = {
+            "version": 6,
+            "cmakeMinimumRequired": {
+                "major": BuildConfig.MIN_CMAKE_VERSION[0],
+                "minor": BuildConfig.MIN_CMAKE_VERSION[1],
+                "patch": BuildConfig.MIN_CMAKE_VERSION[2]
+            },
+            "configurePresets": self._generate_configure_presets(),
+            "buildPresets": self._generate_build_presets(),
+            "testPresets": self._generate_test_presets()
+        }
+        
+        output_file = project_root / "CMakePresets.json"
+        with open(output_file, 'w', encoding='utf-8') as f:
+            json.dump(presets, f, indent=2)
+        
+        Logger.success(f"Generated {output_file}")
+        Logger.info(f"  - {len(presets['configurePresets'])} configure presets")
+        Logger.info(f"  - {len(presets['buildPresets'])} build presets")
+        Logger.info(f"  - Platform: {self.system}")
+    
+    def _get_generator(self) -> str:
+        """Get appropriate CMake generator for platform"""
+        if self.is_windows:
+            # Check if Ninja is available
+            try:
+                subprocess.run(["ninja", "--version"], capture_output=True, check=True)
+                return "Ninja Multi-Config"
+            except (subprocess.CalledProcessError, FileNotFoundError):
+                return "Visual Studio 17 2022"  # Fallback to VS2022
+        else:
+            # Try Ninja first, fallback to Unix Makefiles
+            try:
+                subprocess.run(["ninja", "--version"], capture_output=True, check=True)
+                return "Ninja Multi-Config"
+            except (subprocess.CalledProcessError, FileNotFoundError):
+                return "Unix Makefiles"
+    
+    def _get_msvc_flags(self, config: str) -> Dict[str, List[str]]:
+        """Get MSVC-specific compiler flags for each configuration"""
+        flags = {
+            "Debug": {
+                "compile": [
+                    "/MDd",      # Multi-threaded Debug DLL runtime
+                    "/Od",       # Disable optimization
+                    "/Zi",       # Debug information
+                    "/RTC1",     # Runtime checks
+                    "/JMC",      # Just My Code debugging
+                    "/W4",       # Warning level 4
+                    "/permissive-",  # Standards conformance
+                    "/Zc:__cplusplus",  # Enable updated __cplusplus macro
+                    "/EHsc",     # Exception handling
+                    "/bigobj"    # Large object files
+                ],
+                "link": [
+                    "/DEBUG:FULL",  # Full debug information
+                    "/INCREMENTAL"  # Incremental linking
+                ]
+            },
+            "Release": {
+                "compile": [
+                    "/MD",       # Multi-threaded DLL runtime
+                    "/O2",       # Maximum optimization
+                    "/Ob2",      # Inline expansion
+                    "/Oi",       # Intrinsic functions
+                    "/Ot",       # Favor fast code
+                    "/GL",       # Whole program optimization
+                    "/GS-",      # Disable security checks
+                    "/Gy",       # Function-level linking
+                    "/W3",       # Warning level 3
+                    "/permissive-",
+                    "/Zc:__cplusplus",
+                    "/EHsc",
+                    "/DNDEBUG"   # Define NDEBUG
+                ],
+                "link": [
+                    "/LTCG",     # Link-time code generation
+                    "/OPT:REF",  # Remove unreferenced functions
+                    "/OPT:ICF",  # Identical COMDAT folding
+                    "/INCREMENTAL:NO"
+                ]
+            },
+            "RelWithDebInfo": {
+                "compile": [
+                    "/MD",
+                    "/O2",
+                    "/Ob1",      # Inline expansion (less aggressive)
+                    "/Oi",
+                    "/Zi",       # Debug information
+                    "/W3",
+                    "/permissive-",
+                    "/Zc:__cplusplus",
+                    "/EHsc",
+                    "/DNDEBUG"
+                ],
+                "link": [
+                    "/DEBUG",
+                    "/INCREMENTAL:NO",
+                    "/OPT:REF",
+                    "/OPT:ICF"
+                ]
+            },
+            "MinSizeRel": {
+                "compile": [
+                    "/MD",
+                    "/O1",       # Minimize size
+                    "/Os",       # Favor small code
+                    "/Ob1",
+                    "/GS-",
+                    "/Gy",
+                    "/W3",
+                    "/permissive-",
+                    "/Zc:__cplusplus",
+                    "/EHsc",
+                    "/DNDEBUG"
+                ],
+                "link": [
+                    "/INCREMENTAL:NO",
+                    "/OPT:REF",
+                    "/OPT:ICF"
+                ]
+            }
+        }
+        return flags.get(config, flags["Release"])
+    
+    def _get_gcc_clang_flags(self, config: str) -> Dict[str, List[str]]:
+        """Get GCC/Clang compiler flags for each configuration"""
+        flags = {
+            "Debug": {
+                "compile": [
+                    "-g3",           # Maximum debug information
+                    "-O0",           # No optimization
+                    "-Wall",         # All warnings
+                    "-Wextra",       # Extra warnings
+                    "-Wpedantic",    # Pedantic warnings
+                    "-fno-omit-frame-pointer",  # Keep frame pointer
+                    "-fno-inline",   # Disable inlining
+                    "-fstack-protector-strong",  # Stack protection
+                    "-D_GLIBCXX_DEBUG",  # STL debug mode (GCC)
+                    "-D_GLIBCXX_DEBUG_PEDANTIC"
+                ],
+                "link": [
+                    "-rdynamic"      # Export dynamic symbols for backtrace
+                ]
+            },
+            "Release": {
+                "compile": [
+                    "-O3",           # Maximum optimization
+                    "-march=native", # Optimize for current CPU
+                    "-mtune=native",
+                    "-flto",         # Link-time optimization
+                    "-ffast-math",   # Fast math operations
+                    "-funroll-loops", # Unroll loops
+                    "-fomit-frame-pointer",  # Omit frame pointer
+                    "-ffunction-sections",  # Function sections for linker
+                    "-fdata-sections",
+                    "-DNDEBUG",      # Disable assertions
+                    "-Wall",
+                    "-Wextra"
+                ],
+                "link": [
+                    "-flto",
+                    "-Wl,--gc-sections",  # Garbage collect unused sections
+                    "-Wl,-O3"        # Linker optimization
+                ]
+            },
+            "RelWithDebInfo": {
+                "compile": [
+                    "-O2",           # Standard optimization
+                    "-g",            # Debug information
+                    "-march=native",
+                    "-mtune=native",
+                    "-ffunction-sections",
+                    "-fdata-sections",
+                    "-DNDEBUG",
+                    "-Wall",
+                    "-Wextra"
+                ],
+                "link": [
+                    "-Wl,--gc-sections"
+                ]
+            },
+            "MinSizeRel": {
+                "compile": [
+                    "-Os",           # Optimize for size
+                    "-march=native",
+                    "-mtune=native",
+                    "-flto",
+                    "-ffunction-sections",
+                    "-fdata-sections",
+                    "-fomit-frame-pointer",
+                    "-DNDEBUG",
+                    "-Wall"
+                ],
+                "link": [
+                    "-flto",
+                    "-Wl,--gc-sections",
+                    "-Wl,-s"         # Strip symbols
+                ]
+            }
+        }
+        return flags.get(config, flags["Release"])
+    
+    def _generate_configure_presets(self) -> List[Dict]:
+        """Generate configure presets with proper compiler settings"""
+        presets = []
+        generator = self._get_generator()
+        is_multi_config = "Multi-Config" in generator or "Visual Studio" in generator
+        
+        for config in BuildConfig.CONFIGS:
+            preset_name = config.lower()
+            
+            # Base cache variables
+            cache_vars = {
+                "CMAKE_CXX_STANDARD": BuildConfig.CXX_STANDARD,
+                "CMAKE_CXX_STANDARD_REQUIRED": "ON",
+                "CMAKE_CXX_EXTENSIONS": "OFF",
+                "CMAKE_C_STANDARD": BuildConfig.C_STANDARD,
+                "CMAKE_C_STANDARD_REQUIRED": "ON",
+                "CMAKE_C_EXTENSIONS": "OFF",
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+                "CMAKE_COLOR_DIAGNOSTICS": "ON",
+                "CMAKE_PREFIX_PATH": "${sourceDir}/build/install",
+            }
+            
+            # Set explicit compilers if specified
+            if self.compiler_c:
+                cache_vars["CMAKE_C_COMPILER"] = self.compiler_c
+            if self.compiler_cxx:
+                cache_vars["CMAKE_CXX_COMPILER"] = self.compiler_cxx
+            
+            # For single-config generators, set build type
+            if not is_multi_config:
+                cache_vars["CMAKE_BUILD_TYPE"] = config
+            
+            # Platform-specific compiler flags
+            if self.is_windows:
+                flags = self._get_msvc_flags(config)
+                
+                # MSVC flags
+                cache_vars["CMAKE_CXX_FLAGS"] = " ".join(flags["compile"])
+                cache_vars["CMAKE_C_FLAGS"] = " ".join(flags["compile"])
+                cache_vars["CMAKE_EXE_LINKER_FLAGS"] = " ".join(flags["link"])
+                cache_vars["CMAKE_SHARED_LINKER_FLAGS"] = " ".join(flags["link"])
+                cache_vars["CMAKE_STATIC_LINKER_FLAGS"] = " ".join(flags["link"])
+                
+                # Runtime library
+                if config == "Debug":
+                    cache_vars["CMAKE_MSVC_RUNTIME_LIBRARY"] = "MultiThreadedDebugDLL"
+                else:
+                    cache_vars["CMAKE_MSVC_RUNTIME_LIBRARY"] = "MultiThreadedDLL"
+                
+            else:
+                # GCC/Clang flags
+                flags = self._get_gcc_clang_flags(config)
+                
+                cache_vars["CMAKE_CXX_FLAGS"] = " ".join(flags["compile"])
+                cache_vars["CMAKE_C_FLAGS"] = " ".join(flags["compile"])
+                cache_vars["CMAKE_EXE_LINKER_FLAGS"] = " ".join(flags["link"])
+                cache_vars["CMAKE_SHARED_LINKER_FLAGS"] = " ".join(flags["link"])
+            
+            # Additional configuration-specific settings
+            if config == "Debug":
+                cache_vars["CMAKE_INTERPROCEDURAL_OPTIMIZATION"] = "OFF"
+                cache_vars["BUILD_SHARED_LIBS"] = "OFF"  # Static libs for debugging
+            elif config == "Release" or config == "MinSizeRel":
+                if not self.is_windows:  # LTO works better on Unix
+                    cache_vars["CMAKE_INTERPROCEDURAL_OPTIMIZATION"] = "ON"
+                cache_vars["BUILD_SHARED_LIBS"] = "ON"
+            elif config == "RelWithDebInfo":
+                cache_vars["CMAKE_INTERPROCEDURAL_OPTIMIZATION"] = "OFF"
+                cache_vars["BUILD_SHARED_LIBS"] = "ON"
+            
+            # Create preset
+            preset = {
+                "name": preset_name,
+                "displayName": f"{config} Build",
+                "description": f"{config} configuration with optimized compiler settings for {self.system}",
+                "generator": generator,
+                "binaryDir": "${sourceDir}/build/" + preset_name,
+                "cacheVariables": cache_vars
+            }
+            
+            # Add architecture for Visual Studio
+            if "Visual Studio" in generator and self.is_windows:
+                preset["architecture"] = {
+                    "value": "x64",
+                    "strategy": "external"
+                }
+            
+            # Add toolchain file location if exists
+            toolchain_file = Path("cmake/toolchain.cmake")
+            if toolchain_file.exists():
+                preset["cacheVariables"]["CMAKE_TOOLCHAIN_FILE"] = "${sourceDir}/cmake/toolchain.cmake"
+            
+            presets.append(preset)
+        
+        return presets
+    
+    def _generate_build_presets(self) -> List[Dict]:
+        """Generate build presets for each configuration"""
+        presets = []
+        
+        for config in BuildConfig.CONFIGS:
+            preset_name = config.lower()
+            
+            preset: Dict[str, Any] = {
+                "name": preset_name,
+                "displayName": f"Build {config}",
+                "description": f"Build using {config} configuration",
+                "configurePreset": preset_name,
+                "configuration": config,
+            }
+            
+            # Add parallel build jobs
+            preset["jobs"] = os.cpu_count() or 4
+            
+            # Add verbose output option
+            preset["verbose"] = False
+            
+            presets.append(preset)
+            
+            # Add verbose variant
+            verbose_preset = {
+                "name": f"{preset_name}-verbose",
+                "displayName": f"Build {config} (Verbose)",
+                "description": f"Build using {config} configuration with verbose output",
+                "configurePreset": preset_name,
+                "configuration": config,
+                "verbose": True,
+                "jobs": os.cpu_count() or 4
+            }
+            presets.append(verbose_preset)
+        
+        return presets
+    
+    def _generate_test_presets(self) -> List[Dict]:
+        """Generate test presets (if testing is enabled)"""
+        presets = []
+        
+        for config in BuildConfig.CONFIGS:
+            preset_name = config.lower()
+            
+            preset = {
+                "name": preset_name,
+                "displayName": f"Test {config}",
+                "description": f"Run tests for {config} configuration",
+                "configurePreset": preset_name,
+                "configuration": config,
+                "output": {
+                    "outputOnFailure": True
+                },
+                "execution": {
+                    "noTestsAction": "error",
+                    "stopOnFailure": False
+                }
+            }
+            
+            presets.append(preset)
+        
+        return presets
 
-# ==================== System Validators ====================
+
+# ==================== System Validator ====================
 class SystemValidator:
     """Validates system requirements"""
     
     @staticmethod
-    def check_cmake() -> bool:
-        """Check CMake installation and version"""
+    def check_cmake():
+        """Check if CMake is installed and meets minimum version"""
         try:
             result = subprocess.run(
                 ["cmake", "--version"],
@@ -688,390 +1066,432 @@ class SystemValidator:
                 check=True
             )
             
-            version_match = re.search(r'cmake version (\d+)\.(\d+)\.(\d+)', result.stdout)
+            version_line = result.stdout.split('\n')[0]
+            version_match = re.search(r'(\d+)\.(\d+)\.(\d+)', version_line)
+            
             if version_match:
-                version = tuple(map(int, version_match.groups()))
-                if version >= BuildConfig.MIN_CMAKE_VERSION:
-                    Logger.success(f"CMake {'.'.join(map(str, version))} found")
-                    return True
+                major, minor, patch = map(int, version_match.groups())
+                required = BuildConfig.MIN_CMAKE_VERSION
+                
+                if (major, minor, patch) >= required:
+                    Logger.success(f"CMake {major}.{minor}.{patch} found")
+                    return
                 else:
                     raise ConfigurationException(
-                        f"CMake {'.'.join(map(str, version))} found, but "
-                        f"{'.'.join(map(str, BuildConfig.MIN_CMAKE_VERSION))} required"
+                        f"CMake {major}.{minor}.{patch} found, but {required[0]}.{required[1]}.{required[2]}+ required"
                     )
-            
-            raise ConfigurationException("Could not determine CMake version")
             
         except FileNotFoundError:
             raise ConfigurationException("CMake not found. Please install CMake.")
         except subprocess.CalledProcessError:
-            raise ConfigurationException("Failed to run CMake")
+            raise ConfigurationException("Failed to check CMake version")
     
     @staticmethod
-    def check_compiler() -> bool:
-        """Check for available C++ compiler"""
-        compilers = {
-            "Windows": ["cl", "g++", "clang++"],
-            "Linux": ["g++", "clang++"],
-            "Darwin": ["clang++", "g++"]
-        }
+    def check_compiler():
+        """Check if a C++ compiler is available"""
+        compilers = []
         
-        system = platform.system()
-        available = []
+        if platform.system() == "Windows":
+            compilers = [
+                ("cl", "MSVC"),
+                ("clang++", "Clang"),
+                ("g++", "GCC")
+            ]
+        else:
+            compilers = [
+                ("g++", "GCC"),
+                ("clang++", "Clang")
+            ]
         
-        for compiler in compilers.get(system, ["g++", "clang++"]):
+        for compiler_cmd, name in compilers:
+            try:
+                result = subprocess.run(
+                    [compiler_cmd, "--version"],
+                    capture_output=True,
+                    text=True,
+                    check=True
+                )
+                Logger.success(f"{name} compiler found")
+                return
+            except (FileNotFoundError, subprocess.CalledProcessError):
+                continue
+        
+        raise ConfigurationException(
+            "No C++ compiler found. Please install GCC, Clang, or MSVC."
+        )
+    
+    @staticmethod
+    def check_disk_space(required_gb: int = 5):
+        """Check if sufficient disk space is available"""
+        try:
+            stat = shutil.disk_usage(os.getcwd())
+            free_gb = stat.free / (1024 ** 3)
+            
+            if free_gb < required_gb:
+                Logger.warn(
+                    f"Low disk space: {free_gb:.1f}GB free (recommended: {required_gb}GB+)"
+                )
+            else:
+                Logger.success(f"Disk space: {free_gb:.1f}GB free")
+        except Exception as e:
+            Logger.warn(f"Could not check disk space: {e}")
+
+
+# ==================== Compiler Detection ====================
+def detect_and_list_compilers():
+    """Detect and list available compilers on the system"""
+    print(f"\n{Color.BOLD}Available Compilers:{Color.RESET}\n")
+    
+    compilers_to_check = {
+        "C": ["gcc", "clang", "cl"],
+        "C++": ["g++", "clang++", "cl"]
+    }
+    
+    for lang, compilers in compilers_to_check.items():
+        print(f"{Color.CYAN}{lang} Compilers:{Color.RESET}")
+        for compiler in compilers:
             try:
                 result = subprocess.run(
                     [compiler, "--version"],
                     capture_output=True,
-                    text=True,
-                    timeout=5
+                    check=True,
+                    text=True
                 )
-                if result.returncode == 0:
-                    available.append(compiler)
-            except (FileNotFoundError, subprocess.TimeoutExpired):
-                continue
-        
-        if available:
-            Logger.success(f"Found compiler(s): {', '.join(available)}")
-            return True
-        else:
-            raise ConfigurationException(
-                f"No C++ compiler found. Please install a compiler for {system}"
-            )
-    
-    @staticmethod
-    def check_disk_space(min_gb: float = 5.0) -> bool:
-        """Check available disk space"""
-        try:
-            stat = shutil.disk_usage(".")
-            available_gb = stat.free / (1024 ** 3)
-            
-            if available_gb >= min_gb:
-                Logger.debug(f"Available disk space: {available_gb:.2f} GB")
-                return True
-            else:
-                Logger.warn(
-                    f"Low disk space: {available_gb:.2f} GB available "
-                    f"(recommended: {min_gb:.2f} GB)"
-                )
-                return True  # Warning, not error
-                
-        except Exception as e:
-            Logger.warn(f"Could not check disk space: {e}")
-            return True
+                version_line = result.stdout.split('\n')[0]
+                print(f"  {Color.GREEN}✓{Color.RESET} {compiler:15} {version_line[:60]}")
+            except (subprocess.CalledProcessError, FileNotFoundError):
+                print(f"  {Color.RED}✗{Color.RESET} {compiler:15} Not found")
+        print()
 
 
 # ==================== Package Registry ====================
 def get_package_registry() -> List[Package]:
-    """Central registry of all packages to build"""
+    """Define all third-party packages for Motion Engine"""
+
+    if not Path.exists(Path("libs")):
+        raise ConfigurationException(f"Vendor directory not found: {"libs"}")
     
     packages = [
         Package(
             name="glfw",
-            source_directory="vendor/glfw",
-            build_directory="build/glfw",
+            source_directory="libs/glfw",
+            build_directory="build/vendor/glfw",
             prefix_directory="build/install",
-            options="-DGLFW_BUILD_EXAMPLES=OFF -DGLFW_BUILD_TESTS=OFF -DGLFW_BUILD_DOCS=OFF"
+            options="-DGLFW_BUILD_DOCS=OFF -DGLFW_BUILD_EXAMPLES=OFF -DGLFW_BUILD_TESTS=OFF"
         ),
         Package(
             name="glad",
-            source_directory="vendor/glad",
-            build_directory="build/glad",
+            source_directory="libs/glad",
+            build_directory="build/vendor/glad",
             prefix_directory="build/install"
         ),
         Package(
             name="glm",
-            source_directory="vendor/glm",
-            build_directory="build/glm",
+            source_directory="libs/glm",
+            build_directory="build/vendor/glm",
             prefix_directory="build/install",
             options="-DGLM_BUILD_TESTS=OFF"
         ),
         Package(
             name="imgui",
-            source_directory="vendor/imgui",
-            build_directory="build/imgui",
+            source_directory="libs/imgui_docking",
+            build_directory="build/vendor/imgui",
             prefix_directory="build/install",
             dependencies=["glfw", "glad"]
         ),
         Package(
-            name="entt",
-            source_directory="vendor/entt",
-            build_directory="build/entt",
+            name="imguizmo",
+            source_directory="libs/imGuizmo",
+            build_directory="build/vendor/imguizmo",
             prefix_directory="build/install"
         ),
         Package(
-            name="stb",
-            source_directory="vendor/stb",
-            build_directory="build/stb",
+            name="MikkTSpace",
+            source_directory="libs/MikkTSpace",
+            build_directory="build/vendor/MikkTSpace",
             prefix_directory="build/install"
+        ),
+        Package(
+            name="entt",
+            source_directory="libs/entt",
+            build_directory="build/vendor/entt",
+            prefix_directory="build/install",
+            options="-DENTT_BUILD_TESTING=OFF -DENTT_INSTALL=ON"
         ),
         Package(
             name="ReactPhysics3D",
-            source_directory="vendor/reactphysics3d",
-            build_directory="build/reactphysics3d",
+            source_directory="libs/reactphysics3d",
+            build_directory="build/vendor/reactphysics3d",
             prefix_directory="build/install",
             options="-DRP3D_COMPILE_TESTS=OFF"
         ),
         Package(
             name="spdlog",
-            source_directory="vendor/spdlog",
-            build_directory="build/spdlog",
-            prefix_directory="build/install"
+            source_directory="libs/spdlog",
+            build_directory="build/vendor/spdlog",
+            prefix_directory="build/install",
+            options="-DSPDLOG_BUILD_EXAMPLE=OFF"
         ),
         Package(
             name="assimp",
-            source_directory="vendor/assimp",
-            build_directory="build/assimp",
+            source_directory="libs/assimp",
+            build_directory="build/vendor/assimp",
             prefix_directory="build/install",
-            options="-DASSIMP_BUILD_TESTS=OFF -DASSIMP_BUILD_ASSIMP_TOOLS=OFF"
+            options="-DASSIMP_BUILD_TESTS=OFF -DASSIMP_BUILD_ASSIMP_TOOLS=OFF -DASSIMP_INSTALL_PDB=OFF"
+        ),
+        Package(
+            name="stb",
+            source_directory="libs/stb_image",
+            build_directory="build/vendor/stb",
+            prefix_directory="build/install"
+        ),
+        Package(
+            name="yaml-cpp",
+            source_directory="libs/yaml-cpp",
+            build_directory="build/vendor/yaml-cpp",
+            prefix_directory="build/install"
         )
     ]
     
     return packages
 
 
-# ==================== Incremental Build System ====================
-class IncrementalBuildTracker:
-    """Tracks file changes for incremental builds"""
+# ==================== Dependency Graph ====================
+class DependencyGraph:
+    """Manages package dependencies and build order"""
     
-    def __init__(self, cache_file: Path = Path(BuildConfig.INCREMENTAL_CACHE)):
-        self.cache_file = cache_file
-        self.cache: Dict[str, Dict[str, str]] = self._load_cache()
+    def __init__(self, packages: List[Package]):
+        self.packages = {pkg.name: pkg for pkg in packages}
+        self.graph = self._build_graph()
     
-    def _load_cache(self) -> Dict[str, Dict[str, str]]:
-        """Load cache from disk"""
-        if self.cache_file.exists():
-            try:
-                with open(self.cache_file, 'r') as f:
-                    return json.load(f)
-            except Exception as e:
-                Logger.warn(f"Failed to load incremental cache: {e}")
-        return {}
+    def _build_graph(self) -> Dict[str, Set[str]]:
+        """Build dependency graph"""
+        graph = {}
+        for pkg in self.packages.values():
+            graph[pkg.name] = set(pkg.dependencies)
+        return graph
     
-    def _save_cache(self):
-        """Save cache to disk"""
-        self.cache_file.parent.mkdir(parents=True, exist_ok=True)
-        with open(self.cache_file, 'w') as f:
-            json.dump(self.cache, f, indent=2)
-    
-    def _hash_directory(self, directory: Path) -> Dict[str, str]:
-        """Calculate hashes for all source files in directory"""
-        hashes = {}
+    def get_build_order(self) -> List[str]:
+        """Get topologically sorted build order"""
+        visited = set()
+        order = []
         
-        if not directory.exists():
-            return hashes
-        
-        for ext in ['.cpp', '.hpp', '.h', '.c', '.cc', '.cxx']:
-            for file_path in directory.rglob(f'*{ext}'):
-                try:
-                    with open(file_path, 'rb') as f:
-                        file_hash = hashlib.md5(f.read()).hexdigest()
-                        relative_path = str(file_path.relative_to(directory))
-                        hashes[relative_path] = file_hash
-                except Exception as e:
-                    Logger.debug(f"Failed to hash {file_path}: {e}")
-        
-        return hashes
-    
-    def has_changes(self, package: Package) -> bool:
-        """Check if package has changes since last build"""
-        source_dir = Path(package.source_directory)
-        current_hashes = self._hash_directory(source_dir)
-        cached_hashes = self.cache.get(package.name, {})
-        
-        # If no cache exists, assume changes
-        if not cached_hashes:
-            Logger.debug(f"{package.name}: No cache found, rebuilding")
-            return True
-        
-        # Compare hashes
-        if current_hashes != cached_hashes:
-            # Find what changed
-            added = set(current_hashes.keys()) - set(cached_hashes.keys())
-            removed = set(cached_hashes.keys()) - set(current_hashes.keys())
-            modified = {
-                f for f in current_hashes.keys() & cached_hashes.keys()
-                if current_hashes[f] != cached_hashes[f]
-            }
+        def visit(name: str):
+            if name in visited:
+                return
+            visited.add(name)
             
-            if added:
-                Logger.debug(f"{package.name}: Added files: {added}")
-            if removed:
-                Logger.debug(f"{package.name}: Removed files: {removed}")
-            if modified:
-                Logger.debug(f"{package.name}: Modified files: {modified}")
+            for dep in self.graph.get(name, set()):
+                if dep in self.packages:
+                    visit(dep)
             
-            return True
+            order.append(name)
         
-        Logger.debug(f"{package.name}: No changes detected")
-        return False
+        for pkg_name in self.packages:
+            visit(pkg_name)
+        
+        return order
     
-    def update(self, package: Package):
-        """Update cache for package"""
-        source_dir = Path(package.source_directory)
-        self.cache[package.name] = self._hash_directory(source_dir)
-        self._save_cache()
+    def find_circular_dependencies(self) -> List[List[str]]:
+        """Detect circular dependencies"""
+        cycles = []
+        visited = set()
+        rec_stack = set()
+        
+        def visit(name: str, path: List[str]) -> bool:
+            if name in rec_stack:
+                cycle_start = path.index(name)
+                cycles.append(path[cycle_start:] + [name])
+                return True
+            
+            if name in visited:
+                return False
+            
+            visited.add(name)
+            rec_stack.add(name)
+            
+            for dep in self.graph.get(name, set()):
+                if dep in self.packages:
+                    if visit(dep, path + [name]):
+                        return True
+            
+            rec_stack.remove(name)
+            return False
+        
+        for pkg_name in self.packages:
+            if pkg_name not in visited:
+                visit(pkg_name, [])
+        
+        return cycles
+    
+    def print_analysis(self):
+        """Print dependency analysis"""
+        print(f"\n{Color.BOLD}Dependency Analysis:{Color.RESET}\n")
+        
+        order = self.get_build_order()
+        print(f"{Color.CYAN}Build Order:{Color.RESET}")
+        for i, pkg_name in enumerate(order, 1):
+            print(f"  {i:2}. {pkg_name}")
+        
+        print(f"\n{Color.CYAN}Dependencies:{Color.RESET}")
+        for pkg_name, deps in sorted(self.graph.items()):
+            if deps:
+                print(f"  {pkg_name:20} → {', '.join(sorted(deps))}")
+            else:
+                print(f"  {pkg_name:20} (no dependencies)")
+        
+        print()
+    
+    def visualize(self, output_path: Path):
+        """Visualize dependency graph"""
+        if not HAS_NETWORKX or not HAS_MATPLOTLIB:
+            Logger.warn("Install networkx and matplotlib to visualize dependencies")
+            return
+        
+        G = nx.DiGraph()
+        
+        for pkg_name, deps in self.graph.items():
+            G.add_node(pkg_name)
+            for dep in deps:
+                if dep in self.packages:
+                    G.add_edge(dep, pkg_name)
+        
+        plt.figure(figsize=(12, 8))
+        pos = nx.spring_layout(G, k=2, iterations=50)
+        
+        nx.draw_networkx_nodes(G, pos, node_color='lightblue',
+                              node_size=2000, alpha=0.9)
+        nx.draw_networkx_labels(G, pos, font_size=10, font_weight='bold')
+        nx.draw_networkx_edges(G, pos, edge_color='gray',
+                              arrows=True, arrowsize=20, width=2,
+                              connectionstyle='arc3,rad=0.1')
+        
+        plt.title("Motion Engine Dependency Graph", fontsize=16, fontweight='bold')
+        plt.axis('off')
+        plt.tight_layout()
+        
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        plt.savefig(output_path, dpi=300, bbox_inches='tight')
+        Logger.success(f"Dependency graph saved to {output_path}")
 
 
-# ==================== Build Statistics ====================
-@dataclass
-class BuildStatistics:
-    """Statistics for build operations"""
-    total_builds: int = 0
-    successful_builds: int = 0
-    failed_builds: int = 0
-    total_time: float = 0.0
-    avg_time: float = 0.0
-    package_times: Dict[str, float] = field(default_factory=dict)
-    last_build: Optional[str] = None
-    build_history: List[Dict] = field(default_factory=list)
-
-
+# ==================== Statistics Tracker ====================
 class StatisticsTracker:
-    """Tracks and persists build statistics"""
+    """Track build statistics"""
     
-    def __init__(self, stats_file: Path = Path(BuildConfig.STATS_FILE)):
-        self.stats_file = stats_file
+    def __init__(self):
+        self.stats_file = Path(BuildConfig.STATS_FILE)
         self.stats = self._load_stats()
     
-    def _load_stats(self) -> BuildStatistics:
+    def _load_stats(self) -> Dict:
         """Load statistics from disk"""
         if self.stats_file.exists():
             try:
                 with open(self.stats_file, 'r') as f:
-                    data = json.load(f)
-                    return BuildStatistics(**data)
+                    return json.load(f)
             except Exception as e:
                 Logger.warn(f"Failed to load statistics: {e}")
-        return BuildStatistics()
+        
+        return {
+            "total_builds": 0,
+            "successful_builds": 0,
+            "failed_builds": 0,
+            "total_build_time": 0.0,
+            "package_stats": {},
+            "history": []
+        }
     
     def _save_stats(self):
         """Save statistics to disk"""
         self.stats_file.parent.mkdir(parents=True, exist_ok=True)
         with open(self.stats_file, 'w') as f:
-            json.dump(asdict(self.stats), f, indent=2)
+            json.dump(self.stats, f, indent=2)
     
     def record_build(self, results: List[BuildResult]):
         """Record build results"""
-        self.stats.total_builds += 1
-        
+        total_time = sum(r.duration for r in results)
         successful = sum(1 for r in results if r.success)
         failed = len(results) - successful
         
-        self.stats.successful_builds += successful
-        self.stats.failed_builds += failed
+        self.stats["total_builds"] += 1
+        self.stats["successful_builds"] += successful
+        self.stats["failed_builds"] += failed
+        self.stats["total_build_time"] += total_time
         
-        total_time = sum(r.duration for r in results)
-        self.stats.total_time += total_time
-        
-        if self.stats.total_builds > 0:
-            self.stats.avg_time = self.stats.total_time / self.stats.total_builds
-        
-        # Update package times
+        # Update package statistics
         for result in results:
             pkg_name = result.package.name
-            if pkg_name not in self.stats.package_times:
-                self.stats.package_times[pkg_name] = result.duration
-            else:
-                # Running average
-                self.stats.package_times[pkg_name] = (
-                    self.stats.package_times[pkg_name] + result.duration
-                ) / 2
+            if pkg_name not in self.stats["package_stats"]:
+                self.stats["package_stats"][pkg_name] = {
+                    "builds": 0,
+                    "successes": 0,
+                    "failures": 0,
+                    "total_time": 0.0,
+                    "avg_time": 0.0
+                }
+            
+            pkg_stats = self.stats["package_stats"][pkg_name]
+            pkg_stats["builds"] += 1
+            pkg_stats["successes"] += 1 if result.success else 0
+            pkg_stats["failures"] += 0 if result.success else 1
+            pkg_stats["total_time"] += result.duration
+            pkg_stats["avg_time"] = pkg_stats["total_time"] / pkg_stats["builds"]
         
-        self.stats.last_build = datetime.now().isoformat()
-        
-        # Add to history (keep last 100 builds)
-        self.stats.build_history.append({
-            'timestamp': datetime.now().isoformat(),
-            'duration': total_time,
-            'successful': successful,
-            'failed': failed,
-            'packages': [r.package.name for r in results]
+        # Add to history (keep last 50)
+        self.stats["history"].append({
+            "timestamp": datetime.now().isoformat(),
+            "packages": len(results),
+            "successful": successful,
+            "failed": failed,
+            "duration": total_time
         })
-        
-        if len(self.stats.build_history) > 100:
-            self.stats.build_history = self.stats.build_history[-100:]
+        self.stats["history"] = self.stats["history"][-50:]
         
         self._save_stats()
     
-    def display(self):
-        """Display statistics"""
+    def print_stats(self):
+        """Print build statistics"""
         print(f"\n{Color.BOLD}Build Statistics:{Color.RESET}\n")
-        print(f"  Total Builds:       {self.stats.total_builds}")
-        print(f"  Successful:         {Color.GREEN}{self.stats.successful_builds}{Color.RESET}")
-        print(f"  Failed:             {Color.RED}{self.stats.failed_builds}{Color.RESET}")
-        print(f"  Success Rate:       {self._success_rate():.1f}%")
-        print(f"  Total Build Time:   {self._format_duration(self.stats.total_time)}")
-        print(f"  Average Build Time: {self._format_duration(self.stats.avg_time)}")
         
-        if self.stats.last_build:
-            last_build = datetime.fromisoformat(self.stats.last_build)
-            print(f"  Last Build:         {last_build.strftime('%Y-%m-%d %H:%M:%S')}")
+        print(f"{Color.CYAN}Overall:{Color.RESET}")
+        print(f"  Total builds: {self.stats['total_builds']}")
+        print(f"  Successful:   {self.stats['successful_builds']} "
+              f"({self.stats['successful_builds']/max(self.stats['total_builds'],1)*100:.1f}%)")
+        print(f"  Failed:       {self.stats['failed_builds']}")
+        print(f"  Total time:   {timedelta(seconds=int(self.stats['total_build_time']))}")
         
-        if self.stats.package_times:
-            print(f"\n{Color.BOLD}Package Build Times:{Color.RESET}")
+        if self.stats["package_stats"]:
+            print(f"\n{Color.CYAN}Package Statistics:{Color.RESET}")
             sorted_packages = sorted(
-                self.stats.package_times.items(),
-                key=lambda x: x[1],
+                self.stats["package_stats"].items(),
+                key=lambda x: x[1]["avg_time"],
                 reverse=True
             )
-            for pkg, time in sorted_packages:
-                print(f"  {pkg:20} {self._format_duration(time)}")
+            
+            for pkg_name, pkg_stats in sorted_packages[:10]:
+                success_rate = pkg_stats["successes"] / max(pkg_stats["builds"], 1) * 100
+                print(f"  {pkg_name:20} "
+                      f"builds: {pkg_stats['builds']:3} "
+                      f"success: {success_rate:5.1f}% "
+                      f"avg: {pkg_stats['avg_time']:6.1f}s")
         
         print()
-    
-    def _success_rate(self) -> float:
-        """Calculate success rate"""
-        total = self.stats.successful_builds + self.stats.failed_builds
-        if total == 0:
-            return 0.0
-        return (self.stats.successful_builds / total) * 100
-    
-    @staticmethod
-    def _format_duration(seconds: float) -> str:
-        """Format duration in human-readable format"""
-        if seconds < 60:
-            return f"{seconds:.2f}s"
-        elif seconds < 3600:
-            minutes = int(seconds // 60)
-            secs = seconds % 60
-            return f"{minutes}m {secs:.0f}s"
-        else:
-            hours = int(seconds // 3600)
-            minutes = int((seconds % 3600) // 60)
-            return f"{hours}h {minutes}m"
 
 
-# ==================== Benchmark System ====================
-@dataclass
-class Benchmark:
-    """Benchmark data for a build"""
-    name: str
-    timestamp: str
-    config: str
-    total_duration: float
-    package_durations: Dict[str, float]
-    system_info: Dict[str, str]
-
-
+# ==================== Benchmark Manager ====================
 class BenchmarkManager:
-    """Manages build benchmarks"""
+    """Manage build benchmarks"""
     
-    def __init__(self, benchmark_file: Path = Path(BuildConfig.BENCHMARK_FILE)):
-        self.benchmark_file = benchmark_file
-        self.benchmarks: Dict[str, Benchmark] = self._load_benchmarks()
+    def __init__(self):
+        self.benchmark_file = Path(BuildConfig.BENCHMARK_FILE)
+        self.benchmarks = self._load_benchmarks()
     
-    def _load_benchmarks(self) -> Dict[str, Benchmark]:
+    def _load_benchmarks(self) -> Dict:
         """Load benchmarks from disk"""
         if self.benchmark_file.exists():
             try:
                 with open(self.benchmark_file, 'r') as f:
-                    data = json.load(f)
-                    return {
-                        name: Benchmark(**bench_data)
-                        for name, bench_data in data.items()
-                    }
+                    return json.load(f)
             except Exception as e:
                 Logger.warn(f"Failed to load benchmarks: {e}")
         return {}
@@ -1080,35 +1500,22 @@ class BenchmarkManager:
         """Save benchmarks to disk"""
         self.benchmark_file.parent.mkdir(parents=True, exist_ok=True)
         with open(self.benchmark_file, 'w') as f:
-            data = {
-                name: asdict(bench)
-                for name, bench in self.benchmarks.items()
-            }
-            json.dump(data, f, indent=2)
+            json.dump(self.benchmarks, f, indent=2)
     
     def record(self, name: str, config: str, results: List[BuildResult]):
         """Record a benchmark"""
-        package_durations = {
-            r.package.name: r.duration
-            for r in results
+        total_time = sum(r.duration for r in results)
+        
+        self.benchmarks[name] = {
+            "timestamp": datetime.now().isoformat(),
+            "config": config,
+            "packages": len(results),
+            "total_time": total_time,
+            "package_times": {r.package.name: r.duration for r in results}
         }
         
-        benchmark = Benchmark(
-            name=name,
-            timestamp=datetime.now().isoformat(),
-            config=config,
-            total_duration=sum(package_durations.values()),
-            package_durations=package_durations,
-            system_info={
-                'platform': platform.system(),
-                'processor': platform.processor(),
-                'python_version': platform.python_version()
-            }
-        )
-        
-        self.benchmarks[name] = benchmark
         self._save_benchmarks()
-        Logger.success(f"Recorded benchmark '{name}'")
+        Logger.success(f"Benchmark '{name}' recorded: {total_time:.1f}s")
     
     def compare(self, baseline: str, current: str):
         """Compare two benchmarks"""
@@ -1123,201 +1530,104 @@ class BenchmarkManager:
         base = self.benchmarks[baseline]
         curr = self.benchmarks[current]
         
-        print(f"\n{Color.BOLD}Benchmark Comparison:{Color.RESET}")
-        print(f"  Baseline: {baseline} ({base.timestamp})")
-        print(f"  Current:  {current} ({curr.timestamp})")
-        print()
+        print(f"\n{Color.BOLD}Benchmark Comparison:{Color.RESET}\n")
+        print(f"Baseline: {baseline} ({base['config']}) - {base['total_time']:.1f}s")
+        print(f"Current:  {current} ({curr['config']}) - {curr['total_time']:.1f}s")
         
-        # Total time comparison
-        total_diff = curr.total_duration - base.total_duration
-        total_pct = (total_diff / base.total_duration) * 100
+        diff = curr['total_time'] - base['total_time']
+        pct = (diff / base['total_time']) * 100
         
-        color = Color.GREEN if total_diff < 0 else Color.RED
-        print(f"  Total Time:")
-        print(f"    Baseline: {base.total_duration:.2f}s")
-        print(f"    Current:  {curr.total_duration:.2f}s")
-        print(f"    Change:   {color}{total_diff:+.2f}s ({total_pct:+.1f}%){Color.RESET}")
-        print()
+        color = Color.GREEN if diff < 0 else Color.RED
+        print(f"\nDifference: {color}{diff:+.1f}s ({pct:+.1f}%){Color.RESET}\n")
         
-        # Package-by-package comparison
-        print(f"  {Color.BOLD}Package Breakdown:{Color.RESET}")
-        all_packages = set(base.package_durations.keys()) | set(curr.package_durations.keys())
+        # Compare individual packages
+        print(f"{Color.CYAN}Package Breakdown:{Color.RESET}")
+        all_packages = set(base['package_times'].keys()) | set(curr['package_times'].keys())
         
         for pkg in sorted(all_packages):
-            base_time = base.package_durations.get(pkg, 0)
-            curr_time = curr.package_durations.get(pkg, 0)
+            base_time = base['package_times'].get(pkg, 0)
+            curr_time = curr['package_times'].get(pkg, 0)
             
-            if base_time == 0:
-                print(f"    {pkg:20} NEW: {curr_time:.2f}s")
-            elif curr_time == 0:
-                print(f"    {pkg:20} REMOVED")
-            else:
-                diff = curr_time - base_time
-                pct = (diff / base_time) * 100
-                color = Color.GREEN if diff < 0 else Color.RED
-                print(f"    {pkg:20} {base_time:6.2f}s → {curr_time:6.2f}s "
-                      f"{color}({diff:+.2f}s, {pct:+.1f}%){Color.RESET}")
+            if base_time > 0:
+                pkg_diff = curr_time - base_time
+                pkg_pct = (pkg_diff / base_time) * 100
+                pkg_color = Color.GREEN if pkg_diff < 0 else Color.RED
+                print(f"  {pkg:20} {base_time:6.1f}s → {curr_time:6.1f}s "
+                      f"{pkg_color}({pkg_pct:+5.1f}%){Color.RESET}")
         
         print()
 
 
-# ==================== Dependency Graph ====================
-class DependencyGraph:
-    """Analyzes and visualizes package dependencies"""
+# ==================== Incremental Build Tracker ====================
+class IncrementalBuildTracker:
+    """Track file changes for incremental builds"""
     
-    def __init__(self, packages: List[Package]):
-        self.packages = packages
-        self.graph = self._build_graph()
+    def __init__(self):
+        self.cache_file = Path(BuildConfig.INCREMENTAL_CACHE)
+        self.cache = self._load_cache()
     
-    def _build_graph(self) -> Dict[str, Set[str]]:
-        """Build adjacency list representation"""
-        graph = {pkg.name: set(pkg.dependencies) for pkg in self.packages}
-        return graph
+    def _load_cache(self) -> Dict:
+        """Load cache from disk"""
+        if self.cache_file.exists():
+            try:
+                with open(self.cache_file, 'r') as f:
+                    return json.load(f)
+            except Exception:
+                pass
+        return {}
     
-    def get_build_order(self) -> List[str]:
-        """Topological sort for build order"""
-        visited = set()
-        stack = []
-        
-        def visit(node: str):
-            if node in visited:
-                return
-            visited.add(node)
-            for dep in self.graph.get(node, []):
-                visit(dep)
-            stack.append(node)
-        
-        for pkg in self.graph:
-            visit(pkg)
-        
-        return stack
+    def _save_cache(self):
+        """Save cache to disk"""
+        self.cache_file.parent.mkdir(parents=True, exist_ok=True)
+        with open(self.cache_file, 'w') as f:
+            json.dump(self.cache, f, indent=2)
     
-    def find_circular_dependencies(self) -> List[List[str]]:
-        """Detect circular dependencies"""
-        def dfs(node: str, visited: Set[str], rec_stack: Set[str], path: List[str]) -> Optional[List[str]]:
-            visited.add(node)
-            rec_stack.add(node)
-            path.append(node)
-            
-            for neighbor in self.graph.get(node, []):
-                if neighbor not in visited:
-                    cycle = dfs(neighbor, visited, rec_stack, path[:])
-                    if cycle:
-                        return cycle
-                elif neighbor in rec_stack:
-                    # Found cycle
-                    cycle_start = path.index(neighbor)
-                    return path[cycle_start:] + [neighbor]
-            
-            rec_stack.remove(node)
-            return None
+    def has_changes(self, package: Package) -> bool:
+        """Check if package has changes"""
+        source_dir = Path(package.source_directory)
+        if not source_dir.exists():
+            return True
         
-        visited = set()
-        cycles = []
+        current_hash = self._compute_dir_hash(source_dir)
+        cached_hash = self.cache.get(package.name)
         
-        for node in self.graph:
-            if node not in visited:
-                cycle = dfs(node, visited, set(), [])
-                if cycle:
-                    cycles.append(cycle)
-        
-        return cycles
+        return current_hash != cached_hash
     
-    def visualize(self, output_path: Path):
-        """Generate dependency graph visualization"""
-        if not HAS_NETWORKX or not HAS_MATPLOTLIB:
-            Logger.error("Visualization requires networkx and matplotlib")
-            Logger.info("Install with: pip install networkx matplotlib")
-            return
-        
-        # Create directed graph
-        G = nx.DiGraph()
-        
-        for pkg, deps in self.graph.items():
-            G.add_node(pkg)
-            for dep in deps:
-                G.add_edge(pkg, dep)
-        
-        # Layout and draw
-        plt.figure(figsize=(12, 8))
-        pos = nx.spring_layout(G, k=2, iterations=50)
-        
-        # Draw nodes
-        nx.draw_networkx_nodes(
-            G, pos,
-            node_color='lightblue',
-            node_size=3000,
-            alpha=0.9
-        )
-        
-        # Draw edges
-        nx.draw_networkx_edges(
-            G, pos,
-            edge_color='gray',
-            arrows=True,
-            arrowsize=20,
-            arrowstyle='->',
-            connectionstyle='arc3,rad=0.1'
-        )
-        
-        # Draw labels
-        nx.draw_networkx_labels(
-            G, pos,
-            font_size=10,
-            font_weight='bold'
-        )
-        
-        plt.title("Motion Engine Package Dependencies", fontsize=16, fontweight='bold')
-        plt.axis('off')
-        plt.tight_layout()
-        
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        plt.savefig(output_path, dpi=300, bbox_inches='tight')
-        Logger.success(f"Dependency graph saved to {output_path}")
+    def update(self, package: Package):
+        """Update package hash"""
+        source_dir = Path(package.source_directory)
+        if source_dir.exists():
+            self.cache[package.name] = self._compute_dir_hash(source_dir)
+            self._save_cache()
     
-    def print_analysis(self):
-        """Print detailed dependency analysis"""
-        print(f"\n{Color.BOLD}Dependency Analysis:{Color.RESET}\n")
+    def _compute_dir_hash(self, directory: Path) -> str:
+        """Compute hash of directory contents"""
+        hasher = hashlib.sha256()
         
-        # Build order
-        build_order = self.get_build_order()
-        print(f"  {Color.BOLD}Recommended Build Order:{Color.RESET}")
-        for i, pkg in enumerate(build_order, 1):
-            deps = self.graph[pkg]
-            dep_str = f" (depends on: {', '.join(deps)})" if deps else " (no dependencies)"
-            print(f"    {i}. {pkg}{dep_str}")
+        try:
+            for file_path in sorted(directory.rglob("*")):
+                if file_path.is_file():
+                    try:
+                        with open(file_path, 'rb') as f:
+                            hasher.update(f.read())
+                    except (PermissionError, OSError):
+                        pass
+        except Exception:
+            pass
         
-        # Statistics
-        print(f"\n  {Color.BOLD}Statistics:{Color.RESET}")
-        print(f"    Total Packages:     {len(self.packages)}")
-        
-        independent = sum(1 for deps in self.graph.values() if not deps)
-        print(f"    Independent:        {independent}")
-        
-        max_deps = max(len(deps) for deps in self.graph.values())
-        most_dependent = [pkg for pkg, deps in self.graph.items() if len(deps) == max_deps]
-        print(f"    Max Dependencies:   {max_deps} ({', '.join(most_dependent)})")
-        
-        # Reverse dependencies
-        reverse_deps = {pkg: [] for pkg in self.graph}
-        for pkg, deps in self.graph.items():
-            for dep in deps:
-                reverse_deps[dep].append(pkg)
-        
-        max_rdeps = max(len(rdeps) for rdeps in reverse_deps.values())
-        most_depended = [pkg for pkg, rdeps in reverse_deps.items() if len(rdeps) == max_rdeps]
-        print(f"    Most Depended On:   {', '.join(most_depended)} ({max_rdeps} packages)")
-        
-        print()
+        return hasher.hexdigest()[:16]
 
 
 # ==================== Build Manager ====================
 class BuildManager:
     """Manages the build process for all packages"""
     
-    def __init__(self, packages: List[Package], parallel: bool = False):
+    def __init__(self, packages: List[Package], parallel: bool = False,
+                compiler_c: Optional[str] = None, compiler_cxx: Optional[str] = None):
         self.packages = packages
         self.parallel = parallel
+        self.compiler_c = compiler_c
+        self.compiler_cxx = compiler_cxx
         self.cache = self._load_cache()
         self.dep_graph = DependencyGraph(packages)
         self.stats_tracker = StatisticsTracker()
@@ -1450,37 +1760,52 @@ class BuildManager:
             results.append(result)
             
             if not result.success:
-                Logger.error(f"Failed to build {package.name}")
+                Logger.error(f"Build failed for {package.name}")
                 if result.error_message:
                     Logger.error(result.error_message)
         
         return results
     
     def _build_parallel(self, packages: List[Package], config: str) -> List[BuildResult]:
-        """Build packages in parallel"""
+        """Build packages in parallel (respecting dependencies)"""
         Logger.info("Building packages in parallel...")
         
-        result_queue: queue.Queue = queue.Queue()
-        threads = []
-        
-        def worker(pkg: Package):
-            result = self._build_package(pkg, config)
-            result_queue.put(result)
-        
-        # Start threads
-        for package in packages:
-            thread = threading.Thread(target=worker, args=(package,))
-            thread.start()
-            threads.append(thread)
-        
-        # Wait for completion
-        for thread in threads:
-            thread.join()
-        
-        # Collect results
         results = []
-        while not result_queue.empty():
-            results.append(result_queue.get())
+        build_order = self.dep_graph.get_build_order()
+        completed = set()
+        failed = set()
+        
+        # Build in waves based on dependencies
+        while len(completed) + len(failed) < len(packages):
+            # Find packages ready to build
+            ready_packages = []
+            for pkg in packages:
+                if pkg.name in completed or pkg.name in failed:
+                    continue
+                
+                deps_ready = all(dep in completed for dep in pkg.dependencies)
+                if deps_ready:
+                    ready_packages.append(pkg)
+            
+            if not ready_packages:
+                break
+            
+            # Build ready packages in parallel
+            with ThreadPoolExecutor(max_workers=os.cpu_count() or 4) as executor:
+                futures = {
+                    executor.submit(self._build_package, pkg, config): pkg
+                    for pkg in ready_packages
+                }
+                
+                for future in futures:
+                    result = future.result()
+                    results.append(result)
+                    
+                    if result.success:
+                        completed.add(result.package.name)
+                    else:
+                        failed.add(result.package.name)
+                        Logger.error(f"Build failed for {result.package.name}")
         
         return results
     
@@ -1489,21 +1814,34 @@ class BuildManager:
         start_time = time.time()
         
         try:
-            # Create directories
-            Path(package.build_directory).mkdir(parents=True, exist_ok=True)
-            Path(package.prefix_directory).mkdir(parents=True, exist_ok=True)
+            source_dir = package.source_directory
+            build_dir = package.build_directory
+            prefix_dir = package.prefix_directory
             
-            # Configure
+            if not os.path.exists(source_dir):
+                return BuildResult(
+                    package=package,
+                    success=False,
+                    duration=0,
+                    error_message=f"Source directory not found: {source_dir}"
+                )
+
+            # Configure command
             configure_cmd = [
                 "cmake",
-                f"-S{package.source_directory}",
-                f"-B{package.build_directory}",
+                "-S", package.source_directory,
+                "-B", package.build_directory,
                 f"-DCMAKE_BUILD_TYPE={config}",
                 f"-DCMAKE_INSTALL_PREFIX={package.prefix_directory}",
-                f"-DCMAKE_CXX_STANDARD={BuildConfig.CXX_STANDARD}",
-                f"-DCMAKE_C_STANDARD={BuildConfig.C_STANDARD}"
             ]
             
+            # Add compiler settings
+            if self.compiler_c:
+                configure_cmd.append(f"-DCMAKE_C_COMPILER={self.compiler_c}")
+            if self.compiler_cxx:
+                configure_cmd.append(f"-DCMAKE_CXX_COMPILER={self.compiler_cxx}")
+            
+            # Add package options
             if package.options:
                 configure_cmd.extend(package.options.split())
             
@@ -1512,8 +1850,7 @@ class BuildManager:
             result = subprocess.run(
                 configure_cmd,
                 capture_output=True,
-                text=True,
-                timeout=300
+                text=True
             )
             
             if result.returncode != 0:
@@ -1521,17 +1858,15 @@ class BuildManager:
                     package=package,
                     success=False,
                     duration=time.time() - start_time,
-                    error_message=f"Configuration failed:\n{result.stderr}"
+                    error_message=result.stderr
                 )
             
             # Build
             build_cmd = [
                 "cmake",
-                "--build",
-                package.build_directory,
-                "--config",
-                config,
-                "--parallel"
+                "--build", str(build_dir),
+                "--config", config,
+                "--parallel", str(os.cpu_count() or 4)
             ]
             
             Logger.debug(f"Build: {' '.join(build_cmd)}")
@@ -1539,8 +1874,7 @@ class BuildManager:
             result = subprocess.run(
                 build_cmd,
                 capture_output=True,
-                text=True,
-                timeout=600
+                text=True
             )
             
             if result.returncode != 0:
@@ -1548,16 +1882,14 @@ class BuildManager:
                     package=package,
                     success=False,
                     duration=time.time() - start_time,
-                    error_message=f"Build failed:\n{result.stderr}"
+                    error_message=result.stderr
                 )
             
             # Install
             install_cmd = [
                 "cmake",
-                "--install",
-                package.build_directory,
-                "--config",
-                config
+                "--install", str(build_dir),
+                "--config", config
             ]
             
             Logger.debug(f"Install: {' '.join(install_cmd)}")
@@ -1565,20 +1897,20 @@ class BuildManager:
             result = subprocess.run(
                 install_cmd,
                 capture_output=True,
-                text=True,
-                timeout=300
+                text=True
             )
+            
+            duration = time.time() - start_time
             
             if result.returncode != 0:
                 return BuildResult(
                     package=package,
                     success=False,
-                    duration=time.time() - start_time,
-                    error_message=f"Installation failed:\n{result.stderr}"
+                    duration=duration,
+                    error_message=result.stderr
                 )
             
-            duration = time.time() - start_time
-            Logger.success(f"Built {package.name} in {duration:.2f}s")
+            Logger.success(f"Built {package.name} in {duration:.1f}s")
             
             return BuildResult(
                 package=package,
@@ -1586,13 +1918,6 @@ class BuildManager:
                 duration=duration
             )
             
-        except subprocess.TimeoutExpired:
-            return BuildResult(
-                package=package,
-                success=False,
-                duration=time.time() - start_time,
-                error_message="Build timeout"
-            )
         except Exception as e:
             return BuildResult(
                 package=package,
@@ -1603,53 +1928,43 @@ class BuildManager:
     
     def _print_summary(self, results: List[BuildResult], total_time: float):
         """Print build summary"""
-        successful = [r for r in results if r.success]
-        failed = [r for r in results if not r.success]
+        successful = sum(1 for r in results if r.success)
+        failed = len(results) - successful
         
         print(f"\n{Color.BOLD}{'=' * 60}{Color.RESET}")
-        print(f"{Color.BOLD}Build Summary{Color.RESET}")
+        print(f"{Color.BOLD}Build Summary:{Color.RESET}")
+        print(f"  Total packages: {len(results)}")
+        print(f"  {Color.GREEN}✓ Successful: {successful}{Color.RESET}")
+        
+        if failed > 0:
+            print(f"  {Color.RED}✗ Failed: {failed}{Color.RESET}")
+            
+            print(f"\n{Color.RED}Failed packages:{Color.RESET}")
+            for result in results:
+                if not result.success:
+                    print(f"  - {result.package.name}")
+        
+        print(f"  Total time: {timedelta(seconds=int(total_time))}")
         print(f"{Color.BOLD}{'=' * 60}{Color.RESET}\n")
-        
-        print(f"  Total Time:     {total_time:.2f}s")
-        print(f"  Successful:     {Color.GREEN}{len(successful)}{Color.RESET}")
-        print(f"  Failed:         {Color.RED}{len(failed)}{Color.RESET}")
-        
-        if successful:
-            print(f"\n  {Color.GREEN}✓{Color.RESET} {Color.BOLD}Successful Packages:{Color.RESET}")
-            for result in successful:
-                print(f"    • {result.package.name:20} ({result.duration:.2f}s)")
-        
-        if failed:
-            print(f"\n  {Color.RED}✗{Color.RESET} {Color.BOLD}Failed Packages:{Color.RESET}")
-            for result in failed:
-                print(f"    • {result.package.name}")
-        
-        print()
     
     def clean(self, specific_package: Optional[str] = None):
         """Clean build artifacts"""
-        packages = self.packages
-        if specific_package:
-            packages = [p for p in packages if p.name == specific_package]
-        
-        Logger.info(f"Cleaning {len(packages)} package(s)...")
+        packages = [p for p in self.packages if p.name == specific_package] if specific_package else self.packages
         
         for package in packages:
             build_dir = Path(package.build_directory)
             if build_dir.exists():
+                Logger.info(f"Cleaning {package.name}...")
                 shutil.rmtree(build_dir)
                 Logger.success(f"Cleaned {package.name}")
         
-        # Clear cache
-        self.cache = BuildCache()
-        self._save_cache()
-        
-        # Clear incremental cache
-        cache_file = Path(BuildConfig.INCREMENTAL_CACHE)
-        if cache_file.exists():
-            cache_file.unlink()
-        
-        Logger.success("Build artifacts cleaned")
+        if not specific_package:
+            # Clean cache files
+            for cache_file in [BuildConfig.CACHE_FILE, BuildConfig.INCREMENTAL_CACHE]:
+                path = Path(cache_file)
+                if path.exists():
+                    path.unlink()
+                    Logger.success(f"Removed {cache_file}")
     
     def rebuild(
         self,
@@ -1658,87 +1973,34 @@ class BuildManager:
         profile: Optional[BuildProfile] = None,
         incremental: bool = False
     ) -> bool:
-        """Clean and rebuild packages"""
+        """Clean and rebuild"""
         self.clean(specific_package)
         return self.build(config, specific_package, profile, incremental)
     
     def show_stats(self):
-        """Display build statistics"""
-        self.stats_tracker.display()
+        """Show build statistics"""
+        self.stats_tracker.print_stats()
     
     def compare_benchmarks(self, baseline: str, current: str):
-        """Compare two benchmarks"""
+        """Compare benchmarks"""
         self.benchmark_mgr.compare(baseline, current)
 
 
-# ==================== CMake Presets Generator ====================
-class PresetGenerator:
-    """Generates CMakePresets.json for easier configuration"""
-    
-    def __init__(self, packages: List[Package]):
-        self.packages = packages
-    
-    def generate(self, project_root: Path):
-        """Generate CMakePresets.json"""
-        presets = {
-            "version": 3,
-            "cmakeMinimumRequired": {
-                "major": BuildConfig.MIN_CMAKE_VERSION[0],
-                "minor": BuildConfig.MIN_CMAKE_VERSION[1],
-                "patch": BuildConfig.MIN_CMAKE_VERSION[2]
-            },
-            "configurePresets": self._generate_configure_presets(),
-            "buildPresets": self._generate_build_presets()
-        }
-        
-        output_file = project_root / "CMakePresets.json"
-        with open(output_file, 'w') as f:
-            json.dump(presets, f, indent=2)
-        
-        Logger.success(f"Generated {output_file}")
-    
-    def _generate_configure_presets(self) -> List[Dict]:
-        """Generate configure presets"""
-        presets = []
-        
-        for config in BuildConfig.CONFIGS:
-            presets.append({
-                "name": config.lower(),
-                "displayName": f"{config} Build",
-                "description": f"Configure for {config}",
-                "binaryDir": "${sourceDir}/build",
-                "cacheVariables": {
-                    "CMAKE_BUILD_TYPE": config,
-                    "CMAKE_CXX_STANDARD": BuildConfig.CXX_STANDARD,
-                    "CMAKE_C_STANDARD": BuildConfig.C_STANDARD,
-                    "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
-                }
-            })
-        
-        return presets
-    
-    def _generate_build_presets(self) -> List[Dict]:
-        """Generate build presets"""
-        presets = []
-        
-        for config in BuildConfig.CONFIGS:
-            presets.append({
-                "name": config.lower(),
-                "configurePreset": config.lower(),
-                "configuration": config
-            })
-        
-        return presets
+# ==================== Thread Pool for Parallel Builds ====================
+from concurrent.futures import ThreadPoolExecutor
 
 
 # ==================== Argument Parser ====================
 def create_argument_parser() -> argparse.ArgumentParser:
     """Create argument parser with all commands"""
     parser = argparse.ArgumentParser(
-        description="Motion Engine Enhanced Build System",
+        description="Motion Engine Enhanced Build System v" + BuildConfig.VERSION,
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
+  # Generate CMakePresets.json with proper compiler settings
+  python Setup.py presets
+  
   # Quick development build
   python Setup.py build --config Debug --profile quick --incremental --parallel
   
@@ -1754,7 +2016,7 @@ Examples:
   # Visualize dependencies
   python Setup.py graph --visualize
   
-  # Setup version control
+  # Setup version control system
   python Setup.py version-control
         """
     )
@@ -1765,15 +2027,15 @@ Examples:
         version=f"Motion Build System v{BuildConfig.VERSION}"
     )
     
-    subparsers = parser.add_subparsers(dest="command", help="Command to execute")
+    subparsers = parser.add_subparsers(dest="command", help="Available commands")
     
-    # Enhanced build command
+    # Build command
     build_parser = subparsers.add_parser("build", help="Build packages")
     build_parser.add_argument(
         "--config",
         choices=BuildConfig.CONFIGS,
         required=True,
-        help="Build configuration"
+        help="Build configuration (Debug/Release/RelWithDebInfo/MinSizeRel)"
     )
     build_parser.add_argument(
         "--pkg",
@@ -1797,6 +2059,22 @@ Examples:
     build_parser.add_argument(
         "--benchmark",
         help="Record benchmark with given name"
+    )
+
+    build_parser.add_argument(
+        "--c-compiler",
+        type=str,
+        help="Specify C compiler (e.g., gcc, clang, cl)"
+    )
+    build_parser.add_argument(
+        "--cxx-compiler",
+        type=str,
+        help="Specify C++ compiler (e.g., g++, clang++, cl)"
+    )
+    build_parser.add_argument(
+        "--compiler",
+        type=str,
+        help="Specify compiler (e.g., 'clang++' sets both clang and clang++)"
     )
     
     # Statistics command
@@ -1869,12 +2147,28 @@ Examples:
         action="store_true",
         help="Use incremental rebuild"
     )
-    
+
     # Presets command
-    subparsers.add_parser("presets", help="Generate CMakePresets.json")
+    presets_parser = subparsers.add_parser("presets", help="Generate CMakePresets.json with proper compiler settings")
+    presets_parser.add_argument(
+        "--c-compiler",
+        type=str,
+        help="Specify C compiler (e.g., gcc, clang, cl)"
+    )
+    presets_parser.add_argument(
+        "--cxx-compiler",
+        type=str,
+        help="Specify C++ compiler (e.g., g++, clang++, cl)"
+    )
+    presets_parser.add_argument(
+        "--compiler",
+        type=str,
+        help="Specify compiler (e.g., 'clang++' sets both clang and clang++)"
+    )
     
     # List command
     subparsers.add_parser("list", help="List all packages")
+    subparsers.add_parser("list-compilers", help="List available compilers")
     
     # Version control setup command
     subparsers.add_parser(
@@ -1899,7 +2193,7 @@ Examples:
 
 # ===================== Main Entry Point =====================
 def main():
-    """Enhanced main entry point"""
+    """Main entry point"""
     parser = create_argument_parser()
     args = parser.parse_args()
     
@@ -1909,9 +2203,9 @@ def main():
     if hasattr(args, 'log_file') and args.log_file:
         Logger.set_log_file(args.log_file)
     
-    # Print enhanced banner
+    # Print banner
     print(f"\n{Color.BOLD}{Color.CYAN}{'=' * 60}{Color.RESET}")
-    print(f"{Color.BOLD}Motion Engine Build System v{BuildConfig.VERSION} (Enhanced){Color.RESET}")
+    print(f"{Color.BOLD}Motion Engine Build System v{BuildConfig.VERSION}{Color.RESET}")
     print(f"{Color.BOLD}{Color.CYAN}{'=' * 60}{Color.RESET}\n")
     
     try:
@@ -1930,9 +2224,36 @@ def main():
         
         # Execute command
         if args.command == "build":
-            manager = BuildManager(packages, parallel=args.parallel)
+            # Parse compiler arguments
+            c_compiler = None
+            cxx_compiler = None
             
-            # Parse profile
+            if hasattr(args, 'c_compiler') and args.c_compiler:
+                c_compiler = args.c_compiler
+            if hasattr(args, 'cxx_compiler') and args.cxx_compiler:
+                cxx_compiler = args.cxx_compiler
+            
+            # If --compiler is specified, derive both
+            if hasattr(args, 'compiler') and args.compiler:
+                compiler = args.compiler
+                if not c_compiler:
+                    # Derive C compiler from C++
+                    if compiler == "g++":
+                        c_compiler = "gcc"
+                    elif compiler == "clang++":
+                        c_compiler = "clang"
+                    else:
+                        c_compiler = compiler
+                if not cxx_compiler:
+                    cxx_compiler = compiler
+            
+            # Log compiler selection
+            if c_compiler or cxx_compiler:
+                Logger.info(f"Using compilers: C={c_compiler or 'default'}, C++={cxx_compiler or 'default'}")
+            
+            manager = BuildManager(packages, parallel=args.parallel,
+                                 compiler_c=c_compiler, compiler_cxx=cxx_compiler)
+            
             profile = None
             if hasattr(args, 'profile') and args.profile:
                 profile = BuildProfile(args.profile)
@@ -1974,12 +2295,34 @@ def main():
             if args.visualize:
                 graph.visualize(args.output)
         
-        elif args.command == "clean":
-            manager = BuildManager(packages)
-            manager.clean(args.pkg if hasattr(args, 'pkg') else None)
-        
         elif args.command == "rebuild":
-            manager = BuildManager(packages, parallel=args.parallel)
+            # Parse compiler arguments (same as build)
+            c_compiler = None
+            cxx_compiler = None
+            
+            if hasattr(args, 'c_compiler') and args.c_compiler:
+                c_compiler = args.c_compiler
+            if hasattr(args, 'cxx_compiler') and args.cxx_compiler:
+                cxx_compiler = args.cxx_compiler
+            
+            if hasattr(args, 'compiler') and args.compiler:
+                compiler = args.compiler
+                if not c_compiler:
+                    if compiler == "g++":
+                        c_compiler = "gcc"
+                    elif compiler == "clang++":
+                        c_compiler = "clang"
+                    else:
+                        c_compiler = compiler
+                if not cxx_compiler:
+                    cxx_compiler = compiler
+            
+            # Log compiler selection
+            if c_compiler or cxx_compiler:
+                Logger.info(f"Using compilers: C={c_compiler or 'default'}, C++={cxx_compiler or 'default'}")
+            
+            manager = BuildManager(packages, parallel=args.parallel,
+                                 compiler_c=c_compiler, compiler_cxx=cxx_compiler)
             
             profile = None
             if hasattr(args, 'profile') and args.profile:
@@ -1994,7 +2337,30 @@ def main():
             sys.exit(0 if success else 1)
         
         elif args.command == "presets":
-            generator = PresetGenerator(packages)
+            # Determine compilers from arguments
+            c_compiler = None
+            cxx_compiler = None
+            
+            if hasattr(args, 'c_compiler') and args.c_compiler:
+                c_compiler = args.c_compiler
+            if hasattr(args, 'cxx_compiler') and args.cxx_compiler:
+                cxx_compiler = args.cxx_compiler
+            
+            # If --compiler is specified, derive both
+            if hasattr(args, 'compiler') and args.compiler:
+                compiler = args.compiler
+                if not c_compiler:
+                    # Derive C compiler from C++
+                    if compiler == "g++":
+                        c_compiler = "gcc"
+                    elif compiler == "clang++":
+                        c_compiler = "clang"
+                    else:
+                        c_compiler = compiler
+                if not cxx_compiler:
+                    cxx_compiler = compiler
+            
+            generator = PresetGenerator(packages, compiler_c=c_compiler, compiler_cxx=cxx_compiler)
             generator.generate(Path("."))
         
         elif args.command == "list":
@@ -2004,6 +2370,9 @@ def main():
                 deps = f" (deps: {', '.join(pkg.dependencies)})" if pkg.dependencies else ""
                 print(f"  {status} {pkg.name:20} {deps}")
             print()
+        
+        elif args.command == "list-compilers":
+            detect_and_list_compilers()
         
         else:
             parser.print_help()

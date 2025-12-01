@@ -35,30 +35,26 @@ namespace Motion
         
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(16, 16));
         ImGui::Begin("Force Analysis", &context.Panels->ShowForceAnalysisPanel);
+        bool inSimulation = context.Simulation->InSimulation;
 
         if(!context.Simulation->InSimulation)
         {
             HeadingConfig config;
             config.Separator = true;
-            Heading("Simulation Mode Required", HeadingLevel::H2, config);
+            Heading("Simulation Mode Required", HeadingLevel::H1, config);
 
             LabelConfig lblConfig;
             lblConfig.Wrapped = true;
             LabelSimple("Force tracking is only available during active simulation. Please start the simulation to view force data.", lblConfig);
-            
-            ImGui::Spacing();
-            ImGui::Spacing();
-            ImGui::Spacing();
-            ImGui::Separator();
         }
         
-        ImGui::BeginDisabled(!context.Simulation->InSimulation);
+        ImGui::BeginDisabled(!inSimulation);
         auto& analysis = context.Physics->PhysicsAnalysis.ForceAnalysis;
         
         {
             HeadingConfig config;
             config.Separator = true;
-            Heading(ICON_MD_AUTO_GRAPH " Visualization Options", HeadingLevel::H3, config);
+            Heading(ICON_MD_AUTO_GRAPH " Visualization Options", HeadingLevel::H2, config);
             
             ToggleSwitch("Show Force Vectors", &analysis.ShowForceVectors, ToggleSwitchPresets::iOS());
             if(ImGui::IsItemHovered()) ImGui::SetTooltip("Display arrows representing the magnitude and direction\nof forces acting on the object");
@@ -75,7 +71,7 @@ namespace Motion
         {
             HeadingConfig config;
             config.Separator = true;
-            Heading(ICON_MD_ROCKET_LAUNCH " Net Force Summary", HeadingLevel::H3, config);
+            Heading(ICON_MD_ROCKET_LAUNCH " Net Force Summary", HeadingLevel::H2, config);
             
             LabelConfig magConfig;
             LabelValue("Magnitude", analysis.NetForceMagnitude, "%.2f N", magConfig);
@@ -153,10 +149,6 @@ namespace Motion
         ImGui::Spacing();
 
         {
-            HeadingConfig config;
-            config.Separator = true;
-            Heading(ICON_MD_GESTURE " Apply Forces & Impulses", HeadingLevel::H3, config);
-            
             auto selectedEntity = context.Simulation->SelectedEntity;
             if (selectedEntity == entt::null)
             {
@@ -167,10 +159,6 @@ namespace Motion
                 LabelConfig lblConfig;
                 lblConfig.Wrapped = true;
                 LabelSimple("Select an object in the scene to apply forces.");
-        
-                ImGui::End();
-                ImGui::PopStyleVar();
-                return;
             }
             
             auto* rb = context.Entities->Registry.try_get<RigidBodyComponent>(selectedEntity);
@@ -183,15 +171,11 @@ namespace Motion
                 LabelConfig lblConfig;
                 lblConfig.Wrapped = true;
                 LabelSimple("Selected object has no RigidBody component. Please select a valid physics object.");
-
-                ImGui::End();
-                ImGui::PopStyleVar();
-                return;
             }
-            
-            ImGui::Separator();
-            ImGui::Spacing();
 
+            HeadingConfig config;
+            config.Separator = true;
+            Heading(ICON_MD_GESTURE " Apply Forces & Impulses", HeadingLevel::H2, config);
 
             static int forceType = 0;
             ComboBoxConfig forceTypeConfig;
@@ -242,7 +226,7 @@ namespace Motion
                 
 
                 ImGui::TextColored(ImVec4(0.8f, 0.9f, 1.0f, 1.0f), "Magnitude");
-                Heading(ICON_MD_FLASH_ON " Magnitude", HeadingLevel::H3, config);
+                Heading(ICON_MD_FLASH_ON " Magnitude", HeadingLevel::H2, config);
                 if(ImGui::IsItemHovered())
                 {
                     ImGui::BeginTooltip();
@@ -321,7 +305,7 @@ namespace Motion
                 ImGui::Spacing();
                 
 
-                Heading("Application Mode", HeadingLevel::H3, config);  
+                Heading("Application Mode", HeadingLevel::H2, config);  
                 ImGui::Spacing();
                 
                 ImGui::RadioButton("Linear (Center of Mass)", &applicationMode, 0);

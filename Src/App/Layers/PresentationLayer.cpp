@@ -15,7 +15,7 @@ namespace Motion
         UserInterface::FontManager::LoadFontWithIcons(
             "JetBrainsMono-Regular", 
             "Assets/Fonts/JetBrainsMono/JetBrainsMono-Regular.ttf", 
-            18.0f,
+            21.0f,
             true,  
             true  
         );
@@ -114,6 +114,9 @@ namespace Motion
 
         if (coreAPI.API() & PlatformBaseAPIs::GLFW && Renderer::GetAPI() & RenderingAPI::OpenGL)
         {
+            // Render notifications before ending the frame
+            Notific::Render();
+            
             ImGui::EndFrame();
             ImGui::Render();
             ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());

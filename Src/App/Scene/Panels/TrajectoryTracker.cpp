@@ -17,7 +17,7 @@ namespace Motion
         {
             HeadingConfig config;
             config.Separator = true;
-            Heading("Trajectory Prediction", HeadingLevel::H3, config);
+            Heading("Trajectory Prediction", HeadingLevel::H1, config);
         
             ToggleSwitch("Enable Prediction", &traj.PredictionEnabled, ToggleSwitchPresets::iOS());
             if(ImGui::IsItemHovered()) ImGui::SetTooltip("Calculate and display the predicted path\nof the object based on current motion");
@@ -31,7 +31,7 @@ namespace Motion
         {
             HeadingConfig config;
             config.Separator = true;
-            Heading("Prediction Settings", HeadingLevel::H3, config);
+            Heading("Prediction Settings", HeadingLevel::H2, config);
 
             {                    
                 float stepsFloat = static_cast<float>(traj.PredictionSteps);

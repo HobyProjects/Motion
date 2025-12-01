@@ -157,7 +157,16 @@ namespace Motion
 
     private:
         void BuildDockspace();
+
         void DrawMenuBar();
+        void DrawFileMenu();
+        void DrawShapesMenu();
+        void DrawViewMenu();
+        void DrawAboutMenu();
+        void DrawThemeMenu();
+        void DrawAccentColorMenu();
+        void DrawSimulationControls();
+        void DrawSimulationStatus(SceneSimulation::SimulationState state);
         
         void HandleSceneCreation();
         void HandleSceneLoading();

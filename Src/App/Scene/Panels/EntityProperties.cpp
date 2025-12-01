@@ -17,7 +17,7 @@ namespace Motion
         {
             HeadingConfig selctionConfig{};
             selctionConfig.Separator = true;
-            Heading("No Entity Selected", HeadingLevel::H2, selctionConfig);
+            Heading("No Entity Selected", HeadingLevel::H1, selctionConfig);
 
             LabelConfig lblConfig{};
             lblConfig.Wrapped = true;
@@ -68,7 +68,7 @@ namespace Motion
     {
         HeadingConfig headerConfig;
         headerConfig.Separator = true;
-        Heading(ICON_MD_3D_ROTATION " Transform Component", HeadingLevel::H3, headerConfig);
+        Heading(ICON_MD_3D_ROTATION " Transform Component", HeadingLevel::H2, headerConfig);
 
         ImGui::Indent();
         {                
@@ -118,7 +118,7 @@ namespace Motion
 
         HeadingConfig headerConfig;
         headerConfig.Separator = true;
-        Heading(ICON_MD_NOW_WIDGETS " Rigid Body Properties", HeadingLevel::H3, headerConfig); 
+        Heading(ICON_MD_NOW_WIDGETS " Rigid Body Properties", HeadingLevel::H2, headerConfig); 
 
 
         ImGui::Indent();            
@@ -190,7 +190,7 @@ namespace Motion
     {
         HeadingConfig headerConfig{};
         headerConfig.Separator = true;
-        Heading(ICON_MD_VIEW_IN_AR " Collider Properties", HeadingLevel::H3, headerConfig);
+        Heading(ICON_MD_VIEW_IN_AR " Collider Properties", HeadingLevel::H2, headerConfig);
 
         ImGui::Indent();
         {                

@@ -2,6 +2,7 @@
 out/
 build/
 libs/build/
+__pycache__
 
 # IDE and editor settings
 .vs/

@@ -19,22 +19,18 @@ namespace Motion
             HeadingConfig config;
             config.Separator = true;
             config.Color = ImVec4(0.3f, 0.2f, 0.1f, 0.3f);
-            Heading("Simulation Mode Required", HeadingLevel::H2, config);
+            Heading("In Simulation Mode", HeadingLevel::H2, config);
 
             LabelConfig lblConfig;
             lblConfig.Wrapped = true;
             LabelSimple("Environment settings can only be modified when the simulation is stopped. Please stop the simulation to make changes.", lblConfig);
-
-            ImGui::End();
-            ImGui::PopStyleVar();
-            return;
         }
         
+        ImGui::BeginDisabled(simulationRunning);
         {
             HeadingConfig config;
             config.Separator = true;
             Heading(ICON_MD_LIGHT_MODE " Lighting", HeadingLevel::H3, config);            
-            ImGui::BeginDisabled(simulationRunning);
 
             auto& light = context.PhysicsWorld->SunLight;
             {                    
@@ -63,17 +59,15 @@ namespace Motion
                 ToggleSwitch("Show Light Gizmo", &light.ShowGuizmo, ToggleSwitchPresets::iOS());
                 if(ImGui::IsItemHovered()) ImGui::SetTooltip("Show a visual indicator for light direction\nin the viewport");
             } 
-
-            ImGui::EndDisabled();
         }
         
+        ImGui::Spacing();
         ImGui::Spacing();
         
         {
             HeadingConfig config;
             config.Separator = true;
-            Heading(ICON_MD_FOREST " Physics World", HeadingLevel::H3, config);            
-            ImGui::BeginDisabled(simulationRunning);
+            Heading(ICON_MD_FOREST " Physics World", HeadingLevel::H3, config);           
 
             auto& world = context.PhysicsWorld->Settings;
             std::string worldName = world.worldName.empty() ? "New World" : world.worldName;
@@ -142,7 +136,7 @@ namespace Motion
             });
 
             bool sleeping = world.isSleepingEnabled;
-            if(ToggleSwitch(ICON_MD_NIGHTS_STAY " Enable Sleep Mode", &sleeping, ToggleSwitchPresets::iOS()))
+            if(ToggleSwitch("Enable Sleep Mode", &sleeping, ToggleSwitchPresets::iOS()))
                 world.isSleepingEnabled = sleeping;
             
             if(ImGui::IsItemHovered())
@@ -154,10 +148,9 @@ namespace Motion
                 ImGui::BulletText("Turn off for precise simulations");
                 ImGui::EndTooltip();
             }
-
-            ImGui::EndDisabled();
         }
         
+        ImGui::Spacing();
         ImGui::Spacing();
         
         {
@@ -168,7 +161,6 @@ namespace Motion
             LabelConfig lblConfig;
             lblConfig.Wrapped = true;
             LabelSimple("These settings affect simulation accuracy and performance", lblConfig);
-            ImGui::BeginDisabled(simulationRunning);
             
             auto& world = context.PhysicsWorld->Settings;
             {
@@ -228,13 +220,47 @@ namespace Motion
                 timeConfig.MaxV = 10.0f;
                 timeConfig.Fmt = "%.1f s";
                 
-                DragFloat("##timesleep", &timeBeforeSleep, timeConfig, [&](float val){
+                DragFloat("Time Before Sleep", &timeBeforeSleep, timeConfig, [&](float val){
                     world.defaultTimeBeforeSleep = timeBeforeSleep;
                 });
-            }
-        
-            ImGui::EndDisabled();
+            }  
         }
+
+        ImGui::Spacing();
+        ImGui::Spacing();
+
+        {
+            HeadingConfig config;
+            config.Separator = true;
+            Heading(ICON_MD_CAMERA " Camera", HeadingLevel::H3, config);
+
+            float translationSpeed = context.View->Camera.TranslationSpeed;
+            DragFloatConfig timeConfig;
+            timeConfig.Speed = 0.01f;
+            timeConfig.MinV = 0.1f;
+            timeConfig.MaxV = 10.0f;
+            timeConfig.Fmt = "%.2f";
+            
+            DragFloat("Translation Speed", &translationSpeed, timeConfig, [&](float val){
+                context.View->Camera.TranslationSpeed = val;
+            });
+
+            float sensitivity = context.View->Camera.Sensitivity;
+            DragFloatConfig timeConfig2;
+            timeConfig2.Speed = 0.01f;
+            timeConfig2.MinV = 0.1f;
+            timeConfig2.MaxV = 5.0f;
+            timeConfig2.Fmt = "%.2f";
+            
+            DragFloat("Sensitivity", &sensitivity, timeConfig2, [&](float val){
+                context.View->Camera.Sensitivity = val;
+            });
+
+            ToggleSwitch("Enable Rotation", &context.View->Camera.RotationEnabled);
+            if(ImGui::IsItemHovered()) ImGui::SetTooltip("Enables camera rotation with \"Q\" and \"E\" keys");
+        }
+        ImGui::EndDisabled();
+
         
         ImGui::End();
         ImGui::PopStyleVar();

@@ -471,35 +471,18 @@ namespace Motion
      */
     void Scene::DestroyEntity(const entt::entity& entity, bool deleteResources)
     {
-        auto DestroyComponents = [&](entt::entity entity)
+        auto DestroyComponents = [&](entt::entity nodeEntity)
         {
-            if (entity == entt::null) return;
-            if (!m_Entities.Registry.valid(entity)) return;  
-            if (m_Entities.SelectedEntity == entity) m_Entities.SelectedEntity = entt::null;
+            if (nodeEntity == entt::null) return;
+            if (!m_Entities.Registry.valid(nodeEntity)) return;  
+            if (m_Entities.SelectedEntity == nodeEntity) 
+                m_Entities.SelectedEntity = entt::null;
 
-            if(deleteResources)
-            {
-                if(ModelComponent* model = m_Entities.Registry.try_get<ModelComponent>(entity))
-                {
-                    try
-                    {
-                        std::error_code ec{};
-                        std::filesystem::remove(model->FilePath, ec);
-                        if(ec) MOTION_ERROR("Failed to delete model file: {}", ec.message());
-                    }
-                    catch(const std::exception& e)
-                    {
-                        MOTION_ERROR("Failed to delete model file: {}", e.what());
-                    }
-                }
-            }
-
-
-            if (RigidBodyComponent* rb = m_Entities.Registry.try_get<RigidBodyComponent>(entity))
+            if (RigidBodyComponent* rb = m_Entities.Registry.try_get<RigidBodyComponent>(nodeEntity))
             {
                 if (rb->PhysicsBody && m_PhysicsWorld.World)
                 {
-                    if(ColliderComponent* col = m_Entities.Registry.try_get<ColliderComponent>(entity))
+                    if(ColliderComponent* col = m_Entities.Registry.try_get<ColliderComponent>(nodeEntity))
                         rb->PhysicsBody->removeCollider(col->Collider);
 
                     m_PhysicsWorld.World->destroyRigidBody(rb->PhysicsBody);
@@ -507,7 +490,7 @@ namespace Motion
                 }
             }
 
-            if (ColliderComponent* col = m_Entities.Registry.try_get<ColliderComponent>(entity))
+            if (ColliderComponent* col = m_Entities.Registry.try_get<ColliderComponent>(nodeEntity))
             {
                 if (col->Shape)
                 {
@@ -518,23 +501,58 @@ namespace Motion
                     if (col->Type == ShapeType::Concave)  m_PhysicsWorld.Properties.destroyConcaveMeshShape(dynamic_cast<rp3d::ConcaveMeshShape*>(col->Shape));
 
                     if(col->ConvexMesh) m_PhysicsWorld.Properties.destroyConvexMesh(col->ConvexMesh);
-
-                    col->Shape    = nullptr;
+                    col->Shape = nullptr;
                 }
             }
-
         };
 
+        entt::entity root = FindRootOf(entity); 
+        if(root == entt::null) return;
 
-        if(entt::entity root = FindRootOf(entity); IsRootEntity(entity))
+        if(deleteResources)
         {
-            ForEachNodeEntity(root, [&](entt::entity node)
+            if(ModelComponent* model = m_Entities.Registry.try_get<ModelComponent>(root))
             {
-                DestroyComponents(node);
-                m_Entities.Registry.destroy(node);
-            });
+                try
+                {
+                    std::error_code ec{};
+                    std::filesystem::remove(model->FilePath, ec);
+                    if(ec) MOTION_ERROR("Failed to delete model file: {}", ec.message());
+                }
+                catch(const std::exception& e)
+                {
+                    MOTION_ERROR("Failed to delete model file: {}", e.what());
+                }
+            }
+        }
 
-            m_Entities.Registry.destroy(entity);
+        if (HierarchyComponent* hier = m_Entities.Registry.try_get<HierarchyComponent>(root))
+        {
+            if (hier->Parent != entt::null)
+            {
+                if (auto* parentHier = m_Entities.Registry.try_get<HierarchyComponent>(hier->Parent))
+                {
+                    if (parentHier->FirstChild == root) parentHier->FirstChild = hier->NextSibling;
+                }
+            }
+        }
+
+        std::vector<entt::entity> toDestroy;
+        ForEachNodeEntity(root, [&](entt::entity node)
+        {
+            toDestroy.push_back(node);
+        });
+
+        for (entt::entity node : toDestroy)
+        {
+            DestroyComponents(node);
+            m_Entities.Registry.destroy(node);
+        }
+
+        auto it = std::find(m_Entities.EntryPoints.begin(), m_Entities.EntryPoints.end(), root);
+        if (it != m_Entities.EntryPoints.end())
+        {
+            m_Entities.EntryPoints.erase(it);
         }
     }
 
@@ -557,10 +575,11 @@ namespace Motion
         auto* srcModel = m_Entities.Registry.try_get<ModelComponent>(srcEntity);
         if(!srcModel) return false;
 
+        // Re-import to get CPU-side mesh data for physics
         ImportSettings settings{};
         settings.ExportPath = m_Specification.SavedPath / "Assets";
         settings.ShouldExport = true;
-        settings.FilePath = srcModel ? srcModel->FilePath : std::filesystem::path{};
+        settings.FilePath = srcModel->FilePath;
 
         std::shared_ptr<ImportedResults> results = Importer::ImportEntity(settings);
         if(!results) return false;
@@ -574,112 +593,215 @@ namespace Motion
             { "a_Bitangents", BufferComponents::XYZ,  BufferStride::F3, false, offsetof(Vertex, Bitangent)   },
         };
 
+        // Create root entity
         entt::entity dstEntity = m_Entities.Registry.create();
-        m_Entities.Registry.emplace<TagComponent>(dstEntity, results->Name);
-        m_Entities.Registry.emplace<TransformComponent>(dstEntity);
+        
+        // Copy root tag with "_Copy" suffix
+        if (auto* srcTag = m_Entities.Registry.try_get<TagComponent>(srcEntity))
+        {
+            auto& dstTag = m_Entities.Registry.emplace<TagComponent>(dstEntity);
+            dstTag.Tag = srcTag->Tag + "_Copy";
+            dstTag.IsActive = srcTag->IsActive;
+        }
+        else
+        {
+            m_Entities.Registry.emplace<TagComponent>(dstEntity, results->Name + "_Copy");
+        }
 
-        auto& modelCompo     = m_Entities.Registry.emplace<ModelComponent>(dstEntity);
-        modelCompo.FilePath  = results->FilePath;
+        // Copy root transform with offset
+        if (auto* srcTransform = m_Entities.Registry.try_get<TransformComponent>(srcEntity))
+        {
+            auto& dstTransform = m_Entities.Registry.emplace<TransformComponent>(dstEntity);
+            dstTransform.Translation = srcTransform->Translation;
+            dstTransform.Rotation = srcTransform->Rotation;
+            dstTransform.Scale = srcTransform->Scale;
+            dstTransform.Translation.x += 1.5f; // Offset the duplicate
+            dstTransform.RebuildLocal();
+        }
+        else
+        {
+            m_Entities.Registry.emplace<TransformComponent>(dstEntity);
+        }
+
+        // Copy model component
+        auto& modelCompo = m_Entities.Registry.emplace<ModelComponent>(dstEntity);
+        modelCompo.FilePath = results->FilePath;
         modelCompo.MeshCount = results->MeshCount;
         modelCompo.MaxBounds = results->MAX;
         modelCompo.MinBounds = results->MIN;
 
-        std::vector<entt::entity> children;
-        children.reserve(results->MeshCount);
+        // Build mapping: meshIndex -> source child entity
+        std::unordered_map<uint32_t, entt::entity> srcChildrenByIndex;
+        if (auto* srcHier = m_Entities.Registry.try_get<HierarchyComponent>(srcEntity))
+        {
+            for (entt::entity srcChild = srcHier->FirstChild; 
+                srcChild != entt::null;)
+            {
+                if (auto* srcMesh = m_Entities.Registry.try_get<MeshComponent>(srcChild))
+                {
+                    srcChildrenByIndex[srcMesh->MeshIndex] = srcChild;
+                }
+                
+                if (auto* childHier = m_Entities.Registry.try_get<HierarchyComponent>(srcChild))
+                    srcChild = childHier->NextSibling;
+                else
+                    break;
+            }
+        }
 
+        std::vector<entt::entity> dstChildren;
+        dstChildren.reserve(results->MeshCount);
+
+        // Create child entities with proper mapping
         for (const auto& [index, mesh] : results->Meshes)
         {
-            entt::entity e = m_Entities.Registry.create();
-            m_Entities.Registry.emplace<TagComponent>(e, mesh.Name);
-            m_Entities.Registry.emplace<TransformComponent>(e);
-            m_Entities.Registry.emplace<RigidBodyComponent>(e);
-            m_Entities.Registry.emplace<ColliderComponent>(e);
+            entt::entity dstChild = m_Entities.Registry.create();
+            
+            // Find corresponding source entity
+            entt::entity srcChild = entt::null;
+            auto it = srcChildrenByIndex.find(index);
+            if (it != srcChildrenByIndex.end())
+                srcChild = it->second;
 
-            auto& meshCompo = m_Entities.Registry.emplace<MeshComponent>(e);
+            // Copy tag from source or use imported name
+            if (srcChild != entt::null)
+            {
+                if (auto* srcTag = m_Entities.Registry.try_get<TagComponent>(srcChild))
+                {
+                    auto& dstTag = m_Entities.Registry.emplace<TagComponent>(dstChild);
+                    dstTag.Tag = srcTag->Tag + "_Copy";
+                    dstTag.IsActive = srcTag->IsActive;
+                }
+                else
+                {
+                    m_Entities.Registry.emplace<TagComponent>(dstChild, mesh.Name + "_Copy");
+                }
+            }
+            else
+            {
+                m_Entities.Registry.emplace<TagComponent>(dstChild, mesh.Name + "_Copy");
+            }
+
+            // Copy transform from source child
+            if (srcChild != entt::null)
+            {
+                if (auto* srcTransform = m_Entities.Registry.try_get<TransformComponent>(srcChild))
+                {
+                    auto& dstTransform = m_Entities.Registry.emplace<TransformComponent>(dstChild);
+                    dstTransform.Translation = srcTransform->Translation;
+                    dstTransform.Rotation = srcTransform->Rotation;
+                    dstTransform.Scale = srcTransform->Scale;
+                    dstTransform.RebuildLocal();
+                }
+                else
+                {
+                    m_Entities.Registry.emplace<TransformComponent>(dstChild);
+                }
+            }
+            else
+            {
+                m_Entities.Registry.emplace<TransformComponent>(dstChild);
+            }
+
+            // Create RigidBody and copy properties
+            auto& dstRB = m_Entities.Registry.emplace<RigidBodyComponent>(dstChild);
+            if (srcChild != entt::null)
+            {
+                if (auto* srcRB = m_Entities.Registry.try_get<RigidBodyComponent>(srcChild))
+                {
+                    dstRB.Type = srcRB->Type;
+                    dstRB.LinearDamping = srcRB->LinearDamping;
+                    dstRB.AngularDamping = srcRB->AngularDamping;
+                    dstRB.LockX = srcRB->LockX;
+                    dstRB.LockY = srcRB->LockY;
+                    dstRB.LockZ = srcRB->LockZ;
+                    dstRB.LockRotX = srcRB->LockRotX;
+                    dstRB.LockRotY = srcRB->LockRotY;
+                    dstRB.LockRotZ = srcRB->LockRotZ;
+                }
+            }
+            CreateRigidBody(m_PhysicsWorld.World, &m_Entities.Registry, dstChild);
+
+            // Create Collider and copy properties
+            auto& dstCol = m_Entities.Registry.emplace<ColliderComponent>(dstChild);
+            if (srcChild != entt::null)
+            {
+                if (auto* srcCol = m_Entities.Registry.try_get<ColliderComponent>(srcChild))
+                {
+                    dstCol.Type = srcCol->Type;
+                    dstCol.BoxHalfExtents = srcCol->BoxHalfExtents;
+                    dstCol.SphereRadius = srcCol->SphereRadius;
+                    dstCol.Capsule = srcCol->Capsule;
+                    dstCol.LocalTransform = srcCol->LocalTransform;
+                    dstCol.LocalRotation = srcCol->LocalRotation;
+                    dstCol.Friction = srcCol->Friction;
+                    dstCol.Restitution = srcCol->Restitution;
+                    dstCol.MassDensity = srcCol->MassDensity;
+                }
+            }
+
+            // Create mesh component with uploaded GPU data
+            auto& meshCompo = m_Entities.Registry.emplace<MeshComponent>(dstChild);
             meshCompo.MeshPointer = Mesh::Create(mesh.Vertices.data(), mesh.Vertices.size(),
-                                                  mesh.Indices.data(), mesh.Indices.size(), layout);
-
+                                                mesh.Indices.data(), mesh.Indices.size(), layout);
             meshCompo.MeshIndex = index;
-            meshCompo.Name      = mesh.Name;
+            meshCompo.Name = mesh.Name;
             meshCompo.MaxBounds = mesh.MAX;
             meshCompo.MinBounds = mesh.MIN;
 
-            auto& materialCompo = m_Entities.Registry.emplace<MaterialComponent>(e);
-            materialCompo.MaterialPointer = Material::Create();
+            // Create material and copy properties
+            auto& dstMaterial = m_Entities.Registry.emplace<MaterialComponent>(dstChild);
+            dstMaterial.MaterialPointer = Material::Create();
+            
+            if (srcChild != entt::null)
+            {
+                if (auto* srcMaterial = m_Entities.Registry.try_get<MaterialComponent>(srcChild))
+                {
+                    auto srcMatPtr = srcMaterial->MaterialPointer;
+                    auto dstMatPtr = dstMaterial.MaterialPointer;
+                    
+                    if (srcMatPtr && dstMatPtr)
+                    {
+                        if (srcMatPtr->Has<CoreMaterialComponents>() && 
+                            dstMatPtr->Has<CoreMaterialComponents>())
+                        {
+                            auto& srcCore = srcMatPtr->Get<CoreMaterialComponents>();
+                            auto& dstCore = dstMatPtr->Get<CoreMaterialComponents>();
+                            dstCore = srcCore;
+                        }
+                        
+                        auto baseMaterial = srcMatPtr->GetBaseMaterial();
+                        dstMatPtr->SetBaseMaterial(baseMaterial);
+                    }
+                }
+            }
 
-            CreateRigidBody(m_PhysicsWorld.World, &m_Entities.Registry, e);
-
+            // Create physics collider with mesh vertex data
             std::vector<glm::vec3> verts;
             verts.reserve(mesh.Vertices.size());
-            std::transform(mesh.Vertices.begin(), mesh.Vertices.end(), std::back_inserter(verts),
-                            [](const Vertex& v) { return v.Position; });
+            std::transform(mesh.Vertices.begin(), mesh.Vertices.end(), 
+                        std::back_inserter(verts),
+                        [](const Vertex& v) { return v.Position; });
 
-            CreateConvexCollider(&m_PhysicsWorld.Properties, &m_Entities.Registry, e, verts);
-            children.push_back(e);
+            CreateConvexCollider(&m_PhysicsWorld.Properties, &m_Entities.Registry, dstChild, verts);
+            
+            dstChildren.push_back(dstChild);
         }
 
+        // Setup hierarchy for children
         entt::entity prev = entt::null;
-        for (std::size_t i = 0; i < children.size(); ++i)
+        for (std::size_t i = 0; i < dstChildren.size(); ++i)
         {
-            auto e = children[i];
+            auto e = dstChildren[i];
             m_Entities.Registry.emplace<HierarchyComponent>(e, dstEntity, entt::null, entt::null);
-            if (i > 0) m_Entities.Registry.get<HierarchyComponent>(prev).NextSibling = e;
+            if (i > 0) 
+                m_Entities.Registry.get<HierarchyComponent>(prev).NextSibling = e;
             prev = e;
         }
 
+        // Setup hierarchy for root
         m_Entities.Registry.emplace<HierarchyComponent>(dstEntity, entt::null,
-            children.empty() ? entt::null : children.front(), entt::null);
-
-        ForEachNodeEntity(srcEntity, [&](entt::entity srcNode)
-        {
-            auto* srcTag        = m_Entities.Registry.try_get<TagComponent>(srcNode);
-            auto* srcTransform  = m_Entities.Registry.try_get<TransformComponent>(srcNode);
-            auto* srcMaterial   = m_Entities.Registry.try_get<MaterialComponent>(srcNode);
-
-            ForEachNodeEntity(dstEntity, [&](entt::entity dstNode)
-            {
-                auto* dstTag        = m_Entities.Registry.try_get<TagComponent>(dstNode);
-                auto* dstTransform  = m_Entities.Registry.try_get<TransformComponent>(dstNode);
-                auto* dstRigidBody  = m_Entities.Registry.try_get<RigidBodyComponent>(dstNode);
-                auto* dstCollider   = m_Entities.Registry.try_get<ColliderComponent>(dstNode);
-                auto* dstMaterial   = m_Entities.Registry.try_get<MaterialComponent>(dstNode);
-
-                if(srcTag && dstTag)
-                {
-                    dstTag->Tag = srcTag->Tag + "_Copy";
-                    dstTag->IsActive = srcTag->IsActive;
-                }
-
-                if(srcTransform && dstTransform)
-                {
-                    dstTransform->Translation = srcTransform->Translation;
-                    dstTransform->Rotation    = srcTransform->Rotation;
-                    dstTransform->Scale       = srcTransform->Scale;
-
-                    dstTransform->Translation.x = srcTransform->Translation.x + 1.5f; // Offset the duplicated entity
-                    dstTransform->RebuildLocal();
-                }
-
-                if(srcMaterial && dstMaterial)
-                {
-                    auto srcMatPtr = srcMaterial->MaterialPointer;
-                    auto dstMatPtr = dstMaterial->MaterialPointer;    
-                    
-                    if(srcMatPtr->Has<CoreMaterialComponents>() && dstMatPtr->Has<CoreMaterialComponents>())
-                    {
-                        auto& srcCore = srcMatPtr->Get<CoreMaterialComponents>();
-                        auto& dstCore = dstMatPtr->Get<CoreMaterialComponents>();
-                        dstCore = srcCore;
-                    }
-
-                    // Add more material components copying as needed
-
-                    auto baseMaterial = srcMatPtr->GetBaseMaterial();
-                    dstMatPtr->SetBaseMaterial(baseMaterial);
-                }
-            });
-        });
-
+            dstChildren.empty() ? entt::null : dstChildren.front(), entt::null);
 
         EmplaceEntity(dstEntity);
         return true;
@@ -851,6 +973,13 @@ namespace Motion
             if(found != entt::null) return;
         });
 
-        return m_Entities.Registry.valid(found) ? found : entt::null;
+        if(m_Entities.Registry.valid(found))
+        {
+            MOTION_INFO("Found root of entity {0}", entt::to_integral(found));
+            return found;
+        }
+
+        MOTION_INFO("Failed to find root of entity {0}", entt::to_integral(entity));
+        return entt::null;
     }
 }

@@ -16,11 +16,19 @@ from datetime import datetime
 import json
 
 # Import the original Setup module
-import Setup
-from Setup import (
-    BuildConfig, Logger, LogLevel, BuildManager, BuildProfile,
-    get_package_registry, SystemValidator, PresetGenerator,
-    DependencyGraph, Color, BuildException
+import SetupCLI
+from SetupCLI import (
+    BuildConfig, 
+    Logger, 
+    LogLevel, 
+    BuildManager, 
+    BuildProfile, 
+    get_package_registry, 
+    SystemValidator, 
+    PresetGenerator, 
+    DependencyGraph, 
+    Color, 
+    BuildException
 )
 
 
@@ -802,7 +810,7 @@ class BuildGUI:
             text.config(state='disabled')
             
             # Add visualize button if matplotlib available
-            if Setup.HAS_MATPLOTLIB:
+            if SetupCLI.HAS_MATPLOTLIB:
                 btn_frame = ttk.Frame(graph_window)
                 btn_frame.pack(fill=tk.X, padx=10, pady=(0, 10))
                 
@@ -863,7 +871,7 @@ if __name__ == "__main__":
     # Check if we should run GUI or CLI
     if len(sys.argv) > 1 and sys.argv[1] != "--gui":
         # Run CLI version
-        Setup.main()
+        SetupCLI.main()
     else:
         # Run GUI version
         main()

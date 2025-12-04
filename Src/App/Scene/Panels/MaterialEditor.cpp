@@ -220,7 +220,7 @@ namespace Motion
         {
             HeadingConfig config;
             config.Separator = true;
-            Heading(ICON_MD_TEXTURE " Texture Maps", HeadingLevel::H3, config);
+            Heading(ICON_MD_TEXTURE " Texture Maps", HeadingLevel::H2, config);
             
             LabelConfig labelConfig;
             labelConfig.Wrapped = true;
@@ -247,15 +247,21 @@ namespace Motion
             slotConfig.ShowFilename = false;
             slotConfig.CardPadding = 10.0f;
 
-            for (size_t i = 0; i < textures.size(); ++i)
+            if (ImGui::BeginTable("TextureSlots", 3, ImGuiTableFlags_SizingFixedFit))
             {
-                auto& mapping = textures[i];
-                TextureSlot(mapping.Label, mapping.Texture, mapping.Type, slotConfig, [&](TextureSlotAction action, std::shared_ptr<ITexture>& tex) {
-                    if(action == TextureSlotAction::Upload)
-                        MOTION_INFO("Texture uploaded: {}", mapping.Label);
-                });
-
-                ImGui::SameLine();
+                for (size_t i = 0; i < textures.size(); ++i)
+                {
+                    ImGui::TableNextColumn();
+                    
+                    auto& mapping = textures[i];
+                    TextureSlot(mapping.Label, mapping.Texture, mapping.Type, slotConfig, 
+                        [&](TextureSlotAction action, std::shared_ptr<ITexture>& tex) 
+                        {
+                            if(action == TextureSlotAction::Upload)
+                                MOTION_INFO("Texture uploaded: {}", mapping.Label);
+                        });
+                }
+                ImGui::EndTable();
             }
         }
     }

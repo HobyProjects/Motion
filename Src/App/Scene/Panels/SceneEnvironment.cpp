@@ -236,8 +236,8 @@ namespace Motion
 
             float translationSpeed = context.View->Camera.TranslationSpeed;
             DragFloatConfig timeConfig;
-            timeConfig.Speed = 0.01f;
-            timeConfig.MinV = 0.1f;
+            timeConfig.Speed = 0.001f;
+            timeConfig.MinV = 0.001f;
             timeConfig.MaxV = 10.0f;
             timeConfig.Fmt = "%.2f";
             
@@ -248,7 +248,7 @@ namespace Motion
             float sensitivity = context.View->Camera.Sensitivity;
             DragFloatConfig timeConfig2;
             timeConfig2.Speed = 0.01f;
-            timeConfig2.MinV = 0.1f;
+            timeConfig2.MinV = 0.01f;
             timeConfig2.MaxV = 5.0f;
             timeConfig2.Fmt = "%.2f";
             

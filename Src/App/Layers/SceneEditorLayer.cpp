@@ -1750,8 +1750,8 @@ namespace Motion
                 ImGuiID dock_right_id   = ImGui::DockBuilderSplitNode(dock_main_id, ImGuiDir_Right, 0.30f, nullptr, &dock_main_id);
                 ImGuiID dock_rbottom_id = ImGui::DockBuilderSplitNode(dock_right_id, ImGuiDir_Down, 0.30f, nullptr, &dock_right_id);
                 
-                ImGuiID dock_left_id    = ImGui::DockBuilderSplitNode(dock_main_id, ImGuiDir_Left, 0.30f, nullptr, &dock_main_id);
-                ImGuiID dock_lbottom_id = ImGui::DockBuilderSplitNode(dock_left_id, ImGuiDir_Down, 0.30f, nullptr, &dock_left_id);
+                //ImGuiID dock_left_id    = ImGui::DockBuilderSplitNode(dock_main_id, ImGuiDir_Left, 0.30f, nullptr, &dock_main_id);
+                //ImGuiID dock_lbottom_id = ImGui::DockBuilderSplitNode(dock_left_id, ImGuiDir_Down, 0.30f, nullptr, &dock_left_id);
                 
                 ImGuiID dock_bottom_id = ImGui::DockBuilderSplitNode(dock_main_id, ImGuiDir_Down, 0.30f, nullptr, &dock_main_id);
 
@@ -1761,6 +1761,7 @@ namespace Motion
                 ImGui::DockBuilderDockWindow("Entity Properties", dock_rbottom_id);
                 ImGui::DockBuilderDockWindow("Environment Settings", dock_rbottom_id);
                 ImGui::DockBuilderDockWindow("Simulation Watch List", dock_rbottom_id);
+                ImGui::DockBuilderDockWindow("Material Editor", dock_rbottom_id);
 
                 ImGui::DockBuilderDockWindow("Acceleration Analysis", dock_bottom_id);
                 ImGui::DockBuilderDockWindow("Energy Analysis", dock_bottom_id);
@@ -1768,7 +1769,6 @@ namespace Motion
                 ImGui::DockBuilderDockWindow("Momentum Analysis", dock_bottom_id);
                 ImGui::DockBuilderDockWindow("Trajectory Prediction", dock_bottom_id);
 
-                ImGui::DockBuilderDockWindow("Material Editor", dock_bottom_id);
                 ImGui::DockBuilderDockWindow("Console", dock_bottom_id);
                 ImGui::DockBuilderFinish(dockspace_id);
             }

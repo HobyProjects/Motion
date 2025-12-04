@@ -23,19 +23,25 @@ uniform mat3 uNormal;
 
 void main()
 {
-    vec3 worldPos = (uModel * vec4(aPosition, 1.0)).xyz;
+    vec4 worldPosition = uModel * vec4(aPosition, 1.0);
+    vWorldPos = worldPosition.xyz;
 
-    vec3 N  = normalize(uNormal * aNormal);
-    vec3 T  = normalize(uNormal * aTangent.xyz);
-    vec3 B  = normalize(cross(N, T) * aTangent.w);
+    // Transform normal, tangent, and bitangent to world space
+    vec3 N = normalize(uNormal * aNormal);
+    vec3 T = normalize(uNormal * aTangent.xyz);
+    
+    // Re-orthogonalize T with respect to N (Gram-Schmidt process)
+    T = normalize(T - dot(T, N) * N);
+    
+    // Calculate bitangent
+    vec3 B = cross(N, T) * aTangent.w;
 
-    vWorldPos  = worldPos;
-    vUV        = aTexCoord;
-    vT         = T;
-    vB         = B;
-    vN         = N;
+    vT = T;
+    vB = B;
+    vN = N;
+    vUV = aTexCoord;
 
-    gl_Position = uProj * uView * vec4(worldPos, 1.0);
+    gl_Position = uProj * uView * worldPosition;
 }
 
 #type fragment
@@ -50,6 +56,10 @@ layout (location = 3) in vec3 vB;
 layout (location = 4) in vec3 vN;
 
 layout (location = 0) out vec4 oColor;
+
+// ============================================================================
+// STRUCTURES
+// ============================================================================
 
 struct DirectionalLight
 {
@@ -69,6 +79,10 @@ struct MaterialAttributes
     float EmissiveStrength;  
     float OpacityFactor;     
 };
+
+// ============================================================================
+// UNIFORMS
+// ============================================================================
 
 uniform vec3                uCamPos;
 uniform DirectionalLight    uLight;
@@ -96,182 +110,306 @@ uniform sampler2D uMetallicMap;
 uniform sampler2D uEmissiveMap;
 #endif
 
-const float PI = 3.14159265358979323846;
-#define saturate(x) clamp(x, 0.0, 1.0)
+// ============================================================================
+// CONSTANTS
+// ============================================================================
 
-float safeNdot(vec3 a, vec3 b) { return saturate(dot(a, b)); }
-float safeNdotPos(vec3 a, vec3 b) { return max(dot(a, b), 1e-4); } 
+const float PI = 3.14159265359;
+const float EPSILON = 0.00001;
 
-float DistributionGGX(vec3 N, vec3 H, float roughness)
+// ============================================================================
+// UTILITY FUNCTIONS
+// ============================================================================
+
+float saturate(float x) { return clamp(x, 0.0, 1.0); }
+vec3 saturate(vec3 x) { return clamp(x, vec3(0.0), vec3(1.0)); }
+
+// ============================================================================
+// PBR CORE FUNCTIONS
+// ============================================================================
+
+// Normal Distribution Function: GGX/Trowbridge-Reitz
+float D_GGX(float NdotH, float roughness)
 {
-    float a  = roughness * roughness;
-    float a2 = a * a;
-
-    float NdotH  = safeNdot(N, H);
+    float alpha = roughness * roughness;
+    float alpha2 = alpha * alpha;
     float NdotH2 = NdotH * NdotH;
-
-    float denom = (NdotH2 * (a2 - 1.0) + 1.0);
-    denom = PI * denom * denom;
-
-    return a2 / max(denom, 1e-6);
+    
+    float numerator = alpha2;
+    float denominator = NdotH2 * (alpha2 - 1.0) + 1.0;
+    denominator = PI * denominator * denominator;
+    
+    return numerator / max(denominator, EPSILON);
 }
 
-float GeometrySchlickGGX_Direct(float NdotX, float roughness)
+// Geometry Function: Smith's Schlick-GGX
+float G_SchlickGGX(float NdotV, float roughness)
 {
-    float r = saturate(roughness);
-    float k = (r + 1.0);
-    k = (k * k) * 0.125; // (r+1)^2 / 8
-
-    return NdotX / (NdotX * (1.0 - k) + k);
+    float r = roughness + 1.0;
+    float k = (r * r) / 8.0;
+    
+    float numerator = NdotV;
+    float denominator = NdotV * (1.0 - k) + k;
+    
+    return numerator / max(denominator, EPSILON);
 }
 
-float GeometrySchlickGGX_IBL(float NdotX, float roughness)
+// Smith's method
+float G_Smith(float NdotV, float NdotL, float roughness)
 {
-    float r = saturate(roughness);
-    float k = (r * r) * 0.5;
-
-    return NdotX / (NdotX * (1.0 - k) + k);
+    float ggx2 = G_SchlickGGX(NdotV, roughness);
+    float ggx1 = G_SchlickGGX(NdotL, roughness);
+    
+    return ggx1 * ggx2;
 }
 
-float GeometrySmith_Direct(vec3 N, vec3 V, vec3 L, float roughness)
+// Fresnel-Schlick approximation
+vec3 F_Schlick(float cosTheta, vec3 F0)
 {
-    float NdotV = safeNdotPos(N, V);
-    float NdotL = safeNdot(N, L);
-
-    float gv = GeometrySchlickGGX_Direct(NdotV, roughness);
-    float gl = GeometrySchlickGGX_Direct(NdotL, roughness);
-    return gv * gl;
+    return F0 + (1.0 - F0) * pow(saturate(1.0 - cosTheta), 5.0);
 }
 
-float GeometrySmith_IBL(vec3 N, vec3 V, vec3 L, float roughness)
+// Fresnel-Schlick with roughness for ambient/IBL
+vec3 F_SchlickRoughness(float cosTheta, vec3 F0, float roughness)
 {
-    float NdotV = safeNdotPos(N, V);
-    float NdotL = safeNdot(N, L);
-
-    float gv = GeometrySchlickGGX_IBL(NdotV, roughness);
-    float gl = GeometrySchlickGGX_IBL(NdotL, roughness);
-    return gv * gl;
+    return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(saturate(1.0 - cosTheta), 5.0);
 }
 
-vec3 fresnelSchlick(float cosTheta, vec3 F0)
+// ============================================================================
+// REALISTIC AMBIENT LIGHTING
+// ============================================================================
+
+// Multi-bounce diffuse approximation
+// Accounts for light bouncing multiple times within rough surfaces
+vec3 getMultiScatterDiffuse(vec3 albedo, float NdotV, float roughness)
 {
-    float f = pow(saturate(1.0 - cosTheta), 5.0);
-    return F0 + (1.0 - F0) * f;
+    // Approximation of additional energy from multiple bounces
+    float multiScatter = 0.5 * roughness;
+    return albedo * (1.0 + albedo * multiScatter);
 }
 
-vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness)
+// Improved ambient with directional influence
+vec3 getRealisticAmbient(vec3 N, vec3 V, vec3 albedo, float roughness, float metallic, float ao)
 {
-    vec3  oneMinusR = vec3(1.0 - saturate(roughness));
-    vec3  F90Clamp  = max(oneMinusR, F0);
-    float f         = pow(saturate(1.0 - cosTheta), 5.0);
-    return F0 + (F90Clamp - F0) * f;
+    // Sky dome approximation
+    vec3 skyColorTop = vec3(0.5, 0.6, 0.8);      // Blue sky
+    vec3 skyColorHorizon = vec3(0.8, 0.75, 0.7); // Warm horizon
+    vec3 groundColor = vec3(0.3, 0.25, 0.2);     // Brown/earth ground
+    
+    // Vertical gradient for sky
+    float skyFactor = saturate(N.y);
+    vec3 skyContribution = mix(skyColorHorizon, skyColorTop, skyFactor * skyFactor);
+    
+    // Ground contribution (negative Y normals)
+    float groundFactor = saturate(-N.y);
+    vec3 ambientColor = mix(skyContribution, groundColor, groundFactor);
+    
+    // Ambient intensity
+    float ambientIntensity = 0.15;
+    
+    // Fresnel for ambient (rough approximation of environment reflections)
+    vec3 F0 = mix(vec3(0.04), albedo, metallic);
+    vec3 F = F_SchlickRoughness(max(dot(N, V), 0.0), F0, roughness);
+    
+    // Energy conservation for ambient
+    vec3 kS = F;
+    vec3 kD = (1.0 - kS) * (1.0 - metallic);
+    
+    // Diffuse ambient
+    vec3 diffuseAmbient = kD * albedo * ambientColor * ambientIntensity;
+    
+    // Specular ambient (fake environment reflection based on view angle)
+    float NdotV = max(dot(N, V), 0.0);
+    vec3 specularAmbient = kS * ambientColor * pow(1.0 - roughness, 2.0) * 0.15;
+    
+    return (diffuseAmbient + specularAmbient) * ao;
 }
+
+// Soft subsurface scattering approximation for non-metals
+vec3 getSubsurfaceScattering(vec3 L, vec3 N, vec3 V, vec3 albedo, float roughness, float metallic)
+{
+    // Only apply to non-metallic surfaces
+    if (metallic > 0.5) return vec3(0.0);
+    
+    // Back-scattering approximation
+    float VdotL = dot(V, -L);
+    float scatter = saturate(VdotL) * saturate(-dot(N, L) + 0.5);
+    
+    // More scattering for rougher surfaces
+    float scatterStrength = roughness * 0.3;
+    
+    return albedo * scatter * scatterStrength * 0.5;
+}
+
+// ============================================================================
+// IMPROVED TONE MAPPING
+// ============================================================================
+
+// Uncharted 2 tone mapping (more realistic than simple Reinhard)
+vec3 Uncharted2Tonemap(vec3 x)
+{
+    float A = 0.15;
+    float B = 0.50;
+    float C = 0.10;
+    float D = 0.20;
+    float E = 0.02;
+    float F = 0.30;
+    return ((x * (A * x + C * B) + D * E) / (x * (A * x + B) + D * F)) - E / F;
+}
+
+vec3 applyTonemap(vec3 color)
+{
+    float exposure = 1.0;
+    color *= exposure;
+    
+    // Apply Uncharted 2 tonemap
+    float W = 11.2; // White point
+    vec3 curr = Uncharted2Tonemap(color);
+    vec3 whiteScale = 1.0 / Uncharted2Tonemap(vec3(W));
+    return curr * whiteScale;
+}
+
+// ============================================================================
+// MATERIAL SAMPLING
+// ============================================================================
+
+vec3 getNormal()
+{
+    vec3 tangentNormal = vec3(0.0, 0.0, 1.0);
+    
+#ifdef USE_NORMAL_MAP
+    tangentNormal = texture(uNormalMap, vUV).xyz * 2.0 - 1.0;
+    tangentNormal.xy *= uMat.NormalScale;
+    tangentNormal.z = sqrt(max(0.0, 1.0 - dot(tangentNormal.xy, tangentNormal.xy)));
+#endif
+    
+    vec3 T = normalize(vT);
+    vec3 B = normalize(vB);
+    vec3 N = normalize(vN);
+    mat3 TBN = mat3(T, B, N);
+    
+    return normalize(TBN * tangentNormal);
+}
+
+// ============================================================================
+// MAIN FRAGMENT SHADER
+// ============================================================================
 
 void main()
 {
-    vec4 baseSample = uMat.BaseColorFactor;
-
-#ifdef USE_BASECOLOR_MAP
-    baseSample *= texture(uBaseColorMap, vUV);
-#endif
-
-    vec3 albedo     = saturate(baseSample.rgb);
-    float opacity   = saturate(baseSample.a * uMat.OpacityFactor);
+    // ========================================================================
+    // MATERIAL PROPERTIES SAMPLING
+    // ========================================================================
     
-    float metallic  = uMat.MetallicFactor;
+    vec4 baseColor = uMat.BaseColorFactor;
+#ifdef USE_BASECOLOR_MAP
+    baseColor *= texture(uBaseColorMap, vUV);
+#endif
+    
+    vec3 albedo = baseColor.rgb;
+    float alpha = baseColor.a * uMat.OpacityFactor;
+    
+    float metallic = uMat.MetallicFactor;
     float roughness = uMat.RoughnessFactor;
-    float ao        = uMat.AOFactor;
-
-
-
+    float ao = uMat.AOFactor;
+    
 #ifdef USE_ORM_MAP
-    vec3 orm   = texture(uORM, vUV).rgb;
-    ao        *= orm.r;
-    metallic  *= orm.b;
+    vec3 orm = texture(uORM, vUV).rgb;
+    ao *= orm.r;
     roughness *= orm.g;
+    metallic *= orm.b;
 #else
   #ifdef USE_OCCLUSION_MAP
-    ao       *= texture(uOcclusionMap, vUV).r;
+    ao *= texture(uOcclusionMap, vUV).r;
   #endif
   #ifdef USE_ROUGHNESS_MAP
-    roughness *= texture(uRoughnessMap, vUV).r;
+    roughness *= texture(uRoughnessMap, vUV).g;
   #endif
   #ifdef USE_METALLIC_MAP
-    metallic  *= texture(uMetallicMap, vUV).r;
+    metallic *= texture(uMetallicMap, vUV).b;
   #endif
 #endif
-
-    roughness   = clamp(roughness, 0.4, 1.0);
-    metallic    = saturate(metallic);
-    ao          = saturate(ao);
-
-    //////////////////////////////////////////////////////////////
-
-    vec3 T   = normalize(vT);
-    vec3 B   = normalize(vB);
-    vec3 N   = normalize(vN);
-    mat3 TBN = mat3(T, B, N);
-
-    float normalScaling = uMat.NormalScale;
-    vec3 nTS            = vec3(0.0);
-
-#ifdef USE_NORMAL_MAP
-    vec3 n  = texture(uNormalMap, vUV).rgb * 2.0 - 1.0;
-    n.xy   *= max(normalScaling, 0.0);
-    n.z     = sqrt(max(0.0, 1.0 - dot(n.xy, n.xy)));
-    nTS     = n;
-#else
-    vec3 flatTS = vec3(0.0, 0.0, 1.0);
-    nTS         = mix(flatTS, flatTS, normalScaling);   
-#endif
-
-    N           = normalize(TBN * nTS);
-    vec3 V      = normalize(uCamPos - vWorldPos);
-    float NoV   = clamp(dot(N, V), 1e-4, 1.0);
-
-    //////////////////////////////////////////////////////////////
-
-    vec3 F0 = mix(vec3(0.04), albedo, metallic);
-
-    //////////////////////////////////////////////////////////////
-
-    vec3 Lo     = vec3(0.0);
-
-    vec3 L      = normalize(-uLight.Direction);
-    vec3 H      = normalize(V + L);
-    float NoL   = clamp(dot(N, L), 0.0, 1.0);
-
-    if (NoL > 0.0)
+    
+    roughness = clamp(roughness, 0.04, 1.0);
+    metallic = saturate(metallic);
+    ao = saturate(ao);
+    
+    // ========================================================================
+    // LIGHTING SETUP
+    // ========================================================================
+    
+    vec3 N = getNormal();
+    vec3 V = normalize(uCamPos - vWorldPos);
+    
+    vec3 F0 = vec3(0.04);
+    F0 = mix(F0, albedo, metallic);
+    
+    // ========================================================================
+    // DIRECT LIGHTING
+    // ========================================================================
+    
+    vec3 Lo = vec3(0.0);
+    
+    vec3 L = normalize(-uLight.Direction);
+    vec3 H = normalize(V + L);
+    
+    float NdotL = max(dot(N, L), 0.0);
+    float NdotV = max(dot(N, V), EPSILON);
+    float NdotH = max(dot(N, H), 0.0);
+    float HdotV = max(dot(H, V), 0.0);
+    
+    if (NdotL > 0.0)
     {
-        float NDF = DistributionGGX(N, H, roughness);
-        float G   = GeometrySmith_Direct(N, V, L, roughness);
-        float VoH = clamp(dot(V, H), 0.0, 1.0);
-        vec3  F   = fresnelSchlick(VoH, F0);
-
-        float NoV = max(dot(N, V), 1e-4);
-        vec3  spec  = (NDF * G * F) / max(4.0 * NoV * NoL, 1e-4);
-
-        vec3  kS = F;
-        vec3  kD = (1.0 - kS) * (1.0 - metallic);
-
-        vec3  lightI = (uLight.Color * uLight.Intensity) * NoL;
-
-        vec3 diffuse = (kD * albedo / PI) * lightI;
-        vec3 specular = spec * lightI;
-
-        Lo += diffuse * ao + specular;   // AO on diffuse only
+        // Cook-Torrance BRDF
+        float D = D_GGX(NdotH, roughness);
+        float G = G_Smith(NdotV, NdotL, roughness);
+        vec3 F = F_Schlick(HdotV, F0);
+        
+        vec3 numerator = D * G * F;
+        float denominator = 4.0 * NdotV * NdotL;
+        vec3 specular = numerator / max(denominator, EPSILON);
+        
+        vec3 kS = F;
+        vec3 kD = vec3(1.0) - kS;
+        kD *= 1.0 - metallic;
+        
+        vec3 radiance = uLight.Color * uLight.Intensity;
+        
+        // Add diffuse and specular
+        Lo += (kD * albedo / PI + specular) * radiance * NdotL;
+        
+        // Add subtle subsurface scattering for realism
+        vec3 sss = getSubsurfaceScattering(L, N, V, albedo, roughness, metallic);
+        Lo += sss * radiance;
     }
-
-    vec3 emissive   = uMat.EmissiveColor * uMat.EmissiveStrength;
-
+    
+    // ========================================================================
+    // AMBIENT LIGHTING (Realistic)
+    // ========================================================================
+    
+    vec3 ambient = getRealisticAmbient(N, V, albedo, roughness, metallic, ao);
+    
+    // ========================================================================
+    // EMISSIVE
+    // ========================================================================
+    
+    vec3 emissive = uMat.EmissiveColor * uMat.EmissiveStrength;
+    
 #ifdef USE_EMISSIVE_MAP
     emissive *= texture(uEmissiveMap, vUV).rgb;
 #endif
-
-    vec3 ambient = 0.03 * albedo * ao;  // cheap placeholder for missing IBL
-    vec3 color   = ambient + Lo + emissive;
-
-    //////////////////////////////////////////////////////////////
-
-    oColor = vec4(color, opacity);
+    
+    // ========================================================================
+    // FINAL COLOR
+    // ========================================================================
+    
+    vec3 color = ambient + Lo + emissive;
+    
+    // Improved tone mapping
+    color = applyTonemap(color);
+    
+    // Gamma correction
+    color = pow(color, vec3(1.0/2.2));
+    
+    oColor = vec4(color, alpha);
 }

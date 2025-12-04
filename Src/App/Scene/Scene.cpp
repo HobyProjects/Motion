@@ -88,8 +88,15 @@ namespace Motion
             if (InputsHandler::GetKeyState(handle, KEY_S))              camera.Position -= forward * camera.TranslationSpeed * deltaTime.GetDeltaTimeMilliseconds();
             if (InputsHandler::GetKeyState(handle, KEY_A))              camera.Position -= right * camera.TranslationSpeed * deltaTime.GetDeltaTimeMilliseconds();
             if (InputsHandler::GetKeyState(handle, KEY_D))              camera.Position += right * camera.TranslationSpeed * deltaTime.GetDeltaTimeMilliseconds();
-            if (InputsHandler::GetKeyState(handle, KEY_LEFT_CONTROL))   camera.Position.y -= camera.TranslationSpeed * deltaTime.GetDeltaTimeMilliseconds();
+            
             if (InputsHandler::GetKeyState(handle, KEY_SPACE))          camera.Position.y += camera.TranslationSpeed * deltaTime.GetDeltaTimeMilliseconds();
+            if (InputsHandler::GetKeyState(handle, KEY_LEFT_CONTROL))   camera.Position.y -= camera.TranslationSpeed * deltaTime.GetDeltaTimeMilliseconds();
+
+            if(camera.RotationEnabled)
+            {
+                if(InputsHandler::GetKeyState(handle, KEY_Q)) camera.Position += glm::cross(forward, camera.WorldUp) * camera.TranslationSpeed * deltaTime.GetDeltaTimeMilliseconds();
+                if(InputsHandler::GetKeyState(handle, KEY_E)) camera.Position -= glm::cross(forward, camera.WorldUp) * camera.TranslationSpeed * deltaTime.GetDeltaTimeMilliseconds();
+            }
         }
 
         if (m_Simulation.State == SceneSimulation::SimulationState::RUNNING)

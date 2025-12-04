@@ -356,7 +356,7 @@ function(generate_version_header)
     message(STATUS " Version    : ${PROJECT_VERSION_STRING}")
     message(STATUS " Git Hash   : ${GIT_COMMIT_HASH}")
     message(STATUS " Git Branch : ${GIT_BRANCH}")
-    message(STATUS " Build Type : ${CMAKE_BUILD_TYPE}")
+    message(STATUS " Build Type : ${CMAKE_BUILD_TYPE_INIT}")
     message(STATUS "===============================================")
 
     # Make sure the generated directory is added to the target's include directories
@@ -405,7 +405,7 @@ namespace Motion
     
     // ==================== Build Information ====================
     inline constexpr const char* BUILD_TIMESTAMP    = "@BUILD_TIMESTAMP@";
-    inline constexpr const char* BUILD_TYPE         = "@CMAKE_BUILD_TYPE@";
+    inline constexpr const char* BUILD_TYPE         = "@CMAKE_BUILD_TYPE_INIT@";
     
     // ==================== Helper Functions ====================
     

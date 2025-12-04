@@ -72,6 +72,7 @@ namespace Motion
                 ImVec4 Border;
                 ImVec4 Hover;
                 ImVec4 Active;
+                ImVec4 Viewport; 
             };
 
             static void UseColorScheme(const ColorScheme& scheme) noexcept;
@@ -91,6 +92,7 @@ namespace Motion
             static void SetPadding(float padding) noexcept;
             
             static ImVec4 GetAccentColor() noexcept;
+            static ImVec4 GetViewportColor() noexcept;
             static void SetAccentColor(const ImVec4& color) noexcept;
 
         private:
@@ -99,6 +101,7 @@ namespace Motion
 
         private:
             static inline ImVec4 s_CurrentAccent = ImVec4(0.13f, 0.59f, 0.95f, 1.0f);
+            static inline ColorScheme s_CurrentScheme; 
         };
 
     private:

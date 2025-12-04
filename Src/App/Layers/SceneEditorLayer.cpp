@@ -114,6 +114,38 @@ namespace Motion
     }
 
     /**
+     * @brief Called when the window is about to be closed.
+     * @details Saves the currently open scene if any, and then returns false to indicate that the window should not be closed.
+     * @return false
+     */
+    bool SceneEditorLayer::OnWindowClose([[maybe_unused]] WindowHandle handle, [[maybe_unused]] EventWindowClose & e)
+    {
+        if (m_Scene) SaveScene();
+        return false;
+    }
+
+    /**
+     * @brief Saves the currently open scene to a file.
+     * 
+     * This function saves the currently open scene to a file. The file path is determined by the
+     * scene path and scene name that are stored in the layer's state.
+     * 
+     * @note This function does nothing if there is no scene loaded.
+     */
+    void SceneEditorLayer::SaveScene()
+    {
+        if (m_Scene && !m_ScenePath.empty())
+        {
+            auto scene          = m_Scene.get();
+            auto path           = m_ScenePath;
+            auto sceneName      = m_SceneName;
+
+            std::string filename = std::format("{}.mes", sceneName);
+            SceneSerializer::Serialize(scene, path / filename);
+        }
+    }
+
+    /**
      * @brief Handles the scene creation operation.
      *
      * This function is responsible for rendering the scene creation dialog, and handling the scene creation operation.
@@ -1253,6 +1285,26 @@ namespace Motion
         RenderAbout();
     }
 
+    /**
+     * @brief Draws the "File" menu of the scene editor layer
+     * 
+     * This function draws the "File" menu of the scene editor layer, which
+     * includes the following items:
+     *  - New Scene
+     *  - Open...
+     *  - Save
+     *  - Quit
+     * 
+     * This function should be called from the main loop of the application,
+     * and should not be called from any other thread.
+     * 
+     * @note This function will only render the menu items that are valid
+     * given the current state of the scene editor layer. For example, if
+     * there is no scene loaded, then the "Save" menu item will not be
+     * rendered.
+     * 
+     * @see SceneEditorLayer::DrawMenuBar
+     */
     void SceneEditorLayer::DrawFileMenu()
     {
         if (!ImGui::BeginMenu("File"))
@@ -1273,14 +1325,7 @@ namespace Motion
         ImGui::BeginDisabled(m_Scene == nullptr);
         if (ImGui::MenuItem("Save", nullptr))
         {
-            if (m_Scene && !m_ScenePath.empty())
-            {
-                auto scene = m_Scene.get();
-                auto path = m_ScenePath;
-                auto sceneName = m_SceneName;
-                std::string filename = std::format("{}.mes", sceneName);
-                SceneSerializer::Serialize(scene, path / filename);
-            }
+            SaveScene();
         }
         ImGui::EndDisabled();
 
@@ -1288,16 +1333,26 @@ namespace Motion
 
         DrawThemeMenu();
 
-        ImGui::Separator();
-        
-        if (ImGui::MenuItem("Quit", nullptr))
-        {
-            // Handle quit
-        }
-
         ImGui::EndMenu();
     }
 
+    /**
+     * @brief Draws the theme menu of the scene editor layer
+     * 
+     * This function draws the theme menu of the scene editor layer, which
+     * includes the following items:
+     *  - Dark
+     *  - Light
+     *  - Classic
+     *  - Material Design
+     *  - Neumorphic
+     *  - Accent Color
+     * 
+     * This function should be called from the main loop of the application,
+     * and should not be called from any other thread.
+     * 
+     * @see SceneEditorLayer::DrawMenuBar
+     */
     void SceneEditorLayer::DrawThemeMenu()
     {
         if (!ImGui::BeginMenu("Themes"))
@@ -1342,6 +1397,22 @@ namespace Motion
         ImGui::EndMenu();
     }
 
+    /**
+     * @brief Draws the accent color menu of the scene editor layer
+     * 
+     * This function draws the accent color menu of the scene editor layer, which
+     * includes the following items:
+     *  - Blue
+     *  - Red
+     *  - Green
+     *  - Purple
+     *  - Orange
+     * 
+     * This function should be called from the main loop of the application,
+     * and should not be called from any other thread.
+     * 
+     * @see SceneEditorLayer::DrawMenuBar
+     */
     void SceneEditorLayer::DrawAccentColorMenu()
     {
         if (!ImGui::BeginMenu("Accent Color"))
@@ -1367,6 +1438,23 @@ namespace Motion
         ImGui::EndMenu();
     }
 
+    /**
+     * @brief Draws the shapes menu of the scene editor layer
+     * 
+     * This function draws the shapes menu of the scene editor layer, which
+     * includes the following items:
+     *  - Cube
+     *  - Cone
+     *  - Cylinder
+     *  - Plane
+     *  - Sphere
+     *  - Torus
+     * 
+     * This function should be called from the main loop of the application,
+     * and should not be called from any other thread.
+     * 
+     * @see SceneEditorLayer::DrawMenuBar
+     */
     void SceneEditorLayer::DrawShapesMenu()
     {
         ImGui::BeginDisabled(m_Scene == nullptr);
@@ -1399,6 +1487,27 @@ namespace Motion
         ImGui::EndDisabled();
     }
 
+    /**
+     * @brief Draws the view menu of the scene editor layer
+     * 
+     * This function draws the view menu of the scene editor layer, which
+     * includes the following items:
+     *  - Entity Hierarchy
+     *  - Entity Properties
+     *  - Material Editor
+     *  - Simulation WatchList
+     *  - Scene Environment
+     *  - Force Analyser
+     *  - Energy Analyser
+     *  - Momentum Analyser
+     *  - Acceleration Analyser
+     *  - Trajectory Analyser
+     * 
+     * This function should be called from the main loop of the application,
+     * and should not be called from any other thread.
+     * 
+     * @see SceneEditorLayer::DrawMenuBar
+     */
     void SceneEditorLayer::DrawViewMenu()
     {
         ImGui::BeginDisabled(m_Scene == nullptr);
@@ -1433,6 +1542,18 @@ namespace Motion
         ImGui::EndDisabled();
     }
 
+    /**
+     * @brief Draw the "About" menu for the scene editor layer
+     * 
+     * This function draws the "About" menu for the scene editor layer. This menu
+     * contains a single item, "About Motion Engine", which toggles the
+     * show/hide state of the about box when clicked.
+     * 
+     * This function should be called from the main loop of the application,
+     * and should not be called from any other thread.
+     * 
+     * @see SceneEditorLayer::DrawAboutMenu
+     */
     void SceneEditorLayer::DrawAboutMenu()
     {
         if (!ImGui::BeginMenu("About"))
@@ -1446,6 +1567,20 @@ namespace Motion
         ImGui::EndMenu();
     }
 
+    /**
+     * @brief Draw the simulation controls of the scene editor layer
+     * 
+     * This function draws the simulation controls of the scene editor layer, which
+     * includes the following items:
+     *  - Play/Pause button
+     *  - Stop button
+     *  - Simulation status label
+     * 
+     * This function should be called from the main loop of the application,
+     * and should not be called from any other thread.
+     * 
+     * @see SceneEditorLayer::DrawMenuBar
+     */
     void SceneEditorLayer::DrawSimulationControls()
     {
         // Get simulation state
@@ -1530,6 +1665,21 @@ namespace Motion
         DrawSimulationStatus(simState);
     }
 
+    /**
+     * @brief Draw the simulation status of the scene editor layer
+     * 
+     * This function draws the simulation status of the scene editor layer, which
+     * includes the simulation state (IDLE, PAUSED, RUNNING). The simulation
+     * state is colored based on the type (IDLE: blue, PAUSED: yellow,
+     * RUNNING: green).
+     * 
+     * This function should be called from the main loop of the application, and
+     * should not be called from any other thread.
+     * 
+     * @param state The simulation state to draw
+     * 
+     * @see SceneEditorLayer::DrawSimulationControls
+     */
     void SceneEditorLayer::DrawSimulationStatus(SceneSimulation::SimulationState state)
     {
         switch (state)
@@ -1793,88 +1943,171 @@ namespace Motion
     void SceneEditorLayer::RenderAbout()
     {
         if(!m_ShowAboutBox) return;
+        
 
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(20, 20));
-        ImGui::SetNextWindowSize(ImVec2(500, 0), ImGuiCond_FirstUseEver);
+        const float animSpeed = 8.0f;
+        const float targetAlpha = m_ShowAboutBox ? 1.0f : 0.0f;
+        const float targetScale = m_ShowAboutBox ? 1.0f : 0.8f;
+        
+        m_AboutWindowAlpha += (targetAlpha - m_AboutWindowAlpha) * animSpeed * ImGui::GetIO().DeltaTime;
+        m_AboutWindowScale += (targetScale - m_AboutWindowScale) * animSpeed * ImGui::GetIO().DeltaTime;
 
-        if (ImGui::Begin("About Motion Engine", &m_ShowAboutBox, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoCollapse))
+        if (m_AboutWindowAlpha < 0.01f && !m_ShowAboutBox)
         {
-            // Header - Engine name and version
-            ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[0]); // Use default font for consistency
-            ImGui::SetCursorPosX((ImGui::GetWindowWidth() - ImGui::CalcTextSize("MOTION ENGINE").x) * 0.5f);
-            ImGui::TextColored(ImVec4(0.2f, 0.6f, 1.0f, 1.0f), "MOTION ENGINE");
-            ImGui::PopFont();
+            m_AboutWindowAlpha = 0.0f;
+            return;
+        }
 
-            ImGui::SetCursorPosX((ImGui::GetWindowWidth() - ImGui::CalcTextSize(Motion::VERSION).x) * 0.5f);
-            ImGui::Text("Version %s", Motion::VERSION);
+        const float windowWidth = 750.0f;
+        const float windowHeight = 650.0f; 
+        
+        ImVec2 center = ImGui::GetMainViewport()->GetCenter();
+        
+        // Apply scale transform
+        float scaledWidth = windowWidth * m_AboutWindowScale;
+        float scaledHeight = windowHeight * m_AboutWindowScale;
+        ImVec2 scaledPos = ImVec2(
+            center.x - scaledWidth * 0.5f,
+            center.y - scaledHeight * 0.5f
+        );
+        
+        ImGui::SetNextWindowPos(scaledPos, ImGuiCond_Always);
+        ImGui::SetNextWindowSize(ImVec2(windowWidth, 0), ImGuiCond_Always);
+        
+        // Styling for the window
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 16.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(30, 30));
+        ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.11f, 0.11f, 0.13f, 0.98f * m_AboutWindowAlpha));
+        
+        // Add a subtle glow effect
+        ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.2f, 0.6f, 1.0f, 0.5f * m_AboutWindowAlpha));
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 1.0f);
+
+        if (ImGui::Begin("##MotionAbout", nullptr,
+            ImGuiWindowFlags_NoTitleBar |
+            ImGuiWindowFlags_NoResize |
+            ImGuiWindowFlags_NoMove |
+            ImGuiWindowFlags_NoCollapse |
+            ImGuiWindowFlags_NoSavedSettings |
+            ImGuiWindowFlags_AlwaysAutoResize))
+        {
+            // Apply alpha to all content
+            ImGui::PushStyleVar(ImGuiStyleVar_Alpha, m_AboutWindowAlpha);
+            
+            // Close button (X) in top-right corner
+            ImGui::SetCursorPos(ImVec2(windowWidth - 45, 15));
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.8f, 0.2f, 0.2f, 0.8f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.9f, 0.1f, 0.1f, 1.0f));
+            ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
+            
+            if (ImGui::Button("X", ImVec2(30, 30)))
+            {
+                m_ShowAboutBox = false;
+            }
+            
+            ImGui::PopStyleVar();
+            ImGui::PopStyleColor(3);
+            
+            // Reset cursor for content
+            ImGui::SetCursorPos(ImVec2(30, 30));
+            
+            // Content starts here (your existing content)
+            HeadingConfig headingConfig;
+            headingConfig.Color = ImVec4(0.2f, 0.6f, 1.0f, 1.0f);
+            headingConfig.Separator = true;
+            std::string title = std::format("Motion Engine v{}. Copyright {} 2025", Motion::VERSION, ICON_MD_COPYRIGHT);
+            Heading(title, HeadingLevel::H1, headingConfig);
+            LabelSimple("3D Engine For Teaching Newtonian Physics");
 
             ImGui::Spacing();
-            ImGui::Separator();
-            ImGui::Spacing();
 
-            // Description
-            ImGui::TextWrapped("Physics Simulation for Educational Purposes");
+            HeadingConfig subHeadingConfig1;
+            subHeadingConfig1.Color = ImVec4(0.8f, 0.8f, 0.2f, 1.0f);
+            subHeadingConfig1.Separator = true;
+            Heading("Description", HeadingLevel::H2, subHeadingConfig1);
 
-            ImGui::Spacing();
-            ImGui::Separator();
-            ImGui::Spacing();
-
-            // Build Information Section
-            ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.2f, 1.0f), "Build Information");
-            ImGui::Spacing();
-
-            ImGui::Indent(10);
-            ImGui::Text("Configuration:"); ImGui::SameLine(150); ImGui::Text("%s", Motion::BUILD_TYPE);
-            ImGui::Text("Timestamp:"); ImGui::SameLine(150); ImGui::Text("%s", Motion::BUILD_TIMESTAMP);
-            ImGui::Unindent(10);
+            LabelConfig labelConfig;
+            labelConfig.Wrapped = true;
+            LabelSimple("Motion Engine is a 3D physics simulation engine for educational purposes. It provides a simple and intuitive interface for simulating and visualizing Newtonian physics, such as gravity, forces, and motion.", labelConfig);
 
             ImGui::Spacing();
-            ImGui::Separator();
-            ImGui::Spacing();
 
-            // Git Information Section (only if available)
-            std::string gitHash = Motion::GIT_COMMIT_HASH;
+            subHeadingConfig1.Color = Colors::SeaGreen;
+            Heading("Development", HeadingLevel::H3, subHeadingConfig1);
+
+            std::string name            = "Developed By : Isuru Udayanga Senanayaka";
+            std::string alias           = "Alias        : HobyProjects";
+            std::string gitHubProfile   = "GitHub       : https://github.com/HobyProjects/HobyProjects";
+
+            labelConfig.Bullet = true;
+            labelConfig.Wrapped = false;
+
+            ImGui::Indent();
+            LabelSimple(name, labelConfig);
+            LabelSimple(alias, labelConfig);
+            LabelSimple(gitHubProfile, labelConfig);
+            ImGui::Unindent();
+
+            subHeadingConfig1.Color = Colors::SeaGreen;
+            Heading("Build Information", HeadingLevel::H3, subHeadingConfig1);
+
+            std::string configuration   = std::format("Configuration: {}", Motion::BUILD_TYPE);
+            std::string timestamp       = std::format("Timestamp: {}", Motion::BUILD_TIMESTAMP);
+            std::string gitHash         = Motion::GIT_COMMIT_HASH;
+
+            ImGui::Indent();
+
+            LabelSimple(configuration, labelConfig);
+            LabelSimple(timestamp, labelConfig);
             if (gitHash != "unknown" && !gitHash.empty())
             {
-                ImGui::TextColored(ImVec4(0.2f, 0.8f, 0.4f, 1.0f), "Version Control");
-                ImGui::Spacing();
+                std::string branch = std::format("Branch: {}", Motion::GIT_BRANCH);
+                std::string commit = std::format("Commit: {} ({})", Motion::GIT_COMMIT_HASH, (Motion::GIT_IS_DIRTY ? "MODIFIED" : "CURRENT"));
 
-                ImGui::Indent(10);
-                ImGui::Text("Branch:"); ImGui::SameLine(150); ImGui::Text("%s", Motion::GIT_BRANCH);
-                ImGui::Text("Commit:"); ImGui::SameLine(150); ImGui::Text("%s", Motion::GIT_COMMIT_HASH);
-
-                // Show dirty status if applicable
-                if (Motion::GIT_IS_DIRTY)
-                {
-                    ImGui::SameLine();
-                    ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "(modified)");
-                }
-
-                // Show tag if available
+                LabelSimple(branch, labelConfig);
+                LabelSimple(commit, labelConfig);
+            
                 std::string gitTag = Motion::GIT_TAG;
                 if (!gitTag.empty() && gitTag != "unknown")
                 {
-                    ImGui::Text("Tag:"); ImGui::SameLine(150); ImGui::Text("%s", gitTag);
+                    std::string tag = std::format("Tag: {}", Motion::GIT_TAG);
+                    LabelSimple(tag, labelConfig);
                 }
 
-                ImGui::Text("Total Commits:"); ImGui::SameLine(150); ImGui::Text("%s", Motion::GIT_COMMIT_COUNT);
-                ImGui::Unindent(10);
-
-                ImGui::Spacing();
-                ImGui::Separator();
-                ImGui::Spacing();
+                std::string commitCount = std::format("Total Commits: {}", Motion::GIT_COMMIT_COUNT);
+                LabelSimple(commitCount, labelConfig);
             }
 
-            // Footer with close button
-            float buttonWidth = 120.0f;
-            ImGui::SetCursorPosX((ImGui::GetWindowWidth() - buttonWidth) * 0.5f);
+            ImGui::Unindent();
+            
+            ImGui::Spacing();
+            ImGui::Spacing();
+            
+            float buttonWidth = 140.0f;
+            ImGui::SetCursorPosX((windowWidth - buttonWidth) * 0.5f);
+            
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.6f, 1.0f, 0.8f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.3f, 0.7f, 1.0f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.15f, 0.5f, 0.9f, 1.0f));
+            ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 8.0f);
+            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(20, 10));
+            
             if (ImGui::Button("Close", ImVec2(buttonWidth, 0)))
             {
                 m_ShowAboutBox = false;
             }
+            
+            ImGui::PopStyleVar(2);
+            ImGui::PopStyleColor(3);
+            
+            ImGui::PopStyleVar(); // Alpha
         }
         ImGui::End();
-        ImGui::PopStyleVar();
+        
+        ImGui::PopStyleVar(4);
+        ImGui::PopStyleColor(2);
     }
 
 }

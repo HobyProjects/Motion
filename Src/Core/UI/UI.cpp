@@ -5,6 +5,7 @@
     #include <dwmapi.h>
     #define GLFW_EXPOSE_NATIVE_WIN32
     #include <GLFW/glfw3native.h>
+#include "UI.hpp"
     #pragma comment(lib, "dwmapi.lib")
 #endif
 
@@ -443,6 +444,7 @@ namespace Motion
 
     void UserInterface::ThemeManager::UseColorScheme(const ColorScheme& scheme) noexcept
     {
+        s_CurrentScheme = scheme;
         s_CurrentAccent = scheme.Accent;
         
         ImGuiStyle& style = ImGui::GetStyle();
@@ -706,30 +708,32 @@ namespace Motion
 
     UserInterface::ThemeManager::ColorScheme UserInterface::ThemeManager::GetDefaultDarkScheme() noexcept
     {
-        return ColorScheme{
-            ImVec4(0.13f, 0.59f, 0.95f, 1.0f),  // Accent
-            RGBA(42, 42, 48),                     // Background
-            RGBA(48, 48, 54),                     // Surface
-            RGBA(230, 230, 235, 1.0f),           // Text
-            RGBA(120, 120, 130, 0.50f),          // TextDisabled
-            RGBA(60, 60, 66, 0.80f),             // Border
-            RGBA(60, 60, 70, 1.0f),              // Hover
-            RGBA(35, 35, 40, 1.0f)               // Active
-        };
+        ColorScheme scheme;
+        scheme.Accent = ImVec4(0.13f, 0.59f, 0.95f, 1.0f);
+        scheme.Background = ImVec4(0.12f, 0.12f, 0.13f, 1.0f);
+        scheme.Surface = ImVec4(0.18f, 0.18f, 0.20f, 1.0f);
+        scheme.Text = ImVec4(0.95f, 0.95f, 0.95f, 1.0f);
+        scheme.TextDisabled = ImVec4(0.50f, 0.50f, 0.50f, 1.0f);
+        scheme.Border = ImVec4(0.30f, 0.30f, 0.32f, 1.0f);
+        scheme.Hover = ImVec4(0.26f, 0.59f, 0.98f, 0.40f);
+        scheme.Active = ImVec4(0.26f, 0.59f, 0.98f, 0.67f);
+        scheme.Viewport = ImVec4(0.25f, 0.25f, 0.27f, 1.0f);  // Dark viewport
+        return scheme;
     }
 
     UserInterface::ThemeManager::ColorScheme UserInterface::ThemeManager::GetDefaultLightScheme() noexcept
     {
-        return ColorScheme{
-            ImVec4(0.10f, 0.48f, 0.82f, 1.0f),  // Accent
-            RGBA(240, 240, 245),                  // Background
-            RGBA(250, 250, 255),                  // Surface
-            RGBA(20, 20, 25, 1.0f),              // Text
-            RGBA(120, 120, 130, 0.50f),          // TextDisabled
-            RGBA(200, 200, 210, 0.80f),          // Border
-            RGBA(230, 230, 240, 1.0f),           // Hover
-            RGBA(210, 210, 220, 1.0f)            // Active
-        };
+        ColorScheme scheme;
+        scheme.Accent = ImVec4(0.13f, 0.59f, 0.95f, 1.0f);
+        scheme.Background = ImVec4(0.95f, 0.95f, 0.96f, 1.0f);
+        scheme.Surface = ImVec4(1.00f, 1.00f, 1.00f, 1.0f);
+        scheme.Text = ImVec4(0.10f, 0.10f, 0.10f, 1.0f);
+        scheme.TextDisabled = ImVec4(0.60f, 0.60f, 0.60f, 1.0f);
+        scheme.Border = ImVec4(0.70f, 0.70f, 0.70f, 1.0f);
+        scheme.Hover = ImVec4(0.26f, 0.59f, 0.98f, 0.40f);
+        scheme.Active = ImVec4(0.26f, 0.59f, 0.98f, 0.67f);
+        scheme.Viewport = ImVec4(0.70f, 0.70f, 0.73f, 1.0f);  // Light viewport (your requested color!)
+        return scheme;
     }
 
     UserInterface::ThemeManager::ColorScheme UserInterface::ThemeManager::GetMaterialDesignScheme() noexcept
@@ -781,6 +785,13 @@ namespace Motion
     {
         return s_CurrentAccent;
     }
+
+   
+    ImVec4 UserInterface::ThemeManager::GetViewportColor() noexcept
+    {
+        ImGuiStyle& style = ImGui::GetStyle();
+        return AdjustAlpha(style.Colors[ImGuiCol_WindowBg], 1.0f);
+    } 
 
     void UserInterface::ThemeManager::SetAccentColor(const ImVec4& color) noexcept
     {

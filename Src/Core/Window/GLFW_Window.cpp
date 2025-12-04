@@ -2,6 +2,16 @@
 
 namespace Motion
 {
+    /**
+     * @brief Initializes the GLFW library
+     * @return True if GLFW was initialized successfully, false otherwise
+     *
+     * Initializes the GLFW library and prints a message to the console with the
+     * version of GLFW that was initialized.
+     *
+     * @note This function must be called before any other GLFW functions are called.
+     * @note This function must not be called from any thread other than the main thread.
+     */
     bool GLFW_BaseAPI::Init() noexcept
     {
         if (glfwInit() == GLFW_FALSE)
@@ -14,6 +24,16 @@ namespace Motion
         return true;
     }
 
+    /**
+     * @brief Terminates the GLFW library and frees any allocated resources.
+     *
+     * This function terminates the GLFW library and frees any allocated resources. It is
+     * called automatically by the destructor of the GLFW_BaseAPI class.
+     *
+     * @note This function must not be called from any thread other than the main thread.
+     * @since Added in version 1.0.
+     * @ingroup init
+     */ 
     void GLFW_BaseAPI::Quit() noexcept
     {
         if (m_Initialized)
@@ -23,6 +43,16 @@ namespace Motion
         }
     }
 
+    /**
+     * @brief Creates a new GLFW window with the given properties.
+     *
+     * @param windowHandle The handle of the window to be created.
+     * @param title The title of the window.
+     * @param isVisible True if the window should be visible, false otherwise.
+     * @param sharedWindow The handle of the window to be shared, or NULL if no window should be shared.
+     *
+     * @return True if the window was created successfully, false otherwise.
+     */
     GLFW_Window::GLFW_Window(WindowHandle windowHandle, const std::string& title, bool isVisible, NativeWindow sharedWindow)
     {
         if(isVisible)
@@ -154,6 +184,9 @@ namespace Motion
         }
     }
 
+    /**
+     Destructor for GLFW_Window class. Destroys the GLFW window using glfwDestroyWindow function. 
+    */
     GLFW_Window::~GLFW_Window()
     {
         glfwDestroyWindow(m_Window);

@@ -373,9 +373,11 @@ namespace Motion
     void Scene::Submit() 
     {
         m_Viewport.Framebuffer->Bind();
-
+        
         Renderer::SetViewport(0, 0, m_Viewport.FrameSpecification.Width, m_Viewport.FrameSpecification.Height);
-        Renderer::ClearColor({ 0.85f, 0.85f, 0.88f, 1.0f });
+        ImVec4 viewportColor = UserInterface::ThemeManager::GetViewportColor();
+        Renderer::ClearColor({ viewportColor.x, viewportColor.y, viewportColor.z, viewportColor.w });
+        
         Renderer::Clear();
         Renderer::Begin();
 

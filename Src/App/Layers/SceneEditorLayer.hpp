@@ -25,6 +25,10 @@ namespace Motion
         virtual void OnUpdate(WindowHandle handle, Timer deltaTime) override;
         virtual void OnEvent(WindowHandle handle, IEvent& e) override;
         virtual void OnUIRender(WindowHandle handle) override;
+    
+    private:
+        bool OnWindowClose(WindowHandle handle, EventWindowClose& e);
+        void SaveScene();
 
     private:
         std::unique_ptr<ScenePanel> m_ScenePanel;
@@ -36,7 +40,10 @@ namespace Motion
         std::uint32_t           m_CurrentTheme{ 0 };
 
         char m_SearchBuf[1024] = {};
-        bool m_ShowAboutBox{false};
+        
+        bool m_ShowAboutBox = false;
+        float m_AboutWindowAlpha = 0.0f;
+        float m_AboutWindowScale = 0.8f;
 
         enum class AsyncOperationState
         {

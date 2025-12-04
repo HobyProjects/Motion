@@ -28,6 +28,9 @@ namespace Motion
         
         ImGui::BeginDisabled(simulationRunning);
         {
+            // ═══════════════════════════════════════════════════════════════
+            // LIGHTING SECTION
+            // ═══════════════════════════════════════════════════════════════
             HeadingConfig config;
             config.Separator = true;
             Heading(ICON_MD_LIGHT_MODE " Lighting", HeadingLevel::H3, config);            
@@ -190,7 +193,6 @@ namespace Motion
                     world.defaultPositionSolverNbIterations = static_cast<unsigned int>(posIterFloat);
                 });
 
-
                 float sleepLinVel = world.defaultSleepLinearVelocity;
                 DragFloatConfig sleepLinConfig;
                 sleepLinConfig.Speed = 0.01f;
@@ -259,10 +261,442 @@ namespace Motion
             ToggleSwitch("Enable Rotation", &context.View->Camera.RotationEnabled);
             if(ImGui::IsItemHovered()) ImGui::SetTooltip("Enables camera rotation with \"Q\" and \"E\" keys");
         }
+        
+
+        ImGui::Spacing();
+        ImGui::Spacing();
+        
+        RenderPostProcessingSection(scene);
+        
         ImGui::EndDisabled();
 
-        
         ImGui::End();
         ImGui::PopStyleVar();
+    }
+
+    void SceneEnvironmentSettings::RenderPostProcessingSection(Scene* scene)
+    {
+        auto& context = scene->GetContext();
+        auto& pp = context.Physics->PostProcessing;
+        auto& postProcessStack = scene->GetPostProcessStack();
+        
+        bool settingsChanged = false;
+
+        HeadingConfig config;
+        config.Separator = true;
+        Heading(ICON_MD_AUTO_FIX_HIGH " Post-Processing", HeadingLevel::H3, config);
+        
+        LabelConfig lblConfig;
+        lblConfig.Wrapped = true;
+        LabelSimple("Visual effects applied to the final rendered image", lblConfig);
+        
+        ImGui::Spacing();
+        
+        // Master toggle
+        if(ToggleSwitch("Enable Post-Processing", &pp.Enabled, ToggleSwitchPresets::iOS()))
+        {
+            scene->EnablePostProcessing(pp.Enabled);
+            settingsChanged = true;
+        }
+        
+        if(!pp.Enabled)
+        {
+            ImGui::TextDisabled("Post-processing is disabled");
+            return;
+        }
+        
+        ImGui::Spacing();
+        
+        // Preset selection
+        ImGui::TextDisabled("Visual Presets:");
+        const char* presets[] = { "Custom", "Cinematic", "Realistic", "Stylized", "Horror", "Sci-Fi", "Fantasy" };
+        int currentPreset = static_cast<int>(pp.CurrentPreset);
+        
+        ImGui::SetNextItemWidth(-1);
+        if(ImGui::Combo("##Preset", &currentPreset, presets, IM_ARRAYSIZE(presets)))
+        {
+            pp.CurrentPreset = static_cast<ScenePhysics::PostProcessingSettings::Preset>(currentPreset);
+            
+            if(pp.CurrentPreset != ScenePhysics::PostProcessingSettings::Preset::Custom)
+            {
+                pp.ApplyPreset(pp.CurrentPreset);
+                settingsChanged = true;
+            }
+        }
+        
+        if(pp.CurrentPreset != ScenePhysics::PostProcessingSettings::Preset::Custom)
+        {
+            ImGui::SameLine();
+            if(ImGui::SmallButton("Customize"))
+            {
+                pp.CurrentPreset = ScenePhysics::PostProcessingSettings::Preset::Custom;
+            }
+            if(ImGui::IsItemHovered())
+                ImGui::SetTooltip("Switch to custom mode to manually adjust settings");
+        }
+        
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+        
+        // Individual effect controls
+        RenderBloomControls(pp, settingsChanged);
+        
+        ImGui::Spacing();
+        
+        RenderToneMappingControls(pp, settingsChanged);
+        
+        ImGui::Spacing();
+        
+        RenderColorGradingControls(pp, settingsChanged);
+        
+        ImGui::Spacing();
+        
+        RenderVignetteControls(pp, settingsChanged);
+        
+        ImGui::Spacing();
+        
+        RenderFXAAControls(pp, settingsChanged);
+        
+        // Apply settings if changed
+        if(settingsChanged)
+        {
+            pp.ApplyToStack(postProcessStack);
+        }
+        
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+        
+        // Reset button
+        if(ImGui::Button("Reset Post-Processing", ImVec2(-1, 0)))
+        {
+            pp.Reset();
+            pp.ApplyToStack(postProcessStack);
+        }
+        if(ImGui::IsItemHovered())
+            ImGui::SetTooltip("Reset all post-processing settings to defaults");
+    }
+
+    void SceneEnvironmentSettings::RenderBloomControls(ScenePhysics::PostProcessingSettings& pp, bool& changed)
+    {
+        if(ImGui::TreeNodeEx("Bloom", ImGuiTreeNodeFlags_DefaultOpen))
+        {
+            if(ToggleSwitch("Enable##Bloom", &pp.Bloom.Enabled, ToggleSwitchPresets::iOS()))
+            {
+                changed = true;
+            }
+            if(ImGui::IsItemHovered())
+                ImGui::SetTooltip("Glow effect around bright objects");
+            
+            ImGui::BeginDisabled(!pp.Bloom.Enabled);
+            
+            SliderFloatConfig threshConfig;
+            threshConfig.MinV = 0.0f;
+            threshConfig.MaxV = 5.0f;
+            threshConfig.Fmt = "%.2f";
+            SliderFloat("Threshold", &pp.Bloom.Threshold, threshConfig, [&](float val){
+                changed = true;
+                pp.CurrentPreset = ScenePhysics::PostProcessingSettings::Preset::Custom;
+            });
+            if(ImGui::IsItemHovered())
+                ImGui::SetTooltip("Brightness level needed for bloom\n0.5-2.0 typical");
+            
+            SliderFloatConfig intensityConfig;
+            intensityConfig.MinV = 0.0f;
+            intensityConfig.MaxV = 2.0f;
+            intensityConfig.Fmt = "%.2f";
+            SliderFloat("Intensity", &pp.Bloom.Intensity, intensityConfig, [&](float val){
+                changed = true;
+                pp.CurrentPreset = ScenePhysics::PostProcessingSettings::Preset::Custom;
+            });
+            if(ImGui::IsItemHovered())
+                ImGui::SetTooltip("Bloom strength\n0.3-0.8 typical");
+            
+            SliderFloatConfig radiusConfig;
+            radiusConfig.MinV = 0.5f;
+            radiusConfig.MaxV = 3.0f;
+            radiusConfig.Fmt = "%.2f";
+            SliderFloat("Radius", &pp.Bloom.Radius, radiusConfig, [&](float val){
+                changed = true;
+                pp.CurrentPreset = ScenePhysics::PostProcessingSettings::Preset::Custom;
+            });
+            if(ImGui::IsItemHovered())
+                ImGui::SetTooltip("Blur spread size");
+            
+            DragFloatConfig iterConfig;
+            iterConfig.Speed = 0.1f;
+            iterConfig.MinV = 1.0f;
+            iterConfig.MaxV = 10.0f;
+            iterConfig.Fmt = "%.0f";
+            float iterFloat = static_cast<float>(pp.Bloom.Iterations);
+            DragFloat("Iterations", &iterFloat, iterConfig, [&](float val){
+                pp.Bloom.Iterations = static_cast<int>(val);
+                changed = true;
+                pp.CurrentPreset = ScenePhysics::PostProcessingSettings::Preset::Custom;
+            });
+            if(ImGui::IsItemHovered())
+                ImGui::SetTooltip("Quality vs performance\n3-7 recommended");
+            
+            ImGui::EndDisabled();
+            ImGui::TreePop();
+        }
+    }
+
+    void SceneEnvironmentSettings::RenderToneMappingControls(ScenePhysics::PostProcessingSettings& pp, bool& changed)
+    {
+        if(ImGui::TreeNodeEx("Tone Mapping", ImGuiTreeNodeFlags_DefaultOpen))
+        {
+            if(ToggleSwitch("Enable##ToneMapping", &pp.ToneMapping.Enabled, ToggleSwitchPresets::iOS()))
+            {
+                changed = true;
+            }
+            if(ImGui::IsItemHovered())
+                ImGui::SetTooltip("Converts HDR to displayable range");
+            
+            ImGui::BeginDisabled(!pp.ToneMapping.Enabled);
+            
+            const char* operators[] = { "Reinhard", "Reinhard Luminance", "Uncharted 2", "ACES", "Exposure" };
+            ImGui::SetNextItemWidth(-1);
+            if(ImGui::Combo("Operator", &pp.ToneMapping.OperatorIndex, operators, IM_ARRAYSIZE(operators)))
+            {
+                changed = true;
+                pp.CurrentPreset = ScenePhysics::PostProcessingSettings::Preset::Custom;
+            }
+            if(ImGui::IsItemHovered())
+                ImGui::SetTooltip("ACES recommended for most scenes");
+            
+            SliderFloatConfig expConfig;
+            expConfig.MinV = 0.1f;
+            expConfig.MaxV = 5.0f;
+            expConfig.Fmt = "%.2f";
+            SliderFloat("Exposure", &pp.ToneMapping.Exposure, expConfig, [&](float val){
+                changed = true;
+                pp.CurrentPreset = ScenePhysics::PostProcessingSettings::Preset::Custom;
+            });
+            if(ImGui::IsItemHovered())
+                ImGui::SetTooltip("Scene brightness\n1.0 = neutral");
+            
+            SliderFloatConfig gammaConfig;
+            gammaConfig.MinV = 1.0f;
+            gammaConfig.MaxV = 3.0f;
+            gammaConfig.Fmt = "%.2f";
+            SliderFloat("Gamma", &pp.ToneMapping.Gamma, gammaConfig, [&](float val){
+                changed = true;
+                pp.CurrentPreset = ScenePhysics::PostProcessingSettings::Preset::Custom;
+            });
+            if(ImGui::IsItemHovered())
+                ImGui::SetTooltip("Gamma correction\n2.2 is standard");
+            
+            if(pp.ToneMapping.OperatorIndex == 2) // Uncharted 2
+            {
+                SliderFloatConfig wpConfig;
+                wpConfig.MinV = 1.0f;
+                wpConfig.MaxV = 20.0f;
+                wpConfig.Fmt = "%.1f";
+                SliderFloat("White Point", &pp.ToneMapping.WhitePoint, wpConfig, [&](float val){
+                    changed = true;
+                    pp.CurrentPreset = ScenePhysics::PostProcessingSettings::Preset::Custom;
+                });
+                if(ImGui::IsItemHovered())
+                    ImGui::SetTooltip("White point for Uncharted 2");
+            }
+            
+            ImGui::EndDisabled();
+            ImGui::TreePop();
+        }
+    }
+
+    void SceneEnvironmentSettings::RenderColorGradingControls(ScenePhysics::PostProcessingSettings& pp, bool& changed)
+    {
+        if(ImGui::TreeNode("Color Grading"))
+        {
+            if(ToggleSwitch("Enable##ColorGrading", &pp.ColorGrading.Enabled, ToggleSwitchPresets::iOS()))
+            {
+                changed = true;
+            }
+            if(ImGui::IsItemHovered())
+                ImGui::SetTooltip("Cinematic color adjustments");
+            
+            ImGui::BeginDisabled(!pp.ColorGrading.Enabled);
+            
+            ImGui::TextDisabled("Basic Adjustments:");
+            
+            SliderFloatConfig satConfig;
+            satConfig.MinV = 0.0f;
+            satConfig.MaxV = 2.0f;
+            satConfig.Fmt = "%.2f";
+            SliderFloat("Saturation", &pp.ColorGrading.Saturation, satConfig, [&](float val){
+                changed = true;
+                pp.CurrentPreset = ScenePhysics::PostProcessingSettings::Preset::Custom;
+            });
+            if(ImGui::IsItemHovered())
+                ImGui::SetTooltip("0.0 = grayscale\n1.0 = normal\n2.0 = vibrant");
+            
+            SliderFloatConfig contrastConfig;
+            contrastConfig.MinV = 0.5f;
+            contrastConfig.MaxV = 2.0f;
+            contrastConfig.Fmt = "%.2f";
+            SliderFloat("Contrast", &pp.ColorGrading.Contrast, contrastConfig, [&](float val){
+                changed = true;
+                pp.CurrentPreset = ScenePhysics::PostProcessingSettings::Preset::Custom;
+            });
+            if(ImGui::IsItemHovered())
+                ImGui::SetTooltip("1.0 = normal contrast");
+            
+            SliderFloatConfig brightConfig;
+            brightConfig.MinV = -1.0f;
+            brightConfig.MaxV = 1.0f;
+            brightConfig.Fmt = "%.2f";
+            SliderFloat("Brightness", &pp.ColorGrading.Brightness, brightConfig, [&](float val){
+                changed = true;
+                pp.CurrentPreset = ScenePhysics::PostProcessingSettings::Preset::Custom;
+            });
+            if(ImGui::IsItemHovered())
+                ImGui::SetTooltip("0.0 = normal brightness");
+            
+            ImGui::Spacing();
+            ImGui::TextDisabled("Color Wheels:");
+            
+            ColorEditConfig colorConfig;
+            colorConfig.Flags = ImGuiColorEditFlags_NoAlpha | ImGuiColorEditFlags_Float;
+            
+
+            ColorEdit3("Shadows", pp.ColorGrading.Shadows, colorConfig, [&]([[maybe_unused]] glm::vec3 val){
+                changed = true;
+                pp.CurrentPreset = ScenePhysics::PostProcessingSettings::Preset::Custom;
+            });
+            
+            ColorEdit3("Midtones", pp.ColorGrading.Midtones, colorConfig, [&]([[maybe_unused]] glm::vec3 val){
+                changed = true;
+                pp.CurrentPreset = ScenePhysics::PostProcessingSettings::Preset::Custom;
+            });
+            
+            ColorEdit3("Highlights", pp.ColorGrading.Highlights, colorConfig, [&]([[maybe_unused]] glm::vec3 val){
+                changed = true;
+                pp.CurrentPreset = ScenePhysics::PostProcessingSettings::Preset::Custom;
+            });
+            
+            ImGui::EndDisabled();
+            ImGui::TreePop();
+        }
+    }
+
+    void SceneEnvironmentSettings::RenderVignetteControls(ScenePhysics::PostProcessingSettings& pp, bool& changed)
+    {
+        if(ImGui::TreeNode("Vignette"))
+        {
+            if(ToggleSwitch("Enable##Vignette", &pp.Vignette.Enabled, ToggleSwitchPresets::iOS()))
+            {
+                changed = true;
+            }
+            if(ImGui::IsItemHovered())
+                ImGui::SetTooltip("Edge darkening effect");
+            
+            ImGui::BeginDisabled(!pp.Vignette.Enabled);
+            
+            SliderFloatConfig intensityConfig;
+            intensityConfig.MinV = 0.0f;
+            intensityConfig.MaxV = 1.0f;
+            intensityConfig.Fmt = "%.2f";
+            SliderFloat("Intensity", &pp.Vignette.Intensity, intensityConfig, [&](float val){
+                changed = true;
+                pp.CurrentPreset = ScenePhysics::PostProcessingSettings::Preset::Custom;
+            });
+            if(ImGui::IsItemHovered())
+                ImGui::SetTooltip("Vignette strength\n0.3-0.6 typical");
+            
+            SliderFloatConfig smoothConfig;
+            smoothConfig.MinV = 0.0f;
+            smoothConfig.MaxV = 1.0f;
+            smoothConfig.Fmt = "%.2f";
+            SliderFloat("Smoothness", &pp.Vignette.Smoothness, smoothConfig, [&](float val){
+                changed = true;
+                pp.CurrentPreset = ScenePhysics::PostProcessingSettings::Preset::Custom;
+            });
+            if(ImGui::IsItemHovered())
+                ImGui::SetTooltip("Edge softness");
+            
+            ColorEditConfig colorConfig;
+            colorConfig.Flags = ImGuiColorEditFlags_NoAlpha | ImGuiColorEditFlags_Float;
+            ColorEdit3("Color", pp.Vignette.Color, colorConfig, [&]([[maybe_unused]] glm::vec3 val){
+                changed = true;
+                pp.CurrentPreset = ScenePhysics::PostProcessingSettings::Preset::Custom;
+                
+            });
+
+            if(ImGui::IsItemHovered())
+                ImGui::SetTooltip("Vignette color\nBlack is typical");
+            
+            ImGui::EndDisabled();
+            ImGui::TreePop();
+        }
+    }
+
+    void SceneEnvironmentSettings::RenderFXAAControls(ScenePhysics::PostProcessingSettings& pp, bool& changed)
+    {
+        if(ImGui::TreeNode("FXAA (Anti-Aliasing)"))
+        {
+            if(ToggleSwitch("Enable##FXAA", &pp.FXAA.Enabled, ToggleSwitchPresets::iOS()))
+            {
+                changed = true;
+            }
+            if(ImGui::IsItemHovered())
+                ImGui::SetTooltip("Fast anti-aliasing for smooth edges");
+            
+            ImGui::BeginDisabled(!pp.FXAA.Enabled);
+            
+            ImGui::TextDisabled("Quality Settings:");
+            
+            SliderFloatConfig edgeConfig;
+            edgeConfig.MinV = 0.0f;
+            edgeConfig.MaxV = 0.5f;
+            edgeConfig.Fmt = "%.3f";
+            SliderFloat("Edge Threshold", &pp.FXAA.EdgeThreshold, edgeConfig, [&](float val){
+                changed = true;
+                pp.CurrentPreset = ScenePhysics::PostProcessingSettings::Preset::Custom;
+            });
+            if(ImGui::IsItemHovered())
+                ImGui::SetTooltip("Edge detection sensitivity\n0.063-0.333 typical");
+            
+            SliderFloatConfig edgeMinConfig;
+            edgeMinConfig.MinV = 0.0f;
+            edgeMinConfig.MaxV = 0.1f;
+            edgeMinConfig.Fmt = "%.4f";
+            SliderFloat("Edge Threshold Min", &pp.FXAA.EdgeThresholdMin, edgeMinConfig, [&](float val){
+                changed = true;
+                pp.CurrentPreset = ScenePhysics::PostProcessingSettings::Preset::Custom;
+            });
+            if(ImGui::IsItemHovered())
+                ImGui::SetTooltip("Minimum edge threshold");
+            
+            DragFloatConfig stepsConfig;
+            stepsConfig.Speed = 0.1f;
+            stepsConfig.MinV = 4.0f;
+            stepsConfig.MaxV = 16.0f;
+            stepsConfig.Fmt = "%.0f";
+            float stepsFloat = static_cast<float>(pp.FXAA.SearchSteps);
+            DragFloat("Search Steps", &stepsFloat, stepsConfig, [&](float val){
+                pp.FXAA.SearchSteps = static_cast<int>(val);
+                changed = true;
+                pp.CurrentPreset = ScenePhysics::PostProcessingSettings::Preset::Custom;
+            });
+            if(ImGui::IsItemHovered())
+                ImGui::SetTooltip("Quality vs performance\n8-12 recommended");
+            
+            SliderFloatConfig subpixelConfig;
+            subpixelConfig.MinV = 0.0f;
+            subpixelConfig.MaxV = 1.0f;
+            subpixelConfig.Fmt = "%.2f";
+            SliderFloat("Subpixel Quality", &pp.FXAA.SubpixelQuality, subpixelConfig, [&](float val){
+                changed = true;
+                pp.CurrentPreset = ScenePhysics::PostProcessingSettings::Preset::Custom;
+            });
+            if(ImGui::IsItemHovered())
+                ImGui::SetTooltip("Sub-pixel AA strength");
+            
+            ImGui::EndDisabled();
+            ImGui::TreePop();
+        }
     }
 }

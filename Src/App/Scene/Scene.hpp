@@ -4,6 +4,7 @@
 #include "Buffers.hpp"
 #include "Components.hpp"
 #include "ModelImporter.hpp"
+#include "PostProcessing.hpp"  
 
 #include "SceneCommon.hpp"
 
@@ -35,16 +36,24 @@ namespace Motion
         
         void ApplyPhysics(float deltaTime);
         void RefreshPhysicBodies();
+        void RenderPostProcessingUI();
         
         [[nodiscard]] const bool IsRootEntity(entt::entity entity) const;
         [[nodiscard]] const bool IsNodeEntity(entt::entity entity) const;
         [[nodiscard]] entt::entity FindRootOf(entt::entity entity);
         [[nodiscard]] SceneContext& GetContext() { return m_Context; }
 
+        // ADD THESE POST-PROCESSING METHODS
+        [[nodiscard]] PostProcessStack& GetPostProcessStack() { return m_PostProcessStack; }
+        void EnablePostProcessing(bool enable) { m_PostProcessingEnabled = enable; }
+        [[nodiscard]] bool IsPostProcessingEnabled() const { return m_PostProcessingEnabled; }
 
     private:
         bool OnMouseCursorPosChange(WindowHandle handle, EventMouseCursorMove& e);
         bool OnMouseWheelScrollEvent(WindowHandle handle, EventMouseWheelScroll& e);
+
+        // ADD THIS HELPER METHOD
+        void InitializePostProcessing();
 
     private:
         SceneEntities       m_Entities{};
@@ -56,6 +65,12 @@ namespace Motion
         SceneSpecification  m_Specification{};
         
         SceneContext        m_Context{};
+
+        // ADD THESE POST-PROCESSING MEMBERS
+        PostProcessStack                    m_PostProcessStack{};
+        std::shared_ptr<IFrameBuffer>       m_HDRSceneBuffer{};      // HDR rendering target
+        std::shared_ptr<IFrameBuffer>       m_FinalBuffer{};         // Final output after post-processing
+        bool                                m_PostProcessingEnabled{true};
         
         friend class SceneSerializer;
     };

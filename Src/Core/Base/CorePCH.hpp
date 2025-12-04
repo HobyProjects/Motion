@@ -117,6 +117,7 @@
 #include "RenderCommand.hpp"
 #include "CommandQueue.hpp"
 #include "Renderer.hpp"
+#include "Postprocessing.hpp"
 #include "PlotExporter.hpp"
 
 //Renderer - OpenGL
@@ -126,6 +127,7 @@
 #include "GL_Shaders.hpp"
 #include "GL_Texture.hpp"
 #include "GL_Arrays.hpp"
+#include "GL_Postprocessing.hpp"
 #include "GL_PlotExporter.hpp"
 
 #include "GLFW_GL_Context.hpp"

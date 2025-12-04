@@ -797,8 +797,396 @@ namespace Motion
                 ImGui::EndTooltip();
             }
         }
-        
 
+        struct PostProcessingSettings
+        {
+            bool Enabled{true};
+            bool ShowPanel{true};
+            
+            struct BloomSettings
+            {
+                bool Enabled{true};
+                float Threshold{1.0f};
+                float Intensity{0.5f};
+                float Radius{1.0f};
+                int Iterations{5};
+            };
+            
+            struct ToneMappingSettings
+            {
+                bool Enabled{true};
+                int OperatorIndex{3};  // 0=Reinhard, 1=ReinhardLum, 2=Uncharted2, 3=ACES, 4=Exposure
+                float Exposure{1.0f};
+                float Gamma{2.2f};
+                float WhitePoint{11.2f};
+            };
+            
+            struct ColorGradingSettings
+            {
+                bool Enabled{true};
+                glm::vec3 Shadows{1.0f};
+                glm::vec3 Midtones{1.0f};
+                glm::vec3 Highlights{1.0f};
+                float Saturation{1.0f};
+                float Contrast{1.0f};
+                float Brightness{0.0f};
+            };
+            
+            struct VignetteSettings
+            {
+                bool Enabled{true};
+                float Intensity{0.3f};
+                float Smoothness{0.8f};
+                glm::vec3 Color{0.0f};
+            };
+            
+            struct ChromaticAberrationSettings
+            {
+                bool Enabled{false};
+                float Intensity{0.01f};
+                glm::vec2 Direction{1.0f, 0.0f};
+            };
+            
+            struct FXAASettings
+            {
+                bool Enabled{true};
+                float EdgeThreshold{0.125f};
+                float EdgeThresholdMin{0.0312f};
+                int SearchSteps{12};
+                float SubpixelQuality{0.75f};
+            };
+            
+            // Effect Settings
+            BloomSettings Bloom;
+            ToneMappingSettings ToneMapping;
+            ColorGradingSettings ColorGrading;
+            VignetteSettings Vignette;
+            ChromaticAberrationSettings ChromaticAberration;
+            FXAASettings FXAA;
+            
+            // Preset Management
+            enum class Preset
+            {
+                Custom,
+                Cinematic,
+                Realistic,
+                Stylized,
+                Horror,
+                SciFi,
+                Fantasy
+            };
+            
+            Preset CurrentPreset{Preset::Custom};
+            
+            void ApplyPreset(Preset preset)
+            {
+                CurrentPreset = preset;
+                
+                switch (preset)
+                {
+                    case Preset::Cinematic:
+                        // Warm tones, strong bloom, prominent vignette
+                        Bloom.Threshold = 1.2f;
+                        Bloom.Intensity = 0.7f;
+                        Bloom.Iterations = 6;
+                        
+                        ToneMapping.OperatorIndex = 3; // ACES
+                        ToneMapping.Exposure = 1.2f;
+                        
+                        ColorGrading.Shadows = glm::vec3(0.95f, 0.95f, 1.05f);
+                        ColorGrading.Midtones = glm::vec3(1.0f, 0.98f, 0.95f);
+                        ColorGrading.Highlights = glm::vec3(1.05f, 1.0f, 0.95f);
+                        ColorGrading.Saturation = 1.1f;
+                        ColorGrading.Contrast = 1.05f;
+                        
+                        Vignette.Intensity = 0.6f;
+                        Vignette.Smoothness = 0.4f;
+                        break;
+                        
+                    case Preset::Realistic:
+                        // Subtle effects, natural colors
+                        Bloom.Threshold = 1.5f;
+                        Bloom.Intensity = 0.3f;
+                        Bloom.Iterations = 4;
+                        
+                        ToneMapping.OperatorIndex = 3; // ACES
+                        ToneMapping.Exposure = 1.0f;
+                        
+                        ColorGrading.Shadows = glm::vec3(1.0f);
+                        ColorGrading.Midtones = glm::vec3(1.0f);
+                        ColorGrading.Highlights = glm::vec3(1.0f);
+                        ColorGrading.Saturation = 1.0f;
+                        ColorGrading.Contrast = 1.0f;
+                        ColorGrading.Brightness = 0.0f;
+                        
+                        Vignette.Intensity = 0.2f;
+                        Vignette.Smoothness = 0.8f;
+                        break;
+                        
+                    case Preset::Stylized:
+                        // Vibrant colors, strong bloom
+                        Bloom.Threshold = 0.8f;
+                        Bloom.Intensity = 0.9f;
+                        Bloom.Iterations = 6;
+                        
+                        ToneMapping.OperatorIndex = 2; // Uncharted2
+                        ToneMapping.Exposure = 1.3f;
+                        
+                        ColorGrading.Saturation = 1.3f;
+                        ColorGrading.Contrast = 1.15f;
+                        ColorGrading.Brightness = 0.05f;
+                        
+                        Vignette.Intensity = 0.4f;
+                        break;
+                        
+                    case Preset::Horror:
+                        // Desaturated, strong vignette, dark shadows
+                        Bloom.Threshold = 2.0f;
+                        Bloom.Intensity = 0.3f;
+                        Bloom.Iterations = 4;
+                        
+                        ToneMapping.Exposure = 0.7f;
+                        
+                        ColorGrading.Shadows = glm::vec3(0.8f, 0.8f, 1.0f);
+                        ColorGrading.Saturation = 0.7f;
+                        ColorGrading.Contrast = 1.2f;
+                        ColorGrading.Brightness = -0.2f;
+                        
+                        Vignette.Intensity = 0.8f;
+                        Vignette.Smoothness = 0.5f;
+                        
+                        ChromaticAberration.Enabled = true;
+                        ChromaticAberration.Intensity = 0.005f;
+                        break;
+                        
+                    case Preset::SciFi:
+                        // Cool tones, strong bloom on tech
+                        Bloom.Threshold = 0.9f;
+                        Bloom.Intensity = 0.8f;
+                        Bloom.Iterations = 6;
+                        
+                        ToneMapping.Exposure = 1.1f;
+                        
+                        ColorGrading.Shadows = glm::vec3(0.9f, 0.95f, 1.05f);
+                        ColorGrading.Highlights = glm::vec3(0.95f, 1.0f, 1.05f);
+                        ColorGrading.Saturation = 1.15f;
+                        ColorGrading.Contrast = 1.1f;
+                        
+                        Vignette.Intensity = 0.35f;
+                        
+                        ChromaticAberration.Enabled = true;
+                        ChromaticAberration.Intensity = 0.003f;
+                        break;
+                        
+                    case Preset::Fantasy:
+                        // Vibrant, magical feel
+                        Bloom.Threshold = 0.7f;
+                        Bloom.Intensity = 0.85f;
+                        Bloom.Iterations = 7;
+                        
+                        ToneMapping.Exposure = 1.15f;
+                        
+                        ColorGrading.Shadows = glm::vec3(1.0f, 0.95f, 1.05f);
+                        ColorGrading.Highlights = glm::vec3(1.05f, 1.02f, 0.98f);
+                        ColorGrading.Saturation = 1.2f;
+                        ColorGrading.Contrast = 1.05f;
+                        
+                        Vignette.Intensity = 0.3f;
+                        break;
+                        
+                    default:
+                        break;
+                }
+            }
+            
+            const char* GetPresetName(Preset preset) const
+            {
+                switch (preset)
+                {
+                    case Preset::Custom: return "Custom";
+                    case Preset::Cinematic: return "Cinematic";
+                    case Preset::Realistic: return "Realistic";
+                    case Preset::Stylized: return "Stylized";
+                    case Preset::Horror: return "Horror";
+                    case Preset::SciFi: return "Sci-Fi";
+                    case Preset::Fantasy: return "Fantasy";
+                    default: return "Unknown";
+                }
+            }
+            
+            void Reset()
+            {
+                Enabled = true;
+                
+                Bloom.Enabled = true;
+                Bloom.Threshold = 1.0f;
+                Bloom.Intensity = 0.5f;
+                Bloom.Radius = 1.0f;
+                Bloom.Iterations = 5;
+                
+                ToneMapping.Enabled = true;
+                ToneMapping.OperatorIndex = 3; // ACES
+                ToneMapping.Exposure = 1.0f;
+                ToneMapping.Gamma = 2.2f;
+                ToneMapping.WhitePoint = 11.2f;
+                
+                ColorGrading.Enabled = true;
+                ColorGrading.Shadows = glm::vec3(1.0f);
+                ColorGrading.Midtones = glm::vec3(1.0f);
+                ColorGrading.Highlights = glm::vec3(1.0f);
+                ColorGrading.Saturation = 1.0f;
+                ColorGrading.Contrast = 1.0f;
+                ColorGrading.Brightness = 0.0f;
+                
+                Vignette.Enabled = true;
+                Vignette.Intensity = 0.3f;
+                Vignette.Smoothness = 0.8f;
+                Vignette.Color = glm::vec3(0.0f);
+                
+                ChromaticAberration.Enabled = false;
+                ChromaticAberration.Intensity = 0.01f;
+                ChromaticAberration.Direction = glm::vec2(1.0f, 0.0f);
+                
+                FXAA.Enabled = true;
+                FXAA.EdgeThreshold = 0.125f;
+                FXAA.EdgeThresholdMin = 0.0312f;
+                FXAA.SearchSteps = 12;
+                FXAA.SubpixelQuality = 0.75f;
+                
+                CurrentPreset = Preset::Custom;
+            }
+            
+            // Apply settings to actual post-processing stack
+            void ApplyToStack(PostProcessStack& stack)
+            {
+                // Bloom
+                if (auto* config = stack.GetEffectConfig<BloomConfig>(PostProcessEffectType::Bloom))
+                {
+                    config->enabled = Bloom.Enabled;
+                    config->threshold = Bloom.Threshold;
+                    config->intensity = Bloom.Intensity;
+                    config->radius = Bloom.Radius;
+                    config->iterations = Bloom.Iterations;
+                }
+                stack.SetEffectEnabled(PostProcessEffectType::Bloom, Bloom.Enabled);
+                
+                // Tone Mapping
+                if (auto* config = stack.GetEffectConfig<ToneMappingConfig>(PostProcessEffectType::ToneMapping))
+                {
+                    config->toneMappingOp = static_cast<ToneMappingConfig::Operator>(ToneMapping.OperatorIndex);
+                    config->exposure = ToneMapping.Exposure;
+                    config->gamma = ToneMapping.Gamma;
+                    config->whitePoint = ToneMapping.WhitePoint;
+                }
+                stack.SetEffectEnabled(PostProcessEffectType::ToneMapping, ToneMapping.Enabled);
+                
+                // Color Grading
+                if (auto* config = stack.GetEffectConfig<ColorGradingConfig>(PostProcessEffectType::ColorGrading))
+                {
+                    config->shadows = ColorGrading.Shadows;
+                    config->midtones = ColorGrading.Midtones;
+                    config->highlights = ColorGrading.Highlights;
+                    config->saturation = ColorGrading.Saturation;
+                    config->contrast = ColorGrading.Contrast;
+                    config->brightness = ColorGrading.Brightness;
+                }
+                stack.SetEffectEnabled(PostProcessEffectType::ColorGrading, ColorGrading.Enabled);
+                
+                // Vignette
+                if (auto* config = stack.GetEffectConfig<VignetteConfig>(PostProcessEffectType::Vignette))
+                {
+                    config->intensity = Vignette.Intensity;
+                    config->smoothness = Vignette.Smoothness;
+                    config->color = Vignette.Color;
+                }
+                stack.SetEffectEnabled(PostProcessEffectType::Vignette, Vignette.Enabled);
+                
+                // Chromatic Aberration
+                if (auto* config = stack.GetEffectConfig<ChromaticAberrationConfig>(PostProcessEffectType::ChromaticAber))
+                {
+                    config->intensity = ChromaticAberration.Intensity;
+                    config->direction = ChromaticAberration.Direction;
+                }
+                stack.SetEffectEnabled(PostProcessEffectType::ChromaticAber, ChromaticAberration.Enabled);
+                
+                // FXAA
+                if (auto* config = stack.GetEffectConfig<FXAAConfig>(PostProcessEffectType::FXAA))
+                {
+                    config->edgeThreshold = FXAA.EdgeThreshold;
+                    config->edgeThresholdMin = FXAA.EdgeThresholdMin;
+                    config->searchSteps = FXAA.SearchSteps;
+                    config->subpixelQuality = FXAA.SubpixelQuality;
+                }
+                stack.SetEffectEnabled(PostProcessEffectType::FXAA, FXAA.Enabled);
+            }
+            
+            // Sync settings from actual post-processing stack
+            void SyncFromStack(PostProcessStack& stack)
+            {
+                // Bloom
+                if (auto* config = stack.GetEffectConfig<BloomConfig>(PostProcessEffectType::Bloom))
+                {
+                    Bloom.Threshold = config->threshold;
+                    Bloom.Intensity = config->intensity;
+                    Bloom.Radius = config->radius;
+                    Bloom.Iterations = config->iterations;
+                }
+                Bloom.Enabled = stack.IsEffectEnabled(PostProcessEffectType::Bloom);
+                
+                // Tone Mapping
+                if (auto* config = stack.GetEffectConfig<ToneMappingConfig>(PostProcessEffectType::ToneMapping))
+                {
+                    ToneMapping.OperatorIndex = static_cast<int>(config->toneMappingOp);
+                    ToneMapping.Exposure = config->exposure;
+                    ToneMapping.Gamma = config->gamma;
+                    ToneMapping.WhitePoint = config->whitePoint;
+                }
+                ToneMapping.Enabled = stack.IsEffectEnabled(PostProcessEffectType::ToneMapping);
+                
+                // Color Grading
+                if (auto* config = stack.GetEffectConfig<ColorGradingConfig>(PostProcessEffectType::ColorGrading))
+                {
+                    ColorGrading.Shadows = config->shadows;
+                    ColorGrading.Midtones = config->midtones;
+                    ColorGrading.Highlights = config->highlights;
+                    ColorGrading.Saturation = config->saturation;
+                    ColorGrading.Contrast = config->contrast;
+                    ColorGrading.Brightness = config->brightness;
+                }
+                ColorGrading.Enabled = stack.IsEffectEnabled(PostProcessEffectType::ColorGrading);
+                
+                // Vignette
+                if (auto* config = stack.GetEffectConfig<VignetteConfig>(PostProcessEffectType::Vignette))
+                {
+                    Vignette.Intensity = config->intensity;
+                    Vignette.Smoothness = config->smoothness;
+                    Vignette.Color = config->color;
+                }
+                Vignette.Enabled = stack.IsEffectEnabled(PostProcessEffectType::Vignette);
+                
+                // Chromatic Aberration
+                if (auto* config = stack.GetEffectConfig<ChromaticAberrationConfig>(PostProcessEffectType::ChromaticAber))
+                {
+                    ChromaticAberration.Intensity = config->intensity;
+                    ChromaticAberration.Direction = config->direction;
+                }
+                ChromaticAberration.Enabled = stack.IsEffectEnabled(PostProcessEffectType::ChromaticAber);
+                
+                // FXAA
+                if (auto* config = stack.GetEffectConfig<FXAAConfig>(PostProcessEffectType::FXAA))
+                {
+                    FXAA.EdgeThreshold = config->edgeThreshold;
+                    FXAA.EdgeThresholdMin = config->edgeThresholdMin;
+                    FXAA.SearchSteps = config->searchSteps;
+                    FXAA.SubpixelQuality = config->subpixelQuality;
+                }
+                FXAA.Enabled = stack.IsEffectEnabled(PostProcessEffectType::FXAA);
+                
+                CurrentPreset = Preset::Custom;
+            }
+        };
+
+        PostProcessingSettings PostProcessing;
         PhysicsAnalysisState PhysicsAnalysis;
     };
 
@@ -881,6 +1269,7 @@ namespace Motion
     {
         bool ShowEntityHierarchy{true};
         bool ShowEnvironmentSettings{true};
+        bool ShowPostProcessingPanel{true};
         bool ShowEntitySimulated{true};
         bool ShowEntityMaterials{true};
         bool ShowEntityComponents{true};

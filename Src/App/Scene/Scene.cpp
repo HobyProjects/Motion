@@ -24,14 +24,29 @@ namespace Motion
         camera.ViewportHeight     = viewport.y;
         camera.RotationEnabled    = false;
         camera.Position           = glm::vec3(0.0f, 1.0f, 5.0f);
-        camera.TranslationSpeed   = 0.01;
+        camera.TranslationSpeed   = 0.01f;
 
         auto& frameSpec         = m_Viewport.FrameSpecification;
-        frameSpec.Name          = spec.Name;
+        frameSpec.Name          = spec.Name + "_HDR";  
         frameSpec.Width         = (std::int32_t)viewport.x;
         frameSpec.Height        = (std::int32_t)viewport.y;
         frameSpec.Samples       = 1;
-        m_Viewport.Framebuffer  = IFrameBuffer::Create(frameSpec);
+        frameSpec.Colors        = { { 0, 0, FrameBufferColorAttachmentStandards::HighDynamicRange }};
+        frameSpec.Depth         = { 0, 0, FrameBufferDepthAttachmentStandards::CommonCombined };
+        m_HDRSceneBuffer        = IFrameBuffer::Create(frameSpec);  
+
+
+        FrameBufferSpecification finalSpec;
+        finalSpec.Name              = spec.Name + "_Final";
+        finalSpec.Width             = (std::int32_t)viewport.x;
+        finalSpec.Height            = (std::int32_t)viewport.y;
+        finalSpec.Samples           = 1;
+        finalSpec.SwapChainTarget   = false;
+        finalSpec.Colors            = { { 0, 0, FrameBufferColorAttachmentStandards::Standard } };
+        finalSpec.Depth             = { 0, 0, FrameBufferDepthAttachmentStandards::None };
+        
+        m_FinalBuffer = IFrameBuffer::Create(finalSpec);
+        m_Viewport.Framebuffer = m_FinalBuffer;  
 
         auto& phySettings = m_PhysicsWorld.Settings;
         phySettings.gravity = rp3d::Vector3(0.0f, -ScenePhysicsWorld::SI_GRAVITY, 0.0f);
@@ -51,6 +66,91 @@ namespace Motion
         m_Context.Simulation    = &m_Simulation;
         m_Context.Specification = &m_Specification;
         m_Context.Panels        = &m_Panels;
+
+        InitializePostProcessing();
+        m_Physics.PostProcessing.SyncFromStack(m_PostProcessStack);
+    }
+
+    /**
+     * Initializes the post-processing stack with the desired effects in the desired order.
+     * This function is called automatically during the Scene initialization process.
+     * The effects are added in the following order: Bloom, Tone Mapping, Color Grading, Vignette, FXAA.
+     * The default configuration for each effect is set to reasonable default values, but
+     * may be changed by the user through the corresponding PostProcessStack interface.
+     * @see PostProcessStack
+     */
+    void Scene::InitializePostProcessing()
+    {
+        // Add post-processing effects in the desired order
+        m_PostProcessStack.AddEffect(PostProcessEffectType::Bloom);
+        m_PostProcessStack.AddEffect(PostProcessEffectType::ToneMapping);
+        m_PostProcessStack.AddEffect(PostProcessEffectType::ColorGrading);
+        m_PostProcessStack.AddEffect(PostProcessEffectType::Vignette);
+        m_PostProcessStack.AddEffect(PostProcessEffectType::FXAA);
+
+        // Configure Bloom
+        auto* bloomConfig = m_PostProcessStack.GetEffectConfig<BloomConfig>(
+            PostProcessEffectType::Bloom
+        );
+        if (bloomConfig)
+        {
+            bloomConfig->threshold = 1.0f;
+            bloomConfig->intensity = 0.5f;
+            bloomConfig->radius = 1.0f;
+            bloomConfig->iterations = 5;
+            bloomConfig->enabled = true;
+        }
+
+        // Configure Tone Mapping
+        auto* toneConfig = m_PostProcessStack.GetEffectConfig<ToneMappingConfig>(
+            PostProcessEffectType::ToneMapping
+        );
+        if (toneConfig)
+        {
+            toneConfig->toneMappingOp = ToneMappingConfig::Operator::ACES;
+            toneConfig->exposure = 1.0f;
+            toneConfig->gamma = 2.2f;
+            toneConfig->whitePoint = 11.2f;
+        }
+
+        // Configure Color Grading
+        auto* colorConfig = m_PostProcessStack.GetEffectConfig<ColorGradingConfig>(
+            PostProcessEffectType::ColorGrading
+        );
+        if (colorConfig)
+        {
+            colorConfig->saturation = 1.0f;
+            colorConfig->contrast = 1.0f;
+            colorConfig->brightness = 0.0f;
+            colorConfig->shadows = glm::vec3(1.0f);
+            colorConfig->midtones = glm::vec3(1.0f);
+            colorConfig->highlights = glm::vec3(1.0f);
+        }
+
+        // Configure Vignette
+        auto* vignetteConfig = m_PostProcessStack.GetEffectConfig<VignetteConfig>(
+            PostProcessEffectType::Vignette
+        );
+        if (vignetteConfig)
+        {
+            vignetteConfig->intensity = 0.3f;
+            vignetteConfig->smoothness = 0.8f;
+            vignetteConfig->color = glm::vec3(0.0f);
+        }
+
+        // Configure FXAA
+        auto* fxaaConfig = m_PostProcessStack.GetEffectConfig<FXAAConfig>(
+            PostProcessEffectType::FXAA
+        );
+        if (fxaaConfig)
+        {
+            fxaaConfig->edgeThreshold = 0.125f;
+            fxaaConfig->edgeThresholdMin = 0.0312f;
+            fxaaConfig->searchSteps = 12;
+            fxaaConfig->subpixelQuality = 0.75f;
+        }
+
+        MOTION_INFO("Post-processing initialized with {} effects", m_PostProcessStack.GetEffectCount());
     }
 
     /**
@@ -359,6 +459,23 @@ namespace Motion
     {
         m_Viewport.Camera.SetAspectRatio(size.x, size.y);
         m_Viewport.Framebuffer->ResizeFrame((std::int32_t)size.x, (std::int32_t)size.y);
+
+        if (m_HDRSceneBuffer)
+        {
+            m_HDRSceneBuffer->ResizeFrame((std::int32_t)size.x, (std::int32_t)size.y);
+        }
+        
+        if (m_FinalBuffer)
+        {
+            m_FinalBuffer->ResizeFrame((std::int32_t)size.x, (std::int32_t)size.y);
+        }
+        
+        // Resize post-processing intermediate buffers
+        m_PostProcessStack.Resize((std::int32_t)size.x, (std::int32_t)size.y);
+        
+        // Update viewport specification
+        m_Viewport.FrameSpecification.Width = (std::int32_t)size.x;
+        m_Viewport.FrameSpecification.Height = (std::int32_t)size.y;
     }
 
     /**
@@ -379,7 +496,8 @@ namespace Motion
      */
     void Scene::Submit() 
     {
-        m_Viewport.Framebuffer->Bind();
+        m_Physics.PostProcessing.ApplyToStack(m_PostProcessStack);
+        m_HDRSceneBuffer->Bind();
         
         Renderer::SetViewport(0, 0, m_Viewport.FrameSpecification.Width, m_Viewport.FrameSpecification.Height);
         ImVec4 viewportColor = UserInterface::ThemeManager::GetViewportColor();
@@ -425,12 +543,22 @@ namespace Motion
             Renderer::Submit(cmd);
         });
 
-
         Renderer::End();
+        m_HDRSceneBuffer->Unbind();
 
-        m_Viewport.Framebuffer->Unbind();
-        m_Viewport.FrameTexturePtr =  m_Viewport.Framebuffer->GetAttachment
-            (FrameBufferColorAttachmentStandards::Standard).ID;
+        if (m_PostProcessingEnabled)
+        {
+            auto hdrTexture = m_HDRSceneBuffer->GetAttachment(FrameBufferColorAttachmentStandards::HighDynamicRange).ID;
+            m_PostProcessStack.Process(hdrTexture, m_FinalBuffer.get());
+            m_Viewport.FrameTexturePtr = m_FinalBuffer->GetAttachment(FrameBufferColorAttachmentStandards::Standard).ID;
+        }
+        else
+        {
+            // No post-processing - just copy HDR to final buffer with basic tone mapping
+            // You could implement a simple blit here, or just use the HDR buffer directly
+            // For simplicity, we'll just point to the HDR texture
+            m_Viewport.FrameTexturePtr = m_HDRSceneBuffer->GetAttachment(FrameBufferColorAttachmentStandards::HighDynamicRange).ID;
+        }
     }
 
     /**
@@ -990,5 +1118,144 @@ namespace Motion
 
         MOTION_INFO("Failed to find root of entity {0}", entt::to_integral(entity));
         return entt::null;
+    }
+
+    /**
+     * @brief Renders the post-processing UI.
+     *
+     * Renders the post-processing UI. This function creates a collapsible header
+     * named "Post-Processing" and adds various UI elements to it, such as checkboxes
+     * to enable or disable individual post-processing effects, sliders to control
+     * the intensity of the effects, and color pickers to control the color of the
+     * effects.
+     *
+     * The post-processing UI is used to control the post-processing effects that
+     * are applied to the scene. The post-processing effects are configured using
+     * the PostProcessStack class, and are applied to the scene in the order that
+     * they are added to the stack.
+     *
+     * This function is typically called from the OnRenderUI() function of the
+     * Application class.
+     */
+    void Scene::RenderPostProcessingUI()
+    {
+        if (ImGui::CollapsingHeader("Post-Processing"))
+        {
+            ImGui::Checkbox("Enable Post-Processing", &m_PostProcessingEnabled);
+            
+            if (m_PostProcessingEnabled)
+            {
+                // Bloom controls
+                if (ImGui::TreeNode("Bloom"))
+                {
+                    auto* config = m_PostProcessStack.GetEffectConfig<BloomConfig>(
+                        PostProcessEffectType::Bloom
+                    );
+                    if (config)
+                    {
+                        bool enabled = config->enabled;
+                        if (ImGui::Checkbox("Enable##Bloom", &enabled))
+                        {
+                            config->enabled = enabled;
+                            m_PostProcessStack.SetEffectEnabled(PostProcessEffectType::Bloom, enabled);
+                        }
+                        
+                        ImGui::SliderFloat("Threshold", &config->threshold, 0.0f, 5.0f);
+                        ImGui::SliderFloat("Intensity", &config->intensity, 0.0f, 2.0f);
+                        ImGui::SliderFloat("Radius", &config->radius, 0.5f, 3.0f);
+                        ImGui::SliderInt("Iterations", &config->iterations, 1, 10);
+                    }
+                    ImGui::TreePop();
+                }
+                
+                // Tone Mapping controls
+                if (ImGui::TreeNode("Tone Mapping"))
+                {
+                    auto* config = m_PostProcessStack.GetEffectConfig<ToneMappingConfig>(
+                        PostProcessEffectType::ToneMapping
+                    );
+                    if (config)
+                    {
+                        const char* operators[] = { "Reinhard", "Reinhard Luminance", "Uncharted 2", "ACES", "Exposure" };
+                        int currentOp = static_cast<int>(config->toneMappingOp);
+                        if (ImGui::Combo("Operator", &currentOp, operators, IM_ARRAYSIZE(operators)))
+                        {
+                            config->toneMappingOp = static_cast<ToneMappingConfig::Operator>(currentOp);
+                        }
+                        
+                        ImGui::SliderFloat("Exposure", &config->exposure, 0.1f, 5.0f);
+                        ImGui::SliderFloat("Gamma", &config->gamma, 1.0f, 3.0f);
+                        
+                        if (config->toneMappingOp == ToneMappingConfig::Operator::Uncharted2)
+                        {
+                            ImGui::SliderFloat("White Point", &config->whitePoint, 1.0f, 20.0f);
+                        }
+                    }
+                    ImGui::TreePop();
+                }
+                
+                // Color Grading controls
+                if (ImGui::TreeNode("Color Grading"))
+                {
+                    auto* config = m_PostProcessStack.GetEffectConfig<ColorGradingConfig>(
+                        PostProcessEffectType::ColorGrading
+                    );
+                    if (config)
+                    {
+                        ImGui::SliderFloat("Saturation", &config->saturation, 0.0f, 2.0f);
+                        ImGui::SliderFloat("Contrast", &config->contrast, 0.5f, 2.0f);
+                        ImGui::SliderFloat("Brightness", &config->brightness, -1.0f, 1.0f);
+                        
+                        ImGui::ColorEdit3("Shadows", &config->shadows[0]);
+                        ImGui::ColorEdit3("Midtones", &config->midtones[0]);
+                        ImGui::ColorEdit3("Highlights", &config->highlights[0]);
+                    }
+                    ImGui::TreePop();
+                }
+                
+                // Vignette controls
+                if (ImGui::TreeNode("Vignette"))
+                {
+                    auto* config = m_PostProcessStack.GetEffectConfig<VignetteConfig>(
+                        PostProcessEffectType::Vignette
+                    );
+                    if (config)
+                    {
+                        bool enabled = m_PostProcessStack.IsEffectEnabled(PostProcessEffectType::Vignette);
+                        if (ImGui::Checkbox("Enable##Vignette", &enabled))
+                        {
+                            m_PostProcessStack.SetEffectEnabled(PostProcessEffectType::Vignette, enabled);
+                        }
+                        
+                        ImGui::SliderFloat("Intensity", &config->intensity, 0.0f, 1.0f);
+                        ImGui::SliderFloat("Smoothness", &config->smoothness, 0.0f, 1.0f);
+                        ImGui::ColorEdit3("Color", &config->color[0]);
+                    }
+                    ImGui::TreePop();
+                }
+                
+                // FXAA controls
+                if (ImGui::TreeNode("FXAA"))
+                {
+                    auto* config = m_PostProcessStack.GetEffectConfig<FXAAConfig>(
+                        PostProcessEffectType::FXAA
+                    );
+                    if (config)
+                    {
+                        bool enabled = m_PostProcessStack.IsEffectEnabled(PostProcessEffectType::FXAA);
+                        if (ImGui::Checkbox("Enable##FXAA", &enabled))
+                        {
+                            m_PostProcessStack.SetEffectEnabled(PostProcessEffectType::FXAA, enabled);
+                        }
+                        
+                        ImGui::SliderFloat("Edge Threshold", &config->edgeThreshold, 0.0f, 0.5f);
+                        ImGui::SliderFloat("Edge Threshold Min", &config->edgeThresholdMin, 0.0f, 0.1f);
+                        ImGui::SliderInt("Search Steps", &config->searchSteps, 4, 16);
+                        ImGui::SliderFloat("Subpixel Quality", &config->subpixelQuality, 0.0f, 1.0f);
+                    }
+                    ImGui::TreePop();
+                }
+            }
+        }
     }
 }

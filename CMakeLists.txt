@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.24)
-project(Motion VERSION 1.0.0 LANGUAGES C CXX)
+project(Motion VERSION 1.0.254 LANGUAGES C CXX)
 
 # Version control
 include(${CMAKE_SOURCE_DIR}/cmake/GenerateVersionHeader.cmake)
